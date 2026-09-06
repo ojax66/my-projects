@@ -30,6 +30,9 @@ cp ~/Downloads/*.mcworld ~/Downloads/*.mcaddon server/incoming/
 
 Os arquivos já processados vão para `server/incoming/processados/`.
 
+Pelo celular, sem SSH: a página `http://SEU-IP:8080/?t=SEU-TOKEN` faz os passos
+1 a 3 sozinha (veja [celular.md](celular.md)).
+
 Direto na VM:
 
 ```bash

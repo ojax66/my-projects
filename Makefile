@@ -44,12 +44,16 @@ deploy:    ## envia o repo para a VM: make deploy HOST=ubuntu@1.2.3.4
 	@test -n "$(HOST)" || { echo "uso: make deploy HOST=ubuntu@ip"; exit 1; }
 	./scripts/deploy-remote.sh $(HOST)
 
-test:      ## testes do importador de mundos/addons
+test:      ## testes (importador, upload e cloud-init)
 	python3 tests/test_mcpack.py
+	python3 tests/test_uploader.py
+	python3 tests/test_cloud_init.py
 
 check:     ## validacoes locais (sintaxe dos scripts e do terraform)
 	bash -n scripts/*.sh
-	python3 -m py_compile scripts/mcpack.py
+	python3 -m py_compile scripts/mcpack.py scripts/uploader.py
 	python3 tests/test_mcpack.py
+	python3 tests/test_uploader.py
+	python3 tests/test_cloud_init.py
 	@command -v terraform >/dev/null && $(TF) fmt -check && $(TF) validate || echo "terraform nao instalado; pulando"
 	@command -v shellcheck >/dev/null && shellcheck scripts/*.sh || echo "shellcheck nao instalado; pulando"

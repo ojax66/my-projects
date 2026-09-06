@@ -15,7 +15,17 @@ Oracle Cloud com Terraform e operada por scripts simples.
 
 ## Início rápido
 
-### Na Oracle Cloud
+### Só com o celular (sem computador)
+
+Copie [`deploy/oracle-cloud-init.yaml`](deploy/oracle-cloud-init.yaml), edite as
+6 linhas marcadas com `<<< EDITE` e cole no campo **cloud-init script** ao criar
+a instância na console da Oracle. A VM sobe o servidor e publica uma página em
+`http://SEU-IP:8080/?t=SEU-TOKEN` para enviar mundos e addons direto do celular
+— sem SSH, sem `scp`.
+
+Passo a passo com as telas da console: **[docs/celular.md](docs/celular.md)**.
+
+### Na Oracle Cloud, com Terraform
 
 ```bash
 git clone <este-repositorio> && cd my-projects
@@ -56,6 +66,8 @@ pacotes ausentes): **[docs/mundos-e-addons.md](docs/mundos-e-addons.md)**.
 ## Estrutura
 
 ```
+deploy/
+  oracle-cloud-init.yaml   arquivo único para colar na console da Oracle (celular)
 terraform/          infraestrutura OCI (VCN, security list, VM, IP reservado)
   cloud-init.yaml.tftpl    provisiona Docker, firewall do SO e sobe o servidor
 server/
@@ -65,11 +77,13 @@ server/
   incoming/                pasta de entrada dos .mcworld/.mcaddon
 scripts/
   mcpack.py                importador de mundos e addons (stdlib apenas)
+  uploader.py              página web para enviar mundos/addons do celular
   mcctl.sh                 up/down/logs/console/cmd/import/status
   bootstrap.sh             prepara uma VM Linux do zero
   deploy-remote.sh         rsync do repositório para a VM + bootstrap
   backup.sh / restore.sh   backup a quente com rotação e restauração
-docs/                 guias de nuvem, addons e operação
+tests/                testes do importador, do upload e do cloud-init
+docs/                 guias de celular, nuvem, addons e operação
 ```
 
 ## Comandos
@@ -101,5 +115,8 @@ docs/                 guias de nuvem, addons e operação
   Funciona bem para grupos pequenos e médios — veja `docs/oracle-cloud.md`.
 - `server/data`, `server/.env` e `backups/` ficam fora do git: são dados do seu
   servidor.
+- A página de envio (`scripts/uploader.py`) é HTTP puro com token: prática no
+  celular, mas mantenha a porta 8080 fechada na security list quando não
+  estiver usando. Detalhes em `docs/celular.md`.
 - Subir o servidor implica aceitar o
   [EULA da Minecraft](https://www.minecraft.net/eula) (`EULA=TRUE` no compose).

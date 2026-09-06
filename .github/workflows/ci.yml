@@ -19,13 +19,17 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y shellcheck
           shellcheck --severity=warning scripts/*.sh
 
-      - name: Importador Python
+      - name: Scripts Python
         run: |
-          python3 -m py_compile scripts/mcpack.py
+          python3 -m py_compile scripts/mcpack.py scripts/uploader.py
           python3 scripts/mcpack.py --data "$RUNNER_TEMP/data" list
 
-      - name: Teste de importacao (mundo + addon sinteticos)
-        run: python3 tests/test_mcpack.py
+      - name: Testes
+        run: |
+          pip install --quiet pyyaml
+          python3 tests/test_mcpack.py
+          python3 tests/test_uploader.py
+          python3 tests/test_cloud_init.py
 
       - uses: hashicorp/setup-terraform@v3
         with:
