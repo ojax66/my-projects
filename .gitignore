@@ -1,0 +1,21 @@
+# dados do servidor (mundos, addons, logs) — nunca versionar
+server/data/*
+!server/data/.gitkeep
+server/incoming/*
+!server/incoming/.gitkeep
+server/.env
+backups/
+
+# terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform/terraform.tfvars.example
+crash.log
+
+# diversos
+__pycache__/
+*.pyc
+.DS_Store

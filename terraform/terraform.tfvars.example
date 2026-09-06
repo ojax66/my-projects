@@ -1,0 +1,30 @@
+# Copie para terraform.tfvars e preencha.
+# OCIDs ficam em: console OCI > perfil > Tenancy / Compartimentos.
+
+region           = "sa-saopaulo-1"
+compartment_ocid = "ocid1.compartment.oc1..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ssh_public_key   = "ssh-ed25519 AAAA... voce@maquina"
+
+# Restrinja o SSH ao seu IP sempre que possivel:
+# ssh_allowed_cidr = "203.0.113.7/32"
+
+project_name = "mcbe"
+server_name  = "Servidor do Dragao"
+level_name   = "world"
+gamemode     = "survival"
+difficulty   = "normal"
+max_players  = 10
+
+# Free tier Ampere (ARM): ate 4 OCPUs / 24 GB somados na conta.
+shape         = "VM.Standard.A1.Flex"
+ocpus         = 2
+memory_in_gbs = 12
+
+# Alternativa x86 sempre gratuita (bem mais modesta):
+# shape = "VM.Standard.E2.1.Micro"
+
+# XUIDs (nao gamertags) dos operadores, separados por virgula:
+# ops_xuids = "2533274792395639"
+
+# Se o repositorio for publico, a VM ja baixa os scripts sozinha:
+# repo_url = "https://github.com/ojax66/my-projects.git"

@@ -1,0 +1,221 @@
+#cloud-config
+# =============================================================================
+#  SERVIDOR MINECRAFT BEDROCK — instalação de um arquivo só, pelo celular
+# =============================================================================
+#
+#  COMO USAR (tudo pelo navegador do celular, em cloud.oracle.com):
+#
+#   1. Menu ☰ → Compute → Instances → "Create instance"
+#   2. Image and shape → Edit:
+#        Image  = Canonical Ubuntu 22.04
+#        Shape  = VM.Standard.A1.Flex, 2 OCPUs, 12 GB
+#        (se der "Out of host capacity", tente 1 OCPU / 6 GB ou outro AD)
+#   3. Add SSH keys → "No SSH keys" já serve; tudo aqui é feito pelo navegador
+#   4. Show advanced options → aba Management → "Paste cloud-init script"
+#        → cole ESTE ARQUIVO INTEIRO (ou use "Choose file" se baixou o .yaml)
+#   5. Create. Anote o "Public IP address" da instância.
+#   6. Abra a security list e libere as portas (uma vez só):
+#        Networking → Virtual cloud networks → sua VCN → Security Lists
+#        → Default Security List → Add Ingress Rules:
+#          a) Source 0.0.0.0/0 | IP Protocol UDP  | Dest. Port Range 19132-19133
+#          b) Source 0.0.0.0/0 | IP Protocol TCP  | Dest. Port Range 8080
+#   7. Espere ~5 min (baixa o servidor da Mojang) e abra no celular:
+#        http://SEU-IP:8080/?t=SEU-TOKEN
+#      Essa página envia mundos (.mcworld) e addons (.mcaddon) direto do
+#      celular, instala e reinicia o servidor.
+#   8. No jogo: Servidores → Adicionar servidor → SEU-IP, porta 19132
+#
+#  ANTES DE COLAR, edite as linhas marcadas com  <<< EDITE  (são 6).
+#
+#  A porta 8080 é HTTP puro: o token viaja em claro. Depois de enviar seus
+#  mundos, o ideal é remover a regra de ingresso (b) na security list; para
+#  enviar de novo, recoloque.
+# =============================================================================
+
+write_files:
+  # ---------------------------------------------------------------------------
+  # Configuração do servidor. Edite à vontade — vale também depois, direto no
+  # arquivo /opt/mcbe/server/.env da instância.
+  # ---------------------------------------------------------------------------
+  - path: /opt/mcbe/server/.env
+    permissions: "0644"
+    content: |
+      # <<< EDITE: nome que aparece na lista de servidores do jogo
+      SERVER_NAME=Servidor do Dragao
+      # <<< EDITE: survival, creative ou adventure
+      GAMEMODE=survival
+      # <<< EDITE: peaceful, easy, normal ou hard
+      DIFFICULTY=normal
+      # <<< EDITE: limite de jogadores
+      MAX_PLAYERS=10
+      ALLOW_CHEATS=false
+      ONLINE_MODE=true
+      WHITE_LIST=false
+      LEVEL_NAME=world
+      VERSION=LATEST
+      IMAGE_TAG=latest
+      VIEW_DISTANCE=16
+      TICK_DISTANCE=4
+      SERVER_PORT=19132
+      SERVER_PORT_V6=19133
+      MEMORY_LIMIT=6g
+      TEXTUREPACK_REQUIRED=false
+      PUID=1000
+      PGID=1000
+      # XUIDs dos operadores (aparecem no log quando a pessoa entra):
+      # OPS=2533274792395639
+
+  # ---------------------------------------------------------------------------
+  # Senha da página de envio de mundos/addons.
+  # Sem trocar por algo seu (12+ caracteres), a página NÃO sobe — de propósito.
+  # ---------------------------------------------------------------------------
+  - path: /opt/mcbe/upload.env
+    permissions: "0600"
+    content: |
+      # <<< EDITE: invente uma senha longa (12+ caracteres, sem espaços)
+      MCBE_UPLOAD_TOKEN=troque-este-token
+      # <<< EDITE (opcional): porta da página de envio
+      MCBE_UPLOAD_PORT=8080
+      MCBE_ROOT=/opt/mcbe
+
+  # ---------------------------------------------------------------------------
+  # O servidor em si. Idêntico a server/docker-compose.yml do repositório.
+  # ---------------------------------------------------------------------------
+  - path: /opt/mcbe/server/docker-compose.yml
+    permissions: "0644"
+    content: |
+      # Minecraft Bedrock Dedicated Server
+      # Docs: https://github.com/itzg/docker-minecraft-bedrock-server
+      services:
+        bedrock:
+          image: itzg/minecraft-bedrock-server:${IMAGE_TAG:-latest}
+          container_name: mcbe
+          restart: unless-stopped
+          # Necessario para o console interativo (docker attach mcbe)
+          stdin_open: true
+          tty: true
+          ports:
+            - "${SERVER_PORT:-19132}:19132/udp"
+            - "${SERVER_PORT_V6:-19133}:19133/udp"
+          env_file:
+            - .env
+          environment:
+            EULA: "TRUE"
+            # UID/GID dos arquivos gravados em ./data
+            UID: ${PUID:-1000}
+            GID: ${PGID:-1000}
+          volumes:
+            - ./data:/data
+            # Pacotes/mundos colocados aqui sao importados pelos scripts do repo
+            - ./incoming:/incoming:ro
+          deploy:
+            resources:
+              limits:
+                memory: ${MEMORY_LIMIT:-6g}
+          healthcheck:
+            test: ["CMD", "mc-monitor", "status-bedrock", "--host", "127.0.0.1", "--port", "19132"]
+            interval: 30s
+            timeout: 10s
+            start_period: 3m
+            retries: 5
+          logging:
+            driver: json-file
+            options:
+              max-size: "10m"
+              max-file: "5"
+
+  # ---------------------------------------------------------------------------
+  # Página de envio de mundos e addons (http://SEU-IP:8080/?t=SEU-TOKEN)
+  # ---------------------------------------------------------------------------
+  - path: /etc/systemd/system/mcbe-upload.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Envio de mundos e addons do Minecraft Bedrock
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      User=ubuntu
+      SupplementaryGroups=docker
+      EnvironmentFile=/opt/mcbe/upload.env
+      ExecStart=/usr/bin/python3 /opt/mcbe/scripts/uploader.py
+      Restart=on-failure
+      RestartSec=15
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectSystem=strict
+      ProtectHome=true
+      ReadWritePaths=/opt/mcbe
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # ---------------------------------------------------------------------------
+  # Backup diário dos mundos às 05:00 UTC, mantendo os 14 mais recentes
+  # ---------------------------------------------------------------------------
+  - path: /etc/systemd/system/mcbe-backup.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Backup do servidor Minecraft Bedrock
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      User=ubuntu
+      SupplementaryGroups=docker
+      WorkingDirectory=/opt/mcbe
+      ExecStart=/opt/mcbe/scripts/backup.sh
+
+  - path: /etc/systemd/system/mcbe-backup.timer
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Backup diario do servidor Minecraft Bedrock
+
+      [Timer]
+      OnCalendar=*-*-* 05:00:00 UTC
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+packages:
+  - ca-certificates
+  - curl
+  - tar
+  - unzip
+  - python3
+
+runcmd:
+  # --- Docker Engine + plugin compose -----------------------------------------
+  - [sh, -c, "command -v docker >/dev/null 2>&1 || curl -fsSL https://get.docker.com | sh"]
+  - systemctl enable --now docker
+  - [sh, -c, "usermod -aG docker ubuntu 2>/dev/null || usermod -aG docker opc 2>/dev/null || true"]
+
+  # --- firewall do sistema operacional ----------------------------------------
+  # A imagem Ubuntu da Oracle bloqueia tudo por padrao; sem estas regras o
+  # trafego liberado na security list ainda nao chega no servidor.
+  - [sh, -c, "iptables -C INPUT -p udp --dport 19132 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 19132 -j ACCEPT"]
+  - [sh, -c, "iptables -C INPUT -p udp --dport 19133 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 19133 -j ACCEPT"]
+  - [sh, -c, "iptables -C INPUT -p tcp --dport 8080 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport 8080 -j ACCEPT"]
+  - [sh, -c, "command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save || { mkdir -p /etc/iptables && iptables-save > /etc/iptables/rules.v4; }"]
+
+  # --- scripts do projeto (importador de addons, upload, backup) --------------
+  - mkdir -p /opt/mcbe/server/data /opt/mcbe/server/incoming /opt/mcbe/backups
+  - [sh, -c, "for url in https://github.com/ojax66/my-projects/archive/refs/heads/main.tar.gz https://github.com/ojax66/my-projects/archive/refs/heads/claude/minecraft-bedrock-oracle-cloud-xrdvpj.tar.gz; do for try in 1 2 3; do curl -fsSL \"$url\" -o /tmp/mcbe.tgz && break; sleep 10; done; rm -rf /tmp/mcbe-src && mkdir -p /tmp/mcbe-src && tar -xzf /tmp/mcbe.tgz -C /tmp/mcbe-src --strip-components=1 2>/dev/null && test -f /tmp/mcbe-src/scripts/uploader.py && cp -r /tmp/mcbe-src/scripts /tmp/mcbe-src/docs /opt/mcbe/ && break; done; test -f /opt/mcbe/scripts/uploader.py || echo 'AVISO: nao consegui baixar os scripts do GitHub; o servidor sobe, mas a pagina de upload nao'"]
+  - [sh, -c, "chmod +x /opt/mcbe/scripts/*.sh /opt/mcbe/scripts/*.py 2>/dev/null || true"]
+  - [sh, -c, "chown -R 1000:1000 /opt/mcbe"]
+
+  # --- sobe tudo ---------------------------------------------------------------
+  - [sh, -c, "cd /opt/mcbe/server && docker compose up -d"]
+  - systemctl daemon-reload
+  - [sh, -c, "systemctl enable --now mcbe-backup.timer"]
+  - [sh, -c, "test -f /opt/mcbe/scripts/uploader.py && systemctl enable --now mcbe-upload.service || true"]
+
+final_message: |
+  Servidor Minecraft Bedrock instalado.
+  Jogo:   <IP-PUBLICO>:19132   (Servidores -> Adicionar servidor)
+  Envios: http://<IP-PUBLICO>:8080/?t=<seu-token>
+  Libere UDP 19132-19133 e TCP 8080 na security list da VCN.

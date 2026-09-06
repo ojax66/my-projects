@@ -1,0 +1,39 @@
+# Minecraft Bedrock Dedicated Server
+# Docs: https://github.com/itzg/docker-minecraft-bedrock-server
+services:
+  bedrock:
+    image: itzg/minecraft-bedrock-server:${IMAGE_TAG:-latest}
+    container_name: mcbe
+    restart: unless-stopped
+    # Necessario para o console interativo (docker attach mcbe)
+    stdin_open: true
+    tty: true
+    ports:
+      - "${SERVER_PORT:-19132}:19132/udp"
+      - "${SERVER_PORT_V6:-19133}:19133/udp"
+    env_file:
+      - .env
+    environment:
+      EULA: "TRUE"
+      # UID/GID dos arquivos gravados em ./data
+      UID: ${PUID:-1000}
+      GID: ${PGID:-1000}
+    volumes:
+      - ./data:/data
+      # Pacotes/mundos colocados aqui sao importados pelos scripts do repo
+      - ./incoming:/incoming:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMORY_LIMIT:-6g}
+    healthcheck:
+      test: ["CMD", "mc-monitor", "status-bedrock", "--host", "127.0.0.1", "--port", "19132"]
+      interval: 30s
+      timeout: 10s
+      start_period: 3m
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
