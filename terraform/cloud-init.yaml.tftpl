@@ -1,0 +1,120 @@
+#cloud-config
+# Provisionamento inicial da VM: Docker, firewall do SO e o servidor Bedrock
+# ja no ar. Os scripts de operacao chegam depois via scripts/deploy-remote.sh
+# (ou pelo git clone abaixo, se repo_url for informado).
+
+package_update: true
+package_upgrade: false
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - tar
+  - rsync
+  - python3
+  - unzip
+
+write_files:
+  - path: /opt/mcbe/server/docker-compose.yml
+    permissions: "0644"
+    content: |
+      services:
+        bedrock:
+          image: itzg/minecraft-bedrock-server:latest
+          container_name: mcbe
+          restart: unless-stopped
+          stdin_open: true
+          tty: true
+          ports:
+            - "${server_port}:19132/udp"
+            - "${server_port + 1}:19133/udp"
+          env_file:
+            - .env
+          environment:
+            EULA: "TRUE"
+          volumes:
+            - ./data:/data
+            - ./incoming:/incoming:ro
+          deploy:
+            resources:
+              limits:
+                memory: ${memory_limit}
+          logging:
+            driver: json-file
+            options:
+              max-size: "10m"
+              max-file: "5"
+
+  - path: /opt/mcbe/server/.env
+    permissions: "0644"
+    content: |
+      IMAGE_TAG=latest
+      VERSION=${server_version}
+      SERVER_NAME=${server_name}
+      LEVEL_NAME=${level_name}
+      GAMEMODE=${gamemode}
+      DIFFICULTY=${difficulty}
+      MAX_PLAYERS=${max_players}
+      ALLOW_CHEATS=false
+      ONLINE_MODE=true
+      WHITE_LIST=false
+      VIEW_DISTANCE=16
+      TICK_DISTANCE=4
+      SERVER_PORT=${server_port}
+      SERVER_PORT_V6=${server_port + 1}
+      MEMORY_LIMIT=${memory_limit}
+      TEXTUREPACK_REQUIRED=false
+      %{ if ops_xuids != "" ~}
+      OPS=${ops_xuids}
+      %{ endif ~}
+      PUID=1000
+      PGID=1000
+
+  - path: /etc/systemd/system/mcbe-backup.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Backup do servidor Minecraft Bedrock
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      WorkingDirectory=/opt/mcbe
+      ExecStart=/bin/bash -c 'test -x /opt/mcbe/scripts/backup.sh && /opt/mcbe/scripts/backup.sh || tar -czf /opt/mcbe/backups/mcbe-$(date -u +%%Y%%m%%d-%%H%%M%%S).tar.gz -C /opt/mcbe/server data'
+
+  - path: /etc/systemd/system/mcbe-backup.timer
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Backup diario do servidor Minecraft Bedrock
+
+      [Timer]
+      OnCalendar=*-*-* 05:00:00 UTC
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+runcmd:
+  # --- Docker Engine + compose plugin --------------------------------------
+  - [ sh, -c, "command -v docker >/dev/null 2>&1 || curl -fsSL https://get.docker.com | sh" ]
+  - systemctl enable --now docker
+  - [ sh, -c, "id ubuntu >/dev/null 2>&1 && usermod -aG docker ubuntu || usermod -aG docker opc" ]
+
+  # --- firewall do SO: sem isto o UDP nao chega no container ----------------
+  - [ sh, -c, "iptables -C INPUT -p udp --dport ${server_port} -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport ${server_port} -j ACCEPT" ]
+  - [ sh, -c, "iptables -C INPUT -p udp --dport ${server_port + 1} -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport ${server_port + 1} -j ACCEPT" ]
+  - [ sh, -c, "command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save || (mkdir -p /etc/iptables && iptables-save > /etc/iptables/rules.v4)" ]
+  - [ sh, -c, "command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld && firewall-cmd --permanent --add-port=${server_port}/udp --add-port=${server_port + 1}/udp && firewall-cmd --reload || true" ]
+
+  # --- scripts do repositorio (opcional) ------------------------------------
+  - [ sh, -c, "test -n '${repo_url}' && test ! -d /opt/mcbe/.git && git clone '${repo_url}' /tmp/mcbe-repo && rsync -a --exclude server/.env --exclude server/data /tmp/mcbe-repo/ /opt/mcbe/ || true" ]
+
+  # --- sobe o servidor ------------------------------------------------------
+  - mkdir -p /opt/mcbe/server/data /opt/mcbe/server/incoming /opt/mcbe/backups
+  - [ sh, -c, "chown -R 1000:1000 /opt/mcbe/server /opt/mcbe/backups 2>/dev/null || true" ]
+  - [ sh, -c, "cd /opt/mcbe/server && docker compose up -d" ]
+  - systemctl daemon-reload
+  - systemctl enable --now mcbe-backup.timer
+
+final_message: "servidor Minecraft Bedrock provisionado em $UPTIME s"
