@@ -3,17 +3,18 @@ pack.description=Outer space dimension with the Sun, Earth, Moon and Mars - brid
 biome.space_dim.espaco_sideral.name=Outer Space
 
 ## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.space_dim:sun_corona.name=Solar Corona
 tile.space_dim:sun_plasma.name=Solar Plasma
-tile.space_dim:sun_flare.name=Solar Flare
-tile.space_dim:sun_spot.name=Sunspot
+tile.space_dim:sun_core.name=Solar Core
 tile.space_dim:earth_ocean.name=Deep Ocean
 tile.space_dim:earth_shallow.name=Shallow Water
 tile.space_dim:earth_land.name=Continent
-tile.space_dim:earth_desert.name=Desert
+tile.space_dim:earth_forest.name=Forest
 tile.space_dim:earth_ice.name=Polar Ice Cap
+tile.space_dim:moon_regolith_light.name=Light Regolith
 tile.space_dim:moon_regolith.name=Lunar Regolith
-tile.space_dim:moon_highland.name=Lunar Highlands
-tile.space_dim:moon_mare.name=Lunar Mare
+tile.space_dim:moon_regolith_dark.name=Dark Regolith
 tile.space_dim:mars_dust.name=Martian Dust
 tile.space_dim:mars_rock.name=Martian Rock
+tile.space_dim:mars_rock_dark.name=Martian Basalt
 tile.space_dim:mars_ice.name=Martian Ice

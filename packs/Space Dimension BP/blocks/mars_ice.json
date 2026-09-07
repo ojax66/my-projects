@@ -23,7 +23,7 @@
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#EBE2DC",
+      "minecraft:map_color": "#E2D7CF",
       "minecraft:friction": 0.6
     }
   }

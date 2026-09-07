@@ -38,14 +38,19 @@ for (const body of BODIES) {
   // Coluna passando exatamente pelo centro: deve dar duas calotas.
   generateColumn(dim, body.center.x, body.center.z);
   const ys = [...dim.blocks.keys()].map(k => Number(k.split(',')[1])).sort((a, b) => a - b);
-  // Faixa inclusiva: de cy-R a cy-(R-shell) sao shell+1 blocos.
-  const expectedPerCap = body.shell + 1;
-  const ok = ys.length === expectedPerCap * 2;
-  check(`${body.id}: coluna central = 2 calotas de ${expectedPerCap}`, ok, `(${ys.length} blocos)`);
+  // Faixa inclusiva: de cy-R a cy-(R-shell) sao shell+1 blocos por calota.
+  // Camada macica (shell >= radius) e um bloco so, de -R a +R.
+  let expected = 0;
+  for (const L of body.layers) {
+    expected += L.shell >= L.radius ? 2 * L.radius + 1 : 2 * (L.shell + 1);
+  }
+  check(`${body.id}: coluna central bate com as camadas`, ys.length === expected,
+        `(${ys.length} blocos, esperado ${expected} de ${body.layers.length} camada(s))`);
 
   // O topo devolvido bate com o topo real da esfera.
   const top = getHeight(body.center.x, body.center.z);
-  check(`${body.id}: getHeight = topo da esfera`, top === body.center.y + body.radius - 1 || top === Math.floor(body.center.y + body.radius),
+  check(`${body.id}: getHeight = topo da camada externa`,
+        top === Math.floor(body.center.y + body.radius),
         `(${top} vs ${body.center.y + body.radius})`);
 }
 
@@ -97,7 +102,7 @@ for (const body of BODIES) {
     }
     worst = Math.min(worst, best);
   }
-  check(`${body.id}: casca contínua de >= 3 blocos`, worst >= 3, `(menor trecho: ${worst})`);
+  check(`${body.id}: casca externa contínua de >= 3 blocos`, worst >= 3, `(menor trecho: ${worst})`);
 }
 
 // --- 5. Paletas: so blocos proprios do addon --------------------------------
@@ -105,11 +110,11 @@ for (const body of BODIES) {
 // tem JSON no BP, entrada no blocks.json do RP, terrain_texture e textura.
 {
   const OWN_BLOCKS = new Set([
-    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_spot',
+    'space_dim:sun_corona','space_dim:sun_plasma','space_dim:sun_core',
     'space_dim:earth_ocean','space_dim:earth_shallow','space_dim:earth_land',
-    'space_dim:earth_desert','space_dim:earth_ice',
-    'space_dim:moon_regolith','space_dim:moon_highland','space_dim:moon_mare',
-    'space_dim:mars_dust','space_dim:mars_rock','space_dim:mars_ice',
+    'space_dim:earth_forest','space_dim:earth_ice',
+    'space_dim:moon_regolith_light','space_dim:moon_regolith','space_dim:moon_regolith_dark',
+    'space_dim:mars_dust','space_dim:mars_rock','space_dim:mars_rock_dark','space_dim:mars_ice',
   ]);
   const used = new Set();
   for (const body of BODIES) {
@@ -137,7 +142,67 @@ for (const body of BODIES) {
     for (let dz = -R; dz <= R; dz += step)
       generateColumn(dim, body.center.x + dx, body.center.z + dz);
   const distinct = new Set(dim.blocks.values());
-  check(`${body.id}: superfície variada`, distinct.size >= 3, `(${distinct.size} blocos distintos)`);
+  // O Sol tem um bloco por camada (coroa/plasma/nucleo), nao variacao dentro
+  // da mesma casca; os planetas variam a superficie por ruido.
+  const min = body.id === 'sun' ? body.layers.length : 3;
+  check(`${body.id}: superfície variada`, distinct.size >= min,
+        `(${distinct.size} blocos distintos, mínimo ${min})`);
+}
+
+// --- 6b. Proporcao dos blocos na superficie ---------------------------------
+// As proporcoes sao o que faz cada corpo LER como ele mesmo: Terra com ~70%
+// de agua, Lua clara com mares escuros minoritarios, Marte de poeira com
+// afloramentos de rocha. Uma mudanca de limiar que zere uma faixa passa
+// despercebida sem isto — foi o que aconteceu com earth_forest (1.5%).
+{
+  const share = (body) => {
+    const counts = new Map();
+    let total = 0;
+    const R = body.radius;
+    for (let dx = -R; dx <= R; dx++)
+      for (let dz = -R; dz <= R; dz++) {
+        const dim = mockDim();
+        generateColumn(dim, body.center.x + dx, body.center.z + dz);
+        for (const id of dim.blocks.values()) {
+          counts.set(id, (counts.get(id) || 0) + 1);
+          total++;
+        }
+      }
+    const out = new Map();
+    for (const [id, n] of counts) out.set(id, 100 * n / total);
+    return out;
+  };
+
+  const expectations = {
+    earth: [
+      ['space_dim:earth_ocean', 45, 65],
+      ['space_dim:earth_shallow', 8, 22],
+      ['space_dim:earth_land', 10, 25],
+      ['space_dim:earth_forest', 4, 16],
+      ['space_dim:earth_ice', 1, 6],
+    ],
+    moon: [
+      ['space_dim:moon_regolith_light', 30, 60],
+      ['space_dim:moon_regolith', 30, 55],
+      ['space_dim:moon_regolith_dark', 5, 25],
+    ],
+    mars: [
+      ['space_dim:mars_dust', 45, 70],
+      ['space_dim:mars_rock', 20, 45],
+      ['space_dim:mars_rock_dark', 2, 15],
+      ['space_dim:mars_ice', 0.5, 5],
+    ],
+  };
+
+  for (const [bodyId, rows] of Object.entries(expectations)) {
+    const body = BODIES.find(b => b.id === bodyId);
+    const pct = share(body);
+    for (const [id, lo, hi] of rows) {
+      const v = pct.get(id) ?? 0;
+      check(`${bodyId}: ${id.replace('space_dim:', '')} entre ${lo}% e ${hi}%`,
+            v >= lo && v <= hi, `(${v.toFixed(1)}%)`);
+    }
+  }
 }
 
 // --- 7. Corpos não se sobrepõem ---------------------------------------------

@@ -44,40 +44,45 @@ function latitude(y, body) {
 }
 
 const PALETTES = {
-  // Sol: plasma incandescente, veios mais quentes e manchas solares escuras.
-  sun(x, y, z) {
-    const n = surfaceNoise(x, y, z, 0.045);
-    if (n >= 0.78) return "space_dim:sun_spot";
-    if (n >= 0.56) return "space_dim:sun_flare";
-    return "space_dim:sun_plasma";
-  },
+  // Sol — uma paleta por camada, do âmbar da coroa ao creme do núcleo.
+  sun_corona() { return "space_dim:sun_corona"; },
+  sun_plasma() { return "space_dim:sun_plasma"; },
+  sun_core() { return "space_dim:sun_core"; },
 
-  // Terra: oceano profundo, plataforma continental, continentes verdes com
-  // cordilheiras/desertos e calotas polares.
+  // Terra: oceano profundo, plataforma continental, mata, floresta fechada e
+  // calotas polares.
   earth(x, y, z, body) {
-    // Calota sólida a partir de ~70 graus, com uma borda irregular até ~62 —
-    // as latitudes reais do gelo permanente, não uma touca até a Europa.
+    // Calota sólida a partir de ~70 graus, com borda irregular até ~62 — as
+    // latitudes reais do gelo permanente, não uma touca até a Europa.
     const lat = Math.abs(latitude(y, body));
     if (lat > 0.94) return "space_dim:earth_ice";
 
     const n = surfaceNoise(x, y, z, 0.05);
     if (lat > 0.88 && n > 0.55) return "space_dim:earth_ice";
 
-    if (n >= 0.68) return "space_dim:earth_desert";
-    if (n >= 0.56) return "space_dim:earth_land";
-    if (n >= 0.5) return "space_dim:earth_shallow";
+    // Limiares vindos dos percentis reais do ruído nesta superfície (medidos,
+    // não chutados): ~9% floresta, ~20% continente, ~16% plataforma, o resto
+    // oceano. Dá a proporção água/terra da Terra de verdade.
+    if (n >= 0.591) return "space_dim:earth_forest";
+    if (n >= 0.521) return "space_dim:earth_land";
+    if (n >= 0.483) return "space_dim:earth_shallow";
     return "space_dim:earth_ocean";
   },
 
-  // Lua: terras altas claras, regolito e os mares escuros de basalto.
+  // Lua: as manchas grandes são feitas AQUI, trocando de bloco conforme o
+  // ruído — não desenhadas dentro da textura. Assim um mare é uma região de
+  // centenas de blocos escuros, como na Lua de verdade, em vez de cada bloco
+  // ter a mesma cratera repetida.
   moon(x, y, z) {
-    const n = surfaceNoise(x, y, z, 0.09);
-    if (n >= 0.66) return "space_dim:moon_mare";
-    if (n >= 0.34) return "space_dim:moon_regolith";
-    return "space_dim:moon_highland";
+    // ~16% mare escuro, o resto claro — a proporção da Lua de verdade, onde
+    // as terras altas dominam e os mares são manchas grandes e minoritárias.
+    const n = surfaceNoise(x, y, z, 0.06);
+    if (n >= 0.631) return "space_dim:moon_regolith_dark";
+    if (n >= 0.483) return "space_dim:moon_regolith";
+    return "space_dim:moon_regolith_light";
   },
 
-  // Marte: poeira alaranjada, rocha basáltica e calotas de gelo seco.
+  // Marte: poeira, rocha e basalto escuro, com calotas de gelo seco.
   mars(x, y, z, body) {
     // Calotas menores que as da Terra, como as de gelo seco de Marte — mas
     // grandes o bastante pra aparecer: numa esfera de raio 20, cada grau de
@@ -87,7 +92,8 @@ const PALETTES = {
 
     const n = surfaceNoise(x, y, z, 0.07);
     if (lat > 0.87 && n > 0.6) return "space_dim:mars_ice";
-    if (n >= 0.66) return "space_dim:mars_rock";
+    if (n >= 0.585) return "space_dim:mars_rock_dark";
+    if (n >= 0.473) return "space_dim:mars_rock";
     return "space_dim:mars_dust";
   },
 };
@@ -103,9 +109,12 @@ export function distanceTo(loc, body) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// Corpos cuja "sombra" horizontal alcança esta coluna. Quase toda coluna do
-// espaço não alcança nenhum, e sai daqui na primeira comparação.
-function bodiesOverColumn(x, z) {
+// Camadas cuja "sombra" horizontal alcança esta coluna. Quase toda coluna do
+// espaço não alcança nenhuma, e sai daqui na primeira comparação.
+//
+// Um corpo pode ter várias camadas concêntricas — o Sol tem coroa, plasma e
+// núcleo. Os planetas têm uma só.
+function layersOverColumn(x, z) {
   let hits = null;
   for (let i = 0; i < BODIES.length; i++) {
     const b = BODIES[i];
@@ -113,15 +122,20 @@ function bodiesOverColumn(x, z) {
     const dz = z - b.center.z;
     const dh2 = dx * dx + dz * dz;
     if (dh2 > b.radius * b.radius) continue;
-    (hits ??= []).push({ body: b, dh2 });
+
+    for (let j = 0; j < b.layers.length; j++) {
+      const layer = b.layers[j];
+      if (dh2 > layer.radius * layer.radius) continue;
+      (hits ??= []).push({ body: b, layer, dh2 });
+    }
   }
   return hits;
 }
 
-// Intervalos [de, até] de Y que a casca de um corpo ocupa nesta coluna.
-function shellSpans(body, dh2) {
-  const R = body.radius;
-  const Ri = Math.max(0, R - body.shell);
+// Intervalos [de, até] de Y que uma camada ocupa nesta coluna.
+function shellSpans(body, layer, dh2) {
+  const R = layer.radius;
+  const Ri = Math.max(0, R - layer.shell);
   const cy = body.center.y;
 
   const outer = Math.sqrt(Math.max(0, R * R - dh2));
@@ -149,17 +163,17 @@ function shellSpans(body, dh2) {
 
 /** @returns {{y0:number, y1:number, id:string}[]} trechos, de baixo pra cima */
 export function columnRuns(x, z) {
-  const hits = bodiesOverColumn(x, z);
+  const hits = layersOverColumn(x, z);
   if (!hits) return [];
 
   const runs = [];
 
   for (let i = 0; i < hits.length; i++) {
-    const { body, dh2 } = hits[i];
-    const palette = PALETTES[body.palette];
+    const { body, layer, dh2 } = hits[i];
+    const palette = PALETTES[layer.palette];
     if (!palette) continue;
 
-    const spans = shellSpans(body, dh2);
+    const spans = shellSpans(body, layer, dh2);
     for (let s = 0; s < spans.length; s++) {
       const from = Math.max(DIM_MIN_Y, Math.ceil(spans[s][0]));
       const to = Math.min(DIM_MAX_Y - 1, Math.floor(spans[s][1]));

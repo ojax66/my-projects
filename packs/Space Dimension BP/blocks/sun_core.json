@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "space_dim:moon_highland",
+      "identifier": "space_dim:sun_core",
       "menu_category": {
         "category": "nature"
       }
@@ -11,20 +11,22 @@
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "space_dim_moon_highland",
+          "texture": "space_dim_sun_core",
           "render_method": "opaque",
           "ambient_occlusion": true,
           "face_dimming": true
         }
       },
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 1.4
+        "seconds_to_destroy": 4.0
       },
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#C4C1BB",
-      "minecraft:friction": 0.6
+      "minecraft:map_color": "#FFF095",
+      "minecraft:friction": 0.6,
+      "minecraft:light_emission": 15,
+      "minecraft:light_dampening": 0
     }
   }
 }

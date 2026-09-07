@@ -45,6 +45,10 @@ echo "--- orçamento de blocos por tick ---"
 node test_budget.mjs
 
 echo
+echo "--- Sol: camadas e campo de calor ---"
+node test_sun.mjs
+
+echo
 echo "--- rotas de viagem e transporte do veículo ---"
 node test_travel.mjs
 

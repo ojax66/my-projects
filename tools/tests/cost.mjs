@@ -7,7 +7,7 @@ const generateColumn = (dim, x, z) => {
   return runs.length ? top : -64;
 };
 
-import { BODIES, CHUNKS_PER_TICK } from './space_dim/config.js';
+import { BODIES, CHUNKS_PER_TICK, BLOCK_BUDGET_PER_TICK } from './space_dim/config.js';
 
 
 for (const body of BODIES) {
@@ -31,9 +31,10 @@ for (const body of BODIES) {
   }
   console.log(
     `${body.id.padEnd(6)} raio ${String(R).padStart(3)}  ` +
+    `${body.layers.length} camada(s)  ` +
     `total ${String(total).padStart(7)} blocos  ` +
     `${String(nonEmpty).padStart(4)} chunks  ` +
     `pior chunk ${String(worst).padStart(5)}  ` +
-    `→ pior tick (${CHUNKS_PER_TICK}/tick) ${String(worst * CHUNKS_PER_TICK).padStart(5)} escritas`
+    `→ ${(total / BLOCK_BUDGET_PER_TICK / 20).toFixed(1)}s de geração contínua`
   );
 }

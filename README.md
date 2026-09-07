@@ -48,7 +48,7 @@ entre a Terra e a Lua, com as duas à vista.
 
 | Corpo | Raio | Centro | Entrar nele leva pra | Subir a Y 800 de lá |
 |---|---|---|---|---|
-| **Sol** | 100 | −520, 128, 120 | nada — é só a construção gigante | — |
+| **Sol** | 100 | −520, 128, 120 | atravessável — queima, não teleporta | — |
 | **Terra** | 26 | 0, 128, 0 | Overworld | volta pro espaço |
 | **Lua** | 12 | 0, 128, 190 | `nv_sc:moon` (Lua do Spacecraft) | volta pro espaço |
 | **Marte** | 20 | 520, 128, −120 | `nv_sc:mars` (Marte do Spacecraft) | volta pro espaço |
@@ -59,26 +59,63 @@ um pouco maior do que nelas.
 
 ### Os blocos
 
-Cada corpo tem blocos próprios, com textura feita pra ele — 14 no total,
-gerados por `tools/make_block_textures.py`:
+Cada corpo tem blocos próprios, 15 no total, gerados por
+`tools/make_block_textures.py`:
 
 | Corpo | Blocos |
 |---|---|
-| **Sol** | plasma granulado, labareda (mais quente), mancha solar |
-| **Terra** | oceano profundo, água rasa, continente, deserto, calota polar |
-| **Lua** | terras altas, regolito craterado, mar lunar |
-| **Marte** | poeira, rocha basáltica, gelo seco |
+| **Sol** | coroa, plasma, núcleo |
+| **Terra** | oceano profundo, água rasa, continente, floresta, calota polar |
+| **Lua** | regolito claro, regolito, regolito escuro |
+| **Marte** | poeira, rocha, basalto, gelo seco |
 
-As texturas são ruído fbm passado por rampas de cor tiradas de foto — o oceano
-tem correntes, o regolito tem micro-crateras, o plasma tem granulação. O ruído
-é **periódico**: fecha em 16 pixels, então a esfera não mostra emenda entre
-blocos vizinhos. Os blocos do Sol emitem luz (14 no plasma, 15 na labareda,
-6 na mancha), senão uma esfera de 200 blocos no vácuo escuro seria só uma
-silhueta preta.
+As texturas seguem o jeito do jogo: **4 cores chapadas cada uma**, sem
+gradiente, com o ruído aparecendo como mancha de pixel. Não há cratera nem
+mancha desenhada dentro de um bloco — quem desenha as manchas grandes é o
+gerador da esfera, trocando de bloco conforme o ruído. Por isso um mare lunar
+é uma região escura de centenas de blocos, como na Lua de verdade, em vez de
+cada bloco carregar o mesmo buraquinho repetido.
 
-A Terra tem calotas polares a partir de ~70° de latitude, continentes com
-plataforma continental e cordilheiras; a Lua tem os mares escuros; Marte tem
-regiões de rocha e calotas pequenas de gelo seco.
+As paletas vieram das referências: a da Lua é literalmente a do print
+(`#D9E4FF` … `#505666`), a do Sol são os anéis do sol do jogo, a da Terra o
+azul e o verde saturados do ícone, a de Marte a ferrugem do bloco.
+
+As proporções são calibradas pelos percentis reais do ruído em cada
+superfície, não por chute — e há teste travando cada faixa:
+
+| Terra | | Lua | | Marte | |
+|---|---|---|---|---|---|
+| oceano | 55% | regolito claro | 44% | poeira | 59% |
+| água rasa | 15% | regolito | 43% | rocha | 33% |
+| continente | 18% | regolito escuro | 13% | basalto | 6% |
+| floresta | 10% | | | gelo | 1,5% |
+| calota | 2,6% | | | | |
+
+Ou seja, a Terra fica com os 70% de água que ela tem de verdade, e a Lua com
+os mares escuros minoritários.
+
+### O Sol: atravessável e mortal
+
+O Sol **não é maciço**. Coroa e plasma são cascas sem colisão, com vácuo entre
+elas, e no meio há o núcleo sólido. Uma coluna pelo centro é:
+
+```
+coroa(28..31)  ⋯vácuo⋯  plasma(66..68)  ⋯vácuo⋯  núcleo(106..150)  ⋯vácuo⋯  plasma  ⋯vácuo⋯  coroa
+```
+
+Quem furar o calor entra de verdade, camada por camada, e tem onde pousar no
+fim. Os três blocos emitem luz 15 — no vácuo preto, sem isso o Sol seria só
+uma silhueta.
+
+**O calor começa muito antes da superfície.** A 70 blocos dela o jogador já
+pega fogo, e a intensidade cresce a cada bloco: perto da superfície são ~10 s
+de fogo renovados a cada meio segundo, e lá dentro entra dano direto que
+escala até o núcleo. Dar a volta pra admirar é seguro; chegar perto é
+assustador; entrar sem preparo é morte.
+
+O "quase impossível" tem uma saída de propósito: **resistência a fogo**. Com
+ela o campo não queima e o núcleo vira um destino de verdade. Dá pra fechar
+essa brecha em `FIRE_RESISTANCE_PROTECTS`, no config.
 
 O Sol e Marte ficam bem além da distância de renderização, então a action bar
 mostra uma bússola com rumo (`<` `|` `>`) e distância de cada corpo.
@@ -136,8 +173,10 @@ respiração, gravidade zero, bússola. Alguns que importam:
   usa 3/1 e o autor dele avisa no código pra só aumentar depois de confirmar
   estabilidade. Aqui dá pra ser um pouco mais generoso porque a maioria das
   colunas é vácuo e sai de graça. Se pesar em celular, baixa os dois.
-- `SUN_BURNS` (false) — se o Sol queima quem encosta. Desligado porque o pedido
-  era uma construção gigante, não uma armadilha.
+- `SUN_HEAT_ENABLED` (true) e o campo `heat` do Sol em `BODIES` — alcance
+  (70 blocos além da superfície), tempo máximo de fogo e dano interno.
+- `FIRE_RESISTANCE_PROTECTS` (true) — se resistência a fogo é o caminho pra
+  entrar no Sol.
 - `SPACE_ENTRY_Y` (800) — a altitude de saída.
 
 ## Testes
@@ -172,10 +211,18 @@ pra exercitar tudo fora do jogo.
 - **`sideview.mjs`** desenha os corpos em ASCII, vistos de fora, pra conferir
   que a Terra parece a Terra (foi assim que se achou uma calota polar que descia
   até ~52° de latitude).
-- **`make_block_textures.py`** falha se alguma textura tiver viés centro/borda
-  alto — o sinal de que ela vai virar bolinha repetida numa parede de blocos.
-  Foi o que pegou a primeira versão da mancha solar, desenhada a partir da
-  distância ao centro do próprio bloco.
+- **`test_sun.mjs`** prova que a coluna central do Sol é
+  casca/vácuo/casca/vácuo/núcleo (senão não há o que atravessar), que o calor
+  cresce sem nunca esfriar ao se aproximar, que longe não queima e perto queima
+  mais, que só dentro há dano direto, que resistência a fogo é o caminho, e que
+  nenhum ponto de chegada dos planetas cai dentro do campo de calor.
+- **`make_block_textures.py`** falha se uma textura passar de 6 cores (aí já
+  não é textura de bloco, é render) ou tiver viés centro/borda alto — o sinal
+  de que ela vai virar bolinha repetida numa parede. Foi o que pegou a primeira
+  versão da mancha solar, desenhada a partir da distância ao centro do bloco.
+- **`validate.py`** também exige que a coroa e o plasma do Sol tenham
+  `collision_box: false` e emitam luz, e que o núcleo seja sólido. Regenerar os
+  blocos sem isso transformaria o Sol numa bola maciça sem ninguém notar.
 
 ## Levar o veículo junto
 

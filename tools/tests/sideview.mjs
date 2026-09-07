@@ -9,16 +9,15 @@ const generateColumn = (dim, x, z) => {
 // Vista de fora, na altura do equador: pra cada pixel da tela pega o ponto da
 // superficie mais proximo do observador. E o que o jogador ve chegando.
 import { BODIES } from './space_dim/config.js';
-const mod = await import('./space_dim/bodies.js');
-
-// Reimplementa so a escolha de bloco chamando generateColumn num ponto e
-// pegando o bloco daquele Y exato.
 // Pega o bloco da coluna (x,z) cujo Y esta mais perto do alvo: arredondar
 // x, y e z de forma independente cai fora da casca com frequencia, mas a
 // coluna real sempre tem blocos (garantido pelos testes de geometria).
+// Usa columnRuns (nucleo puro) — generateColumn tem orcamento por tick e
+// aqui a gente varre a esfera inteira de uma vez.
 function blockAt(body, x, y, z) {
   const found = new Map();
-  mod.generateColumn({ setBlockType: (l, id) => found.set(l.y, id) }, x, z);
+  for (const r of columnRuns(x, z))
+    for (let yy = r.y0; yy <= r.y1; yy++) found.set(yy, r.id);
   if (!found.size) return null;
   let best = null, bestD = Infinity;
   for (const [by, id] of found) {
@@ -29,14 +28,14 @@ function blockAt(body, x, y, z) {
 }
 
 const CH = {
-  'minecraft:blue_concrete':'~', 'minecraft:light_blue_concrete':'-',
-  'minecraft:green_concrete':'#', 'minecraft:brown_concrete':'A',
-  'minecraft:white_concrete':'*', 'minecraft:gray_concrete':'@',
-  'minecraft:light_gray_concrete':':', 'minecraft:smooth_stone':'.',
-  'minecraft:red_terracotta':'R', 'minecraft:orange_terracotta':'o',
-  'minecraft:terracotta':',', 'minecraft:shroomlight':'S',
-  'minecraft:ochre_froglight':'Y', 'minecraft:glowstone':'G',
-  'minecraft:blackstone':'X',
+  'space_dim:earth_ocean':'~', 'space_dim:earth_shallow':'-',
+  'space_dim:earth_land':'#', 'space_dim:earth_forest':'@',
+  'space_dim:earth_ice':'*',
+  'space_dim:moon_regolith_light':'.', 'space_dim:moon_regolith':':',
+  'space_dim:moon_regolith_dark':'@',
+  'space_dim:mars_dust':'o', 'space_dim:mars_rock':'R',
+  'space_dim:mars_rock_dark':'X', 'space_dim:mars_ice':'*',
+  'space_dim:sun_corona':'c', 'space_dim:sun_plasma':'p', 'space_dim:sun_core':'O',
 };
 
 for (const body of BODIES) {

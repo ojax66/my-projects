@@ -238,6 +238,23 @@ for bid in sorted(used_blocks):
 for bid in sorted(set(declared_blocks) - used_blocks):
     warn(f"{bid} está definido mas nenhuma paleta usa")
 
+# --- 4c. O Sol precisa ser atravessável ---------------------------------------
+#
+# A coroa e o plasma não podem ter colisão: é o que deixa o jogador entrar no
+# Sol camada por camada. Se alguém regenerar os blocos sem `solid=False`, o Sol
+# vira uma bola maciça e ninguém percebe até tentar entrar.
+for bid, (path, doc) in sorted(declared_blocks.items()):
+    comps = doc["minecraft:block"]["components"]
+    short = bid.split(":", 1)[1]
+    if short in ("sun_corona", "sun_plasma"):
+        if comps.get("minecraft:collision_box") is not False:
+            err(f"{bid} precisa de collision_box false — o Sol tem que ser atravessável")
+        if not comps.get("minecraft:light_emission"):
+            err(f"{bid} devia emitir luz; sem isso o Sol é uma silhueta no vácuo")
+    if short == "sun_core":
+        if comps.get("minecraft:collision_box") is False:
+            err("sun_core devia ser sólido — é o destino de quem atravessa o Sol")
+
 # --- 5. Texturas citadas pelas partículas existem -----------------------------
 for p, d in docs.items():
     if not isinstance(d, dict):

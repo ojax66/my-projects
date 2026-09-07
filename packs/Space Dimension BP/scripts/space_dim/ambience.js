@@ -135,7 +135,8 @@ export function showCompass(player, warning) {
 }
 
 function hintFor(body) {
-  if (!body.portal) return `${body.name} §7— não dá pra pousar no Sol`;
+  // O Sol tem aviso próprio, vindo do campo de calor — não sobrescreve aqui.
+  if (!body.portal) return null;
   if (body.portal.kind === "overworld") return `${body.name} §7— encoste pra voltar ao Overworld`;
   if (body.portal.kind === "spacecraft") return `${body.name} §7— encoste pra pousar`;
   return null;

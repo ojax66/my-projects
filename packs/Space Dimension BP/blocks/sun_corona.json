@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "space_dim:mars_dust",
+      "identifier": "space_dim:sun_corona",
       "menu_category": {
         "category": "nature"
       }
@@ -11,20 +11,23 @@
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "space_dim_mars_dust",
+          "texture": "space_dim_sun_corona",
           "render_method": "opaque",
           "ambient_occlusion": true,
           "face_dimming": true
         }
       },
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 1.2
+        "seconds_to_destroy": 2.0
       },
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#BA4E2A",
-      "minecraft:friction": 0.6
+      "minecraft:map_color": "#DE9C17",
+      "minecraft:friction": 0.6,
+      "minecraft:light_emission": 15,
+      "minecraft:light_dampening": 0,
+      "minecraft:collision_box": false
     }
   }
 }

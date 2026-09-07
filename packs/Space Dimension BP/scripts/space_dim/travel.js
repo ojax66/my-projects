@@ -27,8 +27,6 @@ import {
   SPACECRAFT_LEGACY_RADIUS,
   SPACECRAFT_LANDING_Y,
   LANDING_JITTER,
-  SUN_BURNS,
-  SUN_BURN_MARGIN,
 } from "./config.js";
 import { distanceTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
@@ -358,15 +356,9 @@ export function checkBodyPortals(player) {
   const body = bodyTouchedBy(player);
   if (!body) return;
 
-  if (!body.portal) {
-    // O Sol é só cenário — a não ser que o queimar esteja ligado no config.
-    if (SUN_BURNS && body.id === "sun") {
-      if (distanceTo(player.location, body) <= body.radius + SUN_BURN_MARGIN) {
-        try { player.setOnFire(4, true); } catch { }
-      }
-    }
-    return;
-  }
+  // Corpo sem portal (o Sol) não teleporta ninguém: ele é atravessável, e o
+  // que acontece perto dele é o campo de calor, em hazards.js.
+  if (!body.portal) return;
 
   if (body.portal.kind === "overworld") {
     enterOverworld(player);

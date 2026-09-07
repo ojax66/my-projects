@@ -26,6 +26,7 @@ import {
 } from "./travel.js";
 import { applyZeroGravity, releaseZeroGravity, forgetPlayer as forgetPhysics } from "./physics.js";
 import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
+import { applySunHeat } from "./hazards.js";
 import { forgetPlayer as forgetVehicle } from "./vehicle.js";
 import {
   spawnAmbience,
@@ -109,11 +110,15 @@ system.runInterval(() => {
 
       applyZeroGravity(player);
       const breathing = applyLifeSupport(player);
+      const heatWarning = applySunHeat(player);
       checkBodyPortals(player);
 
+      // Prioridade dos avisos: pegar fogo mata mais rápido que ficar sem ar,
+      // e sem ar mata mais rápido que se perder — a bússola é a última.
       showCompass(
         player,
-        breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI"
+        heatWarning ??
+        (breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI")
       );
     } catch (e) {
       onError("loop do jogador", e);

@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "space_dim:sun_flare",
+      "identifier": "space_dim:moon_regolith_light",
       "menu_category": {
         "category": "nature"
       }
@@ -11,21 +11,20 @@
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "space_dim_sun_flare",
+          "texture": "space_dim_moon_regolith_light",
           "render_method": "opaque",
           "ambient_occlusion": true,
           "face_dimming": true
         }
       },
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 2.0
+        "seconds_to_destroy": 1.4
       },
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#FEF0B7",
-      "minecraft:friction": 0.6,
-      "minecraft:light_emission": 15
+      "minecraft:map_color": "#CAD4EB",
+      "minecraft:friction": 0.6
     }
   }
 }

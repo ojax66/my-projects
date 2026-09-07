@@ -3,17 +3,18 @@ pack.description=Dimensão do espaço sideral com o Sol, a Terra, a Lua e Marte 
 biome.space_dim.espaco_sideral.name=Espaço Sideral
 
 ## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.space_dim:sun_corona.name=Coroa Solar
 tile.space_dim:sun_plasma.name=Plasma Solar
-tile.space_dim:sun_flare.name=Labareda Solar
-tile.space_dim:sun_spot.name=Mancha Solar
+tile.space_dim:sun_core.name=Núcleo Solar
 tile.space_dim:earth_ocean.name=Oceano Profundo
 tile.space_dim:earth_shallow.name=Água Rasa
 tile.space_dim:earth_land.name=Continente
-tile.space_dim:earth_desert.name=Deserto
+tile.space_dim:earth_forest.name=Floresta
 tile.space_dim:earth_ice.name=Calota Polar
+tile.space_dim:moon_regolith_light.name=Regolito Claro
 tile.space_dim:moon_regolith.name=Regolito Lunar
-tile.space_dim:moon_highland.name=Terras Altas Lunares
-tile.space_dim:moon_mare.name=Mar Lunar
+tile.space_dim:moon_regolith_dark.name=Regolito Escuro
 tile.space_dim:mars_dust.name=Poeira Marciana
 tile.space_dim:mars_rock.name=Rocha Marciana
+tile.space_dim:mars_rock_dark.name=Basalto Marciano
 tile.space_dim:mars_ice.name=Gelo Marciano

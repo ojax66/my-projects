@@ -9,6 +9,8 @@ const generateColumn = (dim, x, z) => {
 
 import { BODIES } from './space_dim/config.js';
 
+// Confere o tamanho das calotas polares: pequenas demais somem, grandes
+// demais viram touca. O bloco de gelo de cada corpo termina em _ice.
 for (const body of BODIES) {
   if (!['earth','mars'].includes(body.id)) continue;
   const R = body.radius;
@@ -20,7 +22,7 @@ for (const body of BODIES) {
   let white = 0, total = 0, maxCapR = 0;
   for (const [k, id] of blocks) {
     total++;
-    if (id !== 'minecraft:white_concrete') continue;
+    if (!id.endsWith('_ice')) continue;
     white++;
     const [x, , z] = k.split(',').map(Number);
     maxCapR = Math.max(maxCapR, Math.hypot(x - body.center.x, z - body.center.z));

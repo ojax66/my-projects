@@ -55,45 +55,57 @@ export const BODIES = [
     name: "§6Sol",
     center: { x: -520, y: ORBIT_Y, z: 120 },
     radius: 100,
-    // Casca fina de propósito: numa esfera de raio 100 cada bloco a mais de
-    // espessura são ~125 mil blocos a gerar. 3 já é totalmente opaca.
-    shell: 3,
+    // O Sol é ATRAVESSÁVEL: coroa e plasma são cascas sem colisão, com vácuo
+    // entre elas, e no meio o núcleo sólido. Quem furar o calor entra de
+    // verdade, camada por camada, até ter onde pousar.
+    //
+    // `shell >= radius` numa camada quer dizer esfera maciça — é assim que o
+    // núcleo é gerado.
+    layers: [
+      { radius: 100, shell: 3, palette: "sun_corona" },
+      { radius: 62, shell: 2, palette: "sun_plasma" },
+      { radius: 22, shell: 22, palette: "sun_core" },
+    ],
+    // Campo de calor: começa BEM antes da superfície. Quanto mais perto, mais
+    // tempo de fogo e mais dano — chegar dentro é quase impossível sem
+    // resistência a fogo.
+    heat: {
+      zone: 70,          // blocos além da superfície onde já se pega fogo
+      maxFireSeconds: 10,
+      insideDamage: 8,   // dano por segundo dentro do Sol
+    },
     portal: null,
-    palette: "sun",
   },
   {
     id: "earth",
     name: "§bTerra",
     center: { x: 0, y: ORBIT_Y, z: 0 },
     radius: 26,
-    shell: 4,
+    layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     // Chegada vinda do Overworld: 58 do centro, com a Lua também no campo de
     // visão. Longe o bastante pra não disparar o portal de volta na hora.
     arrival: { x: 0, y: ORBIT_Y, z: 58 },
-    palette: "earth",
   },
   {
     id: "moon",
     name: "§7Lua",
     center: { x: 0, y: ORBIT_Y, z: 190 },
     radius: 12,
-    shell: 4,
+    layers: [{ radius: 12, shell: 4, palette: "moon" }],
     portal: { kind: "spacecraft", planet: "nv_sc:moon" },
     // Chegada vinda da Lua do Spacecraft: 40 do centro (28 da superfície).
     arrival: { x: 40, y: ORBIT_Y, z: 190 },
-    palette: "moon",
   },
   {
     id: "mars",
     name: "§cMarte",
     center: { x: 520, y: ORBIT_Y, z: -120 },
     radius: 20,
-    shell: 4,
+    layers: [{ radius: 20, shell: 4, palette: "mars" }],
     portal: { kind: "spacecraft", planet: "nv_sc:mars" },
     // Chegada vinda de Marte do Spacecraft: 50 do centro (30 da superfície).
     arrival: { x: 470, y: ORBIT_Y, z: -120 },
-    palette: "mars",
   },
 ];
 
@@ -101,10 +113,12 @@ export const BODIES = [
 // A casca é sólida, então o jogador encosta nela antes de chegar ao centro.
 export const PORTAL_MARGIN = 2.5;
 
-// O Sol queima quem encosta nele? Desligado por padrão — o pedido era uma
-// construção gigante, não uma armadilha. Ligar aqui se quiser o risco.
-export const SUN_BURNS = false;
-export const SUN_BURN_MARGIN = 6;
+// O calor do Sol pode ser desligado inteiro aqui (o campo `heat` do Sol em
+// BODIES é que diz o alcance e a intensidade).
+export const SUN_HEAT_ENABLED = true;
+// Resistência a fogo poupa do calor? Deixar ligado dá o caminho pra chegar
+// dentro do Sol — sem ela é só morte.
+export const FIRE_RESISTANCE_PROTECTS = true;
 
 // ---------------------------------------------------------------------------
 // Geração

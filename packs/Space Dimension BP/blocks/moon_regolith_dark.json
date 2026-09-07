@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "space_dim:sun_spot",
+      "identifier": "space_dim:moon_regolith_dark",
       "menu_category": {
         "category": "nature"
       }
@@ -11,21 +11,20 @@
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "space_dim_sun_spot",
+          "texture": "space_dim_moon_regolith_dark",
           "render_method": "opaque",
           "ambient_occlusion": true,
           "face_dimming": true
         }
       },
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 2.5
+        "seconds_to_destroy": 1.8
       },
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#53260C",
-      "minecraft:friction": 0.6,
-      "minecraft:light_emission": 6
+      "minecraft:map_color": "#555B6E",
+      "minecraft:friction": 0.6
     }
   }
 }
