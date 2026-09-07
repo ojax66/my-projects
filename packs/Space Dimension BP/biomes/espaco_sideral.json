@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:biome": {
+    "description": {
+      "identifier": "space_dim:espaco_sideral"
+    },
+    "components": {
+      "minecraft:climate": {
+        "temperature": 0.5,
+        "downfall": 0.0,
+        "snow_accumulation": [0.0, 0.0]
+      },
+      "minecraft:tags": {
+        "tags": ["space", "outer_space", "espaco_sideral", "no_legacy_worldgen"]
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:dimension": {
+    "description": {
+      "identifier": "space_dim:outer_space"
+    },
+    "components": {
+      "minecraft:dimension_bounds": {
+        "min": -64,
+        "max": 320
+      },
+      "minecraft:generation": {
+        "generator_type": "void"
+      },
+      "minecraft:default_biome": {
+        "biome": "space_dim:espaco_sideral"
+      }
+    }
+  }
+}

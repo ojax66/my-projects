@@ -1,0 +1,50 @@
+{
+  "format_version": "1.10.0",
+  "particle_effect": {
+    "description": {
+      "identifier": "space_dim:space_dust",
+      "basic_render_parameters": {
+        "material": "particles_alpha",
+        "texture": "textures/space_dim/star"
+      }
+    },
+    "components": {
+      "minecraft:emitter_rate_instant": {
+        "num_particles": 60
+      },
+      "minecraft:emitter_lifetime_once": {
+        "active_time": 1
+      },
+      "minecraft:emitter_shape_sphere": {
+        "offset": [0, 0, 0],
+        "radius": 26,
+        "surface_only": false,
+        "direction": "outwards"
+      },
+      "minecraft:particle_lifetime_expression": {
+        "max_lifetime": 8
+      },
+      "minecraft:particle_initial_speed": 0.15,
+      "minecraft:particle_initialization": {
+        "per_init_expression": "v.dust_size = math.random(0.04, 0.11);"
+      },
+      "minecraft:particle_motion_dynamic": {
+        "linear_acceleration": [0, 0, 0],
+        "linear_drag_coefficient": 0.05
+      },
+      "minecraft:particle_appearance_billboard": {
+        "size": ["v.dust_size", "v.dust_size"],
+        "facing_camera_mode": "lookat_xyz",
+        "uv": {
+          "texture_width": 16,
+          "texture_height": 16,
+          "uv": [0, 0],
+          "uv_size": [16, 16]
+        }
+      },
+      "minecraft:particle_appearance_tinting": {
+        "color": [0.75, 0.8, 0.95, "0.5 * math.clamp(math.sin((v.particle_age / v.particle_lifetime) * 180), 0, 1)"]
+      }
+    }
+  }
+}

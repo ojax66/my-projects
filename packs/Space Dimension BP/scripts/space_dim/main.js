@@ -1,0 +1,173 @@
+/* =========================================================================
+ * Dimensão do Espaço — ponto de entrada.
+ *
+ * Liga o gerador dos corpos celestes e roda um loop por tick que cuida dos
+ * jogadores: quem está no Overworld é observado pra ver se chegou na altitude
+ * de saída; quem está no espaço recebe gravidade zero, respiração, estrelas e
+ * a checagem dos portais.
+ * ========================================================================= */
+
+import * as mc from "@minecraft/server";
+import { createTerrainGenerator } from "./world_generator_API.js";
+import {
+  DIMENSION_ID,
+  GEN_RADIUS_CHUNKS,
+  CHUNKS_PER_TICK,
+  DIM_MIN_Y,
+  DIM_MAX_Y,
+  SPACE_ENTRY_Y,
+} from "./config.js";
+import { generateColumn, getHeight, isBudgetError } from "./bodies.js";
+import {
+  checkSpaceEntry,
+  checkBodyPortals,
+  isTravelling,
+  inSpace,
+} from "./travel.js";
+import { applyZeroGravity, releaseZeroGravity, forgetPlayer as forgetPhysics } from "./physics.js";
+import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
+import {
+  spawnAmbience,
+  pushFog,
+  popFog,
+  showCompass,
+  forgetPlayer as forgetAmbience,
+} from "./ambience.js";
+
+const world = mc.world;
+const system = mc.system;
+
+// ---------------------------------------------------------------------------
+// Erros: um aviso por mensagem distinta a cada 10 s. O loop do gerador roda
+// todo tick, então sem isso um único problema recorrente enche o console.
+// ---------------------------------------------------------------------------
+const lastWarn = new Map();
+function onError(context, err) {
+  // Orçamento do tick esgotado é fluxo normal, não falha: a coluna volta no
+  // próximo tick. Sai antes de montar qualquer string — perto do Sol isso
+  // acontece com mais de cem colunas por tick, e cada uma traz uma chave
+  // diferente ("generateColumn x,z"), que encheria o mapa de throttle.
+  if (isBudgetError(err)) return;
+
+  const key = context + "|" + err;
+  const now = system.currentTick;
+  const prev = lastWarn.get(key);
+  if (prev !== undefined && now - prev < 200) return;
+  lastWarn.set(key, now);
+  console.warn("[space_dim] " + context + ": " + err);
+}
+
+// ---------------------------------------------------------------------------
+// Geração
+// ---------------------------------------------------------------------------
+const generator = createTerrainGenerator({
+  dimensionId: DIMENSION_ID,
+  generateColumn,
+  getHeight,
+  genRadiusChunks: GEN_RADIUS_CHUNKS,
+  chunksPerTick: CHUNKS_PER_TICK,
+  registerDimension: true,
+  heightRangeFallback: { min: DIM_MIN_Y, max: DIM_MAX_Y },
+  onError,
+});
+
+generator.start();
+
+// ---------------------------------------------------------------------------
+// Loop por jogador
+// ---------------------------------------------------------------------------
+// Quem estava no espaço no tick anterior, pra saber quando alguém saiu e
+// desfazer névoa e efeitos.
+const wasInSpace = new Set();
+
+system.runInterval(() => {
+  let players;
+  try { players = world.getAllPlayers(); } catch { return; }
+
+  for (const player of players) {
+    try {
+      const here = inSpace(player);
+
+      if (!here) {
+        if (wasInSpace.delete(player.id)) {
+          popFog(player);
+          releaseZeroGravity(player);
+        }
+        // Só o Overworld tem porta pro espaço.
+        if (player.dimension.id === "minecraft:overworld") checkSpaceEntry(player);
+        continue;
+      }
+
+      wasInSpace.add(player.id);
+      pushFog(player);
+      spawnAmbience(player);
+
+      // No meio de uma viagem: nada de física nem de dano até assentar.
+      if (isTravelling(player)) continue;
+
+      applyZeroGravity(player);
+      const breathing = applyLifeSupport(player);
+      checkBodyPortals(player);
+
+      showCompass(
+        player,
+        breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI"
+      );
+    } catch (e) {
+      onError("loop do jogador", e);
+    }
+  }
+}, 1);
+
+// ---------------------------------------------------------------------------
+// Limpeza
+// ---------------------------------------------------------------------------
+world.afterEvents.playerDimensionChange.subscribe((event) => {
+  try {
+    if (event.fromDimension?.id !== DIMENSION_ID) return;
+    wasInSpace.delete(event.player.id);
+    popFog(event.player);
+    releaseZeroGravity(event.player);
+  } catch (e) {
+    onError("playerDimensionChange", e);
+  }
+});
+
+world.beforeEvents.playerLeave.subscribe((event) => {
+  const id = event.player.id;
+  wasInSpace.delete(id);
+  forgetPhysics(id);
+  forgetAmbience(id);
+});
+
+// ---------------------------------------------------------------------------
+// Comandos de apoio
+// ---------------------------------------------------------------------------
+system.afterEvents.scriptEventReceive.subscribe((data) => {
+  const player = data.sourceEntity;
+
+  // /scriptevent space_dim:go — atalho pra chegar ao espaço sem subir voando.
+  if (data.id === "space_dim:go") {
+    if (player?.typeId !== "minecraft:player") return;
+    try {
+      player.teleport({ x: player.location.x, y: SPACE_ENTRY_Y + 2, z: player.location.z });
+      player.sendMessage("§7Subindo até a altitude de saída...");
+    } catch { }
+    return;
+  }
+
+  // /scriptevent space_dim:info — estado da dimensão e do jogador.
+  if (data.id === "space_dim:info") {
+    if (player?.typeId !== "minecraft:player") return;
+    let dimOk = false;
+    try { dimOk = !!world.getDimension(DIMENSION_ID); } catch { }
+    try {
+      player.sendMessage(
+        `§7dimensão: §f${dimOk ? "ok" : "§cnão registrada"}\n` +
+        `§7aqui: §f${player.dimension.id}\n` +
+        `§7respirando: §f${canBreathe(player) ? "sim" : "não"}\n` +
+        `§7altitude de saída (Overworld): §f${SPACE_ENTRY_Y}`
+      );
+    } catch { }
+  }
+});

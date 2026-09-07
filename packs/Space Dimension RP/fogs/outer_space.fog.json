@@ -1,0 +1,27 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "space_dim:fog_outer_space"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 230.0,
+        "fog_end": 330.0,
+        "fog_color": "#000000",
+        "render_distance_type": "fixed"
+      }
+    },
+    "volumetric": {
+      "density": {
+        "air": { "max_density": 1.0, "uniform": true }
+      },
+      "media_coefficients": {
+        "air": {
+          "scattering": [0.0006, 0.0006, 0.0012],
+          "absorption": [0.02, 0.02, 0.02]
+        }
+      }
+    }
+  }
+}

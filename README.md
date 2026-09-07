@@ -1,2 +1,168 @@
-# Dragon-forge-
-Addon
+# Dimensão do Espaço
+
+Addon de Minecraft Bedrock que adiciona a dimensão do **espaço sideral**: escura,
+cheia de estrelas, sem gravidade, com o Sol, a Terra, a Lua e Marte construídos
+como esferas gigantes. Serve de ponte entre o **Spacecraft (Venzenulon-7)** e o
+**Vehicles 3.0** — entrar na Lua e em Marte leva pros planetas do Spacecraft, e
+dá pra chegar lá de OVNI.
+
+```
+tools/build.sh          →  dist/Space_Dimension.mcaddon
+tools/test.sh           →  validação dos packs + testes de geração
+packs/Space Dimension BP/   comportamento (dimensão, bioma, scripts)
+packs/Space Dimension RP/   visual (névoa, céu preto, estrelas)
+```
+
+## Instalação
+
+1. `bash tools/build.sh` gera `dist/Space_Dimension.mcaddon`.
+2. Abre o arquivo no Minecraft (ele importa os dois packs de uma vez).
+3. No mundo, ativa **Dimensão do Espaço** (BP) e **Dimensão do Espaço RP** (RP),
+   junto com o Spacecraft e o Vehicles.
+4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
+   `@minecraft/server` 2.8.0, igual ao Spacecraft.
+
+O addon funciona sozinho, mas a Lua e Marte só têm pra onde levar com o
+Spacecraft ativo, e o OVNI só existe com o Vehicles ativo.
+
+## Como chegar
+
+**Subindo no Overworld até Y 800.** É a mesma altitude em que o Spacecraft troca
+o foguete de dimensão durante o lançamento (`launch.js`, `yPos > 800`, o ponto em
+que aparece o overview e o jogador vai pra Lua). Vale de OVNI, de elytra ou
+voando no criativo.
+
+**De OVNI, e o OVNI vai junto.** Quem estiver montado numa montaria viaja com
+ela: o addon desmonta o jogador, teleporta os dois separados e remonta alguns
+ticks depois, quando a dimensão assentou (trocar de dimensão montado faz o
+cliente desenhar a montaria presa no ponto antigo). A única montaria que não
+viaja é o foguete do Spacecraft — o lançamento dele tem coreografia própria e
+interromper no meio quebra a viagem.
+
+Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída) e
+`/scriptevent space_dim:info` (mostra o estado da dimensão e da respiração).
+
+## O que tem lá
+
+Quatro esferas ocas, geradas conforme o jogador se aproxima. O jogador chega
+entre a Terra e a Lua, com as duas à vista.
+
+| Corpo | Raio | Centro | Entrar nele leva pra |
+|---|---|---|---|
+| **Sol** | 100 | −520, 128, 120 | nada — é só a construção gigante |
+| **Terra** | 26 | 0, 128, 0 | Overworld |
+| **Lua** | 12 | 0, 128, 190 | `nv_sc:moon` (Lua do Spacecraft) |
+| **Marte** | 20 | 520, 128, −120 | `nv_sc:mars` (Marte do Spacecraft) |
+
+O Sol é ~4× a Terra em raio. Na escala real seriam 109×, o que faria a Terra
+sumir; a proporção aqui segue as representações de livro didático, com a Terra
+um pouco maior do que nelas.
+
+As superfícies são feitas de concreto e terracota (cor chapada lê melhor de
+longe que bloco texturizado): a Terra tem oceano, plataforma continental,
+continentes e calotas polares em ~70° de latitude; a Lua tem os mares escuros;
+Marte tem regiões avermelhadas e calotas pequenas; o Sol é todo bloco de luz 15,
+com manchas solares de blackstone.
+
+O Sol e Marte ficam bem além da distância de renderização, então a action bar
+mostra uma bússola com rumo (`<` `|` `>`) e distância de cada corpo.
+
+### Voltar
+
+Encostar na Terra devolve pro Overworld, nas coordenadas X/Z de onde o jogador
+saiu, a Y 300 e com slow falling — uma reentrada, não uma cratera.
+
+## Gravidade zero
+
+O jogador **não cai**. Ele não sobe nem desce sozinho: simplesmente para de
+seguir a física de queda e se desloca pros lados normalmente, que é o pedido.
+**Pular sobe, agachar desce.**
+
+Por baixo é um controlador de altitude: cada jogador tem um Y-alvo e, a cada
+tick, levitação é ligada ou desligada pra corrigir a diferença. Com slow falling
+sempre ativo, a queda entre uma correção e outra é lenta, e a oscilação fica em
+poucos centésimos de bloco — lê como estar boiando. Encostou num bloco (pousou
+na Terra, na Lua), o alvo passa a acompanhar o jogador e ele anda normal.
+
+Montado no OVNI o controlador sai do caminho: o OVNI já tem `has_gravity: false`
+e controle de voo próprio.
+
+**Não existe void que mata.** O alvo do controlador é limitado à faixa segura, e
+há uma rede embaixo: quem chegar perto do fundo da dimensão é devolvido pra
+cima. Montado, quem sobe é o veículo — teleportar o passageiro sozinho o
+desmontaria no meio do nada.
+
+## Respiração
+
+Vale a mesma regra do Spacecraft: **traje completo + mochila de oxigênio com
+carga**. Sem isso, dano por vácuo, no mesmo ritmo que o Spacecraft usa na Lua e
+em Marte. Também não machuca dentro de um veículo pressurizado, perto de um
+distribuidor de oxigênio ligado, ou no criativo/espectador.
+
+**Dentro do OVNI o jogador respira normal** — a cabine conta como pressurizada.
+
+O addon não consome a mochila: o loop do Spacecraft já gasta durabilidade e
+atualiza o HUD dela em todo tick, em qualquer dimensão. Duplicar isso gastaria
+oxigênio em dobro no espaço.
+
+## Ajustes
+
+Tudo que dá pra mexer está em `packs/Space Dimension BP/scripts/space_dim/config.js`:
+posição e tamanho dos corpos, altitude de entrada, ritmo da geração, regras de
+respiração, gravidade zero, bússola. Alguns que importam:
+
+- `BLOCK_BUDGET_PER_TICK` (2500) — teto de blocos escritos por tick. É ele que
+  segura o custo. Perto do Sol, uma única chunk passa de 5 mil blocos: sem teto,
+  duas por tick dariam ~10 mil escritas num frame. Estourou, a chunk para onde
+  está e **retoma no tick seguinte do ponto exato** — cada chunk guarda um
+  cursor de coluna. O Sol inteiro leva ~8 s de geração contínua.
+- `GEN_RADIUS_CHUNKS` (5) e `CHUNKS_PER_TICK` (2) — o Venzenulon-7 do Spacecraft
+  usa 3/1 e o autor dele avisa no código pra só aumentar depois de confirmar
+  estabilidade. Aqui dá pra ser um pouco mais generoso porque a maioria das
+  colunas é vácuo e sai de graça. Se pesar em celular, baixa os dois.
+- `SUN_BURNS` (false) — se o Sol queima quem encosta. Desligado porque o pedido
+  era uma construção gigante, não uma armadilha.
+- `SPACE_ENTRY_Y` (800) — a altitude de saída.
+
+## Testes
+
+`tools/test.sh` roda a validação dos packs e os testes de geração no Node, com
+um stub do `@minecraft/server` — a geometria e o orçamento são JS puro, então dá
+pra exercitar tudo fora do jogo.
+
+- **`validate.py`** pega o que quebra silenciosamente no Bedrock: JSON malformado,
+  UUID repetido, dependência cruzada errada entre BP e RP, identificador que um
+  arquivo declara e outro referencia com outro nome (dimensão, bioma, névoa,
+  partícula), textura citada que não existe, import de script que não resolve.
+- **`test_bodies.mjs`** (32 checagens) — as cascas não têm buraco (nenhuma coluna
+  interna vazia), têm no mínimo 3 blocos contínuos de espessura, usam só blocos
+  vanilla, os corpos não se sobrepõem e cabem nos limites verticais.
+- **`test_budget.mjs`** — a chunk mais cara do Sol termina, o teto por tick é
+  respeitado, `fillBlocks` agrupa ~8,8 blocos por chamada, e **a geração fatiada
+  em vários ticks dá exatamente o mesmo resultado que a de uma passada só**.
+- **`sideview.mjs`** desenha os corpos em ASCII, vistos de fora, pra conferir
+  que a Terra parece a Terra (foi assim que se achou uma calota polar que descia
+  até ~52° de latitude).
+
+## Uma modificação no `world_generator_API.js`
+
+O arquivo veio pronto e está quase intacto, com uma correção: `syncTickingArea`
+é `async` e era chamado todo tick. Os ticks que passavam enquanto a primeira
+criação de área ainda não tinha resolvido viam o mapa vazio e disparavam outra
+criação — dezenas de áreas de ticking (`wgen_..._1`, `_2`, `_3`...) nos primeiros
+segundos, e só a última ficava registrada; as outras vazavam. Agora há uma trava
+por jogador enquanto a criação está em voo.
+
+## Se a dimensão não abrir
+
+O bioma `space_dim:espaco_sideral` é um bioma custom usado como `default_biome`
+da dimensão. Se a versão do jogo não engolir isso, a dimensão não registra e
+`/scriptevent space_dim:info` responde `dimensão: não registrada`. O contorno é
+trocar, em `packs/Space Dimension BP/dimensions/outer_space.json`:
+
+```json
+"minecraft:default_biome": { "biome": "minecraft:the_end" }
+```
+
+O céu preto e a névoa continuam vindo do RP (o Spacecraft faz exatamente isso
+com o Venzenulon-7), mas aí o bioma deixa de se chamar espaço sideral.
