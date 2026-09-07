@@ -8,9 +8,9 @@ dá pra chegar lá de OVNI.
 
 ```
 tools/build.sh          →  dist/Space_Dimension.mcaddon
-tools/test.sh           →  validação dos packs + testes de geração
-packs/Space Dimension BP/   comportamento (dimensão, bioma, scripts)
-packs/Space Dimension RP/   visual (névoa, céu preto, estrelas)
+tools/test.sh           →  validação dos packs + testes de geração e de viagem
+packs/Space Dimension BP/   comportamento (dimensão, bioma, blocos, scripts)
+packs/Space Dimension RP/   visual (texturas, névoa, céu preto, estrelas)
 ```
 
 ## Instalação
@@ -27,17 +27,16 @@ Spacecraft ativo, e o OVNI só existe com o Vehicles ativo.
 
 ## Como chegar
 
-**Subindo no Overworld até Y 800.** É a mesma altitude em que o Spacecraft troca
-o foguete de dimensão durante o lançamento (`launch.js`, `yPos > 800`, o ponto em
-que aparece o overview e o jogador vai pra Lua). Vale de OVNI, de elytra ou
-voando no criativo.
+**Subindo até Y 800 — no Overworld, na Lua ou em Marte.** É a mesma altitude em
+que o Spacecraft troca o foguete de dimensão durante o lançamento (`launch.js`,
+`yPos > 800`, o ponto em que aparece o overview e o jogador vai pra Lua), e ela
+vale igual nos três mundos. Quem sobe do Overworld chega ao lado da Terra, quem
+sobe da Lua chega ao lado da Lua, quem sobe de Marte chega ao lado de Marte.
+Vale de OVNI, de elytra ou voando no criativo.
 
-**De OVNI, e o OVNI vai junto.** Quem estiver montado numa montaria viaja com
-ela: o addon desmonta o jogador, teleporta os dois separados e remonta alguns
-ticks depois, quando a dimensão assentou (trocar de dimensão montado faz o
-cliente desenhar a montaria presa no ponto antigo). A única montaria que não
-viaja é o foguete do Spacecraft — o lançamento dele tem coreografia própria e
-interromper no meio quebra a viagem.
+**De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
+em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
+dele tem coreografia própria e interromper no meio quebra a viagem.
 
 Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída) e
 `/scriptevent space_dim:info` (mostra o estado da dimensão e da respiração).
@@ -47,22 +46,39 @@ Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída) e
 Quatro esferas ocas, geradas conforme o jogador se aproxima. O jogador chega
 entre a Terra e a Lua, com as duas à vista.
 
-| Corpo | Raio | Centro | Entrar nele leva pra |
-|---|---|---|---|
-| **Sol** | 100 | −520, 128, 120 | nada — é só a construção gigante |
-| **Terra** | 26 | 0, 128, 0 | Overworld |
-| **Lua** | 12 | 0, 128, 190 | `nv_sc:moon` (Lua do Spacecraft) |
-| **Marte** | 20 | 520, 128, −120 | `nv_sc:mars` (Marte do Spacecraft) |
+| Corpo | Raio | Centro | Entrar nele leva pra | Subir a Y 800 de lá |
+|---|---|---|---|---|
+| **Sol** | 100 | −520, 128, 120 | nada — é só a construção gigante | — |
+| **Terra** | 26 | 0, 128, 0 | Overworld | volta pro espaço |
+| **Lua** | 12 | 0, 128, 190 | `nv_sc:moon` (Lua do Spacecraft) | volta pro espaço |
+| **Marte** | 20 | 520, 128, −120 | `nv_sc:mars` (Marte do Spacecraft) | volta pro espaço |
 
 O Sol é ~4× a Terra em raio. Na escala real seriam 109×, o que faria a Terra
 sumir; a proporção aqui segue as representações de livro didático, com a Terra
 um pouco maior do que nelas.
 
-As superfícies são feitas de concreto e terracota (cor chapada lê melhor de
-longe que bloco texturizado): a Terra tem oceano, plataforma continental,
-continentes e calotas polares em ~70° de latitude; a Lua tem os mares escuros;
-Marte tem regiões avermelhadas e calotas pequenas; o Sol é todo bloco de luz 15,
-com manchas solares de blackstone.
+### Os blocos
+
+Cada corpo tem blocos próprios, com textura feita pra ele — 14 no total,
+gerados por `tools/make_block_textures.py`:
+
+| Corpo | Blocos |
+|---|---|
+| **Sol** | plasma granulado, labareda (mais quente), mancha solar |
+| **Terra** | oceano profundo, água rasa, continente, deserto, calota polar |
+| **Lua** | terras altas, regolito craterado, mar lunar |
+| **Marte** | poeira, rocha basáltica, gelo seco |
+
+As texturas são ruído fbm passado por rampas de cor tiradas de foto — o oceano
+tem correntes, o regolito tem micro-crateras, o plasma tem granulação. O ruído
+é **periódico**: fecha em 16 pixels, então a esfera não mostra emenda entre
+blocos vizinhos. Os blocos do Sol emitem luz (14 no plasma, 15 na labareda,
+6 na mancha), senão uma esfera de 200 blocos no vácuo escuro seria só uma
+silhueta preta.
+
+A Terra tem calotas polares a partir de ~70° de latitude, continentes com
+plataforma continental e cordilheiras; a Lua tem os mares escuros; Marte tem
+regiões de rocha e calotas pequenas de gelo seco.
 
 O Sol e Marte ficam bem além da distância de renderização, então a action bar
 mostra uma bússola com rumo (`<` `|` `>`) e distância de cada corpo.
@@ -134,15 +150,49 @@ pra exercitar tudo fora do jogo.
   UUID repetido, dependência cruzada errada entre BP e RP, identificador que um
   arquivo declara e outro referencia com outro nome (dimensão, bioma, névoa,
   partícula), textura citada que não existe, import de script que não resolve.
-- **`test_bodies.mjs`** (32 checagens) — as cascas não têm buraco (nenhuma coluna
-  interna vazia), têm no mínimo 3 blocos contínuos de espessura, usam só blocos
-  vanilla, os corpos não se sobrepõem e cabem nos limites verticais.
+- **`test_bodies.mjs`** — as cascas não têm buraco (nenhuma coluna interna
+  vazia), têm no mínimo 3 blocos contínuos de espessura, usam só os blocos
+  próprios do addon (e usam todos os 14), os corpos não se sobrepõem e cabem
+  nos limites verticais.
+- **`validate.py`** confere ainda que cada bloco que as paletas usam tem as
+  quatro peças que um bloco custom precisa: JSON no BP, entrada no `blocks.json`
+  do RP, entrada no `terrain_texture.json` e o arquivo de textura. Faltando uma,
+  o bloco vira cubo roxo no jogo e nada avisa.
 - **`test_budget.mjs`** — a chunk mais cara do Sol termina, o teto por tick é
   respeitado, `fillBlocks` agrupa ~8,8 blocos por chamada, e **a geração fatiada
   em vários ticks dá exatamente o mesmo resultado que a de uma passada só**.
+- **`test_travel.mjs`** roda as rotas de viagem contra um Bedrock falso
+  (dimensões, entidades, montaria, `structureManager`, fila de `runTimeout`):
+  que subir a Y 800 leva pro espaço do Overworld, da Lua e de Marte mas não do
+  Nether; que no the_end legado só a área do planeta conta; que **o OVNI chega
+  junto nas quatro rotas e o jogador volta montado**; que o foguete do
+  Spacecraft não é sequestrado; e que, com o `structureManager` quebrado de
+  propósito, o jogador ainda sai com um veículo do tipo certo em vez de ficar
+  a pé no vácuo.
 - **`sideview.mjs`** desenha os corpos em ASCII, vistos de fora, pra conferir
   que a Terra parece a Terra (foi assim que se achou uma calota polar que descia
   até ~52° de latitude).
+- **`make_block_textures.py`** falha se alguma textura tiver viés centro/borda
+  alto — o sinal de que ela vai virar bolinha repetida numa parede de blocos.
+  Foi o que pegou a primeira versão da mancha solar, desenhada a partir da
+  distância ao centro do próprio bloco.
+
+## Levar o veículo junto
+
+Teleportar a entidade pra outra dimensão a perde: no destino a chunk ainda não
+está carregada, porque nenhum jogador chegou lá. Era o que fazia o OVNI sumir.
+
+O caminho que funciona é o que o próprio Spacecraft usa pra levar mobs dentro do
+foguete: guardar o veículo numa **estrutura** (`structureManager.createFromWorld`
+com `includeEntities`), apagar o original, e recolocar a estrutura no destino
+depois que o jogador chegou. A estrutura leva a entidade inteira — cor, vida,
+nome, propriedades.
+
+Um detalhe que morde: a entrada no espaço é a Y 800, muito acima do teto do
+Overworld (320), e não dá pra salvar estrutura fora dos limites da dimensão. Por
+isso o veículo desce pra um Y válido antes de ser salvo — teleporte dentro da
+mesma dimensão, que é confiável. Se mesmo assim a estrutura falhar, o addon cria
+um veículo novo do mesmo tipo: perde a cor, mas ninguém fica a pé no vácuo.
 
 ## Uma modificação no `world_generator_API.js`
 

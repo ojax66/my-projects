@@ -14,6 +14,12 @@ for d in "$BP" "$RP"; do
   [ -d "$d" ] || { echo "faltando: $d" >&2; exit 1; }
 done
 
+# Regenera texturas e definições de bloco antes de validar: os dois scripts são
+# determinísticos, então isso não muda nada se já estiver em dia — mas garante
+# que o .mcaddon nunca sai com bloco e textura fora de sincronia.
+python3 "$ROOT/tools/make_textures.py"
+python3 "$ROOT/tools/make_block_textures.py"
+python3 "$ROOT/tools/make_blocks.py"
 python3 "$ROOT/tools/validate.py"
 
 mkdir -p "$OUT_DIR"

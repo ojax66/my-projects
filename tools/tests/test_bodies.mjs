@@ -100,14 +100,16 @@ for (const body of BODIES) {
   check(`${body.id}: casca contínua de >= 3 blocos`, worst >= 3, `(menor trecho: ${worst})`);
 }
 
-// --- 5. Paletas: só blocos vanilla existentes --------------------------------
+// --- 5. Paletas: so blocos proprios do addon --------------------------------
+// A lista vem de tools/make_blocks.py; validate.py confere que cada um desses
+// tem JSON no BP, entrada no blocks.json do RP, terrain_texture e textura.
 {
-  const VANILLA = new Set([
-    'minecraft:blackstone','minecraft:ochre_froglight','minecraft:shroomlight','minecraft:glowstone',
-    'minecraft:white_concrete','minecraft:brown_concrete','minecraft:green_concrete',
-    'minecraft:light_blue_concrete','minecraft:blue_concrete','minecraft:gray_concrete',
-    'minecraft:light_gray_concrete','minecraft:smooth_stone','minecraft:red_terracotta',
-    'minecraft:orange_terracotta','minecraft:terracotta',
+  const OWN_BLOCKS = new Set([
+    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_spot',
+    'space_dim:earth_ocean','space_dim:earth_shallow','space_dim:earth_land',
+    'space_dim:earth_desert','space_dim:earth_ice',
+    'space_dim:moon_regolith','space_dim:moon_highland','space_dim:moon_mare',
+    'space_dim:mars_dust','space_dim:mars_rock','space_dim:mars_ice',
   ]);
   const used = new Set();
   for (const body of BODIES) {
@@ -119,8 +121,10 @@ for (const body of BODIES) {
         generateColumn(dim, body.center.x + dx, body.center.z + dz);
     for (const v of dim.blocks.values()) used.add(v);
   }
-  const bad = [...used].filter(b => !VANILLA.has(b));
-  check('todas as paletas usam blocos vanilla conhecidos', bad.length === 0, bad.join(', '));
+  const bad = [...used].filter(b => !OWN_BLOCKS.has(b));
+  check('todas as paletas usam blocos proprios do addon', bad.length === 0, bad.join(', '));
+  const unused = [...OWN_BLOCKS].filter(b => !used.has(b));
+  check('nenhum bloco proprio ficou sem uso', unused.length === 0, unused.join(', '));
   console.log('      blocos usados:', [...used].sort().join(', '));
 }
 

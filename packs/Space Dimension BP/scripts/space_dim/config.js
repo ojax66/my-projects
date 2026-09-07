@@ -25,9 +25,9 @@ export const ORBIT_Y = 128;
 // voando no criativo — leva pro espaço.
 export const SPACE_ENTRY_Y = 800;
 
-// Onde o jogador aparece ao entrar no espaço: entre a Terra e a Lua, com as
-// duas à vista. Fica a 58 blocos do centro da Terra (32 da superfície).
-export const SPACE_ARRIVAL = { x: 0, y: ORBIT_Y, z: 58 };
+// Onde o jogador aparece ao chegar no espaço fica em BODIES[].arrival, um por
+// corpo: quem sobe do Overworld aparece do lado da Terra, quem sobe da Lua do
+// lado da Lua, e assim por diante.
 // Espalha a chegada num raio pequeno pra dois jogadores não aparecerem
 // exatamente no mesmo bloco.
 export const ARRIVAL_JITTER = 4;
@@ -68,6 +68,9 @@ export const BODIES = [
     radius: 26,
     shell: 4,
     portal: { kind: "overworld" },
+    // Chegada vinda do Overworld: 58 do centro, com a Lua também no campo de
+    // visão. Longe o bastante pra não disparar o portal de volta na hora.
+    arrival: { x: 0, y: ORBIT_Y, z: 58 },
     palette: "earth",
   },
   {
@@ -77,6 +80,8 @@ export const BODIES = [
     radius: 12,
     shell: 4,
     portal: { kind: "spacecraft", planet: "nv_sc:moon" },
+    // Chegada vinda da Lua do Spacecraft: 40 do centro (28 da superfície).
+    arrival: { x: 40, y: ORBIT_Y, z: 190 },
     palette: "moon",
   },
   {
@@ -86,6 +91,8 @@ export const BODIES = [
     radius: 20,
     shell: 4,
     portal: { kind: "spacecraft", planet: "nv_sc:mars" },
+    // Chegada vinda de Marte do Spacecraft: 50 do centro (30 da superfície).
+    arrival: { x: 470, y: ORBIT_Y, z: -120 },
     palette: "mars",
   },
 ];
@@ -153,6 +160,13 @@ export const PRESSURIZED_VEHICLE_MATCHES = ["_rocket", "space_mech"];
 // não pode ser interrompido.
 export const MOUNT_BLOCKLIST_MATCHES = ["_rocket"];
 
+// Tags postas no veículo pra ele não sumir enquanto ninguém está montado.
+// `dlb_van_ufo_captured` é a do próprio Vehicles: o `minecraft:despawn` do
+// OVNI só apaga a entidade se ela NÃO tiver essa tag (e for dia, e o jogador
+// mais próximo estiver a 6+ blocos). O addon dele já marca sozinho quando
+// alguém monta; marcar de novo cobre a entidade recém-recriada da estrutura.
+export const VEHICLE_KEEP_ALIVE_TAGS = ["dlb_van_ufo_captured"];
+
 // ---------------------------------------------------------------------------
 // Ambiente
 // ---------------------------------------------------------------------------
@@ -178,6 +192,10 @@ export const SPACECRAFT_LEGACY_ORIGINS = {
   "nv_sc:moon": { x: -200000, z: -200000 },
   "nv_sc:mars": { x: 200000, z: 200000 },
 };
+// Meia-largura da área de cada planeta no the_end legado (planets.js: `size`).
+// Serve pra saber se um jogador a 800 de altura no the_end está sobre a Lua,
+// sobre Marte, ou em algum outro canto do End que não leva a lugar nenhum.
+export const SPACECRAFT_LEGACY_RADIUS = 30000;
 // Teto congelado dos planetas do Spacecraft (planetDimensions.js: LANDING_Y).
 export const SPACECRAFT_LANDING_Y = 254;
 // Espalha o pouso pra dois jogadores não caírem no mesmo bloco.

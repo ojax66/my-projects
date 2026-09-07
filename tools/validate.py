@@ -175,6 +175,69 @@ if config_src:
     if cb_fog and cb_fog not in fog_ids:
         err(f"client biome aponta pra névoa inexistente: {cb_fog}")
 
+# --- 4b. Blocos custom: definidos no BP, no RP, com textura e nome -----------
+#
+# Um bloco custom precisa de quatro peças em dois packs. Faltando uma, o bloco
+# vira cubo roxo no jogo e nada avisa. Aqui as quatro são conferidas contra os
+# ids que as paletas de bodies.js realmente usam.
+bodies_path = os.path.join(BP, "scripts", "space_dim", "bodies.js")
+used_blocks = set()
+if os.path.isfile(bodies_path):
+    with open(bodies_path, encoding="utf-8") as f:
+        used_blocks = set(re.findall(r'"(space_dim:[a-z0-9_]+)"', f.read()))
+else:
+    err("bodies.js não encontrado")
+
+declared_blocks = {}
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    bid = described(d, "minecraft:block")
+    if bid:
+        declared_blocks[bid] = (p, d)
+
+rp_blocks = docs.get(os.path.join(RP, "blocks.json"), {})
+terrain = docs.get(os.path.join(RP, "textures", "terrain_texture.json"), {})
+terrain_data = terrain.get("texture_data", {}) if isinstance(terrain, dict) else {}
+
+lang_names = set()
+lang_path = os.path.join(BP, "texts", "en_US.lang")
+if os.path.isfile(lang_path):
+    with open(lang_path, encoding="utf-8") as f:
+        lang_names = set(re.findall(r"^tile\.(space_dim:[a-z0-9_]+)\.name=", f.read(), re.M))
+
+for bid in sorted(used_blocks):
+    if bid not in declared_blocks:
+        err(f"paleta usa {bid}, que não tem JSON de bloco no BP")
+        continue
+    if bid not in rp_blocks:
+        err(f"{bid} não está em RP/blocks.json — viraria cubo roxo")
+    if bid not in lang_names:
+        warn(f"{bid} sem nome em texts/en_US.lang")
+
+    # material_instances -> terrain_texture -> arquivo de textura
+    _, doc = declared_blocks[bid]
+    mats = doc["minecraft:block"]["components"].get("minecraft:material_instances", {})
+    tex_key = mats.get("*", {}).get("texture")
+    if not tex_key:
+        err(f"{bid} sem texture em material_instances")
+        continue
+    if tex_key not in terrain_data:
+        err(f"{bid} usa a chave de textura {tex_key}, ausente de terrain_texture.json")
+        continue
+    tex_path = terrain_data[tex_key].get("textures")
+    if not any(os.path.isfile(os.path.join(RP, tex_path + ext)) for ext in (".png", ".tga")):
+        err(f"{bid} aponta pra textura inexistente: {tex_path}")
+
+    # a entrada do RP tem que apontar pra mesma chave de textura
+    rp_tex = rp_blocks.get(bid, {}).get("textures")
+    if rp_tex and rp_tex != tex_key:
+        err(f"{bid}: blocks.json usa {rp_tex} mas o BP usa {tex_key}")
+
+# Blocos declarados que ninguém usa: não quebra nada, mas é peso morto.
+for bid in sorted(set(declared_blocks) - used_blocks):
+    warn(f"{bid} está definido mas nenhuma paleta usa")
+
 # --- 5. Texturas citadas pelas partículas existem -----------------------------
 for p, d in docs.items():
     if not isinstance(d, dict):

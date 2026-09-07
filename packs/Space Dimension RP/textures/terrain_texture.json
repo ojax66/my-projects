@@ -1,0 +1,50 @@
+{
+  "resource_pack_name": "space_dim",
+  "texture_name": "atlas.terrain",
+  "padding": 8,
+  "num_mip_levels": 4,
+  "texture_data": {
+    "space_dim_sun_plasma": {
+      "textures": "textures/space_dim/blocks/sun_plasma"
+    },
+    "space_dim_sun_flare": {
+      "textures": "textures/space_dim/blocks/sun_flare"
+    },
+    "space_dim_sun_spot": {
+      "textures": "textures/space_dim/blocks/sun_spot"
+    },
+    "space_dim_earth_ocean": {
+      "textures": "textures/space_dim/blocks/earth_ocean"
+    },
+    "space_dim_earth_shallow": {
+      "textures": "textures/space_dim/blocks/earth_shallow"
+    },
+    "space_dim_earth_land": {
+      "textures": "textures/space_dim/blocks/earth_land"
+    },
+    "space_dim_earth_desert": {
+      "textures": "textures/space_dim/blocks/earth_desert"
+    },
+    "space_dim_earth_ice": {
+      "textures": "textures/space_dim/blocks/earth_ice"
+    },
+    "space_dim_moon_regolith": {
+      "textures": "textures/space_dim/blocks/moon_regolith"
+    },
+    "space_dim_moon_highland": {
+      "textures": "textures/space_dim/blocks/moon_highland"
+    },
+    "space_dim_moon_mare": {
+      "textures": "textures/space_dim/blocks/moon_mare"
+    },
+    "space_dim_mars_dust": {
+      "textures": "textures/space_dim/blocks/mars_dust"
+    },
+    "space_dim_mars_rock": {
+      "textures": "textures/space_dim/blocks/mars_rock"
+    },
+    "space_dim_mars_ice": {
+      "textures": "textures/space_dim/blocks/mars_ice"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "format_version": [
+    1,
+    1,
+    0
+  ],
+  "space_dim:sun_plasma": {
+    "textures": "space_dim_sun_plasma",
+    "sound": "stone"
+  },
+  "space_dim:sun_flare": {
+    "textures": "space_dim_sun_flare",
+    "sound": "stone"
+  },
+  "space_dim:sun_spot": {
+    "textures": "space_dim_sun_spot",
+    "sound": "stone"
+  },
+  "space_dim:earth_ocean": {
+    "textures": "space_dim_earth_ocean",
+    "sound": "stone"
+  },
+  "space_dim:earth_shallow": {
+    "textures": "space_dim_earth_shallow",
+    "sound": "stone"
+  },
+  "space_dim:earth_land": {
+    "textures": "space_dim_earth_land",
+    "sound": "stone"
+  },
+  "space_dim:earth_desert": {
+    "textures": "space_dim_earth_desert",
+    "sound": "stone"
+  },
+  "space_dim:earth_ice": {
+    "textures": "space_dim_earth_ice",
+    "sound": "stone"
+  },
+  "space_dim:moon_regolith": {
+    "textures": "space_dim_moon_regolith",
+    "sound": "stone"
+  },
+  "space_dim:moon_highland": {
+    "textures": "space_dim_moon_highland",
+    "sound": "stone"
+  },
+  "space_dim:moon_mare": {
+    "textures": "space_dim_moon_mare",
+    "sound": "stone"
+  },
+  "space_dim:mars_dust": {
+    "textures": "space_dim_mars_dust",
+    "sound": "stone"
+  },
+  "space_dim:mars_rock": {
+    "textures": "space_dim_mars_rock",
+    "sound": "stone"
+  },
+  "space_dim:mars_ice": {
+    "textures": "space_dim_mars_ice",
+    "sound": "stone"
+  }
+}

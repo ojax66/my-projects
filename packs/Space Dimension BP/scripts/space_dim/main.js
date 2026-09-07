@@ -26,6 +26,7 @@ import {
 } from "./travel.js";
 import { applyZeroGravity, releaseZeroGravity, forgetPlayer as forgetPhysics } from "./physics.js";
 import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
+import { forgetPlayer as forgetVehicle } from "./vehicle.js";
 import {
   spawnAmbience,
   pushFog,
@@ -93,8 +94,9 @@ system.runInterval(() => {
           popFog(player);
           releaseZeroGravity(player);
         }
-        // Só o Overworld tem porta pro espaço.
-        if (player.dimension.id === "minecraft:overworld") checkSpaceEntry(player);
+        // A porta pro espaço existe no Overworld, na Lua e em Marte —
+        // checkSpaceEntry decide, e sai barato onde não existe.
+        checkSpaceEntry(player);
         continue;
       }
 
@@ -138,6 +140,9 @@ world.beforeEvents.playerLeave.subscribe((event) => {
   wasInSpace.delete(id);
   forgetPhysics(id);
   forgetAmbience(id);
+  // Saiu no meio de uma viagem: apaga a estrutura do veículo, senão ela fica
+  // guardada no mundo pra sempre.
+  try { forgetVehicle(event.player); } catch { }
 });
 
 // ---------------------------------------------------------------------------

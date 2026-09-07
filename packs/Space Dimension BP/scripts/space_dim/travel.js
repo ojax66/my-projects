@@ -1,16 +1,17 @@
 /* =========================================================================
  * Viagens de e pra dimensão do espaço.
  *
- *   Overworld, subindo até Y 800  →  espaço  (com a montaria junto)
- *   entrar na Terra               →  Overworld
- *   entrar na Lua                 →  Lua do Spacecraft
- *   entrar em Marte               →  Marte do Spacecraft
+ *   Overworld / Lua / Marte, subindo até Y 800  →  espaço
+ *   entrar na Terra                             →  Overworld
+ *   entrar na Lua                               →  Lua do Spacecraft
+ *   entrar em Marte                             →  Marte do Spacecraft
  *
- * Trocar de dimensão com um jogador montado é a parte frágil disso tudo: o
- * Bedrock desmonta na troca e o cliente às vezes desenha a montaria parada no
- * ponto antigo. O caminho aqui é sempre o mesmo — desmonta de propósito,
- * teleporta os dois separados, remonta alguns ticks depois, quando a dimensão
- * já assentou.
+ * A subida a Y 800 vale nos três mundos que têm corpo correspondente lá em
+ * cima, e o jogador chega ao lado do corpo de onde saiu.
+ *
+ * Levar o veículo junto é a parte frágil: teleportar a entidade pra outra
+ * dimensão a perde. Quem cuida disso é vehicle.js, guardando o veículo numa
+ * estrutura antes e recolocando depois que o jogador chegou.
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
@@ -18,13 +19,12 @@ import {
   DIMENSION_ID,
   BODIES,
   PORTAL_MARGIN,
-  SPACE_ARRIVAL,
   ARRIVAL_JITTER,
   SPACE_ENTRY_Y,
   OVERWORLD_REENTRY_Y,
   ARRIVAL_GRACE_TICKS,
-  MOUNT_BLOCKLIST_MATCHES,
   SPACECRAFT_LEGACY_ORIGINS,
+  SPACECRAFT_LEGACY_RADIUS,
   SPACECRAFT_LANDING_Y,
   LANDING_JITTER,
   SUN_BURNS,
@@ -32,6 +32,7 @@ import {
 } from "./config.js";
 import { distanceTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
+import * as vehicle from "./vehicle.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -49,44 +50,6 @@ export function isTravelling(player) {
 
 export function inSpace(player) {
   return player?.dimension?.id === DIMENSION_ID;
-}
-
-// ---------------------------------------------------------------------------
-// Montarias
-// ---------------------------------------------------------------------------
-
-function getMount(player) {
-  try {
-    return player.getComponent("riding")?.entityRidingOn;
-  } catch {
-    return undefined;
-  }
-}
-
-// O OVNI vai junto; o foguete do Spacecraft não — ele tem coreografia própria
-// de lançamento e pouso, e interromper no meio quebra a viagem dele.
-function mountTravels(mount) {
-  if (!mount) return false;
-  const id = mount.typeId ?? "";
-  for (const frag of MOUNT_BLOCKLIST_MATCHES) {
-    if (id.includes(frag)) return false;
-  }
-  return true;
-}
-
-function ejectFrom(mount, player) {
-  try {
-    mount?.getComponent("rideable")?.ejectRider?.(player);
-  } catch { }
-}
-
-function remount(mount, player) {
-  try {
-    if (!mount?.isValid || !player?.isValid) return false;
-    return mount.getComponent("rideable")?.addRider?.(player) ?? false;
-  } catch {
-    return false;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -137,51 +100,50 @@ function resolveDimension(dimensionId) {
 /**
  * Leva o jogador (e a montaria, quando ela viaja) pra outra dimensão.
  * `onArrive(player)` roda depois do teleporte, já na dimensão nova.
+ *
+ * A ordem importa: o veículo é guardado numa estrutura ANTES do teleporte e
+ * recolocado DEPOIS, quando a chunk do destino já está carregada. Teleportar a
+ * entidade junto com o jogador é o que fazia o OVNI sumir.
  */
 function travel(player, dimension, loc, onArrive) {
   if (!player?.isValid || travelling.has(player.id)) return;
   travelling.add(player.id);
 
-  const mount = getMount(player);
-  const carry = mountTravels(mount) ? mount : null;
-
   try {
-    player.runCommand("camera @s fade time 0.35 0.5 0.6 color 0 0 0");
+    // O fade escurece em 0.2 s (4 ticks) e segura escuro por 0.6 s — cobre a
+    // captura do veículo e o teleporte, que acontecem dentro dessa janela.
+    player.runCommand("camera @s fade time 0.2 0.6 0.5 color 0 0 0");
   } catch { }
 
-  system.runTimeout(() => {
+  // Seguro: entre desmontar e teleportar o jogador fica alguns ticks solto, e
+  // a entrada no espaço acontece a Y 800. Se o teleporte falhar, ele desce
+  // devagar em vez de virar cratera.
+  try {
+    player.addEffect("slow_falling", 8 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
+  } catch { }
+
+  // capture() desmonta, guarda e remove o veículo; devolve a cápsula (ou null
+  // se não havia veículo) alguns ticks depois, com a tela já escurecida.
+  vehicle.capture(player, (capsule) => {
     if (!player?.isValid) {
       travelling.delete(player.id);
       return;
     }
 
     try {
-      // Desmonta antes de trocar de dimensão: montado, o cliente costuma
-      // renderizar a montaria presa na posição antiga.
-      if (carry?.isValid) ejectFrom(carry, player);
-
-      if (carry?.isValid) {
-        carry.teleport({ x: loc.x, y: loc.y, z: loc.z }, { dimension });
-      }
       player.teleport({ x: loc.x, y: loc.y, z: loc.z }, { dimension });
-
       try { onArrive?.(player); } catch { }
     } catch (e) {
       console.warn("[space_dim] falha ao teleportar: " + e);
+      travelling.delete(player.id);
+      return;
     }
 
-    // Remonta só depois da dimensão assentar. Duas tentativas: a primeira
-    // costuma pegar, a segunda cobre o caso de o cliente ainda estar trocando.
-    if (carry) {
-      system.runTimeout(() => {
-        if (!remount(carry, player)) {
-          system.runTimeout(() => remount(carry, player), 6);
-        }
-      }, 6);
-    }
+    vehicle.restore(player, dimension, loc, capsule);
 
-    system.runTimeout(() => travelling.delete(player.id), 12);
-  }, 8);
+    // Solta a trava depois de a recolocação e a remontagem terminarem.
+    system.runTimeout(() => travelling.delete(player.id), capsule ? 24 : 12);
+  });
 }
 
 function markArrival(player) {
@@ -194,42 +156,95 @@ function inGrace(player) {
 }
 
 // ---------------------------------------------------------------------------
-// Overworld → espaço
+// Mundo de um corpo → espaço
+//
+// Subir até SPACE_ENTRY_Y leva pro espaço a partir de QUALQUER mundo que tenha
+// um corpo correspondente lá em cima: o Overworld (Terra), a Lua e Marte do
+// Spacecraft. É a mesma altitude nos três — a mesma que o foguete do
+// Spacecraft usa pra trocar de dimensão no lançamento, de onde quer que ele
+// decole. E o jogador chega no espaço ao lado do corpo de onde saiu.
 // ---------------------------------------------------------------------------
 
+/** O corpo celeste cujo mundo o jogador está pisando agora, ou null. */
+function bodyOfCurrentWorld(player) {
+  const dimId = player.dimension?.id;
+  if (!dimId) return null;
+
+  for (let i = 0; i < BODIES.length; i++) {
+    const body = BODIES[i];
+    const portal = body.portal;
+    if (!portal) continue;
+
+    if (portal.kind === "overworld") {
+      if (dimId === "minecraft:overworld") return body;
+      continue;
+    }
+
+    if (portal.kind === "spacecraft") {
+      // Mundo novo: o planeta tem dimensão própria.
+      if (dimId === portal.planet) return body;
+
+      // Mundo legado: os planetas vivem em áreas distantes do the_end. Só
+      // conta se o jogador estiver dentro da área daquele planeta, senão
+      // subir a 800 em qualquer canto do End viraria portal.
+      if (dimId === "minecraft:the_end") {
+        const o = SPACECRAFT_LEGACY_ORIGINS[portal.planet];
+        if (!o) continue;
+        const loc = player.location;
+        if (
+          Math.abs(loc.x - o.x) <= SPACECRAFT_LEGACY_RADIUS &&
+          Math.abs(loc.z - o.z) <= SPACECRAFT_LEGACY_RADIUS
+        ) {
+          return body;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export function checkSpaceEntry(player) {
-  if (player.dimension.id !== "minecraft:overworld") return;
+  // Checagem mais barata primeiro: isso roda pra todo jogador, todo tick.
   if (player.location.y < SPACE_ENTRY_Y) return;
   if (travelling.has(player.id)) return;
+  if (player.dimension?.id === DIMENSION_ID) return;
+
+  const body = bodyOfCurrentWorld(player);
+  if (!body) return;
 
   // Foguete do Spacecraft em pleno lançamento: é a viagem dele, não a nossa.
-  const mount = getMount(player);
-  if (mount && !mountTravels(mount)) return;
+  const mount = vehicle.getMount(player);
+  if (mount && !vehicle.mountTravels(mount)) return;
 
-  // Guarda de onde ele saiu, pra reentrada cair no mesmo lugar.
-  try {
-    player.setDynamicProperty("space_dim:return_x", Math.floor(player.location.x));
-    player.setDynamicProperty("space_dim:return_z", Math.floor(player.location.z));
-  } catch { }
+  // Guarda de onde ele saiu, pra reentrada na Terra cair no mesmo lugar.
+  if (body.portal.kind === "overworld") {
+    try {
+      player.setDynamicProperty("space_dim:return_x", Math.floor(player.location.x));
+      player.setDynamicProperty("space_dim:return_z", Math.floor(player.location.z));
+    } catch { }
+  }
 
   const dim = resolveDimension(DIMENSION_ID);
   if (!dim) {
     try {
       player.sendMessage("§cA dimensão do espaço não pôde ser aberta.");
     } catch { }
+    // Sem carência, a mensagem se repetiria a cada tick lá em cima.
+    markArrival(player);
     return;
   }
 
+  const arrival = body.arrival;
   const spot = {
-    x: SPACE_ARRIVAL.x + Math.floor((Math.random() * 2 - 1) * ARRIVAL_JITTER),
-    y: SPACE_ARRIVAL.y,
-    z: SPACE_ARRIVAL.z + Math.floor((Math.random() * 2 - 1) * ARRIVAL_JITTER),
+    x: arrival.x + Math.floor((Math.random() * 2 - 1) * ARRIVAL_JITTER),
+    y: arrival.y,
+    z: arrival.z + Math.floor((Math.random() * 2 - 1) * ARRIVAL_JITTER),
   };
 
   travel(player, dim, spot, (p) => {
     markArrival(p);
     // Ancora o controlador de gravidade zero no Y de chegada, senão o primeiro
-    // tick lê o alvo antigo (lá do Overworld, a 800 de altura) e corrige.
+    // tick lê o alvo antigo (lá de 800 de altura) e tenta corrigir.
     anchorAt(p, spot.y);
     try {
       p.onScreenDisplay.setTitle("§f§lESPAÇO SIDERAL", {

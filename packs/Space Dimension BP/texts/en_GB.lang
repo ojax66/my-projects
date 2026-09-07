@@ -1,3 +1,19 @@
 pack.name=Space Dimension
 pack.description=Outer space dimension with the Sun, Earth, Moon and Mars - bridges Spacecraft and Vehicles.
 biome.space_dim.espaco_sideral.name=Outer Space
+
+## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.space_dim:sun_plasma.name=Solar Plasma
+tile.space_dim:sun_flare.name=Solar Flare
+tile.space_dim:sun_spot.name=Sunspot
+tile.space_dim:earth_ocean.name=Deep Ocean
+tile.space_dim:earth_shallow.name=Shallow Water
+tile.space_dim:earth_land.name=Continent
+tile.space_dim:earth_desert.name=Desert
+tile.space_dim:earth_ice.name=Polar Ice Cap
+tile.space_dim:moon_regolith.name=Lunar Regolith
+tile.space_dim:moon_highland.name=Lunar Highlands
+tile.space_dim:moon_mare.name=Lunar Mare
+tile.space_dim:mars_dust.name=Martian Dust
+tile.space_dim:mars_rock.name=Martian Rock
+tile.space_dim:mars_ice.name=Martian Ice

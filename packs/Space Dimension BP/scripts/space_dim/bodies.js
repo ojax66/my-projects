@@ -22,9 +22,10 @@ const AIR = "minecraft:air";
 // ---------------------------------------------------------------------------
 // Paletas
 //
-// Concreto e terracota lêem bem de longe: cor chapada, sem textura ruidosa —
-// é o que faz um globo de 52 blocos parecer um planeta e não uma pilha de
-// blocos. O Sol usa só blocos que emitem luz 15.
+// Blocos próprios (space_dim:*), com textura feita pra cada corpo — plasma
+// granulado no Sol, oceano com correntes na Terra, regolito craterado na Lua,
+// poeira e basalto em Marte. As texturas saem de tools/make_block_textures.py
+// e o ruído delas é periódico, então a esfera não mostra emenda entre blocos.
 // ---------------------------------------------------------------------------
 
 // Ruído em três frequências dá manchas grandes com borda irregular, em vez do
@@ -43,55 +44,51 @@ function latitude(y, body) {
 }
 
 const PALETTES = {
-  // Sol: laranja incandescente com veios mais claros e algumas manchas
-  // escuras (as manchas solares). Tudo que brilha, brilha em luz 15.
+  // Sol: plasma incandescente, veios mais quentes e manchas solares escuras.
   sun(x, y, z) {
     const n = surfaceNoise(x, y, z, 0.045);
-    if (n >= 0.795) return "minecraft:blackstone";
-    if (n >= 0.6) return "minecraft:ochre_froglight";
-    if (n >= 0.3) return "minecraft:shroomlight";
-    return "minecraft:glowstone";
+    if (n >= 0.78) return "space_dim:sun_spot";
+    if (n >= 0.56) return "space_dim:sun_flare";
+    return "space_dim:sun_plasma";
   },
 
-  // Terra: oceano azul, plataforma continental mais clara, continentes verdes
-  // com cordilheiras/desertos marrons e calotas polares brancas.
+  // Terra: oceano profundo, plataforma continental, continentes verdes com
+  // cordilheiras/desertos e calotas polares.
   earth(x, y, z, body) {
     // Calota sólida a partir de ~70 graus, com uma borda irregular até ~62 —
     // as latitudes reais do gelo permanente, não uma touca até a Europa.
     const lat = Math.abs(latitude(y, body));
-    if (lat > 0.94) return "minecraft:white_concrete";
+    if (lat > 0.94) return "space_dim:earth_ice";
 
     const n = surfaceNoise(x, y, z, 0.05);
-    if (lat > 0.88 && n > 0.55) return "minecraft:white_concrete";
+    if (lat > 0.88 && n > 0.55) return "space_dim:earth_ice";
 
-    if (n >= 0.68) return "minecraft:brown_concrete";
-    if (n >= 0.56) return "minecraft:green_concrete";
-    if (n >= 0.5) return "minecraft:light_blue_concrete";
-    return "minecraft:blue_concrete";
+    if (n >= 0.68) return "space_dim:earth_desert";
+    if (n >= 0.56) return "space_dim:earth_land";
+    if (n >= 0.5) return "space_dim:earth_shallow";
+    return "space_dim:earth_ocean";
   },
 
-  // Lua: cinza claro com os mares (as manchas escuras) e crateras de pedra.
+  // Lua: terras altas claras, regolito e os mares escuros de basalto.
   moon(x, y, z) {
     const n = surfaceNoise(x, y, z, 0.09);
-    if (n >= 0.66) return "minecraft:gray_concrete";
-    if (n >= 0.34) return "minecraft:light_gray_concrete";
-    return "minecraft:smooth_stone";
+    if (n >= 0.66) return "space_dim:moon_mare";
+    if (n >= 0.34) return "space_dim:moon_regolith";
+    return "space_dim:moon_highland";
   },
 
-  // Marte: terracota alaranjada com regiões mais vermelhas e calotas de gelo
-  // seco pequenas, bem menores que as da Terra.
+  // Marte: poeira alaranjada, rocha basáltica e calotas de gelo seco.
   mars(x, y, z, body) {
     // Calotas menores que as da Terra, como as de gelo seco de Marte — mas
     // grandes o bastante pra aparecer: numa esfera de raio 20, cada grau de
     // latitude vale pouquíssimo bloco.
     const lat = Math.abs(latitude(y, body));
-    if (lat > 0.93) return "minecraft:white_concrete";
+    if (lat > 0.93) return "space_dim:mars_ice";
 
     const n = surfaceNoise(x, y, z, 0.07);
-    if (lat > 0.87 && n > 0.6) return "minecraft:white_concrete";
-    if (n >= 0.66) return "minecraft:red_terracotta";
-    if (n >= 0.34) return "minecraft:orange_terracotta";
-    return "minecraft:terracotta";
+    if (lat > 0.87 && n > 0.6) return "space_dim:mars_ice";
+    if (n >= 0.66) return "space_dim:mars_rock";
+    return "space_dim:mars_dust";
   },
 };
 
