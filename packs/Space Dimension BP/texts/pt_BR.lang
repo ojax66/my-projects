@@ -18,3 +18,12 @@ tile.space_dim:mars_dust.name=Poeira Marciana
 tile.space_dim:mars_rock.name=Rocha Marciana
 tile.space_dim:mars_rock_dark.name=Basalto Marciano
 tile.space_dim:mars_ice.name=Gelo Marciano
+
+## equipamento de estrela (gerado por tools/make_star_gear.py)
+item.space_dim:star_core_shard=Fragmento de Núcleo de Estrela
+item.space_dim:star_core_ingot=Barra de Núcleo de Estrela
+item.space_dim:star_upgrade_template=Molde de Ferraria de Estrela
+item.space_dim:star_helmet=Capacete de Estrela
+item.space_dim:star_chestplate=Peitoral de Estrela
+item.space_dim:star_leggings=Calças de Estrela
+item.space_dim:star_boots=Botas de Estrela

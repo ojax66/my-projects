@@ -1,0 +1,39 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:item": {
+    "description": {
+      "identifier": "space_dim:star_leggings",
+      "menu_category": {
+        "category": "equipment",
+        "group": "minecraft:itemGroup.name.leggings"
+      }
+    },
+    "components": {
+      "minecraft:icon": "space_dim_star_leggings",
+      "minecraft:max_stack_size": 1,
+      "minecraft:durability": {
+        "max_durability": 832
+      },
+      "minecraft:wearable": {
+        "slot": "slot.armor.legs",
+        "protection": 7
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "space_dim:star_core_ingot"
+            ],
+            "repair_amount": 208
+          }
+        ]
+      },
+      "minecraft:enchantable": {
+        "value": 15,
+        "slot": "armor_legs"
+      },
+      "minecraft:fire_resistant": true,
+      "minecraft:hover_text_color": "yellow"
+    }
+  }
+}

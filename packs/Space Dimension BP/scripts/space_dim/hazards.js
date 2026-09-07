@@ -16,6 +16,7 @@
 import * as mc from "@minecraft/server";
 import { BODIES, SUN_HEAT_ENABLED, FIRE_RESISTANCE_PROTECTS } from "./config.js";
 import { distanceTo } from "./bodies.js";
+import { hasStarArmor, starArmorBlocksHeat } from "./starGear.js";
 
 const system = mc.system;
 
@@ -33,6 +34,9 @@ function isExempt(player) {
       if (player.getEffect("fire_resistance")) return true;
     } catch { }
   }
+  // A armadura de estrela é a proteção permanente contra o calor — a poção é
+  // só a forma de chegar lá a primeira vez.
+  if (starArmorBlocksHeat(player)) return true;
   return false;
 }
 
@@ -96,6 +100,47 @@ export function applySunHeat(player) {
   if (t >= 1) return `§4§lVOCÊ ESTÁ DENTRO DO SOL`;
   if (t > 0.6) return `§c§lCALOR EXTREMO §r§7— afaste-se do Sol`;
   return `§6Calor do Sol §r§7— está ficando perigoso`;
+}
+
+/**
+ * A pressão dentro do Sol.
+ *
+ * Separada do calor de propósito: resistência a fogo resolve o calor e é o que
+ * permite ENTRAR, mas lá dentro o esmagamento continua. Só a armadura de
+ * núcleo de estrela segura a pressão — e o núcleo de onde ela sai fica
+ * justamente lá dentro. Quem entra a primeira vez, entra pra minerar e correr.
+ */
+export function applySunPressure(player) {
+  if (!SUN_HEAT_ENABLED) return null;
+
+  let inside = null;
+  for (let i = 0; i < HOT_BODIES.length; i++) {
+    const body = HOT_BODIES[i];
+    if (!body.pressure) continue;
+    if (distanceTo(player.location, body) < body.radius) { inside = body; break; }
+  }
+  if (!inside) return null;
+
+  let mode;
+  try { mode = player.getGameMode(); } catch { }
+  if (mode === "Creative" || mode === "Spectator" || mode === "creative" || mode === "spectator") {
+    return null;
+  }
+
+  if (hasStarArmor(player)) {
+    return `§e${inside.name}§r §7— a armadura de estrela aguenta a pressão`;
+  }
+
+  if (system.currentTick % 20 === 0) {
+    try { player.applyDamage(inside.pressure.damage); } catch { }
+    try { player.playSound("random.hurt", { volume: 1, pitch: 0.5 }); } catch { }
+  }
+  try {
+    player.addEffect("slowness", 40, { amplifier: 2, showParticles: false });
+    player.addEffect("blindness", 40, { amplifier: 0, showParticles: false });
+  } catch { }
+
+  return `§4§lPRESSÃO ESMAGADORA §r§7— só a armadura de estrela protege`;
 }
 
 /** Só a leitura, sem aplicar nada — usado pelos testes e pelo HUD. */

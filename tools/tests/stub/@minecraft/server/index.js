@@ -8,6 +8,17 @@
 
 export const TicksPerSecond = 20;
 
+export class ItemStack {
+  constructor(typeId, amount = 1) {
+    this.typeId = typeId;
+    this.amount = amount;
+  }
+  getComponent(name) {
+    if (name === "minecraft:durability") return { damage: 0, maxDurability: 100 };
+    return undefined;
+  }
+}
+
 let state;
 
 export function __state() {
@@ -65,6 +76,20 @@ class Entity {
     this.isValid = false;
   }
 
+  applyImpulse(v) {
+    this.__impulses ??= [];
+    this.__impulses.push({ ...v });
+    this.location = {
+      x: this.location.x + v.x, y: this.location.y + v.y, z: this.location.z + v.z,
+    };
+  }
+  applyKnockback(dir, strength) {
+    this.__knockbacks ??= [];
+    this.__knockbacks.push({ ...dir, strength });
+  }
+  getEffect(id) { return this.__effects?.[id]; }
+  __giveEffect(id, amp = 0) { (this.__effects ??= {})[id] = { amplifier: amp }; }
+
   addTag(t) { this.__tags.add(t); return true; }
   hasTag(t) { return this.__tags.has(t); }
   removeTag(t) { return this.__tags.delete(t); }
@@ -102,7 +127,11 @@ class Entity {
       };
     }
     if (name === "equippable") {
-      return { getEquipment: () => undefined };
+      const worn = (this.__equipment ??= {});
+      return {
+        getEquipment: (slot) => worn[slot],
+        setEquipment: (slot, item) => { worn[slot] = item; return true; },
+      };
     }
     return undefined;
   }
@@ -119,6 +148,10 @@ class Player extends Entity {
     this.isJumping = false;
     this.isSneaking = false;
     this.isOnGround = false;
+  }
+  /** Atalho de teste: veste uma peça. */
+  __wear(slot, typeId) {
+    (this.__equipment ??= {})[slot] = new ItemStack(typeId, 1);
   }
   /** Atalho de teste: monta este jogador num veículo. */
   __mountOn(vehicle) {
@@ -159,9 +192,73 @@ class Dimension {
     return e;
   }
   spawnParticle() { }
-  getBlock() { return undefined; }
-  setBlockType() { }
-  fillBlocks() { }
+
+  // --- blocos ---
+  // O mundo falso e um mapa esparso: o que nao esta nele e ar acima da altura
+  // do terreno, ou pedra abaixo. __terrain(x,z) define a altura da superficie.
+  __terrain = () => 64;
+
+  __key(x, y, z) { return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`; }
+
+  getBlock(loc) {
+    const { x, y, z } = loc;
+    const k = this.__key(x, y, z);
+    if (!this.__blocks) this.__blocks = new Map();
+    if (this.__blocks.has(k)) return this.__blocks.get(k);
+
+    const ground = this.__terrain(Math.floor(x), Math.floor(z));
+    const typeId = y > ground ? "minecraft:air"
+      : y === ground ? "minecraft:grass_block"
+      : "minecraft:stone";
+    const dim = this;
+    return {
+      typeId,
+      x: Math.floor(x), y: Math.floor(y), z: Math.floor(z),
+      getComponent(name) {
+        if (name !== "minecraft:inventory") return undefined;
+        return { container: dim.__containerAt(k) };
+      },
+    };
+  }
+
+  __containerAt(k) {
+    this.__containers ??= new Map();
+    if (!this.__containers.has(k)) {
+      const items = new Array(27).fill(undefined);
+      this.__containers.set(k, {
+        size: 27,
+        setItem(i, item) { items[i] = item; },
+        getItem(i) { return items[i]; },
+        __items: items,
+      });
+    }
+    return this.__containers.get(k);
+  }
+
+  setBlockType(loc, typeId) {
+    this.__blocks ??= new Map();
+    const k = this.__key(loc.x, loc.y, loc.z);
+    const dim = this;
+    this.__blocks.set(k, {
+      typeId,
+      x: Math.floor(loc.x), y: Math.floor(loc.y), z: Math.floor(loc.z),
+      getComponent(name) {
+        if (name !== "minecraft:inventory") return undefined;
+        return { container: dim.__containerAt(k) };
+      },
+    });
+  }
+
+  getTopmostBlock(loc) {
+    const ground = this.__terrain(Math.floor(loc.x), Math.floor(loc.z));
+    return this.getBlock({ x: loc.x, y: ground, z: loc.z });
+  }
+
+  fillBlocks(vol, id) {
+    for (let y = vol.from.y; y <= vol.to.y; y++) {
+      this.setBlockType({ x: vol.from.x, y, z: vol.from.z }, id);
+    }
+  }
 }
 
 const structureManager = {
@@ -252,10 +349,11 @@ export const system = {
 };
 
 export const BlockPermutation = { resolve: () => ({}) };
+export const EquipmentSlot = { Head: "Head", Chest: "Chest", Legs: "Legs", Feet: "Feet", Offhand: "Offhand" };
 export class BlockVolume {
   constructor(from, to) { this.from = from; this.to = to; }
 }
 
 __reset();
 
-export default { world, system, BlockPermutation, BlockVolume, TicksPerSecond };
+export default { world, system, BlockPermutation, BlockVolume, TicksPerSecond, ItemStack, EquipmentSlot };

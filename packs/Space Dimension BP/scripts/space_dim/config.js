@@ -74,6 +74,12 @@ export const BODIES = [
       maxFireSeconds: 10,
       insideDamage: 8,   // dano por segundo dentro do Sol
     },
+    // Pressão: dentro do Sol o esmagamento é o que mata mesmo quem aguenta o
+    // calor. Só a armadura de núcleo de estrela segura.
+    pressure: { damage: 6 },
+    // O Sol é o mais massivo: puxa de longe e puxa forte. Chegar perto pra
+    // "só olhar" já vira uma queda.
+    gravity: { reach: 150, strength: 0.055 },
     portal: null,
   },
   {
@@ -83,8 +89,10 @@ export const BODIES = [
     radius: 26,
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
+    gravity: { reach: 46, strength: 0.03 },
     // Chegada vinda do Overworld: 58 do centro, com a Lua também no campo de
-    // visão. Longe o bastante pra não disparar o portal de volta na hora.
+    // visão. Longe o bastante pra não disparar o portal de volta na hora, e
+    // fora do alcance da gravidade dela.
     arrival: { x: 0, y: ORBIT_Y, z: 58 },
   },
   {
@@ -94,6 +102,8 @@ export const BODIES = [
     radius: 12,
     layers: [{ radius: 12, shell: 4, palette: "moon" }],
     portal: { kind: "spacecraft", planet: "nv_sc:moon" },
+    // Lua puxa pouco, como na vida real.
+    gravity: { reach: 26, strength: 0.012 },
     // Chegada vinda da Lua do Spacecraft: 40 do centro (28 da superfície).
     arrival: { x: 40, y: ORBIT_Y, z: 190 },
   },
@@ -104,6 +114,7 @@ export const BODIES = [
     radius: 20,
     layers: [{ radius: 20, shell: 4, palette: "mars" }],
     portal: { kind: "spacecraft", planet: "nv_sc:mars" },
+    gravity: { reach: 38, strength: 0.022 },
     // Chegada vinda de Marte do Spacecraft: 50 do centro (30 da superfície).
     arrival: { x: 470, y: ORBIT_Y, z: -120 },
   },
@@ -149,6 +160,21 @@ export const SAFE_MIN_Y = DIM_MIN_Y + 24;
 export const SAFE_MAX_Y = DIM_MAX_Y - 16;
 
 // ---------------------------------------------------------------------------
+// Gravidade dos corpos
+// ---------------------------------------------------------------------------
+// Longe de tudo o espaço é sem gravidade. Perto de um corpo ele PUXA: quanto
+// mais perto, mais forte, com queda quadrática como a gravidade de verdade.
+// Vale pro jogador, pro veículo que ele estiver pilotando e pras entidades
+// soltas — item largado perto da Lua cai nela.
+export const BODY_GRAVITY_ENABLED = true;
+// Quantas vezes por segundo a gravidade age nas entidades soltas. Puxar toda
+// entidade todo tick sairia caro à toa; 4 vezes por segundo já lê como queda.
+export const ENTITY_GRAVITY_INTERVAL = 5;
+// Raio, em blocos, em que as entidades soltas são procuradas ao redor de cada
+// jogador. Fora disso nem estão carregadas.
+export const ENTITY_GRAVITY_SCAN = 48;
+
+// ---------------------------------------------------------------------------
 // Respiração (mesmas regras do Spacecraft)
 // ---------------------------------------------------------------------------
 export const BREATHING_ENABLED = true;
@@ -167,6 +193,21 @@ export const PRESSURIZED_VEHICLES = ["dlb_van:ufo"];
 export const PRESSURIZED_VEHICLE_MATCHES = ["_rocket", "space_mech"];
 
 // ---------------------------------------------------------------------------
+// Armadura de núcleo de estrela
+// ---------------------------------------------------------------------------
+// O conjunto INTEIRO é o que protege — meia armadura não segura pressão de
+// estrela.
+export const STAR_ARMOR_PIECES = [
+  { slot: "Head", item: "space_dim:star_helmet" },
+  { slot: "Chest", item: "space_dim:star_chestplate" },
+  { slot: "Legs", item: "space_dim:star_leggings" },
+  { slot: "Feet", item: "space_dim:star_boots" },
+];
+// Além da pressão, a armadura também poupa do calor? Ligado: é o que faz dela
+// a alternativa permanente à poção de resistência a fogo.
+export const STAR_ARMOR_PROTECTS_FROM_HEAT = true;
+
+// ---------------------------------------------------------------------------
 // Veículos
 // ---------------------------------------------------------------------------
 // O OVNI viaja junto com o jogador. Qualquer montaria vai junto, menos as que
@@ -180,6 +221,38 @@ export const MOUNT_BLOCKLIST_MATCHES = ["_rocket"];
 // mais próximo estiver a 6+ blocos). O addon dele já marca sozinho quando
 // alguém monta; marcar de novo cobre a entidade recém-recriada da estrutura.
 export const VEHICLE_KEEP_ALIVE_TAGS = ["dlb_van_ufo_captured"];
+
+// ---------------------------------------------------------------------------
+// Destroços de OVNI no Overworld
+// ---------------------------------------------------------------------------
+// Onde o molde de ferraria é encontrado — o primeiro elo da linha da armadura,
+// e o único que fica no Overworld.
+export const WRECK_ENABLED = true;
+// De quanto em quanto tempo se sorteia, e com que chance. Os dois juntos dão
+// uma queda a cada ~2 h de jogo por jogador andando por aí: raro de achar,
+// não raro a ponto de nunca acontecer.
+export const WRECK_CHECK_INTERVAL = 1200;   // 1 min
+export const WRECK_CHANCE = 0.008;
+// Distância do jogador: longe o bastante pra ele não ver os blocos surgindo,
+// perto o bastante pra a chunk estar carregada.
+export const WRECK_MIN_DISTANCE = 90;
+export const WRECK_MAX_DISTANCE = 160;
+// Distância mínima entre duas quedas, pra não virar um campo de destroços.
+export const WRECK_MIN_GAP = 400;
+
+export const WRECK_HULL_BLOCK = "minecraft:light_gray_concrete";
+export const WRECK_GLASS_BLOCK = "minecraft:tinted_glass";
+export const WRECK_SCORCH_BLOCK = "minecraft:coarse_dirt";
+
+export const WRECK_TEMPLATE_ITEM = "space_dim:star_upgrade_template";
+// Companhia do molde no baú. O molde entra sempre; estes são sorteados.
+export const WRECK_LOOT = [
+  { item: "minecraft:iron_ingot", chance: 0.8, min: 2, max: 6 },
+  { item: "minecraft:gold_ingot", chance: 0.5, min: 1, max: 4 },
+  { item: "minecraft:diamond", chance: 0.35, min: 1, max: 2 },
+  { item: "minecraft:redstone", chance: 0.6, min: 3, max: 9 },
+  { item: "minecraft:amethyst_shard", chance: 0.4, min: 1, max: 4 },
+];
 
 // ---------------------------------------------------------------------------
 // Ambiente

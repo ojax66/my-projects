@@ -20,6 +20,7 @@ done
 python3 "$ROOT/tools/make_textures.py"
 python3 "$ROOT/tools/make_block_textures.py"
 python3 "$ROOT/tools/make_blocks.py"
+python3 "$ROOT/tools/make_star_gear.py"
 python3 "$ROOT/tools/validate.py"
 
 mkdir -p "$OUT_DIR"

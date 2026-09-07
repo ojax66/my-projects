@@ -1,0 +1,27 @@
+{
+  "resource_pack_name": "space_dim",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "space_dim_star_core_shard": {
+      "textures": "textures/space_dim/items/star_core_shard"
+    },
+    "space_dim_star_core_ingot": {
+      "textures": "textures/space_dim/items/star_core_ingot"
+    },
+    "space_dim_star_upgrade_template": {
+      "textures": "textures/space_dim/items/star_upgrade_template"
+    },
+    "space_dim_star_helmet": {
+      "textures": "textures/space_dim/items/star_helmet"
+    },
+    "space_dim_star_chestplate": {
+      "textures": "textures/space_dim/items/star_chestplate"
+    },
+    "space_dim_star_leggings": {
+      "textures": "textures/space_dim/items/star_leggings"
+    },
+    "space_dim_star_boots": {
+      "textures": "textures/space_dim/items/star_boots"
+    }
+  }
+}

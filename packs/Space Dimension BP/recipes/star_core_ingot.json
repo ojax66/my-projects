@@ -1,0 +1,41 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:recipe_shapeless": {
+    "description": {
+      "identifier": "space_dim:star_core_ingot"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "ingredients": [
+      {
+        "item": "space_dim:star_core_shard"
+      },
+      {
+        "item": "space_dim:star_core_shard"
+      },
+      {
+        "item": "space_dim:star_core_shard"
+      },
+      {
+        "item": "space_dim:star_core_shard"
+      },
+      {
+        "item": "minecraft:diamond"
+      },
+      {
+        "item": "minecraft:diamond"
+      },
+      {
+        "item": "minecraft:diamond"
+      },
+      {
+        "item": "minecraft:diamond"
+      }
+    ],
+    "result": {
+      "item": "space_dim:star_core_ingot",
+      "count": 1
+    }
+  }
+}

@@ -255,6 +255,128 @@ for bid, (path, doc) in sorted(declared_blocks.items()):
         if comps.get("minecraft:collision_box") is False:
             err("sun_core devia ser sólido — é o destino de quem atravessa o Sol")
 
+# --- 4d. Itens, armadura, attachables e receitas ------------------------------
+#
+# Um item custom espalha as peças por seis arquivos nos dois packs. O que
+# quebra em silêncio: ícone sem entrada no item_texture, attachable apontando
+# pra geometria que não existe, receita citando item que ninguém declarou.
+declared_items = {}
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    iid = described(d, "minecraft:item")
+    if iid:
+        declared_items[iid] = (p, d)
+
+item_tex = docs.get(os.path.join(RP, "textures", "item_texture.json"), {})
+item_tex_data = item_tex.get("texture_data", {}) if isinstance(item_tex, dict) else {}
+
+attachables = {}
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    aid = described(d, "minecraft:attachable")
+    if aid:
+        attachables[aid] = (p, d)
+
+# Geometrias que o pack define, mais as do próprio jogo que é válido usar.
+pack_geometries = set()
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    for geo in d.get("minecraft:geometry", []) or []:
+        gid = geo.get("description", {}).get("identifier")
+        if gid:
+            pack_geometries.add(gid)
+
+item_lang = set()
+if os.path.isfile(lang_path):
+    with open(lang_path, encoding="utf-8") as f:
+        item_lang = set(re.findall(r"^item\.(space_dim:[a-z0-9_]+)=", f.read(), re.M))
+
+for iid, (path, doc) in sorted(declared_items.items()):
+    comps = doc["minecraft:item"]["components"]
+
+    icon = comps.get("minecraft:icon")
+    if not icon:
+        err(f"{iid} sem minecraft:icon")
+    elif icon not in item_tex_data:
+        err(f"{iid} usa o ícone {icon}, ausente de item_texture.json")
+    else:
+        tex = item_tex_data[icon].get("textures")
+        if not any(os.path.isfile(os.path.join(RP, tex + e)) for e in (".png", ".tga")):
+            err(f"{iid} aponta pra textura de ícone inexistente: {tex}")
+
+    if iid not in item_lang:
+        warn(f"{iid} sem nome em texts/en_US.lang")
+
+    # Peça de armadura precisa do attachable, senão ela é invisível vestida.
+    if comps.get("minecraft:wearable"):
+        if iid not in attachables:
+            err(f"{iid} é vestível mas não tem attachable — ficaria invisível no corpo")
+            continue
+        _, att = attachables[iid]
+        desc = att["minecraft:attachable"]["description"]
+        geo = desc.get("geometry", {}).get("default")
+        if not geo:
+            err(f"attachable de {iid} sem geometria")
+        elif geo not in pack_geometries and not geo.startswith("geometry.humanoid."):
+            err(f"attachable de {iid} usa a geometria {geo}, que o pack não define")
+        atex = desc.get("textures", {}).get("default")
+        if atex and not any(os.path.isfile(os.path.join(RP, atex + e)) for e in (".png", ".tga")):
+            err(f"attachable de {iid} aponta pra textura inexistente: {atex}")
+
+# Attachable órfão: existe mas nenhum item o usa.
+for aid in sorted(set(attachables) - set(declared_items)):
+    warn(f"attachable {aid} não corresponde a nenhum item")
+
+# --- 4e. Receitas só citam coisas que existem ---------------------------------
+known = set(declared_items) | set(declared_blocks)
+
+
+def check_recipe_ref(ref, where):
+    if not isinstance(ref, str):
+        ref = (ref or {}).get("item") if isinstance(ref, dict) else None
+    if not isinstance(ref, str):
+        return
+    name = ref.split("(")[0].strip()
+    if not name.startswith("space_dim:"):
+        return              # item do jogo: fora do nosso alcance conferir
+    if name not in known:
+        err(f"receita {where} cita {name}, que o addon não declara")
+
+
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    for key in ("minecraft:recipe_shapeless", "minecraft:recipe_shaped",
+                "minecraft:recipe_smithing_transform", "minecraft:recipe_furnace"):
+        r = d.get(key)
+        if not r:
+            continue
+        where = r.get("description", {}).get("identifier", os.path.basename(p))
+        for ing in r.get("ingredients", []) or []:
+            check_recipe_ref(ing, where)
+        for k in ("template", "base", "addition", "input", "result"):
+            v = r.get(k)
+            if isinstance(v, list):
+                for item in v:
+                    check_recipe_ref(item, where)
+            else:
+                check_recipe_ref(v, where)
+        for v in (r.get("key") or {}).values():
+            check_recipe_ref(v, where)
+
+# --- 4f. O config e os itens gerados falam da mesma armadura ------------------
+# STAR_ARMOR_PIECES é o que decide se o jogador está protegido. Se ele citar um
+# id que não existe mais, a proteção simplesmente nunca liga e nada avisa.
+star_pieces = re.findall(r'\{ slot: "\w+", item: "(space_dim:[a-z0-9_]+)" \}', config_src)
+if not star_pieces:
+    warn("não achei STAR_ARMOR_PIECES no config para conferir")
+for piece in star_pieces:
+    if piece not in declared_items:
+        err(f"STAR_ARMOR_PIECES cita {piece}, que não existe como item")
+
 # --- 5. Texturas citadas pelas partículas existem -----------------------------
 for p, d in docs.items():
     if not isinstance(d, dict):

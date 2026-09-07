@@ -16,6 +16,7 @@
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
+import { applyPlayerGravity } from "./gravity.js";
 import {
   ZERO_G_ENABLED,
   ZERO_G_RISE_PER_TICK,
@@ -85,10 +86,12 @@ export function applyZeroGravity(player) {
   }
 
   // Montado (no OVNI, por exemplo): o veículo já voa sem gravidade e tem
-  // controle de altitude próprio. Mexer aqui só brigaria com ele.
+  // controle de altitude próprio. Mexer no jogador só brigaria com ele — mas a
+  // gravidade dos corpos ainda age, empurrando o VEÍCULO.
   if (riding) {
     setLevitation(player, false, st);
     st.targetY = y;
+    applyPlayerGravity(player);
     return;
   }
 
@@ -110,6 +113,12 @@ export function applyZeroGravity(player) {
   } else if (player.isSneaking) {
     st.targetY = clampY(st.targetY - ZERO_G_SINK_PER_TICK);
   }
+
+  // Perto de um corpo celeste a gravidade dele arrasta o alvo — é assim que
+  // "sem gravidade" vira "caindo" ao chegar perto da Terra ou do Sol. A parte
+  // horizontal do puxão é aplicada dentro de applyPlayerGravity.
+  const pullY = applyPlayerGravity(player);
+  if (pullY) st.targetY = clampY(st.targetY + pullY);
 
   // Se o jogador saiu muito do alvo por fora do controlador (teleporte,
   // empurrão, saiu de um veículo), reancora em vez de tentar puxar de volta.

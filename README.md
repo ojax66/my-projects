@@ -125,11 +125,29 @@ mostra uma bússola com rumo (`<` `|` `>`) e distância de cada corpo.
 Encostar na Terra devolve pro Overworld, nas coordenadas X/Z de onde o jogador
 saiu, a Y 300 e com slow falling — uma reentrada, não uma cratera.
 
-## Gravidade zero
+## Gravidade
 
-O jogador **não cai**. Ele não sobe nem desce sozinho: simplesmente para de
-seguir a física de queda e se desloca pros lados normalmente, que é o pedido.
+**Longe de tudo não há gravidade.** O jogador não cai: não sobe nem desce
+sozinho, só para de seguir a física de queda e se desloca pros lados.
 **Pular sobe, agachar desce.**
+
+**Perto de um corpo, ele puxa.** A força cresce com o inverso do quadrado da
+distância, como a de verdade, e some suave na borda do alcance em vez de ligar
+de repente:
+
+| Corpo | Alcance além da superfície | Força na superfície |
+|---|---|---|
+| Sol | 150 blocos | 0,055 |
+| Terra | 46 | 0,030 |
+| Marte | 38 | 0,022 |
+| Lua | 26 | 0,012 |
+
+Vale pro jogador, pro veículo que ele estiver pilotando (é o Sol arrastando o
+OVNI junto) e pras entidades soltas — item largado perto da Lua cai nela.
+Pilotando, quem leva o puxão é o veículo; a pé, o componente horizontal vai por
+`applyKnockback` e o vertical entra no controlador de altitude, que já mantém um
+Y-alvo por jogador. Chegar perto da Terra deixa de ser flutuar e passa a ser
+cair.
 
 Por baixo é um controlador de altitude: cada jogador tem um Y-alvo e, a cada
 tick, levitação é ligada ou desligada pra corrigir a diferença. Com slow falling
@@ -144,6 +162,70 @@ e controle de voo próprio.
 há uma rede embaixo: quem chegar perto do fundo da dimensão é devolvido pra
 cima. Montado, quem sobe é o veículo — teleportar o passageiro sozinho o
 desmontaria no meio do nada.
+
+## Pressão do Sol e a armadura de estrela
+
+Resistência a fogo resolve o **calor** e é o que permite entrar no Sol. Mas lá
+dentro continua a **pressão**, e ela é outra coisa: 6 de dano por segundo, mais
+lentidão e cegueira. Só a armadura de núcleo de estrela segura.
+
+Isso fecha um ciclo: a primeira ida ao núcleo é com poção, correndo, só pra
+arrancar alguns blocos e sair antes do esmagamento. Com o que se traz de lá sai
+a armadura — e aí o Sol vira um lugar onde dá pra ficar.
+
+### A linha da armadura
+
+```
+destroços de OVNI (Overworld, raros)  →  Molde de Ferraria de Estrela
+      │                                       │
+      │  duplicar: 7 diamantes + 1 end stone + molde → 2 moldes
+      │
+núcleo do Sol  →  Bloco de Núcleo Solar  →  9 Fragmentos
+                                                │
+                        4 Fragmentos + 4 Diamantes → 1 Barra
+                                                │
+       peça de netherite + Barra + Molde, na bancada de ferraria
+                                                │
+                                    peça da Armadura de Estrela
+```
+
+A barra segue o craft da netherite, trocando o ouro por diamante e a sucata
+pelo fragmento. O molde se duplica como os do jogo: gasta o original e devolve
+dois.
+
+| Peça | Proteção | Durabilidade |
+|---|---|---|
+| Capacete | 4 | 610 |
+| Peitoral | 9 | 888 |
+| Calças | 7 | 832 |
+| Botas | 4 | 721 |
+
+Um degrau acima da netherite (3/8/6/3). O conjunto vale **inteiro** — meia
+armadura não segura pressão de estrela. Além da pressão ela também poupa do
+calor, o que a torna a alternativa permanente à poção.
+
+O modelo veio pronto com capacete, peitoral e botas no mesmo geo;
+`tools/make_star_gear.py` divide em três, um por peça, e renomeia os ossos
+(`Head` → `head`, `Right Arm` → `rightArm`…) pros nomes do esqueleto do
+jogador — sem isso a armadura fica parada enquanto o jogador anda. A calça usa
+o modelo padrão do jogo, com a camada 64×32 que veio junto.
+
+## Destroços de OVNI
+
+O molde só é achado em discos caídos no Overworld — o primeiro elo da corrente
+fica fora do espaço de propósito, pra dar pra começar a linha antes de ter ido
+lá. São raros (sorteio a cada minuto, ~0,8% de chance por jogador andando),
+nunca dois a menos de 400 blocos um do outro, e as coordenadas ficam gravadas
+pra recarregar o mundo não gerar outro em cima.
+
+São desenhados por geometria em vez de virem de um `.mcstructure`: um arquivo
+NBT binário não daria pra revisar nem ajustar, e assim cada queda sai um pouco
+diferente — a direção do rombo no casco e o tamanho do disco mudam.
+
+Três cuidados pra isso não virar vandalismo: só em terreno aberto (o bloco mais
+alto precisa ser chão natural, então nada de cair no meio de uma casa), nunca
+substitui bloco que não seja terreno, e o baú procura um lugar livre antes de
+ser posto. `/scriptevent space_dim:wreck` força uma queda perto, pra ver.
 
 ## Respiração
 
@@ -200,6 +282,14 @@ pra exercitar tudo fora do jogo.
 - **`test_budget.mjs`** — a chunk mais cara do Sol termina, o teto por tick é
   respeitado, `fillBlocks` agrupa ~8,8 blocos por chamada, e **a geração fatiada
   em vários ticks dá exatamente o mesmo resultado que a de uma passada só**.
+- **`test_gear.mjs`** cobre a gravidade (some longe, cresce perto, aponta pro
+  centro, o Sol puxa mais que a Terra que puxa mais que a Lua), que pilotando
+  quem leva o puxão é o veículo e não o passageiro, que item solto cai e veículo
+  pilotado não leva impulso em dobro, que meia armadura não conta, que a pressão
+  do Sol machuca sem armadura e não machuca com ela, e que os destroços saem em
+  terreno plano, recusam encosta, põem o molde no baú e **não apagam bloco
+  construído por jogador** — foi este último que pegou o baú passando por cima
+  da guarda.
 - **`test_travel.mjs`** roda as rotas de viagem contra um Bedrock falso
   (dimensões, entidades, montaria, `structureManager`, fila de `runTimeout`):
   que subir a Y 800 leva pro espaço do Overworld, da Lua e de Marte mas não do
@@ -220,6 +310,12 @@ pra exercitar tudo fora do jogo.
   não é textura de bloco, é render) ou tiver viés centro/borda alto — o sinal
   de que ela vai virar bolinha repetida numa parede. Foi o que pegou a primeira
   versão da mancha solar, desenhada a partir da distância ao centro do bloco.
+- **`validate.py`** confere ainda a cadeia dos itens: ícone com entrada no
+  `item_texture.json` e arquivo no lugar, peça vestível com attachable (sem ele
+  a armadura fica invisível no corpo), attachable apontando pra geometria que o
+  pack define, receita citando só coisa declarada, e `STAR_ARMOR_PIECES` do
+  config batendo com os itens que existem — se esse último desandar, a proteção
+  simplesmente nunca liga e nada avisa.
 - **`validate.py`** também exige que a coroa e o plasma do Sol tenham
   `collision_box: false` e emitam luz, e que o núcleo seja sólido. Regenerar os
   blocos sem isso transformaria o Sol numa bola maciça sem ninguém notar.

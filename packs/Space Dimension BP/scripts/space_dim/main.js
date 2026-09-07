@@ -26,8 +26,10 @@ import {
 } from "./travel.js";
 import { applyZeroGravity, releaseZeroGravity, forgetPlayer as forgetPhysics } from "./physics.js";
 import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
-import { applySunHeat } from "./hazards.js";
+import { applySunHeat, applySunPressure } from "./hazards.js";
 import { forgetPlayer as forgetVehicle } from "./vehicle.js";
+import { applyEntityGravity } from "./gravity.js";
+import { maybeDropWreck } from "./wreck.js";
 import {
   spawnAmbience,
   pushFog,
@@ -86,6 +88,19 @@ system.runInterval(() => {
   let players;
   try { players = world.getAllPlayers(); } catch { return; }
 
+  // Gravidade nas entidades soltas do espaço (itens largados, mobs, um OVNI
+  // sem piloto): elas caem nos corpos como o jogador cai.
+  const inSpacePlayers = players.filter((p) => {
+    try { return p.dimension?.id === DIMENSION_ID; } catch { return false; }
+  });
+  if (inSpacePlayers.length) {
+    try {
+      applyEntityGravity(world.getDimension(DIMENSION_ID), inSpacePlayers);
+    } catch (e) {
+      onError("gravidade das entidades", e);
+    }
+  }
+
   for (const player of players) {
     try {
       const here = inSpace(player);
@@ -98,6 +113,8 @@ system.runInterval(() => {
         // A porta pro espaço existe no Overworld, na Lua e em Marte —
         // checkSpaceEntry decide, e sai barato onde não existe.
         checkSpaceEntry(player);
+        // Queda rara de destroços de OVNI, onde o molde é achado.
+        maybeDropWreck(player);
         continue;
       }
 
@@ -111,12 +128,16 @@ system.runInterval(() => {
       applyZeroGravity(player);
       const breathing = applyLifeSupport(player);
       const heatWarning = applySunHeat(player);
+      const pressureWarning = applySunPressure(player);
       checkBodyPortals(player);
 
       // Prioridade dos avisos: pegar fogo mata mais rápido que ficar sem ar,
       // e sem ar mata mais rápido que se perder — a bússola é a última.
+      // Prioridade dos avisos: a pressão esmaga mais rápido que o fogo, o fogo
+      // mais rápido que a falta de ar, e a bússola é a última da fila.
       showCompass(
         player,
+        pressureWarning ??
         heatWarning ??
         (breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI")
       );

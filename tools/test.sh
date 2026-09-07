@@ -49,6 +49,10 @@ echo "--- Sol: camadas e campo de calor ---"
 node test_sun.mjs
 
 echo
+echo "--- gravidade, pressão, armadura e destroços ---"
+node test_gear.mjs
+
+echo
 echo "--- rotas de viagem e transporte do veículo ---"
 node test_travel.mjs
 

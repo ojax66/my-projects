@@ -18,3 +18,12 @@ tile.space_dim:mars_dust.name=Martian Dust
 tile.space_dim:mars_rock.name=Martian Rock
 tile.space_dim:mars_rock_dark.name=Martian Basalt
 tile.space_dim:mars_ice.name=Martian Ice
+
+## equipamento de estrela (gerado por tools/make_star_gear.py)
+item.space_dim:star_core_shard=Star Core Shard
+item.space_dim:star_core_ingot=Star Core Ingot
+item.space_dim:star_upgrade_template=Star Upgrade Smithing Template
+item.space_dim:star_helmet=Star Helmet
+item.space_dim:star_chestplate=Star Chestplate
+item.space_dim:star_leggings=Star Leggings
+item.space_dim:star_boots=Star Boots

@@ -1,0 +1,15 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:recipe_smithing_transform": {
+    "description": {
+      "identifier": "space_dim:star_boots_smithing"
+    },
+    "tags": [
+      "smithing_table"
+    ],
+    "template": "space_dim:star_upgrade_template",
+    "base": "minecraft:netherite_boots",
+    "addition": "space_dim:star_core_ingot",
+    "result": "space_dim:star_boots"
+  }
+}
