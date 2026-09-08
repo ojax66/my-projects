@@ -174,17 +174,6 @@ def main():
             [f"tile.{NS}:{short}.name={spec[key]}" for short, spec in BLOCKS.items()],
         )
 
-    # Cor média de cada bloco, num JSON à parte. Quem desenha as faces dos
-    # corpos vistos de longe (tools/make_sky_bodies.mjs) precisa das MESMAS
-    # cores daqui — duas listas de cores escritas à mão divergem na primeira
-    # vez que uma delas muda.
-    colors_path = os.path.join(ROOT, "tools", "assets", "block_colors.json")
-    os.makedirs(os.path.dirname(colors_path), exist_ok=True)
-    with open(colors_path, "w", encoding="utf-8") as f:
-        json.dump({f"{NS}:{short}": spec["map_color"] for short, spec in BLOCKS.items()},
-                  f, indent=2)
-        f.write("\n")
-
     print(f"{len(BLOCKS)} blocos gerados:")
     print(f"  BP/blocks/*.json")
     print(f"  RP/blocks.json")

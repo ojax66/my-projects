@@ -37,6 +37,7 @@ As cores saem das referências: a rampa da Lua é a do print
 (#FFD64A / #FFFFA9 / #FFFFD9); a de Marte vem do cubo vermelho
 (#6D3435 / #A6433B).
 """
+import json
 import math
 import os
 import struct
@@ -389,6 +390,19 @@ if __name__ == "__main__":
                     f"{n} e {nearest} tem cor quase igual ({gap:.0f} < "
                     f"{MIN_BODY_SEPARATION}) — trocar de bloco nao desenharia mancha"
                 )
+
+    # Cor média de cada textura, num JSON à parte.
+    #
+    # Quem desenha os corpos vistos de longe (tools/make_sky_bodies.mjs) usa
+    # isto pra pintar cada bloco da superfície. Tem que ser a média da TEXTURA
+    # de verdade, não o `map_color` declarado à mão: era esse o descompasso que
+    # fazia o planeta de longe não bater com o de perto.
+    colors_path = os.path.join(ROOT, "tools", "assets", "block_colors.json")
+    os.makedirs(os.path.dirname(colors_path), exist_ok=True)
+    with open(colors_path, "w", encoding="utf-8") as f:
+        json.dump({f"space_dim:{n}": average_color(rows) for n, rows in built.items()},
+                  f, indent=2)
+        f.write("\n")
 
     print(f"\n{len(TEXTURES)} texturas em {os.path.relpath(OUT, ROOT)}")
     if failures:

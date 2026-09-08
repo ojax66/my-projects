@@ -318,6 +318,29 @@ case("escala que congela fora da tela", frozen_offscreen,
      r"sky_mars sem should_update_bones_and_effects_offscreen")
 
 
+# --- 12f. modelo do ceu que mostra so um pedaco da textura --------------------
+def box_uv(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons RP",
+                        "models", "entity", "sky_body.geo.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]["uv"] = [0, 0]
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("modelo do ceu com box UV", box_uv, r"usa box UV")
+
+
+def wrong_texture_size(tmp):
+    # troca a textura da Lua por uma de outro tamanho
+    import shutil as sh
+    sh.copyfile(rp(tmp, "textures", "space_dim", "blocks", "moon_regolith.png"),
+                rp(tmp, "textures", "space_dim", "sky", "moon.png"))
+
+
+case("textura de ceu com tamanho diferente do modelo", wrong_texture_size,
+     r"moon\.png e 32x32, mas o modelo declara")
+
+
 # --- 13. os geradores nao podem depender da ordem ----------------------------
 #
 # Cada gerador e dono de um bloco do .lang. A versao antiga guardava so o que

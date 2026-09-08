@@ -4,8 +4,8 @@
     {
       "description": {
         "identifier": "geometry.space_dim.sky_body",
-        "texture_width": 64,
-        "texture_height": 48,
+        "texture_width": 256,
+        "texture_height": 192,
         "visible_bounds_width": 64,
         "visible_bounds_height": 64,
         "visible_bounds_offset": [
@@ -34,10 +34,68 @@
                 16,
                 16
               ],
-              "uv": [
-                0,
-                0
-              ]
+              "uv": {
+                "up": {
+                  "uv": [
+                    64,
+                    0
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                },
+                "down": {
+                  "uv": [
+                    128,
+                    0
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    64
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                },
+                "north": {
+                  "uv": [
+                    64,
+                    64
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                },
+                "west": {
+                  "uv": [
+                    128,
+                    64
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                },
+                "south": {
+                  "uv": [
+                    192,
+                    64
+                  ],
+                  "uv_size": [
+                    64,
+                    64
+                  ]
+                }
+              }
             }
           ]
         }

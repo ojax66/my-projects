@@ -8,6 +8,7 @@ outro referencia com outro nome, textura citada que não existe.
 import json
 import os
 import re
+import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -583,6 +584,38 @@ if sys_radius:
             if d > sys_radius:
                 err(f"{bid} esta a {d} do Sol, alem de SOLAR_SYSTEM_RADIUS "
                     f"({sys_radius:.0f})")
+
+# O modelo do ceu tem que USAR a textura inteira. Box UV mapeia o tamanho do
+# cubo direto em pixels — 16 unidades usariam 16 px de uma textura de 256, e o
+# corpo visto de longe voltaria a ser uma mancha em vez do desenho da
+# superficie. Por isso as faces sao mapeadas uma a uma.
+geo_path = os.path.join(RP, "models", "entity", "sky_body.geo.json")
+geo = docs.get(geo_path)
+if isinstance(geo, dict):
+    entry = (geo.get("minecraft:geometry") or [{}])[0]
+    desc = entry.get("description", {})
+    tw = desc.get("texture_width")
+    th = desc.get("texture_height")
+    cube = ((entry.get("bones") or [{}])[0].get("cubes") or [{}])[0]
+    uv = cube.get("uv")
+    if not isinstance(uv, dict):
+        err("sky_body.geo.json usa box UV — com a textura de "
+            f"{tw}x{th} o modelo mostraria so um pedaco dela; mapeie face a face")
+    else:
+        faltando = {"up", "down", "east", "west", "north", "south"} - set(uv)
+        if faltando:
+            err(f"sky_body.geo.json sem UV pras faces: {sorted(faltando)}")
+        # E a textura do corpo tem que ter o tamanho que o modelo declara.
+        for bid in list(body_ids) + ["star"]:
+            tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+            if not os.path.isfile(tex):
+                continue
+            with open(tex, "rb") as f:
+                head = f.read(24)
+            w, h = struct.unpack(">II", head[16:24])
+            if (w, h) != (tw, th):
+                err(f"a textura de ceu {bid}.png e {w}x{h}, mas o modelo declara "
+                    f"{tw}x{th} — as faces cairiam no lugar errado")
 
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #

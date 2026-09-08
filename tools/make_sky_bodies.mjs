@@ -113,7 +113,16 @@ function blockAt(x, y, z) {
 }
 
 // A face é amostrada em RES x RES. `pick(u, v)` devolve o ponto do mundo.
-const RES = 16;
+// Um pixel por bloco da face, até o teto.
+//
+// Com 16 px a face da Terra (53 blocos de lado) virava 1 pixel a cada 3,3
+// blocos e a do Sol 1 a cada 12,6: os continentes viravam manchas e o corpo
+// visto de longe não parecia o mesmo corpo visto de perto. Com 64 a Terra fica
+// abaixo de 1 bloco por pixel — o desenho é o mesmo.
+//
+// O teto existe porque a textura é 4x3 vezes isto: 64 dá 256x192, que é
+// barato. Sem teto o Sol pediria 201 e a textura passaria de 800 px de lado.
+const RES = 64;
 function faceColors(body, pick) {
   const out = [];
   for (let v = 0; v < RES; v++) {
@@ -339,7 +348,25 @@ write(path.join(RP, 'models', 'entity', 'sky_body.geo.json'), {
     bones: [{
       name: 'body',
       pivot: [0, 0, 0],
-      cubes: [{ origin: [-8, -8, -8], size: [16, 16, 16], uv: [0, 0] }],
+      cubes: [{
+        origin: [-8, -8, -8],
+        size: [16, 16, 16],
+        // UV por face, não box UV.
+        //
+        // Box UV mapeia o TAMANHO do cubo direto em pixels: um cubo de 16
+        // unidades usaria 16 px da textura, e com RES 64 sobrariam três
+        // quartos dela sem uso — o corpo de longe voltaria a ser uma mancha.
+        // Por face, cada uma aponta pra sua região inteira, e o cubo continua
+        // com 1 bloco de lado.
+        uv: {
+          up:    { uv: [RES,     0],   uv_size: [RES, RES] },
+          down:  { uv: [RES * 2, 0],   uv_size: [RES, RES] },
+          east:  { uv: [0,       RES], uv_size: [RES, RES] },
+          north: { uv: [RES,     RES], uv_size: [RES, RES] },
+          west:  { uv: [RES * 2, RES], uv_size: [RES, RES] },
+          south: { uv: [RES * 3, RES], uv_size: [RES, RES] },
+        },
+      }],
     }],
   }],
 });

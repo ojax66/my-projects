@@ -611,8 +611,29 @@ corpo fica do tamanho errado —, então o `validate.py` compara a faixa das
 entidades com o que o config pode pedir.
 
 A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
-que constrói o corpo de blocos, com as cores dos mesmos blocos. O que se vê de
-longe é o que está lá.
+que constrói o corpo de blocos, e cada pixel recebe a cor média da textura
+daquele bloco. O que se vê de longe é o que está lá.
+
+### O de longe tem que ser o mesmo corpo do de perto
+
+Duas coisas quebravam isso, e as duas eram silenciosas.
+
+**Resolução.** Com 16 px por face, a face da Terra (53 blocos de lado) virava um
+pixel a cada 3,3 blocos, e a do Sol um a cada 12,6: os continentes viravam
+manchas. Agora são 64 px por face — abaixo de um bloco por pixel na Terra.
+
+**Box UV.** Box UV mapeia o *tamanho do cubo* direto em pixels: um cubo de 16
+unidades usa 16 px da textura. Com a textura em 256×192, três quartos dela
+ficariam sem uso e o corpo voltaria a ser uma mancha, sem nada avisando. As
+faces são mapeadas uma a uma agora, e o cubo continua com um bloco de lado.
+
+**A cor de cada bloco vem da textura de verdade**, não do `map_color` declarado
+à mão — `make_block_textures.py` exporta a média real de cada textura que ele
+gera. Era esse descompasso que fazia o planeta de longe não bater com o de
+perto.
+
+O `validate.py` cobra as três: o modelo não pode usar box UV, as seis faces
+precisam de UV, e o tamanho da textura tem que casar com o que o modelo declara.
 
 ### Por que os corpos estavam invisíveis
 
