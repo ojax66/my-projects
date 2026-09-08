@@ -15,6 +15,7 @@
 
 import * as mc from "@minecraft/server";
 import {
+  SOLAR_SYSTEM_RADIUS,
   BODIES,
   SUN_HEAT_ENABLED,
   FIRE_RESISTANCE_PROTECTS,
@@ -62,23 +63,28 @@ function isExempt(player, heatLevel = 0) {
 }
 
 /**
- * O quanto o Sol acende este ponto, de 0 (fora do alcance) a 1 (na casca).
+ * Em que faixa de luz do Sol este ponto está.
+ *
+ *   "blaze"   dentro do campo de calor: o Sol domina tudo
+ *   "sunlit"  dentro do sistema: iluminado por ele, mesmo lá de Marte
+ *   "deep"    fora do sistema: o azul do espaço profundo
  *
  * A luz de bloco não serve pra isto: ela ilumina superfícies, e no vácuo não há
  * superfície nenhuma pra iluminar — um enxame de blocos de luz no espaço vazio
- * não mudaria um pixel. Quem faz o entorno do Sol acender é a névoa, e é este
- * número que decide quando ela troca.
+ * não mudaria um pixel. Quem acende o sistema é a névoa, e é esta faixa que
+ * decide qual delas vale.
+ *
+ * A versão anterior só tinha "perto do Sol" e "longe", com o corte a 230
+ * blocos. A Terra está a 520 e Marte a 1040: ninguém nunca via luz do Sol.
  */
-export function sunGlowFactor(location) {
+export function sunLightTier(location) {
   for (let i = 0; i < HOT_BODIES.length; i++) {
     const body = HOT_BODIES[i];
     const d = chebyshevTo(location, body);
-    const outer = body.radius + body.heat.zone + SUN_GLOW_MARGIN;
-    if (d > outer) continue;
-    if (d <= body.radius) return 1;
-    return Math.min(1, (outer - d) / (outer - body.radius));
+    if (d <= body.radius + body.heat.zone + SUN_GLOW_MARGIN) return "blaze";
+    if (d <= SOLAR_SYSTEM_RADIUS) return "sunlit";
   }
-  return 0;
+  return "deep";
 }
 
 /**

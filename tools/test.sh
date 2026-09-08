@@ -69,6 +69,10 @@ echo "--- rastreador, catálogo e corpos vistos de longe ---"
 node test_tracker.mjs
 
 echo
+echo "--- modelo e blocos sem buraco entre os dois ---"
+node test_sky_gap.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

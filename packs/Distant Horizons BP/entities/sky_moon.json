@@ -9,7 +9,7 @@
         "space_dim:size": {
           "type": "float",
           "range": [
-            0.02,
+            0.005,
             40
           ],
           "default": 1,

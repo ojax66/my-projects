@@ -31,6 +31,7 @@ import {
   SKY_MODEL_MAX_SCALE,
 } from "./config.js";
 import { trackedBodies } from "./tracker.js";
+import { chebyshevTo } from "./bodies.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -116,8 +117,14 @@ export function updateSky(player) {
     const dz = body.center.z - eye.z;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    // Perto o bastante pra o corpo de blocos aparecer sozinho: o modelo sai.
-    if (d <= SKY_MODEL_HIDE_BELOW || d < 0.001) {
+    // Distância até a CASCA, não até o centro: é a casca que o jogador vê, e
+    // é ela que o gerador constrói. Medir do centro fazia o Sol (raio 100) e a
+    // Lua (raio 12) trocarem de modelo pra bloco em momentos completamente
+    // diferentes — ver SKY_MODEL_HIDE_BELOW no config.
+    const gap = chebyshevTo(eye, body) - body.radius;
+
+    // Perto o bastante pra os blocos estarem construídos: eles é que mandam.
+    if (gap <= SKY_MODEL_HIDE_BELOW || d < 0.001) {
       hideModel(player, body.id);
       continue;
     }

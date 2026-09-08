@@ -522,6 +522,40 @@ for bid in body_ids:
             f"em entity_emissive alfa 0 e ACESO, em entity_alphatest e BURACO, "
             f"entao trocar os dois deixa o corpo invisivel ou opaco sem avisar")
 
+# Toda névoa que o config cita tem que existir no RP. Uma névoa inexistente
+# nao da erro: o `fog push` falha calado e o jogador fica com a nevoa anterior.
+for m in re.finditer(r'export const \w*FOG\w* = "(space_dim:[a-z0-9_]+)";', config_src):
+    fog_id = m.group(1)
+    found = any(
+        isinstance(d, dict)
+        and d.get("minecraft:fog_settings", {}).get("description", {}).get("identifier") == fog_id
+        for d in docs.values()
+    )
+    if not found:
+        err(f"o config usa a nevoa {fog_id}, que nao existe no RP — "
+            f"o `fog push` falharia calado")
+
+# A luz do Sol tem que alcancar todo corpo do sistema. A primeira versao
+# acendia so o entorno dele (alcance 230) com a Terra a 520 e Marte a 1040:
+# ninguem via luz nenhuma, em lugar nenhum.
+sys_radius = config_number("SOLAR_SYSTEM_RADIUS")
+if sys_radius:
+    centers = dict(re.findall(
+        r'id:\s*"(\w+)",[\s\S]{0,600?}?center:\s*\{\s*x:\s*(-?\d+)', config_src))
+    coords = re.findall(
+        r'id:\s*"(\w+)",[\s\S]*?center:\s*\{\s*x:\s*(-?\d+),\s*y:\s*\w+,\s*z:\s*(-?\d+)\s*\}',
+        config_src)
+    seen = {}
+    for bid, x, z in coords:
+        seen.setdefault(bid, (int(x), int(z)))
+    if "sun" in seen:
+        sx, sz = seen["sun"]
+        for bid, (x, z) in seen.items():
+            d = max(abs(x - sx), abs(z - sz))
+            if d > sys_radius:
+                err(f"{bid} esta a {d} do Sol, alem de SOLAR_SYSTEM_RADIUS "
+                    f"({sys_radius:.0f}) — ficaria no escuro do espaco profundo")
+
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #
 # O id do item de mapa carrega o id do sistema que ele abre. Um mapa apontando

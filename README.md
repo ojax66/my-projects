@@ -566,8 +566,30 @@ que constrói o corpo de blocos, com as cores dos mesmos blocos (que
 `make_blocks.py` exporta pra `tools/assets/block_colors.json`). O que se vê de
 longe é o que está lá.
 
-Chegando a menos de 190 blocos o modelo sai e o corpo de blocos assume, senão
-haveria um cubinho pairando na frente do planeta de verdade.
+### A troca é medida da casca, não do centro
+
+Primeira versão: o modelo sumia quando o **centro** do corpo chegava a 190
+blocos. Como cada corpo tem um raio diferente, o ponto de troca variava:
+
+| corpo | raio | casca quando o modelo sumia | blocos existem a partir de |
+|---|---|---|---|
+| Sol | 100 | 90 | 80 |
+| Terra | 26 | 164 | 80 |
+| Lua | 12 | **178** | 80 |
+| Marte | 20 | 170 | 80 |
+
+E o gerador só constrói dentro de `GEN_RADIUS_CHUNKS` do jogador — **80
+blocos**. Ou seja: entre 80 e 178 blocos não havia bloco nenhum construído *e* o
+modelo já tinha sumido. Quase cem blocos em que o planeta não estava em lugar
+nenhum.
+
+Agora a troca é medida da **casca** e o limite vem do alcance do gerador, com
+uma chunk de folga: `GEN_RADIUS_CHUNKS * 16 - 24` = 56 blocos da superfície. O
+mesmo ponto pra todo corpo, grande ou pequeno.
+`tools/tests/test_sky_gap.mjs` não deixa a folga sumir de novo — e também
+confere que a escala pedida cabe na faixa declarada nas entidades (a Lua, de
+raio 12, precisa de 0,013 lá da borda do sistema; o mínimo era 0,02, e pedir
+menos que o mínimo é ignorado calado).
 
 ## O rastreador
 
@@ -600,22 +622,39 @@ Rastreador Estelar ou por `/scriptevent space_dim:tracker`. Sistema trancado
 aparece na lista, cinza — saber que existe algo pra achar é parte do jogo; o que
 ele não mostra é onde está.
 
-## O Sol acende o espaço, mas não com luz de bloco
+## O Sol acende o sistema inteiro
 
 Luz de bloco ilumina **superfícies**, e no vácuo não há superfície pra iluminar:
 um enxame de blocos de luz no espaço vazio não mudaria um pixel. Os três blocos
-do Sol já estão no máximo (emissão 15, `light_dampening` 0) e isso serve pro que
-está encostado nele — o próprio Sol, uma nave, uma plataforma.
+do Sol já estão no máximo (emissão 15, `light_dampening` 0), e isso só serve pro
+que está encostado nele.
 
-O que faz o entorno acender são outras duas coisas:
+E Bedrock **não tem botão de luz ambiente pra dimensão custom**: o
+`minecraft:dimension` aceita bounds, gerador e bioma padrão, e nada mais. O
+único mecanismo de verdade é a luz do céu, que depende da hora do mundo — o
+Spacecraft resolve travando `setTimeOfDay(6000)`, que é global e congelaria o
+dia no Overworld de todo mundo. Aqui isso não foi feito.
 
-- **O modelo distante é emissivo.** No material `entity_emissive` o canal alfa é
-  a máscara de brilho: alfa 0 quer dizer *aceso*, não transparente. É o inverso
-  do `entity_alphatest` que os outros corpos usam, onde alfa 0 é buraco. Trocar
-  os dois não dá erro nenhum — o corpo só fica invisível, ou opaco onde devia ser
-  vazado —, então o validador confere o par.
-- **A névoa troca.** Entrando no alcance do Sol, o azul do espaço profundo dá
-  lugar a um dourado, e a região inteira acende. É isso que se vê.
+O que acende, então:
+
+- **Três faixas de névoa cobrindo o sistema todo.** A primeira versão só tinha
+  "perto do Sol" e "longe", com o corte a **230 blocos** — e a Terra está a 520,
+  Marte a 1040. Ninguém nunca via luz nenhuma; o jogador passava a vida inteira
+  fora da faixa. Agora: `blaze` dentro do campo de calor, `sunlit` no resto do
+  sistema (até `SOLAR_SYSTEM_RADIUS`), `deep` fora dele.
+- **O modelo distante do Sol é emissivo.** No material `entity_emissive` o canal
+  alfa é a máscara de brilho: alfa 0 quer dizer *aceso*, não transparente — o
+  inverso do `entity_alphatest` dos outros corpos, onde alfa 0 é buraco. Trocar
+  os dois não dá erro nenhum (o corpo só fica invisível, ou opaco onde devia ser
+  vazado), então o validador confere o par.
+- **Brilho permanente em quem está no espaço** (`SPACE_ALWAYS_LIT`). Sem isso o
+  lado escuro de um planeta é preto puro, porque não há luz de céu aqui. É um
+  efeito de visão noturna reposto bem antes de vencer — efeito que expira dá
+  aquele pisca na tela. Desligue no config se preferir o espaço escuro.
+
+O validador confere que todo corpo cabe dentro de `SOLAR_SYSTEM_RADIUS` e que
+toda névoa citada pelo config existe no RP: um `fog push` pra uma névoa que não
+existe falha calado e o jogador fica com a anterior.
 
 ## O espaço é azul, não preto
 

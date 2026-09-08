@@ -18,13 +18,15 @@ import {
   SPACE_DUST_INTERVAL_TICKS,
   FOG_ID,
   SUN_FOG_ID,
+  SUNLIT_FOG_ID,
   FOG_LABEL,
+  SPACE_ALWAYS_LIT,
   HUD_ENABLED,
   HUD_INTERVAL_TICKS,
   PORTAL_MARGIN,
 } from "./config.js";
 import { chebyshevTo } from "./bodies.js";
-import { sunGlowFactor } from "./hazards.js";
+import { sunLightTier } from "./hazards.js";
 import { trackedBodies } from "./tracker.js";
 
 const system = mc.system;
@@ -61,8 +63,14 @@ export function spawnAmbience(player) {
 //
 // Só troca quando a névoa DESEJADA muda. Empilhar todo tick é a armadilha que
 // o Spacecraft documenta: estoura o limite de identificadores de neblina.
+const FOG_BY_TIER = {
+  blaze: SUN_FOG_ID,
+  sunlit: SUNLIT_FOG_ID,
+  deep: FOG_ID,
+};
+
 export function pushFog(player) {
-  const wanted = sunGlowFactor(player.location) > 0 ? SUN_FOG_ID : FOG_ID;
+  const wanted = FOG_BY_TIER[sunLightTier(player.location)] ?? FOG_ID;
   if (fogged.get(player.id) === wanted) return;
   fogged.set(player.id, wanted);
   try {
@@ -74,6 +82,31 @@ export function pushFog(player) {
 export function popFog(player) {
   if (!fogged.delete(player.id)) return;
   try { player.runCommand(`fog @s remove ${FOG_LABEL}`); } catch { }
+}
+
+/**
+ * Mantém o jogador enxergando no espaço.
+ *
+ * Não existe luz de céu aqui, então sem isto o lado escuro de um planeta é
+ * preto puro, e o Sol "não ilumina" nada mesmo estando ali. Bedrock não expõe
+ * luz ambiente por dimensão (`minecraft:dimension` só aceita bounds, gerador e
+ * bioma), e o único jeito de verdade — travar a hora do mundo — é global e
+ * congelaria o dia no Overworld também.
+ *
+ * A duração é longa e reposta bem antes de vencer: efeito que expira dá aquele
+ * pisca na tela.
+ */
+export function keepLit(player) {
+  if (!SPACE_ALWAYS_LIT) return;
+  if (system.currentTick % 100 !== 0) return;
+  try {
+    player.addEffect("night_vision", 30 * 20, { amplifier: 0, showParticles: false });
+  } catch { }
+}
+
+export function releaseLight(player) {
+  if (!SPACE_ALWAYS_LIT) return;
+  try { player.removeEffect("night_vision"); } catch { }
 }
 
 export function forgetPlayer(playerId) {

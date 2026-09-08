@@ -40,6 +40,8 @@ import {
   spawnAmbience,
   pushFog,
   popFog,
+  keepLit,
+  releaseLight,
   showCompass,
   forgetPlayer as forgetAmbience,
 } from "./ambience.js";
@@ -120,6 +122,7 @@ system.runInterval(() => {
       if (!here) {
         if (wasInSpace.delete(player.id)) {
           popFog(player);
+          releaseLight(player);
           releaseZeroGravity(player);
           clearModels(player.id);
         }
@@ -139,6 +142,7 @@ system.runInterval(() => {
       wasInSpace.add(player.id);
       pushFog(player);
       spawnAmbience(player);
+      keepLit(player);
       // Os corpos que o rastreador mostra, sempre visíveis por mais longe que
       // estejam de verdade.
       updateSky(player);
@@ -178,6 +182,7 @@ world.afterEvents.playerDimensionChange.subscribe((event) => {
     if (event.fromDimension?.id !== DIMENSION_ID) return;
     wasInSpace.delete(event.player.id);
     popFog(event.player);
+    releaseLight(event.player);
     releaseZeroGravity(event.player);
   } catch (e) {
     onError("playerDimensionChange", e);

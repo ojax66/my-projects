@@ -45,7 +45,8 @@ fs.cpSync(path.join(ROOT, 'tools', 'tests', 'stub', '@minecraft'),
 fs.writeFileSync(path.join(STAGE, 'package.json'), '{ "type": "module" }');
 
 const { columnRuns } = await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'bodies.js')));
-const { BODIES } = await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'config.js')));
+const { BODIES, SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE } =
+  await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'config.js')));
 
 const COLORS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'tools', 'assets', 'block_colors.json'), 'utf8'));
@@ -184,8 +185,15 @@ function bpEntity(body) {
           // Quanto o cubo é encolhido. O cliente lê isto numa animação, que é
           // como se muda escala em tempo de execução: `minecraft:scale` é fixo
           // na definição e não aceita um número novo por entidade.
+          // A faixa vem do config, não de números escritos aqui: o script pede
+          // a escala com base nele, e se as duas listas divergirem o motor
+          // ignora o valor fora da faixa sem dizer nada — o corpo fica do
+          // tamanho errado e não há erro em lugar nenhum.
           [`${NS}:size`]: {
-            type: 'float', range: [0.02, 40], default: 1, client_sync: true,
+            type: 'float',
+            range: [SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE],
+            default: 1,
+            client_sync: true,
           },
         },
       },

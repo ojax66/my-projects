@@ -334,11 +334,22 @@ export const SKY_MODELS_ENABLED = true;
 // cena, longe o bastante pra não atravessar a cabeça dele.
 export const SKY_MODEL_DISTANCE = 34;
 
-// Distância real abaixo da qual o modelo sai e o corpo de blocos assume. Tem
-// que ser menor que a distância de renderização típica, senão haveria uma
-// faixa sem nada; e maior que o raio do maior corpo, senão o modelo apareceria
-// por dentro dele.
-export const SKY_MODEL_HIDE_BELOW = 190;
+// A que distância DA CASCA o modelo sai e o corpo de blocos assume.
+//
+// Da casca, não do centro — e essa distinção era um buraco de verdade. Medindo
+// do centro com um número só, o ponto de troca mudava por corpo: com 190, o
+// modelo do Sol (raio 100) sumia com a casca ainda a 90 blocos, e o da Lua
+// (raio 12) com a casca a 178.
+//
+// E 178 é longe demais: o gerador só constrói dentro de GEN_RADIUS_CHUNKS do
+// jogador, ou seja 80 blocos. Entre 80 e 178 não havia bloco nenhum construído
+// E o modelo já tinha sumido — uma faixa de quase cem blocos onde o planeta
+// simplesmente não existia pra quem olhava.
+//
+// Então o limite é o alcance do gerador, com folga: só se desliga o modelo
+// onde os blocos garantidamente estão lá. tools/tests/test_sky_gap.mjs não
+// deixa a folga sumir de novo.
+export const SKY_MODEL_HIDE_BELOW = GEN_RADIUS_CHUNKS * 16 - 24;
 
 // De quantos em quantos ticks os modelos são reposicionados. 1 seria o mais
 // suave, mas 2 já não dá pra perceber e custa metade.
@@ -347,16 +358,41 @@ export const SKY_MODEL_INTERVAL = 2;
 // Limites da propriedade de escala declarada nas entidades (BP/entities/sky_*).
 // Sair deles não faz o jogo reclamar: ele silenciosamente ignora o valor, e o
 // corpo ficaria do tamanho errado.
-export const SKY_MODEL_MIN_SCALE = 0.02;
+// 0.005 e não 0.02: a Lua tem raio 12, e do outro lado do sistema ela precisa
+// de escala 0.013. Pedir menos que o mínimo declarado não dá erro — o motor
+// ignora calado e a Lua ficaria grande demais, do tamanho do menor valor
+// aceito.
+export const SKY_MODEL_MIN_SCALE = 0.005;
 export const SKY_MODEL_MAX_SCALE = 40;
 
 export const FOG_ID = "space_dim:fog_outer_space";
 
-// Névoa do entorno do Sol. Luz de bloco não ilumina o vácuo — não há superfície
-// pra iluminar — então o que faz o Sol "iluminar o espaço em volta" é isto: ao
-// entrar no campo de calor, a névoa troca do azul do espaço profundo pro dourado
-// dele, e a região inteira acende.
-export const SUN_FOG_ID = "space_dim:fog_sun_glow";
+// A luz do Sol no sistema.
+//
+// Bedrock não tem botão de luz ambiente pra dimensão custom: `minecraft:dimension`
+// só aceita bounds, gerador e bioma padrão. O único jeito de verdade seria a luz
+// do céu, que depende da hora do mundo — o Spacecraft resolve travando
+// `setTimeOfDay(6000)`, que é GLOBAL e congela o dia de todo mundo, inclusive no
+// Overworld. Aqui isso não foi feito.
+//
+// O que ilumina, então, são duas coisas: a névoa, que muda de cor conforme a
+// distância até o Sol, e um brilho permanente em quem está na dimensão.
+//
+// A primeira versão acendia só o entorno do Sol — alcance 230, com a Terra a
+// 520 e Marte a 1040. Na prática ninguém via luz nenhuma: o jogador passava a
+// vida inteira fora da faixa. Agora as faixas cobrem o sistema todo.
+export const SUN_FOG_ID = "space_dim:fog_sun_glow";        // dentro do campo de calor
+export const SUNLIT_FOG_ID = "space_dim:fog_sunlit_space"; // resto do sistema
+
+// Até onde vai o sistema solar, medido do Sol. Marte, o mais distante hoje,
+// está a 1040 — o resto é folga pra quem sair explorando a borda.
+export const SOLAR_SYSTEM_RADIUS = 1500;
+
+// Brilho permanente pra quem está no espaço. É o que faz as superfícies serem
+// visíveis longe do Sol; sem isso o lado escuro de um planeta é preto puro,
+// porque não há luz de céu nenhuma aqui. Desligue se preferir o espaço escuro
+// e navegar só pelo modelo dos corpos.
+export const SPACE_ALWAYS_LIT = true;
 export const FOG_LABEL = "space_dim_fog";
 
 // Bússola na action bar com rumo e distância dos corpos celestes. Sem ela não

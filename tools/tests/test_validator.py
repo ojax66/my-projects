@@ -250,6 +250,32 @@ case("Sol com material nao-emissivo", swap_material,
      r"sky_sun usa o material entity_alphatest")
 
 
+# --- 12c. corpo fora do alcance da luz do Sol --------------------------------
+#
+# Um corpo alem de SOLAR_SYSTEM_RADIUS fica na nevoa do espaco profundo: o Sol
+# nao o ilumina, e nada avisa.
+def shrink_system(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+                        "scripts", "space_dim", "config.js")
+    src = open(path, encoding="utf-8").read()
+    src = src.replace("export const SOLAR_SYSTEM_RADIUS = 1500;",
+                      "export const SOLAR_SYSTEM_RADIUS = 600;")
+    open(path, "w", encoding="utf-8").write(src)
+
+
+case("corpo alem do alcance da luz do Sol", shrink_system,
+     r"mars esta a \d+ do Sol, alem de SOLAR_SYSTEM_RADIUS")
+
+
+# --- 12d. nevoa citada que nao existe ----------------------------------------
+def missing_fog(tmp):
+    os.remove(rp(tmp, "fogs", "sunlit_space.fog.json"))
+
+
+case("nevoa citada pelo config e ausente do RP", missing_fog,
+     r"nevoa space_dim:fog_sunlit_space, que nao existe")
+
+
 # --- 13. os geradores nao podem depender da ordem ----------------------------
 #
 # Cada gerador e dono de um bloco do .lang. A versao antiga guardava so o que
