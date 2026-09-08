@@ -15,7 +15,15 @@ const check = (name, ok, extra = '') => {
 };
 
 // travel.js liga handlers no import; recarrega por teste via cache-buster.
+//
+// arrival.js NÃO é recarregado junto: travel.js importa './arrival.js' sem
+// buster, então é sempre o mesmo módulo, e a carência de chegada de um teste
+// vazaria pro seguinte (o __reset volta o tick pra zero, e uma marca antiga
+// fica valendo pra sempre). Por isso a marca do jogador de teste é apagada na
+// mão a cada carga — é a mesma função que o playerLeave usa.
 async function loadTravel() {
+  const { forgetArrival } = await import('./space_dim/arrival.js');
+  forgetArrival('p1');
   return import(`./space_dim/travel.js?v=${Math.random()}`);
 }
 

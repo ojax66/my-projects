@@ -53,11 +53,11 @@ def case(name, mutate, expect):
 
 
 def bp(tmp, *parts):
-    return os.path.join(tmp, "packs", "New Horizons BP", *parts)
+    return os.path.join(tmp, "packs", "Distant Horizons BP", *parts)
 
 
 def rp(tmp, *parts):
-    return os.path.join(tmp, "packs", "New Horizons RP", *parts)
+    return os.path.join(tmp, "packs", "Distant Horizons RP", *parts)
 
 
 # --- linha de base: sem mexer em nada, o validador aprova ---------------------

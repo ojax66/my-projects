@@ -5,10 +5,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-$ROOT/dist}"
-NAME="New_Horizons"
+NAME="Distant_Horizons"
 
-BP="$ROOT/packs/New Horizons BP"
-RP="$ROOT/packs/New Horizons RP"
+BP="$ROOT/packs/Distant Horizons BP"
+RP="$ROOT/packs/Distant Horizons RP"
 
 for d in "$BP" "$RP"; do
   [ -d "$d" ] || { echo "faltando: $d" >&2; exit 1; }

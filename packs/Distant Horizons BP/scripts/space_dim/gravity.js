@@ -28,6 +28,7 @@ import {
   ENTITY_GRAVITY_SCAN,
   DIMENSION_ID,
 } from "./config.js";
+import { inArrivalGrace } from "./arrival.js";
 
 const system = mc.system;
 
@@ -82,6 +83,10 @@ export function gravityAt(location) {
 export function applyPlayerGravity(player) {
   if (!BODY_GRAVITY_ENABLED) return 0;
 
+  // Acabou de chegar: está sem controle enquanto o veículo é recolocado e a
+  // montaria refeita. Puxar agora é arrancá-lo de perto do OVNI.
+  if (inArrivalGrace(player)) return 0;
+
   const g = gravityAt(player.location);
   if (!g) return 0;
 
@@ -118,6 +123,10 @@ export function applyEntityGravity(dimension, players) {
   const seen = new Set();
 
   for (const player of players) {
+    // Mesma carência do jogador: o OVNI recém-recolocado ao lado dele não pode
+    // sair puxado antes de ele montar.
+    if (inArrivalGrace(player)) continue;
+
     let nearby;
     try {
       nearby = dimension.getEntities({

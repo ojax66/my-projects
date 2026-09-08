@@ -1,4 +1,4 @@
-# New Horizons: Espaço Sideral
+# Distant Horizons: Espaço Sideral
 
 Addon de Minecraft Bedrock que adiciona a dimensão do **espaço sideral**: escura,
 cheia de estrelas, sem gravidade, com o Sol, a Terra, a Lua e Marte construídos
@@ -7,17 +7,17 @@ como esferas gigantes. Serve de ponte entre o **Spacecraft (Venzenulon-7)** e o
 dá pra chegar lá de OVNI.
 
 ```
-tools/build.sh          →  dist/New_Horizons.mcaddon
+tools/build.sh          →  dist/Distant_Horizons.mcaddon
 tools/test.sh           →  validação dos packs + testes de geração e de viagem
-packs/New Horizons BP/   comportamento (dimensão, bioma, blocos, scripts)
-packs/New Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
+packs/Distant Horizons BP/   comportamento (dimensão, bioma, blocos, scripts)
+packs/Distant Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
 ```
 
 ## Instalação
 
-1. `bash tools/build.sh` gera `dist/New_Horizons.mcaddon`.
+1. `bash tools/build.sh` gera `dist/Distant_Horizons.mcaddon`.
 2. Abre o arquivo no Minecraft (ele importa os dois packs de uma vez).
-3. No mundo, ativa **New Horizons: Espaço Sideral** (BP) e **New Horizons: Espaço Sideral RP** (RP),
+3. No mundo, ativa **Distant Horizons: Espaço Sideral** (BP) e **Distant Horizons: Espaço Sideral RP** (RP),
    junto com o Spacecraft e o Vehicles.
 4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
    `@minecraft/server` 2.8.0, igual ao Spacecraft.
@@ -376,7 +376,7 @@ são identificados por `space_dim:<nome>`, que não muda. Só o pack troca de
 identidade; o conteúdo não.
 
 É por isso também que o **namespace continua `space_dim`** mesmo com o addon
-chamando New Horizons: renomear pra `new_horizons:` transformaria cada bloco já
+chamando Distant Horizons: renomear pra `new_horizons:` transformaria cada bloco já
 colocado num cubo roxo e cada item na mochila em nada.
 
 Trocar o header e esquecer a dependência do outro pack faz os dois packs
@@ -405,7 +405,7 @@ de build.
 
 ## Ajustes
 
-Tudo que dá pra mexer está em `packs/New Horizons BP/scripts/space_dim/config.js`:
+Tudo que dá pra mexer está em `packs/Distant Horizons BP/scripts/space_dim/config.js`:
 posição e tamanho dos corpos, altitude de entrada, ritmo da geração, regras de
 respiração, gravidade zero, bússola. Alguns que importam:
 
@@ -492,6 +492,37 @@ pra exercitar tudo fora do jogo.
   `collision_box: false` e emitam luz, e que o núcleo seja sólido. Regenerar os
   blocos sem isso transformaria o Sol numa bola maciça sem ninguém notar.
 
+## Onde o jogador cai ao chegar
+
+As três chegadas ficavam **dentro do campo de gravidade do próprio corpo** de
+onde o jogador tinha vindo. O comentário no config dizia o contrário — "fora do
+alcance da gravidade dela" — com a chegada da Terra a 58 do centro e a borda do
+campo em 72.
+
+| corpo | borda do campo | chegada antiga | pior caso c/ jitter | chegada agora |
+|---|---|---|---|---|
+| Terra | 72 | 58 | 52,3 | 90 |
+| Lua | 38 | 40 | 34,3 | 56 |
+| Marte | 58 | 50 | 44,3 | 76 |
+
+O efeito: chegando no espaço o jogador fica alguns ticks parado enquanto o
+veículo é recolocado e a montaria refeita. Dentro do campo, o planeta o
+arrastava nesse intervalo — ele montava no vazio, ou, no caso da Terra, que puxa
+mais forte, era levado até a superfície e caía de volta no Overworld achando que
+a nave tinha sumido.
+
+Duas mudanças, porque uma só não bastava:
+
+- **A chegada fica fora do campo**, com `ARRIVAL_CLEARANCE` de folga além da
+  borda e mais a margem do jitter.
+- **Durante a carência de chegada nenhum corpo puxa** — nem o jogador nem as
+  entidades ao redor dele, pra que o OVNI recolocado não saia arrastado antes de
+  ele montar. Passada a carência, a gravidade volta ao normal.
+
+`tools/tests/test_arrival.mjs` mede as duas coisas, incluindo que cada chegada
+está fora do campo de **todos** os outros corpos, não só do seu. Ele falha
+contra as coordenadas antigas.
+
 ## Levar o veículo junto
 
 Teleportar a entidade pra outra dimensão a perde: no destino a chunk ainda não
@@ -561,7 +592,7 @@ por jogador enquanto a criação está em voo.
 O bioma `space_dim:espaco_sideral` é um bioma custom usado como `default_biome`
 da dimensão. Se a versão do jogo não engolir isso, a dimensão não registra e
 `/scriptevent space_dim:info` responde `dimensão: não registrada`. O contorno é
-trocar, em `packs/New Horizons BP/dimensions/outer_space.json`:
+trocar, em `packs/Distant Horizons BP/dimensions/outer_space.json`:
 
 ```json
 "minecraft:default_biome": { "biome": "minecraft:the_end" }

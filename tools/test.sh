@@ -8,7 +8,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/packs/New Horizons BP/scripts/space_dim"
+SRC="$ROOT/packs/Distant Horizons BP/scripts/space_dim"
 
 echo "--- texturas dos blocos (emenda e viés centro/borda) ---"
 python3 "$ROOT/tools/make_block_textures.py"
@@ -59,6 +59,10 @@ node test_gear.mjs
 echo
 echo "--- rotas de viagem e transporte do veículo ---"
 node test_travel.mjs
+
+echo
+echo "--- ponto de chegada e carência de gravidade ---"
+node test_arrival.mjs
 
 echo
 echo "--- custo de geração (informativo) ---"

@@ -12,8 +12,8 @@ import json
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "New Horizons BP")
-RP = os.path.join(ROOT, "packs", "New Horizons RP")
+BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
+RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
 
 FORMAT_VERSION = "1.21.80"
 

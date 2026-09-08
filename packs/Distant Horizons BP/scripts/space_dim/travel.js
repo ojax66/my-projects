@@ -22,7 +22,6 @@ import {
   ARRIVAL_JITTER,
   SPACE_ENTRY_Y,
   OVERWORLD_REENTRY_Y,
-  ARRIVAL_GRACE_TICKS,
   SPACECRAFT_LEGACY_ORIGINS,
   SPACECRAFT_LEGACY_RADIUS,
   SPACECRAFT_LANDING_Y,
@@ -32,6 +31,7 @@ import { distanceTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
 import * as vehicle from "./vehicle.js";
 import { rememberSpawn } from "./spawnGuard.js";
+import { markArrival, inArrivalGrace, forgetArrival } from "./arrival.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -39,9 +39,6 @@ const system = mc.system;
 // Jogadores no meio de uma viagem — trava tudo (gravidade zero, respiração,
 // outro portal) até a chegada.
 export const travelling = new Set();
-
-// Tick em que cada jogador chegou ao espaço, pra carência do portal.
-const arrivedAt = new Map();
 
 export function isTravelling(player) {
   return travelling.has(player.id);
@@ -143,15 +140,6 @@ function travel(player, dimension, loc, onArrive) {
     // Solta a trava depois de a recolocação e a remontagem terminarem.
     system.runTimeout(() => travelling.delete(player.id), capsule ? 24 : 12);
   });
-}
-
-function markArrival(player) {
-  arrivedAt.set(player.id, system.currentTick);
-}
-
-function inGrace(player) {
-  const t = arrivedAt.get(player.id);
-  return t !== undefined && system.currentTick - t < ARRIVAL_GRACE_TICKS;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +344,7 @@ export function bodyTouchedBy(player) {
 
 export function checkBodyPortals(player) {
   if (travelling.has(player.id)) return;
-  if (inGrace(player)) return;
+  if (inArrivalGrace(player)) return;
 
   const body = bodyTouchedBy(player);
   if (!body) return;
@@ -387,5 +375,5 @@ world.afterEvents.playerDimensionChange.subscribe((event) => {
 
 world.beforeEvents.playerLeave.subscribe((event) => {
   travelling.delete(event.player.id);
-  arrivedAt.delete(event.player.id);
+  forgetArrival(event.player.id);
 });

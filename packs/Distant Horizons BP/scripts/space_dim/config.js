@@ -32,6 +32,19 @@ export const SPACE_ENTRY_Y = 800;
 // exatamente no mesmo bloco.
 export const ARRIVAL_JITTER = 4;
 
+// Folga entre o ponto de chegada e a BORDA DO CAMPO DE GRAVIDADE do corpo de
+// onde se veio — não a superfície dele.
+//
+// Chegar dentro do campo era o bug: o jogador é teleportado, fica uns ticks
+// parado enquanto o veículo é recolocado, e nesse tempo o planeta o arrastava
+// pra longe do OVNI. Ele montava no vazio, ou não montava. Da Terra, que puxa
+// mais forte, dava pra ser levado até a superfície e cair de volta no Overworld
+// achando que a nave tinha sumido.
+//
+// tools/tests/test_arrival.mjs confere isto pra cada corpo, com o jitter no
+// pior caso, e também que nenhuma chegada cai no campo de OUTRO corpo.
+export const ARRIVAL_CLEARANCE = 12;
+
 // Altitude de reentrada no Overworld ao entrar na Terra.
 export const OVERWORLD_REENTRY_Y = 300;
 
@@ -90,10 +103,10 @@ export const BODIES = [
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     gravity: { reach: 46, strength: 0.03 },
-    // Chegada vinda do Overworld: 58 do centro, com a Lua também no campo de
-    // visão. Longe o bastante pra não disparar o portal de volta na hora, e
-    // fora do alcance da gravidade dela.
-    arrival: { x: 0, y: ORBIT_Y, z: 58 },
+    // Chegada vinda do Overworld. 90 do centro: a borda do campo dela está em
+    // 26 + 46 = 72, e daí saem os 12 de folga mais a margem do jitter. A Lua
+    // continua no campo de visão.
+    arrival: { x: 0, y: ORBIT_Y, z: 90 },
   },
   {
     id: "moon",
@@ -104,8 +117,9 @@ export const BODIES = [
     portal: { kind: "spacecraft", planet: "nv_sc:moon" },
     // Lua puxa pouco, como na vida real.
     gravity: { reach: 26, strength: 0.012 },
-    // Chegada vinda da Lua do Spacecraft: 40 do centro (28 da superfície).
-    arrival: { x: 40, y: ORBIT_Y, z: 190 },
+    // Chegada vinda da Lua do Spacecraft: 56 do centro, com a borda do campo
+    // dela em 12 + 26 = 38.
+    arrival: { x: 56, y: ORBIT_Y, z: 190 },
   },
   {
     id: "mars",
@@ -115,8 +129,9 @@ export const BODIES = [
     layers: [{ radius: 20, shell: 4, palette: "mars" }],
     portal: { kind: "spacecraft", planet: "nv_sc:mars" },
     gravity: { reach: 38, strength: 0.022 },
-    // Chegada vinda de Marte do Spacecraft: 50 do centro (30 da superfície).
-    arrival: { x: 470, y: ORBIT_Y, z: -120 },
+    // Chegada vinda de Marte do Spacecraft: 76 do centro, com a borda do campo
+    // dele em 20 + 38 = 58.
+    arrival: { x: 444, y: ORBIT_Y, z: -120 },
   },
 ];
 
