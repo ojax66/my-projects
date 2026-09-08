@@ -26,7 +26,7 @@ import zlib
 
 SIZE = 16
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "packs", "Space Dimension RP", "textures", "space_dim", "blocks")
+OUT = os.path.join(ROOT, "packs", "New Horizons RP", "textures", "space_dim", "blocks")
 
 
 # --- PNG ---------------------------------------------------------------------

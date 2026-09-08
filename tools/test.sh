@@ -8,7 +8,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/packs/Space Dimension BP/scripts/space_dim"
+SRC="$ROOT/packs/New Horizons BP/scripts/space_dim"
 
 echo "--- texturas dos blocos (emenda e viés centro/borda) ---"
 python3 "$ROOT/tools/make_block_textures.py"

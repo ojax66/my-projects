@@ -1,4 +1,4 @@
-# Dimensão do Espaço
+# New Horizons: Espaço Sideral
 
 Addon de Minecraft Bedrock que adiciona a dimensão do **espaço sideral**: escura,
 cheia de estrelas, sem gravidade, com o Sol, a Terra, a Lua e Marte construídos
@@ -7,17 +7,17 @@ como esferas gigantes. Serve de ponte entre o **Spacecraft (Venzenulon-7)** e o
 dá pra chegar lá de OVNI.
 
 ```
-tools/build.sh          →  dist/Space_Dimension.mcaddon
+tools/build.sh          →  dist/New_Horizons.mcaddon
 tools/test.sh           →  validação dos packs + testes de geração e de viagem
-packs/Space Dimension BP/   comportamento (dimensão, bioma, blocos, scripts)
-packs/Space Dimension RP/   visual (texturas, névoa, céu preto, estrelas)
+packs/New Horizons BP/   comportamento (dimensão, bioma, blocos, scripts)
+packs/New Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
 ```
 
 ## Instalação
 
-1. `bash tools/build.sh` gera `dist/Space_Dimension.mcaddon`.
+1. `bash tools/build.sh` gera `dist/New_Horizons.mcaddon`.
 2. Abre o arquivo no Minecraft (ele importa os dois packs de uma vez).
-3. No mundo, ativa **Dimensão do Espaço** (BP) e **Dimensão do Espaço RP** (RP),
+3. No mundo, ativa **New Horizons: Espaço Sideral** (BP) e **New Horizons: Espaço Sideral RP** (RP),
    junto com o Spacecraft e o Vehicles.
 4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
    `@minecraft/server` 2.8.0, igual ao Spacecraft.
@@ -359,6 +359,31 @@ O addon não consome a mochila: o loop do Spacecraft já gasta durabilidade e
 atualiza o HUD dela em todo tick, em qualquer dimensão. Duplicar isso gastaria
 oxigênio em dobro no espaço.
 
+## UUID novo a cada entrega
+
+`python3 tools/new_uuids.py` troca os cinco UUIDs dos manifests e religa as duas
+dependências cruzadas. Roda antes de empacotar uma versão pra testar.
+
+O motivo: o Minecraft identifica um pack pelo UUID, não pelo nome nem pelo
+arquivo. Reimportar um `.mcaddon` com os UUIDs de sempre cai em cima da versão
+já instalada, e nem sempre o jogo troca os arquivos — dá pra passar uma tarde
+testando a build anterior sem perceber. UUID novo entra como pack novo, e não
+tem como confundir.
+
+O preço: **o mundo que já usava a versão antiga não migra sozinho** — é preciso
+ativar o pack novo nele. O que já está construído sobrevive, porque bloco e item
+são identificados por `space_dim:<nome>`, que não muda. Só o pack troca de
+identidade; o conteúdo não.
+
+É por isso também que o **namespace continua `space_dim`** mesmo com o addon
+chamando New Horizons: renomear pra `new_horizons:` transformaria cada bloco já
+colocado num cubo roxo e cada item na mochila em nada.
+
+Trocar o header e esquecer a dependência do outro pack faz os dois packs
+pedirem um pack que não existe, e o jogo recusa os dois sem dizer por quê — o
+`validate.py` pega isso, e `tools/tests/test_validator.py` quebra a dependência
+de propósito pra provar que pega.
+
 ## Uma pegadinha do Bedrock: versão de receita
 
 Item e bloco aceitam `format_version` novo (`1.21.80`); **receita não**. Ela usa
@@ -380,7 +405,7 @@ de build.
 
 ## Ajustes
 
-Tudo que dá pra mexer está em `packs/Space Dimension BP/scripts/space_dim/config.js`:
+Tudo que dá pra mexer está em `packs/New Horizons BP/scripts/space_dim/config.js`:
 posição e tamanho dos corpos, altitude de entrada, ritmo da geração, regras de
 respiração, gravidade zero, bússola. Alguns que importam:
 
@@ -536,7 +561,7 @@ por jogador enquanto a criação está em voo.
 O bioma `space_dim:espaco_sideral` é um bioma custom usado como `default_biome`
 da dimensão. Se a versão do jogo não engolir isso, a dimensão não registra e
 `/scriptevent space_dim:info` responde `dimensão: não registrada`. O contorno é
-trocar, em `packs/Space Dimension BP/dimensions/outer_space.json`:
+trocar, em `packs/New Horizons BP/dimensions/outer_space.json`:
 
 ```json
 "minecraft:default_biome": { "biome": "minecraft:the_end" }

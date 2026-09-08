@@ -53,11 +53,11 @@ def case(name, mutate, expect):
 
 
 def bp(tmp, *parts):
-    return os.path.join(tmp, "packs", "Space Dimension BP", *parts)
+    return os.path.join(tmp, "packs", "New Horizons BP", *parts)
 
 
 def rp(tmp, *parts):
-    return os.path.join(tmp, "packs", "Space Dimension RP", *parts)
+    return os.path.join(tmp, "packs", "New Horizons RP", *parts)
 
 
 # --- linha de base: sem mexer em nada, o validador aprova ---------------------
@@ -145,6 +145,35 @@ def drop_template_tag(tmp):
 
 case("molde sem minecraft:transform_templates", drop_template_tag,
      r"star_upgrade_template esta no slot 'template'.*transform_templates")
+
+
+
+# --- 7. troca de UUID que esquece a dependência cruzada ----------------------
+#
+# tools/new_uuids.py troca os cinco UUIDs a cada entrega. O jeito de errar isso
+# e trocar o header e deixar a dependencia do outro pack apontando pro UUID
+# velho: os dois packs passam a pedir um pack que nao existe, e o jogo recusa
+# os dois sem dizer por que.
+def stale_cross_dep(tmp):
+    path = bp(tmp, "manifest.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["dependencies"][0]["uuid"] = "00000000-0000-4000-8000-000000000000"
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("dependencia cruzada apontando pro UUID antigo", stale_cross_dep,
+     r"BP nao declara dependencia do RP|BP não declara dependência do RP")
+
+
+# --- 8. dois UUIDs iguais ----------------------------------------------------
+def duplicate_uuid(tmp):
+    path = bp(tmp, "manifest.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["modules"][0]["uuid"] = doc["header"]["uuid"]
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("modulo com o mesmo UUID do header", duplicate_uuid, r"UUID repetido")
 
 
 print(f"\n{passes} PASS, {fails} FALHOU")

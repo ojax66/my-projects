@@ -11,8 +11,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Space Dimension BP")
-RP = os.path.join(ROOT, "packs", "Space Dimension RP")
+BP = os.path.join(ROOT, "packs", "New Horizons BP")
+RP = os.path.join(ROOT, "packs", "New Horizons RP")
 
 errors = []
 warnings = []
