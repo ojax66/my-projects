@@ -604,11 +604,34 @@ tamanho aparente  =  raio / distância real
 escala do modelo  =  (distância do modelo × raio) / (distância real × 8)
 ```
 
-A escala vem de uma **propriedade de entidade** lida por uma animação do
-cliente: `minecraft:scale` é fixo na definição e não aceita um número novo por
-entidade. Passar da faixa declarada não dá erro — o motor ignora calado e o
-corpo fica do tamanho errado —, então o `validate.py` compara a faixa das
-entidades com o que o config pode pedir.
+### A escala é do servidor, em degraus
+
+A primeira versão escalava o modelo com uma animação do cliente:
+
+```json
+"bones": { "body": { "scale": "q.property('space_dim:size')" } }
+```
+
+Quando esse molang não resolve — e não há como saber que não resolveu —, ele
+devolve **zero**. Escala zero é um modelo de tamanho zero: **invisível, sem
+erro, sem aviso**. É a explicação mais provável pros corpos nunca terem
+aparecido, e é o tipo de falha que não dá pra depurar de fora: a entidade está
+lá, na posição certa, com a textura certa, e não desenha nada.
+
+Agora a escala vem de `minecraft:scale` num **component group**, que é do
+servidor: sem molang, sem sincronia com o cliente, sem silêncio. O preço é ser
+discreta — 28 degraus numa progressão de razão 1,4, e o script dispara o evento
+do degrau mais próximo. A 1,4 a diferença entre um degrau e o próximo não se
+percebe, porque o corpo está longe e o tamanho muda devagar.
+
+Junto foi outro defeito da mesma família: a geometria declarava
+`format_version 1.12.0` e usava **UV por face**, que só existe a partir de
+`1.16.0`. Uma geometria que falha ao carregar também não desenha nada, e
+também sem erro.
+
+O `validate.py` agora cobra a cadeia inteira: nenhum degrau pode ser zero, os
+grupos e eventos do BP têm que bater com `skySteps.js`, e o RP não pode voltar a
+animar a escala (duas fontes brigando dão o tamanho errado).
 
 A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
 que constrói o corpo de blocos, e cada pixel recebe a cor média da textura

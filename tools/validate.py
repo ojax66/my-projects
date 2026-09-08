@@ -617,6 +617,58 @@ if isinstance(geo, dict):
                 err(f"a textura de ceu {bid}.png e {w}x{h}, mas o modelo declara "
                     f"{tw}x{th} — as faces cairiam no lugar errado")
 
+# A escala do modelo vem de component group, nao de molang.
+#
+# A versao anterior usava uma animacao do cliente lendo `q.property`. Quando
+# esse molang nao resolve, ele devolve ZERO — e escala zero e um modelo de
+# tamanho zero: invisivel, sem erro, sem aviso. Nada nas ferramentas apontava
+# pra isso porque nada media a escala de verdade.
+steps_path = os.path.join(BP, "scripts", "space_dim", "skySteps.js")
+steps = []
+if os.path.isfile(steps_path):
+    with open(steps_path, encoding="utf-8") as f:
+        m = re.search(r"SKY_SIZE_STEPS = \[([^\]]*)\]", f.read())
+    if m:
+        steps = [float(x) for x in m.group(1).split(",") if x.strip()]
+if not steps:
+    err("scripts/space_dim/skySteps.js sem degraus de escala — "
+        "o modelo nao teria como ser dimensionado")
+if any(v <= 0 for v in steps):
+    err("ha um degrau de escala <= 0 em skySteps.js — escala zero e um modelo "
+        "invisivel, que e exatamente o defeito que isto substitui")
+
+for bid in list(body_ids) + ["star"]:
+    doc = docs.get(os.path.join(BP, "entities", f"sky_{bid}.json"))
+    if not isinstance(doc, dict):
+        continue
+    ent = doc.get("minecraft:entity", {})
+    groups = ent.get("component_groups", {})
+    events = ent.get("events", {})
+    if len(groups) != len(steps) or len(events) != len(steps):
+        err(f"sky_{bid} tem {len(groups)} grupos e {len(events)} eventos de "
+            f"escala, mas skySteps.js declara {len(steps)} degraus — as duas "
+            f"listas divergiram e o script pediria um evento inexistente")
+        continue
+    for i, value in enumerate(steps):
+        g = groups.get(f"space_dim:size_{i}", {})
+        got = g.get("minecraft:scale", {}).get("value")
+        if got is None:
+            err(f"sky_{bid}: grupo size_{i} sem minecraft:scale")
+        elif abs(float(got) - value) > 1e-6:
+            err(f"sky_{bid}: grupo size_{i} escala {got}, skySteps.js diz {value}")
+        if f"space_dim:set_size_{i}" not in events:
+            err(f"sky_{bid} sem o evento set_size_{i}")
+
+# E o RP nao pode voltar a animar a escala: seriam duas fontes brigando.
+for bid in list(body_ids) + ["star"]:
+    doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
+    if not isinstance(doc, dict):
+        continue
+    desc = doc.get("minecraft:client_entity", {}).get("description", {})
+    if "animations" in desc or (desc.get("scripts", {}).get("animate")):
+        err(f"sky_{bid} voltou a animar a escala no cliente — a escala e do "
+            f"servidor agora, e duas fontes brigando dao o tamanho errado")
+
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #
 # O id do item de mapa carrega o id do sistema que ele abre. Um mapa apontando

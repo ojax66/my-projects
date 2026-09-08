@@ -341,6 +341,39 @@ case("textura de ceu com tamanho diferente do modelo", wrong_texture_size,
      r"moon\.png e 32x32, mas o modelo declara")
 
 
+# --- 12g. escala do ceu voltando a depender de molang ------------------------
+def zero_step(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+                        "scripts", "space_dim", "skySteps.js")
+    src = open(path, encoding="utf-8").read()
+    open(path, "w", encoding="utf-8").write(src.replace("[0.005,", "[0,"))
+
+
+case("degrau de escala igual a zero", zero_step, r"degrau de escala <= 0")
+
+
+def steps_out_of_sync(tmp):
+    path = bp(tmp, "entities", "sky_moon.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:entity"]["component_groups"].pop("space_dim:size_3")
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("degraus do BP fora de sincronia com skySteps.js", steps_out_of_sync,
+     r"as duas \s*listas divergiram|listas divergiram")
+
+
+def animate_scale_again(tmp):
+    path = rp(tmp, "entity", "sky_earth.entity.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:client_entity"]["description"]["animations"] = {"size": "x"}
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("cliente voltando a animar a escala", animate_scale_again,
+     r"voltou a animar a escala")
+
+
 # --- 13. os geradores nao podem depender da ordem ----------------------------
 #
 # Cada gerador e dono de um bloco do .lang. A versao antiga guardava so o que

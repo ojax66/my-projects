@@ -105,6 +105,7 @@ class Entity {
   getRotation() { return { x: 0, y: 0 }; }
   getGameMode() { return "Survival"; }
   setProperty(k, v) { (this.__entityProps ??= new Map()).set(k, v); }
+  triggerEvent(name) { (this.__events ??= []).push(name); }
   getProperty(k) { return this.__entityProps?.get(k); }
   setDynamicProperty(k, v) { (this.__props ??= new Map()).set(k, v); }
   getDynamicProperty(k) { return this.__props?.get(k); }

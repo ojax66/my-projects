@@ -185,7 +185,42 @@ const write = (p, o) => {
   fs.writeFileSync(p, JSON.stringify(o, null, 2) + '\n');
 };
 
+// --- Os degraus de escala -----------------------------------------------------
+//
+// A escala do modelo SAI DAQUI, não de uma animação lendo `q.property`.
+//
+// A versão anterior usava `"scale": "q.property('space_dim:size')"` numa
+// animação do cliente. Quando esse molang não resolve — e não há como saber que
+// não resolveu — ele devolve ZERO. Escala 0 é um modelo de tamanho zero:
+// invisível, sem erro, sem aviso. É o suspeito mais forte pra os corpos nunca
+// terem aparecido, e é o tipo de falha impossível de depurar de fora.
+//
+// `minecraft:scale` num component group é do SERVIDOR: sem molang, sem
+// sincronia com o cliente, sem silêncio. O preço é a escala ser discreta, em
+// degraus geométricos — a 1,4 de razão a diferença entre um degrau e o próximo
+// não se percebe, porque o corpo está longe e o tamanho muda devagar.
+const SIZE_RATIO = 1.4;
+const SIZE_STEPS = [];
+for (let v = SKY_MODEL_MIN_SCALE; v <= SKY_MODEL_MAX_SCALE * SIZE_RATIO; v *= SIZE_RATIO) {
+  SIZE_STEPS.push(Number(v.toPrecision(4)));
+}
+
+function sizeGroups() {
+  const groups = {};
+  const events = {};
+  const all = SIZE_STEPS.map((_, j) => `${NS}:size_${j}`);
+  SIZE_STEPS.forEach((value, i) => {
+    groups[`${NS}:size_${i}`] = { 'minecraft:scale': { value } };
+    events[`${NS}:set_size_${i}`] = {
+      add: { component_groups: [`${NS}:size_${i}`] },
+      remove: { component_groups: all.filter((g) => g !== `${NS}:size_${i}`) },
+    };
+  });
+  return { groups, events };
+}
+
 function bpEntity(body) {
+  const { groups, events } = sizeGroups();
   return {
     format_version: '1.21.80',
     'minecraft:entity': {
@@ -224,6 +259,8 @@ function bpEntity(body) {
         'minecraft:conditional_bandwidth_optimization': {},
         'minecraft:type_family': { family: ['space_dim_sky'] },
       },
+      component_groups: groups,
+      events,
     },
   };
 }
@@ -246,14 +283,8 @@ function rpEntity(body) {
         materials: { default: 'space_dim_sky' },
         textures: { default: `textures/${NS}/sky/${body.id}` },
         geometry: { default: `geometry.${NS}.sky_body` },
-        animations: { size: `animation.${NS}.sky_body.size` },
-        scripts: {
-          animate: ['size'],
-          // Sem isto a animação congela quando o modelo sai da tela, e ele
-          // volta com a escala de quando você desviou o olhar. O Spacecraft
-          // liga isso na Terra distante dele pelo mesmo motivo.
-          should_update_bones_and_effects_offscreen: true,
-        },
+        // Sem animação de escala: ela vem de `minecraft:scale`, no servidor.
+        scripts: { should_update_bones_and_effects_offscreen: true },
         render_controllers: [`controller.render.${NS}.sky_body`],
       },
     },
@@ -310,6 +341,7 @@ for (const body of SKY) {
         'minecraft:conditional_bandwidth_optimization': {},
         'minecraft:type_family': { family: ['space_dim_sky'] },
       },
+      ...sizeGroups() && { component_groups: sizeGroups().groups, events: sizeGroups().events },
     },
   });
 
@@ -321,14 +353,8 @@ for (const body of SKY) {
         materials: { default: 'space_dim_sky' },
         textures: { default: `textures/${NS}/sky/star` },
         geometry: { default: `geometry.${NS}.sky_body` },
-        animations: { size: `animation.${NS}.sky_body.size` },
-        scripts: {
-          animate: ['size'],
-          // Sem isto a animação congela quando o modelo sai da tela, e ele
-          // volta com a escala de quando você desviou o olhar. O Spacecraft
-          // liga isso na Terra distante dele pelo mesmo motivo.
-          should_update_bones_and_effects_offscreen: true,
-        },
+        // Sem animação de escala: ela vem de `minecraft:scale`, no servidor.
+        scripts: { should_update_bones_and_effects_offscreen: true },
         render_controllers: [`controller.render.${NS}.sky_body`],
       },
     },
@@ -337,7 +363,10 @@ for (const body of SKY) {
 
 // --- compartilhados ----------------------------------------------------------
 write(path.join(RP, 'models', 'entity', 'sky_body.geo.json'), {
-  format_version: '1.12.0',
+  // 1.16.0 e não 1.12.0: UV por face só existe a partir daí. Em 1.12.0 o campo
+  // `uv` como objeto não é entendido, e uma geometria que falha ao carregar não
+  // desenha nada — sem erro em lugar nenhum.
+  format_version: '1.16.0',
   'minecraft:geometry': [{
     description: {
       identifier: `geometry.${NS}.sky_body`,
@@ -394,6 +423,19 @@ write(path.join(RP, 'render_controllers', 'sky_body.render_controllers.json'), {
     },
   },
 });
+
+// Os degraus também vão pro lado do script: ele precisa escolher o mais
+// próximo, e as duas listas não podem divergir.
+fs.writeFileSync(
+  path.join(BP, 'scripts', 'space_dim', 'skySteps.js'),
+  '/* GERADO por tools/make_sky_bodies.mjs — não edite à mão.\n' +
+  ' *\n' +
+  ' * Os degraus de escala dos corpos vistos de longe. Cada um é um component\n' +
+  ' * group com `minecraft:scale` na entidade; o script escolhe o mais próximo\n' +
+  ' * e dispara o evento correspondente.\n' +
+  ' */\n' +
+  'export const SKY_SIZE_STEPS = ' + JSON.stringify(SIZE_STEPS) + ';\n'
+);
 
 fs.rmSync(STAGE, { recursive: true, force: true });
 console.log(`${SKY.length} corpos + a estrela: ${SKY.map((b) => b.id).join(', ')}`);

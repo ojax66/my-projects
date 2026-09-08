@@ -207,5 +207,55 @@ const mk = (id = 'p1') =>
   clearModels(p.id);
 }
 
+// --- 8. A escala vem de um degrau do servidor, não de molang ----------------
+//
+// A versão anterior escalava com uma animação do cliente lendo
+// `q.property('space_dim:size')`. Quando esse molang não resolve, ele devolve
+// ZERO — e escala zero é um modelo de tamanho zero: invisível, sem erro, sem
+// aviso. É o suspeito de os corpos nunca terem aparecido.
+//
+// `minecraft:scale` num component group é do servidor e não tem esse silêncio.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
+  const { BODIES } = await import('./space_dim/config.js');
+
+  const dim = world.getDimension(DIMENSION_ID);
+  const moon = BODIES.find((b) => b.id === 'moon');
+  const p = mk('escala');
+
+  // A distância exata da queixa: a Lua a 95 blocos, que é onde ela devia
+  // aparecer como modelo e não aparecia.
+  p.teleport({ x: moon.center.x, y: moon.center.y, z: moon.center.z + 95 });
+  __advance(2); updateSky(p);
+
+  const modelo = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_moon')[0];
+  check('a Lua a 95 blocos vira um modelo', !!modelo);
+  check('  e ele recebeu um degrau de escala',
+        (modelo?.__events ?? []).some((e) => e.startsWith('space_dim:set_size_')),
+        `(${(modelo?.__events ?? []).join(', ') || 'nenhum evento'})`);
+
+  // O degrau escolhido tem que bater com a escala pedida, e nunca ser zero.
+  const ev = (modelo?.__events ?? []).find((e) => e.startsWith('space_dim:set_size_'));
+  const idx = Number(ev?.slice('space_dim:set_size_'.length));
+  const escala = SKY_SIZE_STEPS[idx];
+  check('  o degrau é um tamanho de verdade, não zero',
+        escala > 0, `(degrau ${idx} = ${escala})`);
+
+  // A escala ideal pra Lua a 95: (34 * 12) / (95 * 8) = 0.537
+  const ideal = (34 * moon.radius) / (95 * 8);
+  check('  e fica perto do tamanho certo',
+        Math.abs(Math.log(escala / ideal)) < Math.log(1.4),
+        `(${escala} vs ideal ${ideal.toFixed(3)})`);
+
+  // Nenhum degrau da lista pode ser zero — um zero na tabela seria um corpo
+  // invisível de novo, agora pelo caminho do servidor.
+  check('nenhum degrau da tabela é zero', SKY_SIZE_STEPS.every((v) => v > 0),
+        `(${SKY_SIZE_STEPS.length} degraus, menor ${Math.min(...SKY_SIZE_STEPS)})`);
+
+  clearModels(p.id);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);
