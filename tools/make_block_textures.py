@@ -42,10 +42,19 @@ import os
 import struct
 import zlib
 
-SIZE = 16
-# Lado da grade de desenho. 8 células em 16 pixels = cada célula é um quadrado
-# 2x2. É a resolução do print de referência, e é o que dá o pixel grosso.
-CELLS = 8
+# 32x32, não 16x16.
+#
+# A folha de contato que mandei pra revisão mostrava cada textura repetida 2x2
+# — quatro blocos por quadro. O padrão aprovado ali era, portanto, o dobro do
+# que cabia num bloco: no jogo cada bloco mostrava um QUARTO daquele desenho.
+#
+# Dobrando a textura, um bloco passa a mostrar o quadro inteiro, e a célula
+# continua com 2 pixels de lado — o pixel grosso não muda, o que muda é quanto
+# padrão cabe em cada bloco.
+SIZE = 32
+# Lado da grade de desenho. 16 células em 32 pixels = cada célula é um quadrado
+# 2x2, o mesmo pixel grosso do print de referência.
+CELLS = 16
 CELL_PX = SIZE // CELLS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "packs", "Distant Horizons RP", "textures", "space_dim", "blocks")
@@ -166,15 +175,15 @@ TEXTURES = {
     # núcleo é entre BLOCOS, não dentro de nenhum deles.
     "sun_corona": (
         ["#D18E10", "#DE9C17", "#E8A81E", "#F0B227", "#F7BC33"],
-        [2, 3, 4, 3, 2], 562, 3, 0.40,
+        [2, 3, 4, 3, 2], 888, 3, 0.40,
     ),
     "sun_plasma": (
         ["#F2B62A", "#F9C330", "#FFCF3E", "#FFD64A", "#FFE066"],
-        [2, 3, 4, 3, 2], 388, 3, 0.40,
+        [2, 3, 4, 3, 2], 53, 3, 0.40,
     ),
     "sun_core": (
         ["#FFE87A", "#FFF095", "#FFF6B4", "#FFFAC9", "#FFFDD9"],
-        [2, 3, 4, 3, 2], 432, 3, 0.38,
+        [2, 3, 4, 3, 2], 259, 3, 0.38,
     ),
 
     # --- Terra ---------------------------------------------------------------
@@ -183,23 +192,23 @@ TEXTURES = {
     # granulação.
     "earth_ocean": (
         ["#05327C", "#063E93", "#0847A5", "#0A51B4", "#0D5AC2"],
-        [2, 3, 4, 3, 2], 496, 3, 0.44,
+        [2, 3, 4, 3, 2], 259, 3, 0.44,
     ),
     "earth_shallow": (
         ["#045C79", "#056C91", "#06769E", "#0781AB", "#088BB8"],
-        [2, 3, 4, 3, 2], 623, 3, 0.44,
+        [2, 3, 4, 3, 2], 810, 3, 0.44,
     ),
     "earth_land": (
         ["#026E00", "#038500", "#049200", "#059F00", "#06AC0A"],
-        [2, 3, 4, 3, 2], 178, 3, 0.46,
+        [2, 3, 4, 3, 2], 665, 3, 0.46,
     ),
     "earth_forest": (
         ["#014A02", "#026002", "#026C02", "#037803", "#048404"],
-        [2, 3, 4, 3, 2], 178, 3, 0.46,
+        [2, 3, 4, 3, 2], 294, 3, 0.46,
     ),
     "earth_ice": (
         ["#D6DFEE", "#E8EFFA", "#EFF4FD", "#F6F9FF", "#FFFFFF"],
-        [2, 3, 4, 3, 2], 382, 3, 0.42,
+        [2, 3, 4, 3, 2], 40, 3, 0.42,
     ),
 
     # --- Lua -----------------------------------------------------------------
@@ -214,29 +223,29 @@ TEXTURES = {
     ),
     "moon_regolith": (
         ["#868D9C", "#9097A5", "#9AA1B0", "#A5ACBB", "#AFB8CC"],
-        [2, 3, 4, 3, 2], 807, 3, 0.44,
+        [2, 3, 4, 3, 2], 153, 3, 0.44,
     ),
     "moon_regolith_dark": (
         ["#4A4F5E", "#505666", "#585E70", "#5F677A", "#6A7286"],
-        [2, 3, 4, 3, 2], 623, 3, 0.44,
+        [2, 3, 4, 3, 2], 730, 3, 0.44,
     ),
 
     # --- Marte ---------------------------------------------------------------
     "mars_dust": (
         ["#A94523", "#B44A28", "#BA4E2A", "#C25730", "#CA6238"],
-        [2, 3, 4, 3, 2], 1068, 3, 0.45,
+        [2, 3, 4, 3, 2], 318, 3, 0.45,
     ),
     "mars_rock": (
         ["#82361E", "#8B3A20", "#923D22", "#9A4326", "#A34B2C"],
-        [2, 3, 4, 3, 2], 499, 3, 0.45,
+        [2, 3, 4, 3, 2], 664, 3, 0.45,
     ),
     "mars_rock_dark": (
         ["#43190D", "#4A1B0E", "#501E10", "#582213", "#602716"],
-        [2, 3, 4, 3, 2], 1068, 3, 0.45,
+        [2, 3, 4, 3, 2], 664, 3, 0.45,
     ),
     "mars_ice": (
         ["#D2C6BC", "#DCD1C8", "#E2D7CF", "#E9E0D8", "#F1E9E3"],
-        [2, 3, 4, 3, 2], 382, 3, 0.42,
+        [2, 3, 4, 3, 2], 123, 3, 0.42,
     ),
 }
 

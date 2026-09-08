@@ -80,7 +80,10 @@ check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_
   for (const body of BODIES) {
     const mat = rpEntity(body.id)['minecraft:client_entity']
       .description.materials.default;
-    check(`${body.id}: o modelo distante é emissivo`, mat === 'entity_emissive',
+    // `entity_emissive_alpha`, não `entity_emissive` puro: os dois usam o alfa
+    // como máscara de brilho, mas só o _alpha mantém o resto opaco. Com o puro
+    // havia o risco de a textura inteira (que é toda alfa 0) sumir.
+    check(`${body.id}: o modelo distante é emissivo`, mat === 'entity_emissive_alpha',
           `(${mat})`);
   }
 
@@ -96,6 +99,13 @@ check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_
     check(`${name}: emite luz, mas não é lâmpada`, l > 0 && l < 15, `(${l})`);
   }
   check('o Sol é o único no máximo', blockLight('sun_core') === 15);
+
+  // A estrela: o corpo visto de fora do sistema. Sem ela, quem se afasta da
+  // borda não veria nada — nem bloco, nem modelo, nem ponto.
+  const star = JSON.parse(fs.readFileSync(
+    path.join(RP_DIR, 'entity', 'sky_star.entity.json'), 'utf8'));
+  check('a estrela existe e é emissiva',
+        star['minecraft:client_entity'].description.materials.default === 'entity_emissive_alpha');
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

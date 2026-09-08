@@ -32,7 +32,7 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
-import { updateSky, clearModels, sweepOrphans } from "./skybox.js";
+import { updateSky, clearModels, sweepOrphans, describeSky } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
 import { openTracker } from "./trackerUI.js";
@@ -217,6 +217,15 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
   if (data.id === "space_dim:tracker") {
     if (player?.typeId !== "minecraft:player") return;
     system.run(() => { openTracker(player).catch(() => { }); });
+    return;
+  }
+
+  // /scriptevent space_dim:sky — o que está desenhado no céu agora.
+  // Quando um corpo não aparece, isto separa "não foi criado" de "foi criado e
+  // não renderiza" — sem isso a única saída é adivinhar.
+  if (data.id === "space_dim:sky") {
+    if (player?.typeId !== "minecraft:player") return;
+    try { player.sendMessage("§7céu:\n§f" + describeSky(player)); } catch { }
     return;
   }
 

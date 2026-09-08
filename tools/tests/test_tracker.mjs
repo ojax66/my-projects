@@ -159,5 +159,53 @@ const mk = (id = 'p1') =>
         `(${zerados.length} sobraram)`);
 }
 
+// --- 7. Os três níveis: blocos, modelo, estrela ------------------------------
+//
+// O nível do meio é o que o jogador pediu: ver a Terra estando perto do Sol.
+// E o de fora é o que fecha a ideia — além da borda do sistema o corpo vira um
+// ponto branco, como qualquer estrela vista daqui.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { SOLAR_SYSTEM_RADIUS, SKY_MODEL_HIDE_BELOW, STAR_ENTITY } =
+    await import('./space_dim/config.js');
+  const { BODIES } = await import('./space_dim/config.js');
+
+  const dim = world.getDimension(DIMENSION_ID);
+  const sun = BODIES.find((b) => b.id === 'sun');
+  const earth = BODIES.find((b) => b.id === 'earth');
+  const p = mk('niveis');
+
+  const modelosDe = (id) => dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+  const estrelas = () => dim.getEntities().filter((e) => e.typeId === STAR_ENTITY);
+
+  // Perto do Sol: a Terra está a 520 dali, muito além dos blocos — tem que
+  // aparecer como MODELO. É exatamente o caso que ele descreveu.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 30 });
+  __advance(2); updateSky(p);
+  check('perto do Sol dá pra ver a Terra como modelo', modelosDe('earth').length === 1,
+        `(${modelosDe('earth').length})`);
+  check('  e o Sol, que está colado, fica por conta dos blocos',
+        modelosDe('sun').length === 0);
+
+  // Perto de Marte: o Sol está a 1040 — modelo também.
+  const mars = BODIES.find((b) => b.id === 'mars');
+  p.teleport({ x: mars.center.x, y: mars.center.y, z: mars.center.z + mars.radius + 30 });
+  __advance(2); updateSky(p);
+  check('perto de Marte dá pra ver o Sol', modelosDe('sun').length === 1,
+        `(${modelosDe('sun').length})`);
+
+  // Muito além da borda do sistema: tudo vira estrela.
+  clearModels(p.id);
+  p.teleport({ x: sun.center.x, y: 128, z: sun.center.z + SOLAR_SYSTEM_RADIUS + 4000 });
+  __advance(2); updateSky(p);
+  check('fora do sistema os corpos viram estrelas', estrelas().length > 0,
+        `(${estrelas().length} estrelas)`);
+  check('  e nenhum modelo de corpo sobra',
+        BODIES.every((b) => modelosDe(b.id).length === 0));
+
+  clearModels(p.id);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

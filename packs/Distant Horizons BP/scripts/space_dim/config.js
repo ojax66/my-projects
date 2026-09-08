@@ -366,6 +366,19 @@ export const SKY_MODEL_INTERVAL = 2;
 // ignora calado e a Lua ficaria grande demais, do tamanho do menor valor
 // aceito.
 export const SKY_MODEL_MIN_SCALE = 0.005;
+
+// ---------------------------------------------------------------------------
+// Estrelas: o terceiro nível
+// ---------------------------------------------------------------------------
+// Além da borda do sistema solar o corpo deixa de ser um mundo visitável e vira
+// um ponto de luz — como qualquer estrela vista da Terra. É o que fecha o
+// objetivo: cada pontinho branco no espaço é uma estrela de verdade, com um
+// sistema em volta dela, e não um enfeite pintado no céu.
+export const STAR_ENTITY = "space_dim:sky_star";
+
+// Tamanho aparente de uma estrela. Fixo: a essa distância, dobrar ou triplicar
+// a distância não mudaria nada que o olho perceba.
+export const STAR_SCALE = 0.035;
 export const SKY_MODEL_MAX_SCALE = 40;
 
 // ---------------------------------------------------------------------------

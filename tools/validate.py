@@ -460,6 +460,16 @@ body_ids = re.findall(r'^\s*id:\s*"([a-z0-9_]+)"', config_src, re.M)
 if not body_ids:
     warn("nao consegui ler os ids de BODIES no config.js")
 
+# A estrela é o terceiro nível: o corpo visto de fora do sistema. Sem ela, quem
+# se afastasse da borda nao veria nada — nem bloco, nem modelo, nem ponto.
+for extra in ("star",):
+    if not os.path.isfile(os.path.join(BP, "entities", f"sky_{extra}.json")):
+        err(f"falta a entidade sky_{extra} no BP")
+    if not os.path.isfile(os.path.join(RP, "entity", f"sky_{extra}.entity.json")):
+        err(f"falta a entidade sky_{extra} no RP")
+    if not os.path.isfile(os.path.join(RP, "textures", "space_dim", "sky", f"{extra}.png")):
+        err(f"falta a textura da {extra}")
+
 for bid in body_ids:
     bp_entity = os.path.join(BP, "entities", f"sky_{bid}.json")
     rp_entity = os.path.join(RP, "entity", f"sky_{bid}.entity.json")
@@ -510,8 +520,8 @@ for bid in body_ids:
         continue
     mat = (doc.get("minecraft:client_entity", {}).get("description", {})
               .get("materials", {}).get("default"))
-    if mat != "entity_emissive":
-        err(f"sky_{bid} usa o material {mat}, esperado entity_emissive — "
+    if mat != "entity_emissive_alpha":
+        err(f"sky_{bid} usa o material {mat}, esperado entity_emissive_alpha — "
             f"sem luz de ceu no espaco, um modelo nao-emissivo vira silhueta preta")
 
 # Toda nevoa que o config cita tem que existir no RP. Uma nevoa inexistente nao

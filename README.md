@@ -526,7 +526,14 @@ O histórico de erros aqui, medido:
 | 1ª | dezenas | contínua | 16×16 | cara de render |
 | 2ª | 4 | 16 a 83 | 16×16 | borrão sem forma |
 | 3ª | 6 | até 170 | 8×8 | carimbo repetido |
-| agora | 5 | ≤ 46 | 8×8 | — |
+| 4ª | 5 | ≤ 46 | 8×8 em 16px | 1/4 do padrão por bloco |
+| agora | 5 | ≤ 46 | 16×16 em 32px | — |
+
+A 4ª errou por um motivo bobo e meu: a folha de contato que mandei pra revisão
+mostrava cada textura repetida 2×2 — quatro blocos por quadro. O padrão aprovado
+ali era o dobro do que cabia num bloco de 16px, então no jogo cada bloco
+mostrava um quarto do desenho. A textura passou a ser 32×32 com a mesma célula
+de 2px: o pixel grosso não mudou, mudou quanto padrão cabe em cada bloco.
 
 O `make_block_textures.py` reprova as duas falhas: contraste **acima** do teto
 dentro de um bloco, e blocos do mesmo corpo com **cor parecida demais** (medida
@@ -569,13 +576,28 @@ meio da tampa, e as bordas dela continuam sendo superfície normal. Deu 2,9% na
 Terra e 1,1% em Marte, com as proporções de oceano, continente e floresta
 recalibradas pelos percentis medidos do ruído no cubo.
 
-## Visíveis a qualquer distância
+## Três níveis de visibilidade
 
 Um corpo de blocos some assim que passa da distância de renderização, e no
-espaço quase tudo está sempre além dela. A solução é a que o Spacecraft usa pra
-Terra dele: uma **entidade** sem colisão e sem hitbox, mantida a poucos blocos
-do jogador e encolhida até dar exatamente o mesmo ângulo que o corpo daria lá
-longe.
+espaço quase tudo está sempre além dela. São três níveis, e o do meio é o que
+faltava:
+
+| distância | o que se vê | por quê |
+|---|---|---|
+| perto | os **blocos** | o gerador só constrói dentro de `GEN_RADIUS_CHUNKS` do jogador — 80 blocos |
+| dentro do sistema | o **modelo** do corpo, encolhido | é assim que dá pra ver a Terra estando perto do Sol |
+| além do sistema | uma **estrela**: um ponto branco | além da borda o corpo não é mais um mundo visitável |
+
+A regra do terceiro nível é uma só: passou de `SOLAR_SYSTEM_RADIUS` de
+distância do jogador, é estrela. Vale nos dois sentidos, e é por isso que basta
+— dentro do sistema os corpos ficam todos abaixo disso e aparecem inteiros;
+saindo dele, eles ficam pra trás e viram pontinhos um a um. E um corpo de
+**outro** sistema estelar, a milhares de blocos, já nasce como estrela, que é o
+que ele é até se chegar lá.
+
+O modelo é uma **entidade** sem colisão e sem hitbox, mantida a poucos blocos do
+jogador e encolhida até dar exatamente o mesmo ângulo que o corpo daria lá
+longe:
 
 ```
 tamanho aparente  =  raio / distância real
@@ -589,9 +611,12 @@ corpo fica do tamanho errado —, então o `validate.py` compara a faixa das
 entidades com o que o config pode pedir.
 
 A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
-que constrói o corpo de blocos, com as cores dos mesmos blocos (que
-`make_blocks.py` exporta pra `tools/assets/block_colors.json`). O que se vê de
+que constrói o corpo de blocos, com as cores dos mesmos blocos. O que se vê de
 longe é o que está lá.
+
+`/scriptevent space_dim:sky` lista o que está desenhado no céu agora — tipo,
+escala e validade de cada modelo. Quando um corpo não aparece, é isso que separa
+"não foi criado" de "foi criado e não renderiza".
 
 ### A troca é medida da casca, não do centro
 

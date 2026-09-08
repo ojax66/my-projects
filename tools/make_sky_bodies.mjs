@@ -221,14 +221,11 @@ function rpEntity(body) {
     'minecraft:client_entity': {
       description: {
         identifier: `${NS}:sky_${body.id}`,
-        // TODO corpo é emissivo, não só o Sol. No espaço não há luz de céu:
-        // um modelo não-emissivo fica uma silhueta preta, e o planeta some.
-        // Emissivo é o que faz o corpo aparecer iluminado — que é como um
-        // corpo recebendo luz do Sol aparece.
-        //
-        // No material emissivo o canal alfa é a MÁSCARA de brilho: alfa 0 quer
-        // dizer "aceso", não "transparente". É o inverso do entity_alphatest.
-        materials: { default: 'entity_emissive' },
+        // `entity_emissive_alpha` e não `entity_emissive`: os dois usam o alfa
+        // como máscara de brilho, mas só o _alpha trata alfa 0 como aceso E
+        // mantém o resto opaco. Com `entity_emissive` puro havia o risco real
+        // de a textura inteira (que é toda alfa 0) sumir.
+        materials: { default: 'entity_emissive_alpha' },
         textures: { default: `textures/${NS}/sky/${body.id}` },
         geometry: { default: `geometry.${NS}.sky_body` },
         animations: { size: `animation.${NS}.sky_body.size` },
@@ -245,6 +242,67 @@ for (const body of SKY) {
   skyTexture(body);
   write(path.join(BP, 'entities', `sky_${body.id}.json`), bpEntity(body));
   write(path.join(RP, 'entity', `sky_${body.id}.entity.json`), rpEntity(body));
+}
+
+// --- A estrela ---------------------------------------------------------------
+//
+// O terceiro nível. Além da borda do sistema solar o corpo não é mais um mundo
+// que dá pra visitar: é um ponto de luz, como qualquer estrela vista da Terra.
+// Um cubo branco minúsculo e emissivo serve — a essa distância nada além de um
+// pontinho chegaria ao olho de qualquer jeito.
+{
+  const px = Buffer.alloc(RES * 4 * RES * 3 * 4);
+  for (let i = 0; i < px.length; i += 4) {
+    px[i] = 255; px[i + 1] = 255; px[i + 2] = 255; px[i + 3] = 0;  // alfa 0 = aceso
+  }
+  const dir = path.join(RP, 'textures', NS, 'sky');
+  fs.mkdirSync(dir, { recursive: true });
+  writePng(path.join(dir, 'star.png'), RES * 4, RES * 3, px);
+
+  write(path.join(BP, 'entities', 'sky_star.json'), {
+    format_version: '1.21.80',
+    'minecraft:entity': {
+      description: {
+        identifier: `${NS}:sky_star`,
+        is_spawnable: false,
+        is_summonable: true,
+        properties: {
+          [`${NS}:size`]: {
+            type: 'float',
+            range: [SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE],
+            default: 1, client_sync: true,
+          },
+        },
+      },
+      components: {
+        'minecraft:physics': { has_collision: false, has_gravity: false },
+        'minecraft:collision_box': { width: 0, height: 0 },
+        'minecraft:custom_hit_test': { hitboxes: [{ width: 0, height: 0, pivot: [0, 999, 0] }] },
+        'minecraft:damage_sensor': { triggers: [{ cause: 'all', deals_damage: 'no' }] },
+        'minecraft:pushable': { is_pushable: false, is_pushable_by_piston: false },
+        'minecraft:knockback_resistance': { value: 1000 },
+        'minecraft:health': { value: 1, max: 1 },
+        'minecraft:fire_immune': true,
+        'minecraft:conditional_bandwidth_optimization': {},
+        'minecraft:type_family': { family: ['space_dim_sky'] },
+      },
+    },
+  });
+
+  write(path.join(RP, 'entity', 'sky_star.entity.json'), {
+    format_version: '1.10.0',
+    'minecraft:client_entity': {
+      description: {
+        identifier: `${NS}:sky_star`,
+        materials: { default: 'entity_emissive_alpha' },
+        textures: { default: `textures/${NS}/sky/star` },
+        geometry: { default: `geometry.${NS}.sky_body` },
+        animations: { size: `animation.${NS}.sky_body.size` },
+        scripts: { animate: ['size'] },
+        render_controllers: [`controller.render.${NS}.sky_body`],
+      },
+    },
+  });
 }
 
 // --- compartilhados ----------------------------------------------------------
@@ -290,5 +348,5 @@ write(path.join(RP, 'render_controllers', 'sky_body.render_controllers.json'), {
 });
 
 fs.rmSync(STAGE, { recursive: true, force: true });
-console.log(`${SKY.length} corpos vistos de longe: ${SKY.map((b) => b.id).join(', ')}`);
+console.log(`${SKY.length} corpos + a estrela: ${SKY.map((b) => b.id).join(', ')}`);
 console.log(`  texturas ${RES * 4}x${RES * 3} tiradas do proprio columnRuns()`);

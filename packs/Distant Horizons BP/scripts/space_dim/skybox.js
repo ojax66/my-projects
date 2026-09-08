@@ -16,8 +16,20 @@
  *
  * (8 porque o cubo do geometry tem meia-aresta 8 na escala 1.)
  *
- * Chegando perto o modelo sai de cena e o corpo de blocos assume — senão o
- * jogador veria um cubinho pairando na frente do planeta de verdade.
+ * São três níveis, e o meio deles é o que faltava:
+ *
+ *   perto           os BLOCOS. O gerador constrói dentro de GEN_RADIUS_CHUNKS
+ *                   do jogador, ou seja 80 blocos. Fora disso não existe bloco
+ *                   nenhum pra ver.
+ *   no sistema      o MODELO do corpo, encolhido pelo tanto certo. É assim que
+ *                   dá pra ver a Terra estando perto do Sol.
+ *   fora do sistema uma ESTRELA: um ponto branco. Além da borda o corpo não é
+ *                   mais um mundo que dá pra visitar — é o que ele parece de
+ *                   longe mesmo, e é o que fecha a ideia de que cada pontinho
+ *                   no espaço é uma estrela de verdade.
+ *
+ * Chegando perto o modelo sai de cena e os blocos assumem, senão o jogador
+ * veria um cubinho pairando na frente do planeta de verdade.
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
@@ -29,6 +41,9 @@ import {
   SKY_MODEL_INTERVAL,
   SKY_MODEL_MIN_SCALE,
   SKY_MODEL_MAX_SCALE,
+  SOLAR_SYSTEM_RADIUS,
+  STAR_ENTITY,
+  STAR_SCALE,
 } from "./config.js";
 import { trackedBodies } from "./tracker.js";
 import { chebyshevTo } from "./bodies.js";
@@ -76,20 +91,51 @@ export function sweepOrphans(dimension) {
   } catch { }
 }
 
-function ensureModel(player, body) {
+function ensureModel(player, body, star) {
   let mine = models.get(player.id);
   if (!mine) models.set(player.id, (mine = new Map()));
 
-  let entity = mine.get(body.id);
-  if (entity?.isValid) return entity;
+  const wanted = star ? STAR_ENTITY : SKY_PREFIX + body.id;
 
+  const entity = mine.get(body.id);
+  // O nível mudou (o corpo virou estrela, ou deixou de ser): troca a entidade.
+  if (entity?.isValid && entity.typeId === wanted) return entity;
+  if (entity) dropModel(entity);
+
+  let created;
   try {
-    entity = player.dimension.spawnEntity(SKY_PREFIX + body.id, player.location);
-  } catch {
+    created = player.dimension.spawnEntity(wanted, player.location);
+  } catch (e) {
+    warnOnce("não deu pra criar o modelo de " + body.id, e);
+    mine.delete(body.id);
     return null;
   }
-  mine.set(body.id, entity);
-  return entity;
+  mine.set(body.id, created);
+  return created;
+}
+
+// Um aviso por mensagem, não um por tick: isto roda a cada dois ticks por
+// jogador e por corpo, e um erro repetido encheria o console em segundos.
+const warned = new Set();
+function warnOnce(context, err) {
+  const key = context + "|" + err;
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.warn("[space_dim] " + context + ": " + err);
+}
+
+/** Estado dos modelos deste jogador, pro diagnóstico. */
+export function describeSky(player) {
+  const mine = models.get(player.id);
+  if (!mine || !mine.size) return "nenhum modelo no céu";
+  const parts = [];
+  for (const [bodyId, entity] of mine) {
+    let size = "?";
+    try { size = Number(entity.getProperty(SIZE_PROPERTY)).toFixed(3); } catch { }
+    const kind = entity.typeId === STAR_ENTITY ? "estrela" : "corpo";
+    parts.push(`${bodyId}: ${kind} escala ${size}${entity.isValid ? "" : " §c(inválida)"}`);
+  }
+  return parts.join("\n");
 }
 
 function hideModel(player, bodyId) {
@@ -129,7 +175,16 @@ export function updateSky(player) {
       continue;
     }
 
-    const entity = ensureModel(player, body);
+    // Uma regra só: passou do raio do sistema, é estrela.
+    //
+    // Vale nos dois sentidos, e é por isso que ela basta. Dentro do sistema os
+    // corpos ficam todos a menos que isso e aparecem inteiros; saindo dele,
+    // eles ficam pra trás e viram pontinhos, um a um, conforme a distância
+    // cresce. E um corpo de OUTRO sistema estelar, a milhares de blocos, já
+    // nasce como estrela — que é o que ele é, até se chegar lá.
+    const star = d > SOLAR_SYSTEM_RADIUS;
+
+    const entity = ensureModel(player, body, star);
     if (!entity) continue;
     shown.add(body.id);
 
@@ -141,10 +196,12 @@ export function updateSky(player) {
       continue;
     }
 
-    const scale = Math.min(
-      SKY_MODEL_MAX_SCALE,
-      Math.max(SKY_MODEL_MIN_SCALE, (SKY_MODEL_DISTANCE * body.radius) / (d * 8))
-    );
+    const scale = star
+      ? STAR_SCALE
+      : Math.min(
+          SKY_MODEL_MAX_SCALE,
+          Math.max(SKY_MODEL_MIN_SCALE, (SKY_MODEL_DISTANCE * body.radius) / (d * 8))
+        );
     try { entity.setProperty(SIZE_PROPERTY, scale); } catch { }
   }
 
