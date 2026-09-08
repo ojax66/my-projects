@@ -21,6 +21,9 @@ RP = os.path.join(ROOT, "packs", "Space Dimension RP")
 NS = "space_dim"
 SC = "nv_sc"
 FORMAT_VERSION = "1.21.80"
+# Receita usa outro schema — ver a nota em make_star_gear.py. "1.21.80" numa
+# receita faz o arquivo não carregar sem avisar nada.
+RECIPE_FORMAT = "1.12"
 
 # Materiais dos planetas do Spacecraft que entram no reforço.
 #   T titânio (Lua) — estrutura que aguenta pressão
@@ -151,7 +154,7 @@ def main():
         write_json(
             os.path.join(BP, "recipes", f"{name}.json"),
             {
-                "format_version": FORMAT_VERSION,
+                "format_version": RECIPE_FORMAT,
                 "minecraft:recipe_shaped": {
                     "description": {"identifier": f"{NS}:{name}"},
                     "tags": ["crafting_table"],

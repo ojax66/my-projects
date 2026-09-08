@@ -308,6 +308,25 @@ O addon não consome a mochila: o loop do Spacecraft já gasta durabilidade e
 atualiza o HUD dela em todo tick, em qualquer dimensão. Duplicar isso gastaria
 oxigênio em dobro no espaço.
 
+## Uma pegadinha do Bedrock: versão de receita
+
+Item e bloco aceitam `format_version` novo (`1.21.80`); **receita não**. Ela usa
+outro schema, e uma versão que o jogo não reconhece faz o arquivo não carregar
+sem avisar nada — a receita simplesmente não aparece na bancada.
+
+As versões usadas aqui:
+
+| Tipo | Versão | De onde vem |
+|---|---|---|
+| shaped / shapeless | `1.12` | é a que o Spacecraft usa nas dele, que funcionam |
+| smithing transform | `1.20.10` | a receita de ferraria nem existia em 1.12 |
+
+A barra de estrela usa `count` no ingrediente em vez de repetir o item oito
+vezes, que é como a receita da barra de netherite é escrita no jogo.
+
+`validate.py` trava isso: qualquer receita com versão fora da lista vira erro
+de build.
+
 ## Ajustes
 
 Tudo que dá pra mexer está em `packs/Space Dimension BP/scripts/space_dim/config.js`:
@@ -378,6 +397,11 @@ pra exercitar tudo fora do jogo.
   não é textura de bloco, é render) ou tiver viés centro/borda alto — o sinal
   de que ela vai virar bolinha repetida numa parede. Foi o que pegou a primeira
   versão da mancha solar, desenhada a partir da distância ao centro do bloco.
+- **`validate.py`** confere o `format_version` de cada receita contra o schema
+  que ela usa. Uma versão que o jogo não reconhece pra receita faz o arquivo
+  inteiro não carregar **em silêncio** — nada no console, a receita só não
+  existe na bancada. Foi assim que todas as receitas do addon pararam de uma
+  vez, por estarem em `1.21.80`, que é versão de item e bloco, não de receita.
 - **`validate.py`** confere também o que vem de outros packs contra
   `tools/assets/external_assets.json`: só os caminhos declarados ali passam sem
   arquivo local, então um `spacesuitt` de digitação é pego, e uma receita que

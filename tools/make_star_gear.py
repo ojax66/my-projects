@@ -6,23 +6,30 @@ packs saem dela — item JSON, receita, attachable, ícone, entrada no
 item_texture.json e nome no .lang. São seis lugares por peça; escrever à mão é
 convite a esquecer um e o item virar cubo roxo sem nome.
 
-O modelo da armadura veio pronto (tools/assets/star_armor_src.geo.json), com
-capacete, peitoral e botas no MESMO geo. Aqui ele é dividido em três — um por
+O modelo (tools/assets/star_armor_src.geo.json) e os ícones
+(tools/assets/icons) vieram prontos. O modelo traz capacete, peitoral e botas
+no MESMO geo. Aqui ele é dividido em três — um por
 peça — e os ossos são renomeados pros nomes que o esqueleto do jogador usa
 (`head`, `body`, `leftArm`…), que é o que faz a armadura acompanhar a pose.
 A calça usa o modelo padrão do jogo, como pedido.
 """
 import json
-import math
 import os
-import struct
-import zlib
+import shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Space Dimension BP")
 RP = os.path.join(ROOT, "packs", "Space Dimension RP")
 NS = "space_dim"
 FORMAT_VERSION = "1.21.80"
+
+# RECEITA USA OUTRO SCHEMA. Um format_version que o jogo não reconhece pra
+# receita faz o arquivo inteiro não carregar, em silêncio — foi o que deixou
+# TODAS as receitas do addon sem funcionar quando estavam em "1.21.80".
+# "1.12" é o que o próprio Spacecraft usa nas dele, que funcionam no jogo.
+RECIPE_FORMAT = "1.12"
+# Receita de ferraria não existia em 1.12; a documentação dela usa 1.20.10.
+SMITHING_FORMAT = "1.20.10"
 
 SRC_GEO = os.path.join(ROOT, "tools", "assets", "star_armor_src.geo.json")
 
@@ -123,136 +130,10 @@ def write_json(path, data):
 
 
 # --- Ícones do inventário ----------------------------------------------------
-# As texturas que vieram cobrem o modelo 3D e a camada da calça, mas não os
-# ícones das quatro peças no inventário. Estes são desenhados aqui, na mesma
-# paleta da armadura, com as silhuetas de sempre.
-STAR_PALETTE = {
-    "line": (0xB8, 0x8A, 0x10),
-    "dark": (0xE8, 0xB8, 0x2A),
-    "mid": (0xF7, 0xD9, 0x5C),
-    "light": (0xFF, 0xF0, 0xAE),
-    "hi": (0xFF, 0xFC, 0xE0),
-}
-
-# 16x16, uma letra por pixel: . vazio, o contorno, d escuro, m médio, c claro,
-# h brilho. Silhuetas iguais às da armadura do jogo, pra ler de imediato.
-ICON_ART = {
-    "star_helmet": [
-        "................",
-        "................",
-        "....oooooooo....",
-        "..oommmmmmmmoo..",
-        ".ommcccccccccmo.",
-        ".omcchhhhhhccmo.",
-        ".omcc..hh..ccmo.",
-        ".omc........cmo.",
-        ".omc........cmo.",
-        ".omcc......ccmo.",
-        ".ommccccccccmmo.",
-        "..oommmmmmmmoo..",
-        "..oo........oo..",
-        "................",
-        "................",
-        "................",
-    ],
-    "star_chestplate": [
-        "................",
-        "..oo........oo..",
-        ".ommmoooooommmo.",
-        ".omcmmmmmmmmcmo.",
-        ".omccccccccccmo.",
-        ".omcchhhhhhccmo.",
-        ".omcchhhhhhccmo.",
-        ".omccccccccccmo.",
-        ".omcmmmmmmmmcmo.",
-        ".ommmmmmmmmmmmo.",
-        ".ommmmmmmmmmmmo.",
-        "..oooooooooooo..",
-        "................",
-        "................",
-        "................",
-        "................",
-    ],
-    "star_leggings": [
-        "................",
-        "................",
-        "..oooooooooooo..",
-        ".ommmmmmmmmmmmo.",
-        ".omccccccccccmo.",
-        ".omchhhhhhhhcmo.",
-        ".omccccccccccmo.",
-        ".ommmmoooommmmo.",
-        ".ommmo....ommmo.",
-        ".omcmo....omcmo.",
-        ".omcmo....omcmo.",
-        ".omcmo....omcmo.",
-        ".ommmo....ommmo.",
-        "..ooo......ooo..",
-        "................",
-        "................",
-    ],
-    "star_boots": [
-        "................",
-        "................",
-        "................",
-        "................",
-        "..ooo......ooo..",
-        ".ommmo....ommmo.",
-        ".omcmo....omcmo.",
-        ".omcmo....omcmo.",
-        ".omcmo....omcmo.",
-        ".ommmoo..oommmo.",
-        ".omccccooccccmo.",
-        ".omchhhoohhhcmo.",
-        ".ommmmmoommmmmo.",
-        "..oooooooooooo..",
-        "................",
-        "................",
-    ],
-}
-
-ICON_KEY = {
-    "o": "line", "d": "dark", "m": "mid", "c": "light", "h": "hi",
-}
-
-
-def write_png(path, rows):
-    h, w = len(rows), len(rows[0])
-    raw = b"".join(b"\x00" + bytes(v for px in row for v in px) for row in rows)
-
-    def chunk(tag, data):
-        c = tag + data
-        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
-
-    png = (
-        b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
-        + chunk(b"IDAT", zlib.compress(raw, 9))
-        + chunk(b"IEND", b"")
-    )
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
-        f.write(png)
-
-
-def render_icon(art):
-    # Erro de contagem no desenho é fácil de cometer e some se a linha for
-    # completada em silêncio — então aqui ele estoura.
-    if len(art) != 16:
-        raise SystemExit(f"ícone com {len(art)} linhas, esperado 16")
-    for i, line in enumerate(art):
-        if len(line) != 16:
-            raise SystemExit(f"linha {i} do ícone tem {len(line)} colunas, esperado 16")
-
-    rows = []
-    for line in art:
-        row = []
-        for ch in line:
-            key = ICON_KEY.get(ch)
-            row.append(STAR_PALETTE[key] + (255,) if key else (0, 0, 0, 0))
-        rows.append(row)
-    return rows
-
+# Os quatro ícones vieram desenhados (tools/assets/icons). Uma versão anterior
+# os desenhava aqui por falta deles; agora é só cópia — a arte é do autor do
+# addon, não minha aproximação.
+ICONS_DIR = os.path.join(ROOT, "tools", "assets", "icons")
 
 # --- Corte da bota -----------------------------------------------------------
 def box_uv_faces(u, v, w, h, d):
@@ -447,8 +328,18 @@ def main():
 
     # --- ícones --------------------------------------------------------------
     icon_dir = os.path.join(RP, "textures", NS, "items")
-    for name, art in ICON_ART.items():
-        write_png(os.path.join(icon_dir, f"{name}.png"), render_icon(art))
+    os.makedirs(icon_dir, exist_ok=True)
+    missing = []
+    for name in ARMOR:
+        src = os.path.join(ICONS_DIR, f"{name}.png")
+        if not os.path.isfile(src):
+            missing.append(name)
+            continue
+        shutil.copyfile(src, os.path.join(icon_dir, f"{name}.png"))
+    if missing:
+        raise SystemExit(
+            "faltam ícones em tools/assets/icons: " + ", ".join(missing)
+        )
 
     # --- item_texture.json ---------------------------------------------------
     texture_data = {}
@@ -472,7 +363,7 @@ def main():
     write_json(
         os.path.join(recipe_dir, "star_core_shard_from_block.json"),
         {
-            "format_version": FORMAT_VERSION,
+            "format_version": RECIPE_FORMAT,
             "minecraft:recipe_shapeless": {
                 "description": {"identifier": f"{NS}:star_core_shard_from_block"},
                 "tags": ["crafting_table"],
@@ -487,14 +378,16 @@ def main():
     write_json(
         os.path.join(recipe_dir, "star_core_ingot.json"),
         {
-            "format_version": FORMAT_VERSION,
+            "format_version": RECIPE_FORMAT,
             "minecraft:recipe_shapeless": {
                 "description": {"identifier": f"{NS}:star_core_ingot"},
                 "tags": ["crafting_table"],
-                "ingredients": (
-                    [{"item": f"{NS}:star_core_shard"}] * 4
-                    + [{"item": "minecraft:diamond"}] * 4
-                ),
+                # `count` em vez de repetir o item oito vezes — é a forma que a
+                # própria receita da barra de netherite usa no jogo.
+                "ingredients": [
+                    {"item": f"{NS}:star_core_shard", "count": 4},
+                    {"item": "minecraft:diamond", "count": 4},
+                ],
                 "result": {"item": f"{NS}:star_core_ingot", "count": 1},
             },
         },
@@ -504,7 +397,7 @@ def main():
     write_json(
         os.path.join(recipe_dir, "star_upgrade_template_duplication.json"),
         {
-            "format_version": FORMAT_VERSION,
+            "format_version": RECIPE_FORMAT,
             "minecraft:recipe_shaped": {
                 "description": {"identifier": f"{NS}:star_upgrade_template_duplication"},
                 "tags": ["crafting_table"],
@@ -524,7 +417,7 @@ def main():
         write_json(
             os.path.join(recipe_dir, f"{name}_smithing.json"),
             {
-                "format_version": FORMAT_VERSION,
+                "format_version": SMITHING_FORMAT,
                 "minecraft:recipe_smithing_transform": {
                     "description": {"identifier": f"{NS}:{name}_smithing"},
                     "tags": ["smithing_table"],
@@ -552,7 +445,7 @@ def main():
 
     print(f"{len(ITEMS)} itens + {len(ARMOR)} peças de armadura")
     print(f"  geometrias: {', '.join(geo_ids)}")
-    print(f"  {len(ARMOR)} attachables, {len(ICON_ART)} ícones desenhados")
+    print(f"  {len(ARMOR)} attachables, {len(ARMOR)} ícones copiados de tools/assets/icons")
     print(f"  {3 + len(ARMOR)} receitas")
 
 

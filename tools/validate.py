@@ -414,6 +414,36 @@ for p, d in docs.items():
         for v in (r.get("key") or {}).values():
             check_recipe_ref(v, where)
 
+# --- 4e-bis. format_version das receitas --------------------------------------
+#
+# Um format_version que o jogo não reconhece pra receita faz o arquivo inteiro
+# não carregar, EM SILÊNCIO: nada no console, a receita simplesmente não existe
+# na bancada. Foi assim que todas as receitas do addon ficaram sem funcionar de
+# uma vez, por estarem em "1.21.80" — que é versão de item/bloco, não de
+# receita. As versões abaixo são as que o Spacecraft usa (e funcionam) e as
+# que a documentação usa pra ferraria.
+RECIPE_FORMAT_OK = {
+    "minecraft:recipe_shaped": {"1.12", "1.16", "1.17", "1.19", "1.20.10", "1.20.30"},
+    "minecraft:recipe_shapeless": {"1.12", "1.16", "1.17", "1.19", "1.20.10", "1.20.30"},
+    "minecraft:recipe_furnace": {"1.12", "1.16", "1.17", "1.19", "1.20.10", "1.20.30"},
+    "minecraft:recipe_brewing_mix": {"1.12", "1.16", "1.17", "1.19", "1.20.10"},
+    "minecraft:recipe_smithing_transform": {"1.19", "1.20.10", "1.20.30", "1.21.0"},
+    "minecraft:recipe_smithing_trim": {"1.19", "1.20.10", "1.20.30", "1.21.0"},
+}
+
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    for kind, allowed in RECIPE_FORMAT_OK.items():
+        if kind not in d:
+            continue
+        ver = str(d.get("format_version"))
+        if ver not in allowed:
+            rid = d[kind].get("description", {}).get("identifier", os.path.basename(p))
+            err(f"receita {rid}: format_version {ver} não vale pra {kind} — "
+                f"o arquivo não carregaria e a receita sumiria sem aviso "
+                f"(use uma de {sorted(allowed)})")
+
 # --- 4f. O config e os itens gerados falam da mesma armadura ------------------
 # STAR_ARMOR_PIECES é o que decide se o jogador está protegido. Se ele citar um
 # id que não existe mais, a proteção simplesmente nunca liga e nada avisa.
