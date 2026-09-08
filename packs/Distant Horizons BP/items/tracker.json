@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:item": {
+    "description": {
+      "identifier": "space_dim:tracker",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.miscFood"
+      }
+    },
+    "components": {
+      "minecraft:icon": "space_dim_tracker",
+      "minecraft:max_stack_size": 1,
+      "minecraft:hover_text_color": "aqua",
+      "minecraft:glint": true
+    }
+  }
+}

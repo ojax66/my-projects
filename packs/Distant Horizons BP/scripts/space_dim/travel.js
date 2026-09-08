@@ -27,7 +27,7 @@ import {
   SPACECRAFT_LANDING_Y,
   LANDING_JITTER,
 } from "./config.js";
-import { distanceTo } from "./bodies.js";
+import { chebyshevTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
 import * as vehicle from "./vehicle.js";
 import { rememberSpawn } from "./spawnGuard.js";
@@ -337,7 +337,7 @@ export function bodyTouchedBy(player) {
   const loc = player.location;
   for (let i = 0; i < BODIES.length; i++) {
     const body = BODIES[i];
-    if (distanceTo(loc, body) <= body.radius + PORTAL_MARGIN) return body;
+    if (chebyshevTo(loc, body) <= body.radius + PORTAL_MARGIN) return body;
   }
   return null;
 }

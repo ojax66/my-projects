@@ -1,0 +1,17 @@
+{
+  "space_dim:sun_corona": "#DE9C17",
+  "space_dim:sun_plasma": "#F9C330",
+  "space_dim:sun_core": "#FFF095",
+  "space_dim:earth_ocean": "#063E93",
+  "space_dim:earth_shallow": "#056C91",
+  "space_dim:earth_land": "#038500",
+  "space_dim:earth_forest": "#026002",
+  "space_dim:earth_ice": "#E8EFFA",
+  "space_dim:moon_regolith_light": "#CAD4EB",
+  "space_dim:moon_regolith": "#99A1B3",
+  "space_dim:moon_regolith_dark": "#555B6E",
+  "space_dim:mars_dust": "#BA4E2A",
+  "space_dim:mars_rock": "#923D22",
+  "space_dim:mars_rock_dark": "#501E10",
+  "space_dim:mars_ice": "#E2D7CF"
+}

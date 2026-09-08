@@ -20,6 +20,10 @@ tile.space_dim:mars_rock.name=Martian Rock
 tile.space_dim:mars_rock_dark.name=Martian Basalt
 tile.space_dim:mars_ice.name=Martian Ice
 
+## rastreador estelar (gerado por tools/make_tracker.py)
+item.space_dim:tracker=Star Tracker
+item.space_dim:star_chart_sol=Star Chart: Solar System
+
 ## equipamento de estrela (gerado por tools/make_star_gear.py)
 item.space_dim:star_core_shard=Star Piece
 item.space_dim:star_core_ingot=Stellar Ingot

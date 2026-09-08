@@ -32,6 +32,10 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
+import { updateSky, clearModels, sweepOrphans } from "./skybox.js";
+// Só de importar já liga o item do rastreador e os mapas estelares.
+import "./starCharts.js";
+import { openTracker } from "./trackerUI.js";
 import {
   spawnAmbience,
   pushFog,
@@ -101,6 +105,12 @@ system.runInterval(() => {
     } catch (e) {
       onError("gravidade das entidades", e);
     }
+    // Modelos de céu sem dono (o jogo fechou no meio de uma sessão) ficariam
+    // parados no mundo pra sempre: ninguém mais vai movê-los.
+    if (system.currentTick % 600 === 0) {
+      try { sweepOrphans(world.getDimension(DIMENSION_ID)); }
+      catch (e) { onError("varredura do céu", e); }
+    }
   }
 
   for (const player of players) {
@@ -111,6 +121,7 @@ system.runInterval(() => {
         if (wasInSpace.delete(player.id)) {
           popFog(player);
           releaseZeroGravity(player);
+          clearModels(player.id);
         }
         // Traje reforçado nas dimensões do Spacecraft: sem isto, quem troca o
         // traje deles pelo melhorado sufoca na Lua (eles procuram as peças
@@ -128,6 +139,9 @@ system.runInterval(() => {
       wasInSpace.add(player.id);
       pushFog(player);
       spawnAmbience(player);
+      // Os corpos que o rastreador mostra, sempre visíveis por mais longe que
+      // estejam de verdade.
+      updateSky(player);
       // O renascimento nunca fica aqui: se o jogo mexeu, é devolvido.
       guardSpawnTick(player);
 
@@ -175,6 +189,7 @@ world.beforeEvents.playerLeave.subscribe((event) => {
   wasInSpace.delete(id);
   forgetPhysics(id);
   forgetAmbience(id);
+  clearModels(id);
   // Saiu no meio de uma viagem: apaga a estrutura do veículo, senão ela fica
   // guardada no mundo pra sempre.
   try { forgetVehicle(event.player); } catch { }
@@ -193,6 +208,13 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
       player.teleport({ x: player.location.x, y: SPACE_ENTRY_Y + 2, z: player.location.z });
       player.sendMessage("§7Subindo até a altitude de saída...");
     } catch { }
+    return;
+  }
+
+  // /scriptevent space_dim:tracker — abre o menu sem precisar do item.
+  if (data.id === "space_dim:tracker") {
+    if (player?.typeId !== "minecraft:player") return;
+    system.run(() => { openTracker(player).catch(() => { }); });
     return;
   }
 

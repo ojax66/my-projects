@@ -176,5 +176,115 @@ def duplicate_uuid(tmp):
 case("modulo com o mesmo UUID do header", duplicate_uuid, r"UUID repetido")
 
 
+
+# --- 9. corpo sem o modelo que o mostra de longe -----------------------------
+def drop_sky_entity(tmp):
+    os.remove(bp(tmp, "entities", "sky_mars.json"))
+
+
+case("corpo sem entidade de ceu", drop_sky_entity,
+     r"corpo mars sem entidade de ceu no BP")
+
+
+def drop_sky_texture(tmp):
+    os.remove(rp(tmp, "textures", "space_dim", "sky", "earth.png"))
+
+
+case("corpo sem textura de ceu", drop_sky_texture,
+     r"corpo earth sem textura de ceu")
+
+
+# --- 10. faixa da propriedade de escala menor do que o config pede -----------
+#
+# O motor ignora calado um valor fora da faixa: o corpo fica do tamanho errado
+# e nada aparece no console.
+def narrow_scale(tmp):
+    path = bp(tmp, "entities", "sky_sun.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:entity"]["description"]["properties"]["space_dim:size"]["range"] = [0.5, 2]
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("faixa de escala menor do que o config usa", narrow_scale,
+     r"sky_sun: a faixa de space_dim:size")
+
+
+# --- 11. mapa estelar de um sistema que nao existe ---------------------------
+def orphan_chart(tmp):
+    src = bp(tmp, "items", "star_chart_sol.json")
+    doc = json.load(open(src, encoding="utf-8"))
+    doc["minecraft:item"]["description"]["identifier"] = "space_dim:star_chart_fantasma"
+    json.dump(doc, open(bp(tmp, "items", "star_chart_fantasma.json"), "w",
+                        encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("mapa estelar de um sistema inexistente", orphan_chart,
+     r"star_chart_fantasma abre o sistema 'fantasma'")
+
+
+# --- 12. server-ui usado e nao declarado -------------------------------------
+#
+# Sem a dependencia o import falha no carregamento e TODOS os scripts do addon
+# morrem juntos — nao so o menu.
+def drop_ui_dependency(tmp):
+    path = bp(tmp, "manifest.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["dependencies"] = [d for d in doc["dependencies"]
+                           if d.get("module_name") != "@minecraft/server-ui"]
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("server-ui importado mas nao declarado", drop_ui_dependency,
+     r"nao declara essa dependencia")
+
+
+# --- 12b. material trocado entre emissivo e alphatest ------------------------
+def swap_material(tmp):
+    path = rp(tmp, "entity", "sky_sun.entity.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:client_entity"]["description"]["materials"]["default"] = "entity_alphatest"
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("Sol com material nao-emissivo", swap_material,
+     r"sky_sun usa o material entity_alphatest")
+
+
+# --- 13. os geradores nao podem depender da ordem ----------------------------
+#
+# Cada gerador e dono de um bloco do .lang. A versao antiga guardava so o que
+# vinha ANTES do proprio marcador e descartava o resto, entao rodar um deles
+# sozinho apagava os nomes dos outros — e o unico sinal era o item aparecendo
+# no jogo com o id no lugar do nome. Aconteceu tres vezes.
+def scrambled_generators():
+    global fails, passes
+    import subprocess
+    with tempfile.TemporaryDirectory() as tmp:
+        for sub in ("tools", "packs"):
+            shutil.copytree(os.path.join(ROOT, sub), os.path.join(tmp, sub),
+                            ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        os.makedirs(os.path.join(tmp, "tools", "tests"), exist_ok=True)
+        # ordem de proposito trocada, e cada um rodado sozinho
+        for gen in ("make_tracker.py", "make_spacesuit.py",
+                    "make_blocks.py", "make_star_gear.py", "make_tracker.py"):
+            r = subprocess.run([sys.executable, os.path.join(tmp, "tools", gen)],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                print(f"  FALHOU  gerador {gen} quebrou: {r.stderr.strip()}")
+                fails += 1
+                return
+        code, out = run_validate(tmp)
+        if code == 0:
+            print("  PASS  geradores rodados fora de ordem, um a um")
+            passes += 1
+        else:
+            print("  FALHOU  rodar os geradores fora de ordem quebrou o pack:")
+            print("          " + out.strip().replace("\n", "\n          "))
+            fails += 1
+
+
+scrambled_generators()
+
+
 print(f"\n{passes} PASS, {fails} FALHOU")
 sys.exit(1 if fails else 0)

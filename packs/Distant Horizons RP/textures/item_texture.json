@@ -34,6 +34,12 @@
     },
     "space_dim_reinforced_spacesuit_boots": {
       "textures": "textures/nv/moon/items/armor/spacesuit_boots"
+    },
+    "space_dim_tracker": {
+      "textures": "textures/space_dim/items/tracker"
+    },
+    "space_dim_star_chart": {
+      "textures": "textures/space_dim/items/star_chart"
     }
   }
 }

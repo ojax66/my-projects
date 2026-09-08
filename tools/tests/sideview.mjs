@@ -6,8 +6,9 @@ const generateColumn = (dim, x, z) => {
     for (let y = r.y0; y <= r.y1; y++) { dim.setBlockType({ x, y, z }, r.id); if (y > top) top = y; }
   return runs.length ? top : -64;
 };
-// Vista de fora, na altura do equador: pra cada pixel da tela pega o ponto da
-// superficie mais proximo do observador. E o que o jogador ve chegando.
+// Vista de fora. Os corpos sao CUBOS, entao duas vistas ortogonais chapadas
+// contam tudo: a face da frente (a mistura da superficie) e a face de cima
+// (a calota polar, que nao aparece de frente).
 import { BODIES } from './space_dim/config.js';
 // Pega o bloco da coluna (x,z) cujo Y esta mais perto do alvo: arredondar
 // x, y e z de forma independente cai fora da casca com frequencia, mas a
@@ -38,21 +39,28 @@ const CH = {
   'space_dim:sun_corona':'c', 'space_dim:sun_plasma':'p', 'space_dim:sun_core':'O',
 };
 
-for (const body of BODIES) {
-  const R = body.radius, cols = 72, rows = 34;
-  console.log(`\n=== ${body.id.toUpperCase()} — visto de fora (raio ${R}) ===`);
+function render(body, face) {
+  const R = body.radius, cols = 62, rows = 31;
   const counts = {};
+  console.log(`\n=== ${body.id.toUpperCase()} — face ${face} (cubo de meia-aresta ${R}) ===`);
   for (let r = 0; r < rows; r++) {
     let line = '';
-    // sy: +R no topo (polo norte) ate -R embaixo
-    const sy = R - (r + 0.5) * (2 * R / rows);
     for (let c = 0; c < cols; c++) {
-      const sx = -R + (c + 0.5) * (2 * R / cols);
-      const rem = R * R - sx * sx - sy * sy;
-      if (rem < 0) { line += ' '; continue; }
-      const x = Math.round(body.center.x + sx);
-      const y = Math.round(body.center.y + sy);
-      const z = Math.round(body.center.z + Math.sqrt(rem));
+      // -R..R em cada eixo da tela
+      const a = -R + (c + 0.5) * (2 * R / cols);
+      const b = R - (r + 0.5) * (2 * R / rows);
+      let x, y, z;
+      if (face === 'frente') {
+        // olhando pelo +Z: a face da frente e o plano z = cz + R
+        x = Math.round(body.center.x + a);
+        y = Math.round(body.center.y + b);
+        z = Math.round(body.center.z + R);
+      } else {
+        // olhando de cima: a tampa e o plano y = cy + R
+        x = Math.round(body.center.x + a);
+        y = Math.round(body.center.y + R);
+        z = Math.round(body.center.z + b);
+      }
       const id = blockAt(body, x, y, z);
       const ch = id ? (CH[id] ?? '#') : '?';
       counts[ch] = (counts[ch] || 0) + 1;
@@ -61,6 +69,11 @@ for (const body of BODIES) {
     console.log(line);
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  console.log('  ' + Object.entries(counts).sort((a,b)=>b[1]-a[1])
-    .map(([k,v]) => `${k}:${(100*v/total).toFixed(0)}%`).join('  '));
+  console.log('  ' + Object.entries(counts).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k}:${(100 * v / total).toFixed(0)}%`).join('  '));
+}
+
+for (const body of BODIES) {
+  render(body, 'frente');
+  render(body, 'topo');
 }

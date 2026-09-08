@@ -102,6 +102,8 @@ class Entity {
   setOnFire() { }
   getRotation() { return { x: 0, y: 0 }; }
   getGameMode() { return "Survival"; }
+  setProperty(k, v) { (this.__entityProps ??= new Map()).set(k, v); }
+  getProperty(k) { return this.__entityProps?.get(k); }
   setDynamicProperty(k, v) { (this.__props ??= new Map()).set(k, v); }
   getDynamicProperty(k) { return this.__props?.get(k); }
   getHeadLocation() { return this.location; }
@@ -148,6 +150,7 @@ class Player extends Entity {
     this.isJumping = false;
     this.isSneaking = false;
     this.isOnGround = false;
+    this.selectedSlotIndex = 0;
   }
   /** Atalho de teste: veste uma peça. */
   __wear(slot, typeId) {
@@ -177,7 +180,9 @@ class Dimension {
   getEntities(opts = {}) {
     let out = [...this.__entities];
     if (opts.type) out = out.filter((e) => e.typeId === opts.type);
-    if (opts.families) out = [];
+    if (opts.families) {
+      out = out.filter((e) => (e.__families ?? []).some((f) => opts.families.includes(f)));
+    }
     if (opts.location && opts.maxDistance !== undefined) {
       out = out.filter((e) => {
         const d = Math.hypot(
@@ -320,6 +325,7 @@ export const world = {
     playerDimensionChange: noopEvent(),
     playerSpawn: noopEvent(),
     entityHurt: noopEvent(),
+    itemUse: noopEvent(),
   },
   beforeEvents: {
     playerLeave: noopEvent(),

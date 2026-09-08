@@ -1,0 +1,17 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:item": {
+    "description": {
+      "identifier": "space_dim:star_chart_sol",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.miscFood"
+      }
+    },
+    "components": {
+      "minecraft:icon": "space_dim_star_chart",
+      "minecraft:max_stack_size": 16,
+      "minecraft:hover_text_color": "aqua"
+    }
+  }
+}

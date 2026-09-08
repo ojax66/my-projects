@@ -29,6 +29,7 @@ import {
   DIMENSION_ID,
 } from "./config.js";
 import { inArrivalGrace } from "./arrival.js";
+import { isSkyModel } from "./skybox.js";
 
 const system = mc.system;
 
@@ -139,6 +140,9 @@ export function applyEntityGravity(dimension, players) {
 
     for (const entity of nearby) {
       if (entity.typeId === "minecraft:player") continue;
+      // Os corpos vistos de longe são cenário preso ao jogador: puxá-los seria
+      // arrastar o próprio céu.
+      if (isSkyModel(entity)) continue;
       if (seen.has(entity.id)) continue;      // dois jogadores perto do mesmo item
       seen.add(entity.id);
 

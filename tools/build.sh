@@ -22,6 +22,8 @@ python3 "$ROOT/tools/make_block_textures.py"
 python3 "$ROOT/tools/make_blocks.py"
 python3 "$ROOT/tools/make_star_gear.py"
 python3 "$ROOT/tools/make_spacesuit.py"
+python3 "$ROOT/tools/make_tracker.py"
+node "$ROOT/tools/make_sky_bodies.mjs"
 python3 "$ROOT/tools/validate.py"
 
 mkdir -p "$OUT_DIR"

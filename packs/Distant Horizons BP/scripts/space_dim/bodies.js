@@ -1,16 +1,22 @@
 /* =========================================================================
  * Corpos celestes — geometria e paleta.
  *
- * Cada corpo é uma casca esférica oca. A geração é por coluna (x, z), como o
- * world_generator_API espera: pra cada coluna a gente resolve analiticamente
- * quais Y caem dentro da casca, em vez de varrer os 384 blocos de altura.
+ * Cada corpo é um CUBO oco, na estética do jogo: um planeta redondo feito de
+ * blocos vira uma bola de degraus, e de longe lê como uma bolha. O cubo tem
+ * faces chapadas e arestas retas, que é a linguagem do Minecraft.
  *
- *   dh  = distância horizontal da coluna até o centro
- *   yo  = meia-altura da esfera externa  = sqrt(R² - dh²)
- *   yi  = meia-altura da esfera interna  = sqrt(Ri² - dh²)   (0 se dh >= Ri)
+ * A geração é por coluna (x, z), como o world_generator_API espera. Com cubo
+ * isso fica exato, sem raiz quadrada nenhuma:
  *
- * Os blocos ficam em [cy-yo, cy-yi] e [cy+yi, cy+yo] — a calota de baixo e a
- * de cima. Sem varredura, sem buraco.
+ *   dentro da pegada     |dx| <= R  e  |dz| <= R
+ *   dentro do miolo      |dx| <= Ri e  |dz| <= Ri      (Ri = R - espessura)
+ *
+ * Coluna na parede (fora do miolo, dentro da pegada): maciça de cy-R a cy+R.
+ * Coluna sobre o miolo: só a tampa de baixo e a de cima.
+ *
+ * As distâncias seguem a forma. Pra "encostar" num cubo o que vale é a
+ * distância de Chebyshev (o maior dos três eixos), não a euclidiana — senão o
+ * portal dispararia no ar em frente às faces e não dispararia nas quinas.
  * ========================================================================= */
 
 import { system, BlockVolume } from "@minecraft/server";
@@ -18,6 +24,12 @@ import { valueNoise3D } from "./world_generator_API.js";
 import { BODIES, DIM_MIN_Y, DIM_MAX_Y, BLOCK_BUDGET_PER_TICK } from "./config.js";
 
 const AIR = "minecraft:air";
+
+// Calota polar num corpo cúbico: até onde ela chega na vertical (fração do
+// raio, 1 = tampa) e quanto ela se espalha na horizontal a partir do eixo.
+// A largura é o que decide o tamanho da mancha branca vista de cima.
+const POLAR_CAP_HEIGHT = 0.82;
+const POLAR_CAP_WIDTH = 0.34;
 
 // ---------------------------------------------------------------------------
 // Paletas
@@ -43,6 +55,35 @@ function latitude(y, body) {
   return (y - body.center.y) / body.radius;
 }
 
+/**
+ * Quanto este bloco é "polar", de 0 a 1, num corpo cúbico.
+ *
+ * Numa esfera bastava a latitude: quanto mais perto do polo, menos volta o
+ * paralelo dá, e a calota fechava sozinha. Num cubo não fecha — a tampa
+ * inteira está na latitude máxima, então usar só latitude pintaria as duas
+ * faces de gelo de ponta a ponta. Duas faces de seis é um terço da superfície
+ * visível: um planeta de gelo com uma cinta de terra no meio.
+ *
+ * Então a calota também se fecha na horizontal: ela é uma mancha no MEIO da
+ * tampa, medida pela distância de Chebyshev até o eixo do corpo. Fica como
+ * uma calota de verdade vista de cima, e as bordas da tampa continuam sendo
+ * superfície normal.
+ *
+ * 1 = no eixo e na tampa; 0 = fora da calota.
+ */
+function polarness(x, y, z, body) {
+  const R = body.radius;
+  const vertical = Math.abs(y - body.center.y) / R;     // 1 na tampa
+  const off = Math.max(
+    Math.abs(x - body.center.x),
+    Math.abs(z - body.center.z)
+  ) / R;                                                 // 0 no eixo, 1 na quina
+
+  if (vertical < POLAR_CAP_HEIGHT) return 0;
+  if (off > POLAR_CAP_WIDTH) return 0;
+  return 1 - off / POLAR_CAP_WIDTH;
+}
+
 const PALETTES = {
   // Sol — uma paleta por camada, do âmbar da coroa ao creme do núcleo.
   sun_corona() { return "space_dim:sun_corona"; },
@@ -52,20 +93,19 @@ const PALETTES = {
   // Terra: oceano profundo, plataforma continental, mata, floresta fechada e
   // calotas polares.
   earth(x, y, z, body) {
-    // Calota sólida a partir de ~70 graus, com borda irregular até ~62 — as
-    // latitudes reais do gelo permanente, não uma touca até a Europa.
-    const lat = Math.abs(latitude(y, body));
-    if (lat > 0.94) return "space_dim:earth_ice";
-
     const n = surfaceNoise(x, y, z, 0.05);
-    if (lat > 0.88 && n > 0.55) return "space_dim:earth_ice";
 
-    // Limiares vindos dos percentis reais do ruído nesta superfície (medidos,
-    // não chutados): ~9% floresta, ~20% continente, ~16% plataforma, o resto
+    // Calota polar: cheia no miolo da tampa, esfarrapada na borda pelo ruído.
+    const pole = polarness(x, y, z, body);
+    if (pole > 0.35) return "space_dim:earth_ice";
+    if (pole > 0 && n > 0.52) return "space_dim:earth_ice";
+
+    // Limiares vindos dos percentis reais do ruído neste corpo (medidos, não
+    // chutados): ~9% floresta, ~20% continente, ~16% plataforma, o resto
     // oceano. Dá a proporção água/terra da Terra de verdade.
-    if (n >= 0.591) return "space_dim:earth_forest";
-    if (n >= 0.521) return "space_dim:earth_land";
-    if (n >= 0.483) return "space_dim:earth_shallow";
+    if (n >= 0.617) return "space_dim:earth_forest";
+    if (n >= 0.536) return "space_dim:earth_land";
+    if (n >= 0.492) return "space_dim:earth_shallow";
     return "space_dim:earth_ocean";
   },
 
@@ -84,16 +124,15 @@ const PALETTES = {
 
   // Marte: poeira, rocha e basalto escuro, com calotas de gelo seco.
   mars(x, y, z, body) {
-    // Calotas menores que as da Terra, como as de gelo seco de Marte — mas
-    // grandes o bastante pra aparecer: numa esfera de raio 20, cada grau de
-    // latitude vale pouquíssimo bloco.
-    const lat = Math.abs(latitude(y, body));
-    if (lat > 0.93) return "space_dim:mars_ice";
-
     const n = surfaceNoise(x, y, z, 0.07);
-    if (lat > 0.87 && n > 0.6) return "space_dim:mars_ice";
-    if (n >= 0.585) return "space_dim:mars_rock_dark";
-    if (n >= 0.473) return "space_dim:mars_rock";
+
+    // Calotas de gelo seco, menores que as da Terra.
+    const pole = polarness(x, y, z, body);
+    if (pole > 0.55) return "space_dim:mars_ice";
+    if (pole > 0.2 && n > 0.58) return "space_dim:mars_ice";
+
+    if (n >= 0.654) return "space_dim:mars_rock_dark";
+    if (n >= 0.538) return "space_dim:mars_rock";
     return "space_dim:mars_dust";
   },
 };
@@ -102,11 +141,32 @@ const PALETTES = {
 // Consultas geométricas
 // ---------------------------------------------------------------------------
 
+/** Distância euclidiana até o centro. Usada pela gravidade, que é radial. */
 export function distanceTo(loc, body) {
   const dx = loc.x - body.center.x;
   const dy = loc.y - body.center.y;
   const dz = loc.z - body.center.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Distância de Chebyshev até o centro: o maior dos três eixos.
+ *
+ * É a distância que combina com um cubo. Com a euclidiana, um ponto parado a
+ * `radius` de distância em frente ao meio de uma face já estaria DENTRO do
+ * corpo, e uma quina ficaria a `radius * sqrt(3)` — o portal disparava no ar e
+ * não disparava encostado.
+ */
+export function chebyshevTo(loc, body) {
+  const dx = Math.abs(loc.x - body.center.x);
+  const dy = Math.abs(loc.y - body.center.y);
+  const dz = Math.abs(loc.z - body.center.z);
+  return Math.max(dx, dy, dz);
+}
+
+/** Quantos blocos faltam pra encostar na casca do cubo (0 = na superfície). */
+export function surfaceGap(loc, body) {
+  return chebyshevTo(loc, body) - body.radius;
 }
 
 // Camadas cuja "sombra" horizontal alcança esta coluna. Quase toda coluna do
@@ -118,36 +178,39 @@ function layersOverColumn(x, z) {
   let hits = null;
   for (let i = 0; i < BODIES.length; i++) {
     const b = BODIES[i];
-    const dx = x - b.center.x;
-    const dz = z - b.center.z;
-    const dh2 = dx * dx + dz * dz;
-    if (dh2 > b.radius * b.radius) continue;
+    const dx = Math.abs(x - b.center.x);
+    const dz = Math.abs(z - b.center.z);
+    // Pegada do cubo: o maior dos dois eixos decide.
+    const dh = dx > dz ? dx : dz;
+    if (dh > b.radius) continue;
 
     for (let j = 0; j < b.layers.length; j++) {
       const layer = b.layers[j];
-      if (dh2 > layer.radius * layer.radius) continue;
-      (hits ??= []).push({ body: b, layer, dh2 });
+      if (dh > layer.radius) continue;
+      (hits ??= []).push({ body: b, layer, dh });
     }
   }
   return hits;
 }
 
 // Intervalos [de, até] de Y que uma camada ocupa nesta coluna.
-function shellSpans(body, layer, dh2) {
+//
+// Num cubo a altura não depende de onde a coluna está: a face de cima é plana.
+// O que muda é se a coluna atravessa a parede (maciça de ponta a ponta) ou o
+// miolo oco (só as duas tampas).
+function shellSpans(body, layer, dh) {
   const R = layer.radius;
   const Ri = Math.max(0, R - layer.shell);
   const cy = body.center.y;
 
-  const outer = Math.sqrt(Math.max(0, R * R - dh2));
-  const inner = dh2 >= Ri * Ri ? 0 : Math.sqrt(Ri * Ri - dh2);
-
-  // Coluna que passa longe do miolo: a casca vira um bloco maciço só.
-  if (inner <= 0) {
-    return [[cy - outer, cy + outer]];
+  // `shell >= radius` quer dizer camada maciça — é assim que o núcleo do Sol
+  // é declarado no config.
+  if (Ri <= 0 || dh > Ri) {
+    return [[cy - R, cy + R]];
   }
   return [
-    [cy - outer, cy - inner],
-    [cy + inner, cy + outer],
+    [cy - R, cy - Ri],
+    [cy + Ri, cy + R],
   ];
 }
 
@@ -169,11 +232,11 @@ export function columnRuns(x, z) {
   const runs = [];
 
   for (let i = 0; i < hits.length; i++) {
-    const { body, layer, dh2 } = hits[i];
+    const { body, layer, dh } = hits[i];
     const palette = PALETTES[layer.palette];
     if (!palette) continue;
 
-    const spans = shellSpans(body, layer, dh2);
+    const spans = shellSpans(body, layer, dh);
     for (let s = 0; s < spans.length; s++) {
       const from = Math.max(DIM_MIN_Y, Math.ceil(spans[s][0]));
       const to = Math.min(DIM_MAX_Y - 1, Math.floor(spans[s][1]));

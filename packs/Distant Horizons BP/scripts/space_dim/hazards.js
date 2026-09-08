@@ -20,12 +20,19 @@ import {
   FIRE_RESISTANCE_PROTECTS,
   REINFORCED_SUIT_BLOCKS_APPROACH_HEAT,
 } from "./config.js";
-import { distanceTo } from "./bodies.js";
+// Cubo: o que vale é a distância de Chebyshev, senão o campo de calor seria
+// uma esfera em volta de um cubo — quente no ar em frente às faces e frio
+// encostado nas quinas.
+import { chebyshevTo } from "./bodies.js";
 import { hasStarArmor, starArmorBlocksHeat, protectionTier, pressureMultiplier } from "./gear.js";
 
 const system = mc.system;
 
 // Corpos que têm campo de calor (hoje só o Sol, mas nada aqui presume isso).
+// O brilho alcança um pouco além do campo de calor: dá pra ver o Sol acender o
+// espaço antes de estar perto o bastante pra pegar fogo.
+const SUN_GLOW_MARGIN = 60;
+
 const HOT_BODIES = BODIES.filter((b) => b.heat);
 
 function isExempt(player, heatLevel = 0) {
@@ -55,6 +62,26 @@ function isExempt(player, heatLevel = 0) {
 }
 
 /**
+ * O quanto o Sol acende este ponto, de 0 (fora do alcance) a 1 (na casca).
+ *
+ * A luz de bloco não serve pra isto: ela ilumina superfícies, e no vácuo não há
+ * superfície nenhuma pra iluminar — um enxame de blocos de luz no espaço vazio
+ * não mudaria um pixel. Quem faz o entorno do Sol acender é a névoa, e é este
+ * número que decide quando ela troca.
+ */
+export function sunGlowFactor(location) {
+  for (let i = 0; i < HOT_BODIES.length; i++) {
+    const body = HOT_BODIES[i];
+    const d = chebyshevTo(location, body);
+    const outer = body.radius + body.heat.zone + SUN_GLOW_MARGIN;
+    if (d > outer) continue;
+    if (d <= body.radius) return 1;
+    return Math.min(1, (outer - d) / (outer - body.radius));
+  }
+  return 0;
+}
+
+/**
  * Quão fundo no campo de calor o jogador está.
  *
  *   0    na borda externa do campo
@@ -66,7 +93,7 @@ function isExempt(player, heatLevel = 0) {
 function heatAt(location) {
   for (let i = 0; i < HOT_BODIES.length; i++) {
     const body = HOT_BODIES[i];
-    const d = distanceTo(location, body);
+    const d = chebyshevTo(location, body);
     const outer = body.radius + body.heat.zone;
     if (d > outer) continue;
 
@@ -131,7 +158,7 @@ export function applySunPressure(player) {
   for (let i = 0; i < HOT_BODIES.length; i++) {
     const body = HOT_BODIES[i];
     if (!body.pressure) continue;
-    if (distanceTo(player.location, body) < body.radius) { inside = body; break; }
+    if (chebyshevTo(player.location, body) < body.radius) { inside = body; break; }
   }
   if (!inside) return null;
 

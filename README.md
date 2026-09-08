@@ -359,6 +359,20 @@ O addon não consome a mochila: o loop do Spacecraft já gasta durabilidade e
 atualiza o HUD dela em todo tick, em qualquer dimensão. Duplicar isso gastaria
 oxigênio em dobro no espaço.
 
+## Os geradores não dependem da ordem
+
+Cada gerador é dono de um bloco marcado do `.lang`. A versão antiga escrevia
+`open(path).read().split(MARK)[0]`: guardava o que vinha **antes** do próprio
+marcador e jogava fora tudo que vinha depois. Funcionava enquanto rodassem
+sempre na mesma ordem, e quebrava calado toda vez que um deles fosse rodado
+sozinho — o `.lang` perdia os blocos dos outros e os itens voltavam a aparecer
+com o id no lugar do nome. Aconteceu três vezes.
+
+`tools/langfile.py` lê o arquivo como uma lista de blocos e troca só o seu. O
+`item_texture.json` também passou a ser mesclado em vez de sobrescrito, pelo
+mesmo motivo. `test_validator.py` roda os geradores fora de ordem, um a um, e
+valida o resultado.
+
 ## UUID novo a cada entrega
 
 `python3 tools/new_uuids.py` troca os cinco UUIDs dos manifests e religa as duas
@@ -491,6 +505,123 @@ pra exercitar tudo fora do jogo.
 - **`validate.py`** também exige que a coroa e o plasma do Sol tenham
   `collision_box: false` e emitam luz, e que o núcleo seja sólido. Regenerar os
   blocos sem isso transformaria o Sol numa bola maciça sem ninguém notar.
+
+## Os corpos são cubos
+
+Um planeta redondo feito de blocos é uma bola de degraus: de perto se veem as
+escadinhas, de longe vira uma bolha sem cara de nada. Cubo tem face chapada e
+aresta reta, que é a linguagem do jogo — e a geração fica exata, sem raiz
+quadrada nenhuma:
+
+```
+dentro da pegada   |dx| <= R   e  |dz| <= R
+dentro do miolo    |dx| <= Ri  e  |dz| <= Ri     (Ri = R - espessura)
+```
+
+Coluna na parede: maciça de `cy-R` a `cy+R`. Coluna sobre o miolo: só as duas
+tampas. Uma consequência: o Sol passou de 505 mil pra 1,08 milhão de blocos, e
+de 10 pra 22 segundos de geração contínua. Não trava — o orçamento por tick
+continua valendo e a chunk mais cara termina em 5 ticks —, mas o Sol demora mais
+pra aparecer inteiro.
+
+**As distâncias seguiram a forma.** Portal, campo de calor e bússola passaram
+pra distância de **Chebyshev** (o maior dos três eixos). Com a euclidiana, um
+ponto a `R` do centro em frente ao meio de uma face já estaria *dentro* do
+corpo, e uma quina ficaria a `R·√3` — o portal disparava no ar e não disparava
+encostado.
+
+### A calota polar precisou ser repensada
+
+Numa esfera bastava a latitude: quanto mais perto do polo, menos volta o
+paralelo dá, e a calota fechava sozinha. Num cubo não fecha — a tampa inteira
+está na latitude máxima, então o mesmo código pintou **22,5%** do planeta de
+gelo. Duas faces de seis: um planeta de gelo com uma cinta de terra no meio.
+
+Agora a calota também se fecha na horizontal (`polarness`): é uma mancha no
+meio da tampa, e as bordas dela continuam sendo superfície normal. Deu 2,9% na
+Terra e 1,1% em Marte, com as proporções de oceano, continente e floresta
+recalibradas pelos percentis medidos do ruído no cubo.
+
+## Visíveis a qualquer distância
+
+Um corpo de blocos some assim que passa da distância de renderização, e no
+espaço quase tudo está sempre além dela. A solução é a que o Spacecraft usa pra
+Terra dele: uma **entidade** sem colisão e sem hitbox, mantida a poucos blocos
+do jogador e encolhida até dar exatamente o mesmo ângulo que o corpo daria lá
+longe.
+
+```
+tamanho aparente  =  raio / distância real
+escala do modelo  =  (distância do modelo × raio) / (distância real × 8)
+```
+
+A escala vem de uma **propriedade de entidade** lida por uma animação do
+cliente: `minecraft:scale` é fixo na definição e não aceita um número novo por
+entidade. Passar da faixa declarada não dá erro — o motor ignora calado e o
+corpo fica do tamanho errado —, então o `validate.py` compara a faixa das
+entidades com o que o config pode pedir.
+
+A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
+que constrói o corpo de blocos, com as cores dos mesmos blocos (que
+`make_blocks.py` exporta pra `tools/assets/block_colors.json`). O que se vê de
+longe é o que está lá.
+
+Chegando a menos de 190 blocos o modelo sai e o corpo de blocos assume, senão
+haveria um cubinho pairando na frente do planeta de verdade.
+
+## O rastreador
+
+Era uma linha de texto com quatro corpos fixos. Agora é uma consulta a um
+catálogo, e o catálogo é feito pra crescer: cada sistema estelar novo é uma
+entrada em `catalog.js` e mais nada.
+
+Duas coisas separadas, e a diferença é o ponto:
+
+| | o que é | como muda |
+|---|---|---|
+| **desbloqueado** | o jogador descobriu o sistema | progresso, não se desfaz |
+| **ligado** | ele quer aquilo na tela agora | preferência, muda quando quiser |
+
+Desligar Marte não faz o jogador esquecer Marte. E o estado guarda o que está
+**desligado**, não o que está ligado — assim um corpo acrescentado ao catálogo
+depois aparece ligado sozinho, sem mexer no save de ninguém.
+
+**Mapa estelar** (`space_dim:star_chart_<sistema>`) é o papel com as
+coordenadas: usar abre o sistema pra sempre e some da mão. Um mapa repetido
+avisa e **não** é consumido — perder um item por engano é pior que carregar um a
+mais. O id do item carrega o id do sistema, então um sistema novo não precisa de
+código novo.
+
+O mesmo caminho serve pra upgrade de nave: `unlockSystem(player, id)`, ou
+`/scriptevent space_dim:unlock <sistema>`.
+
+O menu é um formulário de verdade (`@minecraft/server-ui`), aberto pelo item
+Rastreador Estelar ou por `/scriptevent space_dim:tracker`. Sistema trancado
+aparece na lista, cinza — saber que existe algo pra achar é parte do jogo; o que
+ele não mostra é onde está.
+
+## O Sol acende o espaço, mas não com luz de bloco
+
+Luz de bloco ilumina **superfícies**, e no vácuo não há superfície pra iluminar:
+um enxame de blocos de luz no espaço vazio não mudaria um pixel. Os três blocos
+do Sol já estão no máximo (emissão 15, `light_dampening` 0) e isso serve pro que
+está encostado nele — o próprio Sol, uma nave, uma plataforma.
+
+O que faz o entorno acender são outras duas coisas:
+
+- **O modelo distante é emissivo.** No material `entity_emissive` o canal alfa é
+  a máscara de brilho: alfa 0 quer dizer *aceso*, não transparente. É o inverso
+  do `entity_alphatest` que os outros corpos usam, onde alfa 0 é buraco. Trocar
+  os dois não dá erro nenhum — o corpo só fica invisível, ou opaco onde devia ser
+  vazado —, então o validador confere o par.
+- **A névoa troca.** Entrando no alcance do Sol, o azul do espaço profundo dá
+  lugar a um dourado, e a região inteira acende. É isso que se vê.
+
+## O espaço é azul, não preto
+
+`#0B1436` no céu e na névoa, com o espalhamento volumétrico puxado pro azul.
+Preto puro não é o que se vê nas fotos: fica um buraco chapado, sem
+profundidade.
 
 ## Onde o jogador cai ao chegar
 

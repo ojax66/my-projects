@@ -1,0 +1,20 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "space_dim:espaco_sideral"
+    },
+    "components": {
+      "minecraft:fog_appearance": {
+        "fog_identifier": "space_dim:fog_outer_space"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#0B1436"
+      },
+      "minecraft:water_appearance": {
+        "surface_color": "#0a0a1e",
+        "surface_opacity": 0.9
+      }
+    }
+  }
+}

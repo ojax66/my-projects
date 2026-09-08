@@ -1,0 +1,28 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "space_dim:sky_mars",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/space_dim/sky/mars"
+      },
+      "geometry": {
+        "default": "geometry.space_dim.sky_body"
+      },
+      "animations": {
+        "size": "animation.space_dim.sky_body.size"
+      },
+      "scripts": {
+        "animate": [
+          "size"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.space_dim.sky_body"
+      ]
+    }
+  }
+}

@@ -15,7 +15,11 @@ A calça usa o modelo padrão do jogo, como pedido.
 """
 import json
 import os
+import sys
 import shutil
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
@@ -354,19 +358,18 @@ def main():
         )
 
     # --- item_texture.json ---------------------------------------------------
-    texture_data = {}
+    # Mescla: o atlas é compartilhado com o traje reforçado e o rastreador.
+    # Sobrescrever o arquivo inteiro apagava os ícones deles, e o único aviso
+    # era o item saindo sem textura no jogo.
+    path = os.path.join(RP, "textures", "item_texture.json")
+    doc = json.load(open(path, encoding="utf-8")) if os.path.isfile(path) else {
+        "resource_pack_name": NS, "texture_name": "atlas.items", "texture_data": {},
+    }
     for name in list(ITEMS) + list(ARMOR):
-        texture_data[f"{NS}_{name}"] = {
+        doc["texture_data"][f"{NS}_{name}"] = {
             "textures": f"textures/{NS}/items/{name}"
         }
-    write_json(
-        os.path.join(RP, "textures", "item_texture.json"),
-        {
-            "resource_pack_name": NS,
-            "texture_name": "atlas.items",
-            "texture_data": texture_data,
-        },
-    )
+    write_json(path, doc)
 
     # --- receitas ------------------------------------------------------------
     recipe_dir = os.path.join(BP, "recipes")
@@ -444,16 +447,11 @@ def main():
     # --- nomes ---------------------------------------------------------------
     MARK = "## equipamento de estrela (gerado por tools/make_star_gear.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        path = os.path.join(RP, "texts", f"{lang}.lang")
-        existing = ""
-        if os.path.isfile(path):
-            with open(path, encoding="utf-8") as f:
-                existing = f.read().split(MARK)[0].rstrip("\n")
-        lines = [existing, "", MARK]
-        for name, spec in list(ITEMS.items()) + list(ARMOR.items()):
-            lines.append(f"item.{NS}:{name}={spec[key]}")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+        replace_section(
+            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
+            [f"item.{NS}:{name}={spec[key]}"
+             for name, spec in list(ITEMS.items()) + list(ARMOR.items())],
+        )
 
     print(f"{len(ITEMS)} itens + {len(ARMOR)} peças de armadura")
     print(f"  geometrias: {', '.join(geo_ids)}")

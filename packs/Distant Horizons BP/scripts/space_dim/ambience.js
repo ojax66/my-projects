@@ -17,20 +17,23 @@ import {
   STARFIELD_INTERVAL_TICKS,
   SPACE_DUST_INTERVAL_TICKS,
   FOG_ID,
+  SUN_FOG_ID,
   FOG_LABEL,
   HUD_ENABLED,
   HUD_INTERVAL_TICKS,
   PORTAL_MARGIN,
 } from "./config.js";
-import { distanceTo } from "./bodies.js";
+import { chebyshevTo } from "./bodies.js";
+import { sunGlowFactor } from "./hazards.js";
+import { trackedBodies } from "./tracker.js";
 
 const system = mc.system;
 
 // playerId → tick do último campo de estrelas / poeira
 const lastStars = new Map();
 const lastDust = new Map();
-// playerId → a névoa já foi empilhada?
-const fogged = new Set();
+// playerId → qual névoa está empilhada agora
+const fogged = new Map();
 
 export function spawnAmbience(player) {
   const now = system.currentTick;
@@ -52,16 +55,19 @@ export function spawnAmbience(player) {
   }
 }
 
-// O bioma custom já traz a névoa; este push é o cinto de segurança pra o caso
-// de o bioma não aplicar na versão do jogo. Empilha UMA vez por jogador — a
-// mesma armadilha que o Spacecraft documenta (empilhar todo tick estoura o
-// limite de identificadores de neblina).
+// O bioma custom já traz a névoa do espaço; este push é o cinto de segurança
+// pra o caso de o bioma não aplicar na versão do jogo, e é também como a névoa
+// dourada do Sol entra.
+//
+// Só troca quando a névoa DESEJADA muda. Empilhar todo tick é a armadilha que
+// o Spacecraft documenta: estoura o limite de identificadores de neblina.
 export function pushFog(player) {
-  if (fogged.has(player.id)) return;
-  fogged.add(player.id);
+  const wanted = sunGlowFactor(player.location) > 0 ? SUN_FOG_ID : FOG_ID;
+  if (fogged.get(player.id) === wanted) return;
+  fogged.set(player.id, wanted);
   try {
     player.runCommand(`fog @s remove ${FOG_LABEL}`);
-    player.runCommand(`fog @s push ${FOG_ID} ${FOG_LABEL}`);
+    player.runCommand(`fog @s push ${wanted} ${FOG_LABEL}`);
   } catch { }
 }
 
@@ -112,8 +118,17 @@ export function showCompass(player, warning) {
     return;
   }
 
-  const entries = BODIES.map((body) => {
-    const dist = distanceTo(player.location, body);
+  // A lista vem do rastreador, não de BODIES: o que o jogador desligou no
+  // menu some daqui também, e um sistema desbloqueado depois entra sozinho.
+  let tracked;
+  try { tracked = trackedBodies(player); } catch { tracked = []; }
+  if (!tracked.length) {
+    try { player.onScreenDisplay.setActionBar("§8rastreador sem nada ligado"); } catch { }
+    return;
+  }
+
+  const entries = tracked.map((body) => {
+    const dist = chebyshevTo(player.location, body);
     return { body, dist, surface: Math.max(0, dist - body.radius) };
   }).sort((a, b) => a.dist - b.dist);
 
@@ -135,8 +150,11 @@ export function showCompass(player, warning) {
 }
 
 function hintFor(body) {
+  // O corpo do rastreador é uma vista simplificada; o portal está no BODIES.
+  const full = BODIES.find((b) => b.id === body.id);
   // O Sol tem aviso próprio, vindo do campo de calor — não sobrescreve aqui.
-  if (!body.portal) return null;
+  if (!full?.portal) return null;
+  body = full;
   if (body.portal.kind === "overworld") return `${body.name} §7— encoste pra voltar ao Overworld`;
   if (body.portal.kind === "spacecraft") return `${body.name} §7— encoste pra pousar`;
   return null;

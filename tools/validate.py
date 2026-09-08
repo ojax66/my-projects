@@ -445,6 +445,128 @@ RECIPE_FORMAT_OK = {
     "minecraft:recipe_smithing_trim": {"1.19", "1.20.10", "1.20.30", "1.21.0"},
 }
 
+# --- 4d-bis. corpos vistos de longe -------------------------------------------
+#
+# Cada corpo de BODIES precisa da entidade que o desenha de longe, dos dois
+# lados, e da textura. Faltando qualquer peça o corpo some quando passa da
+# distância de renderização — que no espaço é quase sempre.
+config_src = ""
+config_path = os.path.join(BP, "scripts", "space_dim", "config.js")
+if os.path.isfile(config_path):
+    with open(config_path, encoding="utf-8") as f:
+        config_src = f.read()
+
+body_ids = re.findall(r'^\s*id:\s*"([a-z0-9_]+)"', config_src, re.M)
+if not body_ids:
+    warn("nao consegui ler os ids de BODIES no config.js")
+
+for bid in body_ids:
+    bp_entity = os.path.join(BP, "entities", f"sky_{bid}.json")
+    rp_entity = os.path.join(RP, "entity", f"sky_{bid}.entity.json")
+    texture = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    if not os.path.isfile(bp_entity):
+        err(f"corpo {bid} sem entidade de ceu no BP (entities/sky_{bid}.json) — "
+            f"ele sumiria passando da distancia de renderizacao")
+    if not os.path.isfile(rp_entity):
+        err(f"corpo {bid} sem entidade de ceu no RP (entity/sky_{bid}.entity.json)")
+    if not os.path.isfile(texture):
+        err(f"corpo {bid} sem textura de ceu (textures/space_dim/sky/{bid}.png)")
+
+# A escala do modelo vem de uma propriedade de entidade. Se o config pedir um
+# valor fora da faixa declarada, o motor ignora calado e o corpo fica do
+# tamanho errado — nada no console, nenhum erro.
+def config_number(name):
+    m = re.search(rf"^export const {name} = ([0-9.]+);", config_src, re.M)
+    return float(m.group(1)) if m else None
+
+min_scale = config_number("SKY_MODEL_MIN_SCALE")
+max_scale = config_number("SKY_MODEL_MAX_SCALE")
+for bid in body_ids:
+    path = os.path.join(BP, "entities", f"sky_{bid}.json")
+    doc = docs.get(path)
+    if not isinstance(doc, dict):
+        continue
+    props = doc.get("minecraft:entity", {}).get("description", {}).get("properties", {})
+    size = props.get("space_dim:size")
+    if not size:
+        err(f"sky_{bid} sem a propriedade space_dim:size — nao daria pra escalar")
+        continue
+    lo, hi = size.get("range", [None, None])
+    if min_scale is not None and lo is not None and lo > min_scale:
+        err(f"sky_{bid}: a faixa de space_dim:size comeca em {lo}, mas o config "
+            f"pode pedir {min_scale} — o motor ignoraria o valor calado")
+    if max_scale is not None and hi is not None and hi < max_scale:
+        err(f"sky_{bid}: a faixa de space_dim:size termina em {hi}, mas o config "
+            f"pode pedir {max_scale}")
+
+# O material tem que combinar com o alfa da textura, e a regra e ao contrario
+# do que parece: em `entity_emissive` alfa 0 quer dizer ACESO; em
+# `entity_alphatest` alfa 0 quer dizer BURACO. Trocar os dois nao da erro
+# nenhum — o corpo so aparece invisivel, ou opaco onde devia ser vazado.
+glow_ids = set(re.findall(r'id:\s*"([a-z0-9_]+)"[\s\S]{0,2000?}?glow:\s*true', config_src))
+if not glow_ids:
+    # forma mais simples: procura o bloco de cada corpo e ve se tem glow
+    for m in re.finditer(r'id:\s*"([a-z0-9_]+)",([\s\S]*?)(?=\n  \{|\n\];)', config_src):
+        if re.search(r"^\s*glow:\s*true", m.group(2), re.M):
+            glow_ids.add(m.group(1))
+
+for bid in body_ids:
+    doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
+    if not isinstance(doc, dict):
+        continue
+    mat = (doc.get("minecraft:client_entity", {}).get("description", {})
+              .get("materials", {}).get("default"))
+    want = "entity_emissive" if bid in glow_ids else "entity_alphatest"
+    if mat != want:
+        err(f"sky_{bid} usa o material {mat}, esperado {want} — "
+            f"em entity_emissive alfa 0 e ACESO, em entity_alphatest e BURACO, "
+            f"entao trocar os dois deixa o corpo invisivel ou opaco sem avisar")
+
+# --- 4d-ter. mapas estelares e sistemas ---------------------------------------
+#
+# O id do item de mapa carrega o id do sistema que ele abre. Um mapa apontando
+# pra um sistema que nao existe no catalogo e um item que nao faz nada: o
+# jogador usa, nao acontece nada, e nada explica por que.
+catalog_src = ""
+catalog_path = os.path.join(BP, "scripts", "space_dim", "catalog.js")
+if os.path.isfile(catalog_path):
+    with open(catalog_path, encoding="utf-8") as f:
+        catalog_src = f.read()
+system_ids = set(re.findall(r'^\s*id:\s*"([a-z0-9_]+)",\s*$', catalog_src, re.M))
+
+for iid in sorted(declared_items):
+    short = iid.split(":", 1)[1]
+    if not short.startswith("star_chart_"):
+        continue
+    target = short[len("star_chart_"):]
+    if catalog_src and target not in system_ids:
+        err(f"{iid} abre o sistema '{target}', que nao existe em catalog.js — "
+            f"usar o mapa nao faria nada")
+
+# Os corpos do catalogo que dizem `ref:` tem que existir em BODIES.
+for ref in re.findall(r'\{\s*ref:\s*"([a-z0-9_]+)"', catalog_src):
+    if body_ids and ref not in body_ids:
+        err(f"catalog.js rastreia o corpo '{ref}', que nao existe em BODIES")
+
+# --- 4d-quater. dependencia do server-ui --------------------------------------
+#
+# O menu do rastreador usa @minecraft/server-ui. Sem a dependencia declarada o
+# import falha no carregamento e TODOS os scripts do addon morrem juntos.
+uses_ui = False
+scripts_dir = os.path.join(BP, "scripts")
+for dirpath, _, names in os.walk(scripts_dir):
+    for n in names:
+        if not n.endswith(".js"):
+            continue
+        with open(os.path.join(dirpath, n), encoding="utf-8") as f:
+            if "@minecraft/server-ui" in f.read():
+                uses_ui = True
+if uses_ui:
+    declared = {d.get("module_name") for d in bp_manifest.get("dependencies", [])}
+    if "@minecraft/server-ui" not in declared:
+        err("os scripts importam @minecraft/server-ui, mas o manifest do BP nao "
+            "declara essa dependencia — nenhum script carregaria")
+
 # --- 4e-ter. tags dos slots da mesa de ferraria --------------------------------
 #
 # A mesa filtra o que entra em cada slot POR TAG, antes de olhar receita

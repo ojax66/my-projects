@@ -49,13 +49,24 @@ function mockDim(writes) {
         `(${writes.ops} chamadas para ${writes.size} blocos = ${(writes.size/writes.ops).toFixed(1)} blocos/chamada)`);
 }
 
-// --- Uma chunk barata (planeta) termina num tick so -------------------------
+// --- A chunk de um planeta termina rapido -----------------------------------
+//
+// Era "num tick so", de quando os corpos eram esferas: no meio da Lua a coluna
+// tinha 25 blocos de casca e sobrava orcamento. O cubo e macico de ponta a
+// ponta na parede, entao a mesma chunk custa mais de um tick. O que importa
+// nao mudou: ela TERMINA, e rapido — se o cursor de retomada quebrar, isto
+// gira ate o limite e falha.
+const PLANET_TICK_BUDGET = 6;
 {
   const moon = BODIES.find(b => b.id === 'moon');
   const writes = new Map(); writes.ops = 0;
-  system.currentTick = 9000;
-  const done = genChunk(mockDim(writes), Math.floor(moon.center.x/16), Math.floor(moon.center.z/16));
-  check('chunk da Lua termina num tick', done, `(${writes.size} blocos)`);
+  let ticks = 0, done = false;
+  while (!done && ticks < 200) {
+    system.currentTick = 9000 + ++ticks;
+    done = genChunk(mockDim(writes), Math.floor(moon.center.x/16), Math.floor(moon.center.z/16));
+  }
+  check(`chunk da Lua termina em ate ${PLANET_TICK_BUDGET} ticks`,
+        done && ticks <= PLANET_TICK_BUDGET, `(${ticks} ticks, ${writes.size} blocos)`);
 }
 
 // --- O resultado final e identico ao da geracao sem orcamento ---------------

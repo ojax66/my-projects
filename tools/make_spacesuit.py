@@ -14,6 +14,10 @@ fabricado, já que a receita inteira é de itens de lá.
 """
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
@@ -178,16 +182,10 @@ def main():
     # --- nomes -----------------------------------------------------------------
     MARK = "## traje espacial reforçado (gerado por tools/make_spacesuit.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        lang_path = os.path.join(RP, "texts", f"{lang}.lang")
-        existing = ""
-        if os.path.isfile(lang_path):
-            with open(lang_path, encoding="utf-8") as f:
-                existing = f.read().split(MARK)[0].rstrip("\n")
-        lines = [existing, "", MARK]
-        for name, spec in PIECES.items():
-            lines.append(f"item.{NS}:{name}={spec[key]}")
-        with open(lang_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+        replace_section(
+            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
+            [f"item.{NS}:{name}={spec[key]}" for name, spec in PIECES.items()],
+        )
 
     print(f"{len(PIECES)} peças do traje reforçado")
     print(f"  modelo e textura: reaproveitados do Spacecraft (sem cópia)")

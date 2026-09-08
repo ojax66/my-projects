@@ -65,6 +65,10 @@ echo "--- ponto de chegada e carência de gravidade ---"
 node test_arrival.mjs
 
 echo
+echo "--- rastreador, catálogo e corpos vistos de longe ---"
+node test_tracker.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

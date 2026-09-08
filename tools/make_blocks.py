@@ -10,6 +10,10 @@ Aqui a fonte é a tabela BLOCKS abaixo e os quatro arquivos saem dela.
 """
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
@@ -156,16 +160,21 @@ def main():
     # Reescreve só o bloco marcado, pra não perder as linhas escritas à mão.
     MARK = "## blocos dos corpos celestes (gerado por tools/make_blocks.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        path = os.path.join(RP, "texts", f"{lang}.lang")
-        existing = ""
-        if os.path.isfile(path):
-            with open(path, encoding="utf-8") as f:
-                existing = f.read().split(MARK)[0].rstrip("\n")
-        lines = [existing, "", MARK]
-        for short, spec in BLOCKS.items():
-            lines.append(f"tile.{NS}:{short}.name={spec[key]}")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+        replace_section(
+            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
+            [f"tile.{NS}:{short}.name={spec[key]}" for short, spec in BLOCKS.items()],
+        )
+
+    # Cor média de cada bloco, num JSON à parte. Quem desenha as faces dos
+    # corpos vistos de longe (tools/make_sky_bodies.mjs) precisa das MESMAS
+    # cores daqui — duas listas de cores escritas à mão divergem na primeira
+    # vez que uma delas muda.
+    colors_path = os.path.join(ROOT, "tools", "assets", "block_colors.json")
+    os.makedirs(os.path.dirname(colors_path), exist_ok=True)
+    with open(colors_path, "w", encoding="utf-8") as f:
+        json.dump({f"{NS}:{short}": spec["map_color"] for short, spec in BLOCKS.items()},
+                  f, indent=2)
+        f.write("\n")
 
     print(f"{len(BLOCKS)} blocos gerados:")
     print(f"  BP/blocks/*.json")

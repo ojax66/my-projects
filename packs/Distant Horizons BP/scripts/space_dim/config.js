@@ -93,6 +93,9 @@ export const BODIES = [
     // O Sol é o mais massivo: puxa de longe e puxa forte. Chegar perto pra
     // "só olhar" já vira uma queda.
     gravity: { reach: 150, strength: 0.055 },
+    // Visto de longe o Sol é EMISSIVO: brilha com luz própria, sem depender da
+    // iluminação do mundo. É o que o faz cegar mesmo no escuro do espaço.
+    glow: true,
     portal: null,
   },
   {
@@ -319,7 +322,41 @@ export const STARFIELD_PARTICLE = "space_dim:starfield";
 export const SPACE_DUST_PARTICLE = "space_dim:space_dust";
 export const STARFIELD_INTERVAL_TICKS = 200; // o efeito dura ~14 s
 export const SPACE_DUST_INTERVAL_TICKS = 120;
+// ---------------------------------------------------------------------------
+// Corpos vistos de longe
+// ---------------------------------------------------------------------------
+// Um corpo de blocos some passando da distância de renderização. O modelo é
+// uma entidade mantida perto do jogador e encolhida pra dar o mesmo ângulo que
+// o corpo daria lá longe — ver skybox.js.
+export const SKY_MODELS_ENABLED = true;
+
+// A que distância do jogador o modelo fica. Perto o bastante pra nunca sair de
+// cena, longe o bastante pra não atravessar a cabeça dele.
+export const SKY_MODEL_DISTANCE = 34;
+
+// Distância real abaixo da qual o modelo sai e o corpo de blocos assume. Tem
+// que ser menor que a distância de renderização típica, senão haveria uma
+// faixa sem nada; e maior que o raio do maior corpo, senão o modelo apareceria
+// por dentro dele.
+export const SKY_MODEL_HIDE_BELOW = 190;
+
+// De quantos em quantos ticks os modelos são reposicionados. 1 seria o mais
+// suave, mas 2 já não dá pra perceber e custa metade.
+export const SKY_MODEL_INTERVAL = 2;
+
+// Limites da propriedade de escala declarada nas entidades (BP/entities/sky_*).
+// Sair deles não faz o jogo reclamar: ele silenciosamente ignora o valor, e o
+// corpo ficaria do tamanho errado.
+export const SKY_MODEL_MIN_SCALE = 0.02;
+export const SKY_MODEL_MAX_SCALE = 40;
+
 export const FOG_ID = "space_dim:fog_outer_space";
+
+// Névoa do entorno do Sol. Luz de bloco não ilumina o vácuo — não há superfície
+// pra iluminar — então o que faz o Sol "iluminar o espaço em volta" é isto: ao
+// entrar no campo de calor, a névoa troca do azul do espaço profundo pro dourado
+// dele, e a região inteira acende.
+export const SUN_FOG_ID = "space_dim:fog_sun_glow";
 export const FOG_LABEL = "space_dim_fog";
 
 // Bússola na action bar com rumo e distância dos corpos celestes. Sem ela não
