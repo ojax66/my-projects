@@ -178,7 +178,7 @@ def main():
     # --- nomes -----------------------------------------------------------------
     MARK = "## traje espacial reforçado (gerado por tools/make_spacesuit.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        lang_path = os.path.join(BP, "texts", f"{lang}.lang")
+        lang_path = os.path.join(RP, "texts", f"{lang}.lang")
         existing = ""
         if os.path.isfile(lang_path):
             with open(lang_path, encoding="utf-8") as f:

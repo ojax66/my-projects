@@ -17,6 +17,10 @@ echo
 echo "--- validação dos packs ---"
 python3 "$ROOT/tools/validate.py"
 
+echo
+echo "--- o validador pega o que promete pegar ---"
+python3 "$ROOT/tools/tests/test_validator.py"
+
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 

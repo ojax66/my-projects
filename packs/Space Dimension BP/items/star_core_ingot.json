@@ -11,7 +11,12 @@
     "components": {
       "minecraft:icon": "space_dim_star_core_ingot",
       "minecraft:max_stack_size": 64,
-      "minecraft:hover_text_color": "yellow"
+      "minecraft:hover_text_color": "yellow",
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:transform_materials"
+        ]
+      }
     }
   }
 }

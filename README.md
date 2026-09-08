@@ -175,7 +175,7 @@ Contra isso há dois degraus, e a diferença entre eles é o ponto:
 |---|---|---|---|
 | nada | queima | queima | 6/s |
 | **Traje Espacial Reforçado** | protege | queima | 2/s (corta 65%) |
-| **Armadura de Estrela** | protege | protege | nenhuma |
+| **Armadura Starcore** | protege | protege | nenhuma |
 
 O traje **ajuda**; a armadura **anula**. Dá pra encostar no Sol de traje e
 entrar correndo com uma poção; morar lá dentro só de armadura.
@@ -236,22 +236,53 @@ não importa.
 ### A linha da armadura
 
 ```
-destroços de OVNI (Overworld, raros)  →  Molde de Ferraria de Estrela
+destroços de OVNI (Overworld, raros)  →  Molde de Ferraria de Upgrade Espacial
       │                                       │
       │  duplicar: 7 diamantes + 1 end stone + molde → 2 moldes
       │
-núcleo do Sol  →  Bloco de Núcleo Solar  →  9 Fragmentos
+núcleo do Sol  →  Núcleo Solar (bloco)  →  9 Pedaços de Estrela
                                                 │
-                        4 Fragmentos + 4 Diamantes → 1 Barra
+                  4 Pedaços + 4 Diamantes → 1 Lingote Estelar
                                                 │
-       peça de netherite + Barra + Molde, na bancada de ferraria
+      peça de netherite + Lingote + Molde, na bancada de ferraria
                                                 │
-                                    peça da Armadura de Estrela
+                                   peça da armadura Starcore
 ```
 
-A barra segue o craft da netherite, trocando o ouro por diamante e a sucata
-pelo fragmento. O molde se duplica como os do jogo: gasta o original e devolve
-dois.
+O lingote segue o craft da netherite, trocando o ouro por diamante e a sucata
+pelo pedaço de estrela. O molde se duplica como os do jogo: gasta o original e
+devolve dois.
+
+### Os slots da mesa de ferraria filtram por tag
+
+Ter a receita não basta. A mesa decide **antes de olhar receita nenhuma** o que
+cabe em cada slot, e decide por tag de item — um item do addon sem a tag certa
+nem entra no slot, então não há o que montar. É silencioso: nenhum erro, nenhum
+aviso, a peça só não encaixa.
+
+| Slot | Tag exigida | Quem carrega aqui |
+|---|---|---|
+| molde | `minecraft:transform_templates` | Molde de Ferraria de Upgrade Espacial |
+| material | `minecraft:transform_materials` | Lingote Estelar |
+
+O slot do meio pede equipamento, e as peças de netherite são do jogo base — já
+vêm com o que precisam.
+
+`validate.py` cruza as duas coisas: toda receita `smithing_transform` que cita
+um item do addon em `template` ou `addition` tem que achar a tag do slot no
+JSON daquele item, senão é erro de build.
+
+## Nome de item mora no resource pack
+
+Um `.lang` no **behavior** pack não dá nome a nada. O jogo só lê `item.*`,
+`tile.*` e `biome.*` no **resource** pack — e quando não acha, não reclama:
+mostra o identificador cru (`space_dim:star_core_ingot`) no inventário, como se
+fosse o nome. O addon escrevia tudo no BP, e por isso todo item e todo bloco
+apareciam com o id.
+
+`validate.py` cobra os dois lados: nome que falta no RP é erro, e nome de item,
+bloco ou bioma encontrado no BP também — porque estar lá significa não estar
+onde o jogo lê.
 
 | Peça | Proteção | Durabilidade |
 |---|---|---|

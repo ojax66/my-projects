@@ -64,7 +64,7 @@ ARMOR = {
     "star_helmet": dict(
         slot="slot.armor.head", protection=4, durability=610,
         ench_slot="armor_head", group="minecraft:itemGroup.name.helmet",
-        pt="Capacete de Estrela", en="Star Helmet",
+        pt="Starcore Capacete", en="Starcore Helmet",
         geometry=f"geometry.{NS}.star_armor.helmet",
         texture=f"textures/{NS}/armor/star_armor",
         hide="variable.helmet_layer_visible = 0.0;",
@@ -73,7 +73,7 @@ ARMOR = {
     "star_chestplate": dict(
         slot="slot.armor.chest", protection=9, durability=888,
         ench_slot="armor_torso", group="minecraft:itemGroup.name.chestplate",
-        pt="Peitoral de Estrela", en="Star Chestplate",
+        pt="Starcore Peitoral", en="Starcore Chestplate",
         geometry=f"geometry.{NS}.star_armor.chestplate",
         texture=f"textures/{NS}/armor/star_armor",
         hide="variable.chest_layer_visible = 0.0;",
@@ -83,7 +83,7 @@ ARMOR = {
     "star_leggings": dict(
         slot="slot.armor.legs", protection=7, durability=832,
         ench_slot="armor_legs", group="minecraft:itemGroup.name.leggings",
-        pt="Calças de Estrela", en="Star Leggings",
+        pt="Starcore Calças", en="Starcore Leggings",
         geometry="geometry.humanoid.armor.leggings",
         texture=f"textures/{NS}/armor/star_armor_legs",
         hide="variable.leg_layer_visible = 0.0;",
@@ -92,7 +92,7 @@ ARMOR = {
     "star_boots": dict(
         slot="slot.armor.feet", protection=4, durability=721,
         ench_slot="armor_feet", group="minecraft:itemGroup.name.boots",
-        pt="Botas de Estrela", en="Star Boots",
+        pt="Starcore Botas", en="Starcore Boots",
         geometry=f"geometry.{NS}.star_armor.boots",
         texture=f"textures/{NS}/armor/star_armor",
         hide="variable.boot_layer_visible = 0.0;",
@@ -103,16 +103,22 @@ ARMOR = {
 # --- Itens soltos ------------------------------------------------------------
 ITEMS = {
     "star_core_shard": dict(
-        pt="Fragmento de Núcleo de Estrela", en="Star Core Shard",
+        pt="Pedaço de Estrela", en="Star Piece",
         stack=64, group="minecraft:itemGroup.name.miscFood", glint=False,
+        tags=[],
     ),
     "star_core_ingot": dict(
-        pt="Barra de Núcleo de Estrela", en="Star Core Ingot",
+        pt="Lingote Estelar", en="Stellar Ingot",
         stack=64, group="minecraft:itemGroup.name.miscFood", glint=False,
+        # Sem esta tag a mesa de ferraria recusa o lingote no slot do material:
+        # ter a receita não basta, o slot filtra por tag antes de olhar receita.
+        tags=["minecraft:transform_materials"],
     ),
     "star_upgrade_template": dict(
-        pt="Molde de Ferraria de Estrela", en="Star Upgrade Smithing Template",
+        pt="Molde de Ferraria de Upgrade Espacial", en="Space Upgrade Smithing Template",
         stack=64, group="minecraft:itemGroup.name.miscFood", glint=True,
+        # O mesmo pro slot do molde.
+        tags=["minecraft:transform_templates"],
     ),
 }
 
@@ -251,6 +257,8 @@ def main():
         }
         if spec["glint"]:
             components["minecraft:glint"] = True
+        if spec["tags"]:
+            components["minecraft:tags"] = {"tags": spec["tags"]}
         write_json(
             os.path.join(BP, "items", f"{name}.json"),
             {
@@ -432,7 +440,7 @@ def main():
     # --- nomes ---------------------------------------------------------------
     MARK = "## equipamento de estrela (gerado por tools/make_star_gear.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        path = os.path.join(BP, "texts", f"{lang}.lang")
+        path = os.path.join(RP, "texts", f"{lang}.lang")
         existing = ""
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:

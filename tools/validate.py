@@ -200,11 +200,25 @@ rp_blocks = docs.get(os.path.join(RP, "blocks.json"), {})
 terrain = docs.get(os.path.join(RP, "textures", "terrain_texture.json"), {})
 terrain_data = terrain.get("texture_data", {}) if isinstance(terrain, dict) else {}
 
+# Nome de item, bloco e bioma e coisa do cliente: o jogo so le esses .lang no
+# RESOURCE pack. Enquanto ficaram no BP, o addon carregava sem reclamar e todo
+# item aparecia com o id cru no inventario.
 lang_names = set()
-lang_path = os.path.join(BP, "texts", "en_US.lang")
+lang_path = os.path.join(RP, "texts", "en_US.lang")
 if os.path.isfile(lang_path):
     with open(lang_path, encoding="utf-8") as f:
         lang_names = set(re.findall(r"^tile\.(space_dim:[a-z0-9_]+)\.name=", f.read(), re.M))
+else:
+    err("RP/texts/en_US.lang nao existe — nenhum nome apareceria no jogo")
+
+# E o BP nao pode ter nome nenhum: se tiver, alguem escreveu no lugar errado.
+bp_lang = os.path.join(BP, "texts", "en_US.lang")
+if os.path.isfile(bp_lang):
+    with open(bp_lang, encoding="utf-8") as f:
+        stray = re.findall(r"^(?:item|tile|biome)\.[^=]+=", f.read(), re.M)
+    if stray:
+        err(f"BP/texts/en_US.lang tem {len(stray)} nome(s) de item/bloco/bioma — "
+            f"o jogo ignora isso no behavior pack; mova pro RP/texts")
 
 for bid in sorted(used_blocks):
     if bid not in declared_blocks:
@@ -213,7 +227,7 @@ for bid in sorted(used_blocks):
     if bid not in rp_blocks:
         err(f"{bid} não está em RP/blocks.json — viraria cubo roxo")
     if bid not in lang_names:
-        warn(f"{bid} sem nome em texts/en_US.lang")
+        err(f"{bid} sem nome em RP/texts/en_US.lang — apareceria como o id")
 
     # material_instances -> terrain_texture -> arquivo de textura
     _, doc = declared_blocks[bid]
@@ -346,7 +360,7 @@ for iid, (path, doc) in sorted(declared_items.items()):
             err(f"{iid} aponta pra textura de ícone inexistente: {tex}")
 
     if iid not in item_lang:
-        warn(f"{iid} sem nome em texts/en_US.lang")
+        err(f"{iid} sem nome em RP/texts/en_US.lang — apareceria como o id")
 
     # Peça de armadura precisa do attachable, senão ela é invisível vestida.
     if comps.get("minecraft:wearable"):
@@ -430,6 +444,42 @@ RECIPE_FORMAT_OK = {
     "minecraft:recipe_smithing_transform": {"1.19", "1.20.10", "1.20.30", "1.21.0"},
     "minecraft:recipe_smithing_trim": {"1.19", "1.20.10", "1.20.30", "1.21.0"},
 }
+
+# --- 4e-ter. tags dos slots da mesa de ferraria --------------------------------
+#
+# A mesa filtra o que entra em cada slot POR TAG, antes de olhar receita
+# nenhuma. Um item do addon sem a tag simplesmente nao encaixa: a receita
+# existe, esta certa, e mesmo assim nao da pra montar nada.
+SMITHING_SLOT_TAG = {
+    "template": "minecraft:transform_templates",
+    "addition": "minecraft:transform_materials",
+}
+
+def item_tags(iid):
+    entry = declared_items.get(iid)
+    if not entry:
+        return None
+    comps = entry[1]["minecraft:item"]["components"]
+    return set((comps.get("minecraft:tags") or {}).get("tags", []))
+
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    r = d.get("minecraft:recipe_smithing_transform")
+    if not r:
+        continue
+    rid = r.get("description", {}).get("identifier", os.path.basename(p))
+    for slot, tag in SMITHING_SLOT_TAG.items():
+        v = r.get(slot)
+        iid = v.get("item") if isinstance(v, dict) else v
+        if not isinstance(iid, str) or not iid.startswith("space_dim:"):
+            continue  # item do jogo base ja vem com a tag
+        tags = item_tags(iid)
+        if tags is None:
+            continue  # outra checagem ja reclama do item inexistente
+        if tag not in tags:
+            err(f"receita {rid}: {iid} esta no slot '{slot}' mas nao tem a tag "
+                f"{tag} — a mesa de ferraria recusaria o item no slot")
 
 for p, d in docs.items():
     if not isinstance(d, dict):

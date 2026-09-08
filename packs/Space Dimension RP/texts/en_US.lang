@@ -1,2 +1,36 @@
 pack.name=Space Dimension RP
 pack.description=Visuals for the Outer Space dimension: black sky, deep space fog and star fields.
+
+biome.space_dim.espaco_sideral.name=Outer Space
+
+## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.space_dim:sun_corona.name=Solar Corona
+tile.space_dim:sun_plasma.name=Solar Plasma
+tile.space_dim:sun_core.name=Solar Core
+tile.space_dim:earth_ocean.name=Deep Ocean
+tile.space_dim:earth_shallow.name=Shallow Water
+tile.space_dim:earth_land.name=Continent
+tile.space_dim:earth_forest.name=Forest
+tile.space_dim:earth_ice.name=Polar Ice Cap
+tile.space_dim:moon_regolith_light.name=Light Regolith
+tile.space_dim:moon_regolith.name=Lunar Regolith
+tile.space_dim:moon_regolith_dark.name=Dark Regolith
+tile.space_dim:mars_dust.name=Martian Dust
+tile.space_dim:mars_rock.name=Martian Rock
+tile.space_dim:mars_rock_dark.name=Martian Basalt
+tile.space_dim:mars_ice.name=Martian Ice
+
+## equipamento de estrela (gerado por tools/make_star_gear.py)
+item.space_dim:star_core_shard=Star Piece
+item.space_dim:star_core_ingot=Stellar Ingot
+item.space_dim:star_upgrade_template=Space Upgrade Smithing Template
+item.space_dim:star_helmet=Starcore Helmet
+item.space_dim:star_chestplate=Starcore Chestplate
+item.space_dim:star_leggings=Starcore Leggings
+item.space_dim:star_boots=Starcore Boots
+
+## traje espacial reforçado (gerado por tools/make_spacesuit.py)
+item.space_dim:reinforced_spacesuit_helmet=Reinforced Spacesuit Helmet
+item.space_dim:reinforced_spacesuit_chestplate=Reinforced Spacesuit Chestplate
+item.space_dim:reinforced_spacesuit_leggings=Reinforced Spacesuit Leggings
+item.space_dim:reinforced_spacesuit_boots=Reinforced Spacesuit Boots

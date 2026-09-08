@@ -156,7 +156,7 @@ def main():
     # Reescreve só o bloco marcado, pra não perder as linhas escritas à mão.
     MARK = "## blocos dos corpos celestes (gerado por tools/make_blocks.py)"
     for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        path = os.path.join(BP, "texts", f"{lang}.lang")
+        path = os.path.join(RP, "texts", f"{lang}.lang")
         existing = ""
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
@@ -171,7 +171,7 @@ def main():
     print(f"  BP/blocks/*.json")
     print(f"  RP/blocks.json")
     print(f"  RP/textures/terrain_texture.json")
-    print(f"  BP/texts/{{pt_BR,en_US,en_GB}}.lang")
+    print(f"  RP/texts/{{pt_BR,en_US,en_GB}}.lang")
 
 
 if __name__ == "__main__":
