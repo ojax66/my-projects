@@ -1,0 +1,10 @@
+{
+  "materials": {
+    "version": "1.0.0",
+
+    "space_dim_sky:entity": {
+      "+defines": [ "USE_EMISSIVE" ],
+      "+states": [ "DisableCulling" ]
+    }
+  }
+}

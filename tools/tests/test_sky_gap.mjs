@@ -80,11 +80,12 @@ check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_
   for (const body of BODIES) {
     const mat = rpEntity(body.id)['minecraft:client_entity']
       .description.materials.default;
-    // `entity_emissive_alpha`, não `entity_emissive` puro: os dois usam o alfa
-    // como máscara de brilho, mas só o _alpha mantém o resto opaco. Com o puro
-    // havia o risco de a textura inteira (que é toda alfa 0) sumir.
-    check(`${body.id}: o modelo distante é emissivo`, mat === 'entity_emissive_alpha',
-          `(${mat})`);
+    // Material próprio (RP/materials/entity.material): herda de `entity`, que
+    // é opaco e sem teste de alfa, e liga USE_EMISSIVE. Os materiais prontos
+    // não servem: `entity_emissive_alpha` trata alfa 0 como TRANSPARENTE, e a
+    // textura do céu é toda alfa 0 — foi o que deixou todo corpo invisível.
+    check(`${body.id}: o modelo distante usa o material do addon`,
+          mat === 'space_dim_sky', `(${mat})`);
   }
 
   // Os blocos: emissão baixa, pra a superfície ser visível de perto. Não é pra
@@ -104,8 +105,16 @@ check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_
   // borda não veria nada — nem bloco, nem modelo, nem ponto.
   const star = JSON.parse(fs.readFileSync(
     path.join(RP_DIR, 'entity', 'sky_star.entity.json'), 'utf8'));
-  check('a estrela existe e é emissiva',
-        star['minecraft:client_entity'].description.materials.default === 'entity_emissive_alpha');
+  check('a estrela existe e usa o mesmo material',
+        star['minecraft:client_entity'].description.materials.default === 'space_dim_sky');
+
+  // E o material tem que estar definido de verdade, com o define certo.
+  const mats = JSON.parse(fs.readFileSync(
+    path.join(RP_DIR, 'materials', 'entity.material'), 'utf8')).materials;
+  const key = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_sky');
+  check('o material do céu existe no RP', !!key, `(${key})`);
+  check('  herda de entity (opaco, sem teste de alfa)', key?.endsWith(':entity'));
+  check('  e liga USE_EMISSIVE', (mats[key]?.['+defines'] ?? []).includes('USE_EMISSIVE'));
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

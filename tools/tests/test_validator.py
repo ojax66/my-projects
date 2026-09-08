@@ -272,8 +272,50 @@ def missing_fog(tmp):
     os.remove(rp(tmp, "fogs", "outer_space.fog.json"))
 
 
+# A mensagem vem da checagem de FOG_ID que ja existia; nao ha uma segunda
+# checagem de nevoa, e nao deve haver — duas mensagens pro mesmo defeito so
+# fazem quem le a saida procurar dois problemas onde ha um.
 case("nevoa citada pelo config e ausente do RP", missing_fog,
-     r"nevoa space_dim:fog_outer_space, que nao existe")
+     r"FOG_ID space_dim:fog_outer_space n[ãa]o existe no RP")
+
+
+# --- 12e. material do ceu que descarta alfa 0 --------------------------------
+#
+# O bug que deixou TODO corpo invisivel: `entity_emissive_alpha` trata alfa 0
+# como transparente, e a textura do ceu e toda alfa 0 porque o alfa e a
+# mascara de brilho. Nada no jogo dizia por que os planetas nao apareciam.
+def wrong_sky_material(tmp):
+    path = rp(tmp, "entity", "sky_earth.entity.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:client_entity"]["description"]["materials"]["default"] = "entity_emissive_alpha"
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("corpo do ceu com material que descarta alfa", wrong_sky_material,
+     r"sky_earth usa o material entity_emissive_alpha")
+
+
+def material_without_emissive(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons RP", "materials", "entity.material")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["materials"]["space_dim_sky:entity"]["+defines"] = []
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("material do ceu sem USE_EMISSIVE", material_without_emissive,
+     r"nao liga USE_EMISSIVE")
+
+
+def frozen_offscreen(tmp):
+    path = rp(tmp, "entity", "sky_mars.entity.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    del doc["minecraft:client_entity"]["description"]["scripts"][
+        "should_update_bones_and_effects_offscreen"]
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("escala que congela fora da tela", frozen_offscreen,
+     r"sky_mars sem should_update_bones_and_effects_offscreen")
 
 
 # --- 13. os geradores nao podem depender da ordem ----------------------------

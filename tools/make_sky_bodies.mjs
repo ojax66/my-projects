@@ -149,8 +149,12 @@ function skyTexture(body) {
       if (!col) continue;
       const d = ((oy + v) * W + ox + u) * 4;
       px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2];
-      // Alfa 0 = aceso, no material emissivo. Todo corpo usa isso: sem luz de
-      // céu no espaço, um modelo não-emissivo seria uma silhueta preta.
+      // Alfa 0 = BRILHO MÁXIMO no material `space_dim_sky` (USE_EMISSIVE), e o
+      // pixel continua opaco porque o material herda de `entity`.
+      //
+      // Efeito colateral que confunde: aberta num visualizador de imagens, a
+      // textura parece vazia — o visualizador lê o alfa como transparência,
+      // que é o significado normal dele. No jogo, com este material, não é.
       px[d + 3] = 0;
     }
   };
@@ -221,15 +225,26 @@ function rpEntity(body) {
     'minecraft:client_entity': {
       description: {
         identifier: `${NS}:sky_${body.id}`,
-        // `entity_emissive_alpha` e não `entity_emissive`: os dois usam o alfa
-        // como máscara de brilho, mas só o _alpha trata alfa 0 como aceso E
-        // mantém o resto opaco. Com `entity_emissive` puro havia o risco real
-        // de a textura inteira (que é toda alfa 0) sumir.
-        materials: { default: 'entity_emissive_alpha' },
+        // Material próprio, copiado do que o Spacecraft usa pra Terra distante
+        // dele (RP/materials/entity.material). Herda de `entity` — que é
+        // OPACO, sem teste de alfa — e liga `USE_EMISSIVE`, o define que
+        // transforma o canal alfa em máscara de brilho.
+        //
+        // Foi essa a lição cara: com `entity_emissive_alpha`, alfa 0 quer
+        // dizer TRANSPARENTE, e como a textura inteira é alfa 0, todo corpo
+        // ficou invisível. Herdando de `entity` nenhum pixel é descartado, e o
+        // alfa só decide o brilho.
+        materials: { default: 'space_dim_sky' },
         textures: { default: `textures/${NS}/sky/${body.id}` },
         geometry: { default: `geometry.${NS}.sky_body` },
         animations: { size: `animation.${NS}.sky_body.size` },
-        scripts: { animate: ['size'] },
+        scripts: {
+          animate: ['size'],
+          // Sem isto a animação congela quando o modelo sai da tela, e ele
+          // volta com a escala de quando você desviou o olhar. O Spacecraft
+          // liga isso na Terra distante dele pelo mesmo motivo.
+          should_update_bones_and_effects_offscreen: true,
+        },
         render_controllers: [`controller.render.${NS}.sky_body`],
       },
     },
@@ -294,11 +309,17 @@ for (const body of SKY) {
     'minecraft:client_entity': {
       description: {
         identifier: `${NS}:sky_star`,
-        materials: { default: 'entity_emissive_alpha' },
+        materials: { default: 'space_dim_sky' },
         textures: { default: `textures/${NS}/sky/star` },
         geometry: { default: `geometry.${NS}.sky_body` },
         animations: { size: `animation.${NS}.sky_body.size` },
-        scripts: { animate: ['size'] },
+        scripts: {
+          animate: ['size'],
+          // Sem isto a animação congela quando o modelo sai da tela, e ele
+          // volta com a escala de quando você desviou o olhar. O Spacecraft
+          // liga isso na Terra distante dele pelo mesmo motivo.
+          should_update_bones_and_effects_offscreen: true,
+        },
         render_controllers: [`controller.render.${NS}.sky_body`],
       },
     },

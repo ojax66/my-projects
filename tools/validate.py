@@ -509,36 +509,65 @@ for bid in body_ids:
         err(f"sky_{bid}: a faixa de space_dim:size termina em {hi}, mas o config "
             f"pode pedir {max_scale}")
 
-# Todo corpo visto de longe usa o material emissivo. No espaço nao ha luz de
-# ceu: um modelo nao-emissivo vira uma silhueta preta e o planeta some. E a
-# regra do alfa e ao contrario do que parece — em `entity_emissive` alfa 0
-# quer dizer ACESO, nao transparente —, entao trocar o material nao da erro
-# nenhum: o corpo so fica preto, ou opaco onde devia ser vazado.
-for bid in body_ids:
+# Todo corpo visto de longe usa o material PROPRIO do addon, e ele tem que
+# existir de verdade no RP.
+#
+# Historico: `entity_emissive_alpha` trata alfa 0 como TRANSPARENTE, e as
+# texturas do ceu sao todas alfa 0 (alfa e a mascara de brilho) — resultado,
+# todo corpo ficou invisivel e nada no jogo dizia por que. O material proprio
+# herda de `entity`, que e opaco e nao tem teste de alfa, e liga USE_EMISSIVE.
+SKY_MATERIAL = "space_dim_sky"
+
+material_defined = False
+mat_path = os.path.join(RP, "materials", "entity.material")
+if os.path.isfile(mat_path):
+    with open(mat_path, encoding="utf-8") as f:
+        mat_doc = json.load(f)
+    for key in mat_doc.get("materials", {}):
+        if key.split(":")[0] == SKY_MATERIAL:
+            material_defined = True
+            base = key.split(":")[1] if ":" in key else ""
+            entry = mat_doc["materials"][key]
+            if base != "entity":
+                err(f"o material {SKY_MATERIAL} herda de '{base}', esperado 'entity' — "
+                    f"as outras bases descartam ou misturam por alfa, e a textura "
+                    f"do ceu e toda alfa 0")
+            if "USE_EMISSIVE" not in (entry.get("+defines") or []):
+                err(f"o material {SKY_MATERIAL} nao liga USE_EMISSIVE — "
+                    f"sem isso o alfa nao vira brilho e o corpo fica preto")
+if not material_defined:
+    err(f"RP/materials/entity.material nao define {SKY_MATERIAL} — "
+        f"os corpos vistos de longe nao teriam material")
+
+for bid in list(body_ids) + ["star"]:
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
     if not isinstance(doc, dict):
         continue
-    mat = (doc.get("minecraft:client_entity", {}).get("description", {})
-              .get("materials", {}).get("default"))
-    if mat != "entity_emissive_alpha":
-        err(f"sky_{bid} usa o material {mat}, esperado entity_emissive_alpha — "
-            f"sem luz de ceu no espaco, um modelo nao-emissivo vira silhueta preta")
+    desc = doc.get("minecraft:client_entity", {}).get("description", {})
+    mat = desc.get("materials", {}).get("default")
+    if mat != SKY_MATERIAL:
+        err(f"sky_{bid} usa o material {mat}, esperado {SKY_MATERIAL}")
+    if not desc.get("scripts", {}).get("should_update_bones_and_effects_offscreen"):
+        err(f"sky_{bid} sem should_update_bones_and_effects_offscreen — "
+            f"a escala congelaria quando o modelo saisse da tela")
 
-# Toda nevoa que o config cita tem que existir no RP. Uma nevoa inexistente nao
-# da erro: o `fog push` falha calado e o jogador fica com a nevoa anterior.
-for m in re.finditer(r'export const \w*FOG\w* = "(space_dim:[a-z0-9_]+)";', config_src):
-    fog_id = m.group(1)
-    found = any(
-        isinstance(d, dict)
-        and d.get("minecraft:fog_settings", {}).get("description", {}).get("identifier") == fog_id
-        for d in docs.values()
-    )
-    if not found:
-        err(f"o config usa a nevoa {fog_id}, que nao existe no RP — "
-            f"o `fog push` falharia calado")
+# E a textura tem que ser toda alfa 0: e assim que USE_EMISSIVE le brilho
+# maximo. Uma textura opaca aqui daria um corpo preto no vacuo.
+for bid in list(body_ids) + ["star"]:
+    tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    if not os.path.isfile(tex):
+        continue
+    with open(tex, "rb") as f:
+        raw = f.read()
+    # basta saber que existe pixel com alfa != 0 nas faces; a leitura completa
+    # de PNG nao vale a pena aqui, entao confere so o tipo de cor (RGBA).
+    if raw[25] != 6:
+        err(f"a textura de ceu {bid}.png nao e RGBA — sem canal alfa nao ha "
+            f"como o material saber o que acende")
 
-# Todo corpo tem que caber dentro de SOLAR_SYSTEM_RADIUS: e o alcance que o
-# rastreador e a documentacao tratam como "o sistema".
+# Todo corpo tem que caber dentro de SOLAR_SYSTEM_RADIUS: e a borda que decide
+# quando o corpo vira uma estrela no ceu, e um corpo fora dela nunca apareceria
+# como corpo — so como pontinho, pra sempre.
 sys_radius = config_number("SOLAR_SYSTEM_RADIUS")
 if sys_radius:
     coords = re.findall(

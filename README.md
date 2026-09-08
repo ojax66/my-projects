@@ -614,6 +614,40 @@ A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns
 que constrói o corpo de blocos, com as cores dos mesmos blocos. O que se vê de
 longe é o que está lá.
 
+### Por que os corpos estavam invisíveis
+
+Uma entidade no vácuo não recebe luz nenhuma, então o modelo precisa **brilhar
+sozinho**. No Bedrock isso é o define `USE_EMISSIVE`, e ele usa o **canal alfa
+como máscara de brilho**: alfa 0 é brilho máximo.
+
+O erro foi escolher um material pronto pra isso. `entity_emissive_alpha` trata
+alfa 0 como **transparente** — e como a textura do céu é toda alfa 0, todo corpo
+ficou invisível, sem nada no jogo dizendo por quê. (Dá pra ver o sintoma abrindo
+`RP/textures/space_dim/sky/`: as imagens parecem vazias.)
+
+A saída é a mesma que o Spacecraft usa pra Terra distante dele: um **material
+próprio** em `RP/materials/entity.material`, herdando de `entity` — que é opaco
+e não tem teste de alfa — com `USE_EMISSIVE` ligado:
+
+```json
+"space_dim_sky:entity": {
+  "+defines": [ "USE_EMISSIVE" ],
+  "+states": [ "DisableCulling" ]
+}
+```
+
+Assim nenhum pixel é descartado e o alfa só decide o brilho. **A textura
+continuar parecendo vazia num visualizador de imagens é esperado**: o
+visualizador lê o alfa como transparência, que é o significado normal dele; no
+jogo, com este material, não é.
+
+Junto vai `should_update_bones_and_effects_offscreen`, senão a animação de
+escala congela quando o modelo sai da tela e ele volta com o tamanho de quando
+você desviou o olhar.
+
+O `validate.py` cobra a cadeia inteira — material declarado, herança, o define,
+e o flag de offscreen —, e `test_validator.py` quebra cada elo pra provar.
+
 `/scriptevent space_dim:sky` lista o que está desenhado no céu agora — tipo,
 escala e validade de cada modelo. Quando um corpo não aparece, é isso que separa
 "não foi criado" de "foi criado e não renderiza".

@@ -4,7 +4,7 @@
     "description": {
       "identifier": "space_dim:sky_moon",
       "materials": {
-        "default": "entity_emissive_alpha"
+        "default": "space_dim_sky"
       },
       "textures": {
         "default": "textures/space_dim/sky/moon"
@@ -18,7 +18,8 @@
       "scripts": {
         "animate": [
           "size"
-        ]
+        ],
+        "should_update_bones_and_effects_offscreen": true
       },
       "render_controllers": [
         "controller.render.space_dim.sky_body"
