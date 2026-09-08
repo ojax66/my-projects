@@ -30,6 +30,7 @@ import { applySunHeat, applySunPressure } from "./hazards.js";
 import { forgetPlayer as forgetVehicle } from "./vehicle.js";
 import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
+import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import {
   spawnAmbience,
@@ -127,6 +128,8 @@ system.runInterval(() => {
       wasInSpace.add(player.id);
       pushFog(player);
       spawnAmbience(player);
+      // O renascimento nunca fica aqui: se o jogo mexeu, é devolvido.
+      guardSpawnTick(player);
 
       // No meio de uma viagem: nada de física nem de dano até assentar.
       if (isTravelling(player)) continue;

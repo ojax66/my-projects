@@ -287,6 +287,17 @@ export const WRECK_LOOT = [
 ];
 
 // ---------------------------------------------------------------------------
+// Ponto de renascimento
+// ---------------------------------------------------------------------------
+// O jogo reatribui o renascimento do jogador ao entrar numa dimensão custom, e
+// quem morresse depois acordava no espaço. O addon não chama setSpawnPoint em
+// lugar nenhum; isto aqui só desfaz o que o jogo fez. Ver spawnGuard.js.
+export const SPAWN_GUARD_ENABLED = true;
+// De quantos em quantos ticks conferir, pra quem está no espaço. Não precisa
+// ser todo tick: só importa antes de morrer.
+export const SPAWN_GUARD_INTERVAL = 40;
+
+// ---------------------------------------------------------------------------
 // Ambiente
 // ---------------------------------------------------------------------------
 export const STARFIELD_PARTICLE = "space_dim:starfield";

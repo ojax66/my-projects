@@ -31,6 +31,7 @@ import {
 import { distanceTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
 import * as vehicle from "./vehicle.js";
+import { rememberSpawn } from "./spawnGuard.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -213,6 +214,10 @@ export function checkSpaceEntry(player) {
   // Foguete do Spacecraft em pleno lançamento: é a viagem dele, não a nossa.
   const mount = vehicle.getMount(player);
   if (mount && !vehicle.mountTravels(mount)) return;
+
+  // Anota o ponto de renascimento antes de sair: o jogo reatribui isso ao
+  // entrar numa dimensão custom, e é o que spawnGuard devolve depois.
+  rememberSpawn(player);
 
   // Guarda de onde ele saiu, pra reentrada na Terra cair no mesmo lugar.
   if (body.portal.kind === "overworld") {

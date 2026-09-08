@@ -295,6 +295,26 @@ alto precisa ser chão natural, então nada de cair no meio de uma casa), nunca
 substitui bloco que não seja terreno, e o baú procura um lugar livre antes de
 ser posto. `/scriptevent space_dim:wreck` força uma queda perto, pra ver.
 
+## O renascimento não fica no espaço
+
+Entrar na dimensão do espaço estava mudando o ponto de renascimento dos
+jogadores: quem morresse depois acordava lá em cima em vez de voltar pra cama
+ou pro spawn do mundo.
+
+O addon não faz isso — não há uma chamada de `setSpawnPoint` nem de
+`setDefaultSpawnLocation` em arquivo nenhum. É o próprio jogo que reatribui o
+renascimento quando o jogador entra numa dimensão custom.
+
+Como a causa está fora do alcance do addon, o que dá pra fazer é garantir a
+regra: **o renascimento de um jogador nunca fica na dimensão do espaço.** O
+spawn é anotado antes de cada viagem (numa property, então sobrevive a sair e
+voltar do mundo) e devolvido sempre que aparecer apontando pra cá — na troca de
+dimensão, ao entrar no mundo, e de 2 em 2 segundos enquanto se está no espaço.
+Quem não tinha spawn próprio volta a não ter, ou seja, ao spawn do mundo.
+
+A regra é segura porque não existe jeito legítimo de querer renascer aqui: cama
+não funciona em dimensão custom e âncora de renascimento só vale no Nether.
+
 ## Respiração
 
 Vale a mesma regra do Spacecraft: **traje completo + mochila de oxigênio com

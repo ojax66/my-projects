@@ -157,7 +157,14 @@ class Player extends Entity {
   __mountOn(vehicle) {
     vehicle.getComponent("rideable").addRider(this);
   }
-  getSpawnPoint() { return { x: 0, y: 64, z: 0 }; }
+  // --- ponto de renascimento ---
+  // undefined = sem spawn próprio (o jogador nasce no spawn do mundo).
+  getSpawnPoint() { return this.__spawnPoint; }
+  setSpawnPoint(point) { this.__spawnPoint = point; }
+  /** Atalho de teste: força um spawn numa dimensão. */
+  __setSpawn(dimensionId, loc) {
+    this.__spawnPoint = { ...loc, dimension: world.getDimension(dimensionId) };
+  }
 }
 
 class Dimension {

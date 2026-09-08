@@ -17,6 +17,7 @@ import { hasStarArmor, starArmorPieces, hasReinforcedSuit, protectionTier,
          pressureMultiplier, sustainInSpacecraftWorlds } from './space_dim/gear.js';
 import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
 import { buildWreckAt } from './space_dim/wreck.js';
+import { rememberSpawn, enforceSpawn } from './space_dim/spawnGuard.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -337,6 +338,57 @@ const spaceLoc = (body, d, axis = 'x') => ({
   for (const b of town.__blocks.values()) if (b.typeId === 'minecraft:oak_planks') survived++;
   check('não destrói blocos construídos por jogador', survived === 49,
         `(${survived} de 49 tábuas sobraram)`);
+}
+
+// --- 9. O renascimento nunca fica na dimensao do espaco ---------------------
+// Entrar no espaco estava mudando o spawn dos jogadores: quem morresse depois
+// acordava la em cima. O addon nao chama setSpawnPoint em lugar nenhum — e o
+// jogo que reatribui ao entrar numa dimensao custom. Estes testes travam o
+// desfazimento.
+{
+  // (a) tinha cama no Overworld: volta pra cama.
+  __reset();
+  const bed = world.__addPlayer({ id: 'bed', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  bed.__setSpawn('minecraft:overworld', { x: 120, y: 70, z: -35 });
+  rememberSpawn(bed);
+
+  bed.__setSpawn(DIMENSION_ID, { x: 0, y: 128, z: 58 });   // o jogo mexeu
+  const fixedBed = enforceSpawn(bed);
+  const sp = bed.getSpawnPoint();
+  check('spawn na cama é devolvido depois do espaço',
+        fixedBed && sp.dimension.id === 'minecraft:overworld'
+        && sp.x === 120 && sp.z === -35,
+        `(${sp?.dimension?.id} ${sp?.x},${sp?.z})`);
+
+  // (b) nao tinha spawn proprio: volta a nao ter (= spawn do mundo).
+  __reset();
+  const fresh = world.__addPlayer({ id: 'fresh', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  rememberSpawn(fresh);                                     // sem spawn definido
+  fresh.__setSpawn(DIMENSION_ID, { x: 0, y: 128, z: 58 });
+  const fixedFresh = enforceSpawn(fresh);
+  check('quem não tinha spawn volta a não ter (spawn do mundo)',
+        fixedFresh && fresh.getSpawnPoint() === undefined,
+        `(${JSON.stringify(fresh.getSpawnPoint())})`);
+
+  // (c) spawn legitimo fora do espaco nao e tocado.
+  __reset();
+  const ok = world.__addPlayer({ id: 'ok', dimensionId: DIMENSION_ID, location: { x: 0, y: 128, z: 58 } });
+  ok.__setSpawn('minecraft:overworld', { x: 5, y: 64, z: 5 });
+  const touched = enforceSpawn(ok);
+  check('spawn fora do espaço não é mexido',
+        !touched && ok.getSpawnPoint().x === 5);
+
+  // (d) rememberSpawn nao troca a lembranca boa pela ruim.
+  __reset();
+  const twice = world.__addPlayer({ id: 'twice', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  twice.__setSpawn('minecraft:overworld', { x: 9, y: 65, z: 9 });
+  rememberSpawn(twice);
+  twice.__setSpawn(DIMENSION_ID, { x: 0, y: 128, z: 58 });
+  rememberSpawn(twice);                    // segunda viagem, ja com spawn ruim
+  enforceSpawn(twice);
+  check('uma segunda viagem não grava o spawn ruim por cima do bom',
+        twice.getSpawnPoint()?.x === 9 && twice.getSpawnPoint()?.dimension.id === 'minecraft:overworld',
+        `(${twice.getSpawnPoint()?.dimension?.id} ${twice.getSpawnPoint()?.x})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
