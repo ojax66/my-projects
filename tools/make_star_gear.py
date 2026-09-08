@@ -338,7 +338,11 @@ def main():
     icon_dir = os.path.join(RP, "textures", NS, "items")
     os.makedirs(icon_dir, exist_ok=True)
     missing = []
-    for name in ARMOR:
+    # Os sete: os quatro da armadura e os tres itens soltos. Antes so a armadura
+    # era copiada daqui e o pedaco, o lingote e o molde ficavam soltos no RP sem
+    # origem — foi assim que a arte do pedaco e a do lingote acabaram trocadas
+    # sem nada notar.
+    for name in list(ARMOR) + list(ITEMS):
         src = os.path.join(ICONS_DIR, f"{name}.png")
         if not os.path.isfile(src):
             missing.append(name)
@@ -453,7 +457,7 @@ def main():
 
     print(f"{len(ITEMS)} itens + {len(ARMOR)} peças de armadura")
     print(f"  geometrias: {', '.join(geo_ids)}")
-    print(f"  {len(ARMOR)} attachables, {len(ARMOR)} ícones copiados de tools/assets/icons")
+    print(f"  {len(ARMOR)} attachables, {len(ARMOR) + len(ITEMS)} ícones copiados de tools/assets/icons")
     print(f"  {3 + len(ARMOR)} receitas")
 
 

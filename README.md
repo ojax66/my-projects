@@ -484,6 +484,44 @@ isso o veículo desce pra um Y válido antes de ser salvo — teleporte dentro d
 mesma dimensão, que é confiável. Se mesmo assim a estrutura falhar, o addon cria
 um veículo novo do mesmo tipo: perde a cor, mas ninguém fica a pé no vácuo.
 
+### O OVNI castiga distância
+
+O `minecraft:entity_spawned` do OVNI (`entities/ufo.json`, do Vehicles) tem duas
+regras que disparam quando o jogador mais próximo está a **mais de 6 blocos**:
+
+1. `tp @s ~ ~19 ~` — o OVNI se joga 19 blocos pra cima;
+2. um timer de 0,1 s que aplica `minecraft:instant_despawn`.
+
+A regra 2 só vale sem a tag `dlb_van_ufo_captured`, que este addon põe. A regra 1
+dispara de qualquer jeito: o teste de tag dela compara com o literal
+`"add dlb_van_ufo_captured"`, que entidade nenhuma tem, então a condição é sempre
+verdadeira. Não existe tag que proteja o OVNI de ser arremessado se ele estiver
+longe do jogador na hora em que nasce.
+
+Duas consequências no código:
+
+- **Jogador e veículo não se separam.** Descer o OVNI de Y 800 pro teto do mundo
+  e deixar o jogador lá em cima abria 485 blocos de distância — medidos, num
+  teste que hoje falha contra a versão antiga. Agora os dois descem juntos, com
+  a tela já escura.
+- **A colocação usa a posição atual do jogador**, não a que foi calculada ticks
+  antes. Na gravidade zero ele chega com inércia e anda enquanto a chunk carrega.
+
+### A caixa da captura segue o veículo
+
+A captura anotava a posição do veículo no começo da viagem e, ticks depois,
+salvava uma caixa de **1 bloco** naquele ponto. Se a entidade tivesse andado um
+bloco que fosse, a estrutura saía **vazia** — e sem erro nenhum: o
+`createFromWorld` funciona, só não encontra ninguém dentro da caixa. O jogador
+recebia um OVNI recém-criado no lugar do dele.
+
+Agora a posição é lida na hora de salvar, e a caixa é 3×3×3 em volta dela. O
+teste distingue os dois casos por uma tag posta no OVNI original: estrutura
+preserva tag, `spawnEntity` do zero não.
+
+Uma coisa a mais, copiada do Spacecraft: a entidade original só é apagada 5 ticks
+**depois** do `createFromWorld`, não no mesmo tick.
+
 ## Uma modificação no `world_generator_API.js`
 
 O arquivo veio pronto e está quase intacto, com uma correção: `syncTickingArea`

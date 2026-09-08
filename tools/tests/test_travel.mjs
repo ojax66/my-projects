@@ -109,6 +109,72 @@ function makePlayer(dimensionId, loc) {
         `(sobraram: ${[...__state().structures.keys()].join(', ') || 'nenhuma'})`);
 }
 
+// --- 5b. O veículo é salvo onde ele ESTÁ, não onde estava -------------------
+//
+// A captura anotava a posição no começo da viagem e, ticks depois, salvava uma
+// caixa de 1 bloco naquele ponto. Se a entidade tivesse andado um bloco que
+// fosse, a estrutura saía VAZIA — sem erro nenhum — e o que chegava no destino
+// era um OVNI novo em folha, sem cor, sem vida, sem nada.
+//
+// A marca no OVNI original é o que separa os dois casos: estrutura preserva
+// tag, `spawnEntity` do zero não.
+{
+  __reset();
+  const travel = await loadTravel();
+  const p = makePlayer('minecraft:overworld', { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
+  const ufo = world.__spawn('minecraft:overworld', UFO, { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
+  ufo.addTag('marca_do_original');
+  p.__mountOn(ufo);
+
+  travel.checkSpaceEntry(p);
+
+  // Dois ticks depois de começar, o OVNI anda um bloco — como qualquer
+  // entidade solta faz enquanto ninguém a está pilotando.
+  __advance(2);
+  ufo.teleport({ x: ufo.location.x + 1, y: ufo.location.y, z: ufo.location.z - 1 });
+  __advance(80);
+
+  const space = world.getDimension(DIMENSION_ID);
+  const arrived = space.getEntities({ type: UFO });
+  check('o OVNI que andou um bloco ainda é capturado', arrived.length === 1,
+        `(${arrived.length} no espaço)`);
+  check('  e é o mesmo OVNI, não um recriado do zero',
+        arrived[0]?.hasTag('marca_do_original') === true,
+        arrived[0] ? (arrived[0].hasTag('marca_do_original') ? '(marca preservada)' : '(marca perdida)') : '(nenhum)');
+}
+
+// --- 5c. Jogador e veículo nunca se separam ---------------------------------
+//
+// O `minecraft:entity_spawned` do OVNI do Vehicles arremessa a entidade 19
+// blocos pra cima e liga um timer de despawn quando o jogador mais próximo
+// está a mais de 6 blocos. A captura descia o OVNI pro teto do mundo e deixava
+// o jogador a Y 800: 480 blocos de separação, exatamente o que aquela regra
+// pune. Agora os dois descem juntos.
+{
+  __reset();
+  const travel = await loadTravel();
+  const p = makePlayer('minecraft:overworld', { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
+  const ufo = world.__spawn('minecraft:overworld', UFO, { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
+  p.__mountOn(ufo);
+
+  travel.checkSpaceEntry(p);
+
+  let pior = 0;
+  for (let i = 0; i < 20; i++) {
+    __advance(1);
+    if (!ufo.isValid) break;               // já foi salvo e apagado
+    if (p.dimension.id !== ufo.dimension.id) break;
+    pior = Math.max(pior, Math.hypot(
+      p.location.x - ufo.location.x,
+      p.location.y - ufo.location.y,
+      p.location.z - ufo.location.z));
+  }
+  __advance(80);
+
+  check('jogador e OVNI ficam a menos de 6 blocos durante a captura', pior < 6,
+        `(pior distância: ${pior.toFixed(1)} blocos)`);
+}
+
 // --- 6. O OVNI vai junto na volta pra Terra e no pouso na Lua/Marte ---------
 {
   const routes = [
