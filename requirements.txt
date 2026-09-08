@@ -1,0 +1,7 @@
+# conversor de modelos para o Prisma3D
+trimesh>=4.0
+numpy>=1.24
+Pillow>=10.0
+scipy>=1.10               # normais suaves (opcional, mas evita avisos)
+fast-simplification>=0.1  # decimacao preservando UV (--max-tris)
+xatlas>=0.0.9             # UV automatica para assar cor por vertice
