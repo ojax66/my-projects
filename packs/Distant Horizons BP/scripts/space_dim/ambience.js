@@ -17,18 +17,16 @@ import {
   STARFIELD_INTERVAL_TICKS,
   SPACE_DUST_INTERVAL_TICKS,
   FOG_ID,
-  SUN_FOG_ID,
-  SUNLIT_FOG_ID,
   FOG_LABEL,
-  SPACE_ALWAYS_LIT,
   HUD_ENABLED,
   HUD_INTERVAL_TICKS,
+  HUD_OBJECTIVE,
   PORTAL_MARGIN,
 } from "./config.js";
 import { chebyshevTo } from "./bodies.js";
-import { sunLightTier } from "./hazards.js";
-import { trackedBodies } from "./tracker.js";
+import { trackedBodies, hudChannel } from "./tracker.js";
 
+const world = mc.world;
 const system = mc.system;
 
 // playerId → tick do último campo de estrelas / poeira
@@ -63,50 +61,28 @@ export function spawnAmbience(player) {
 //
 // Só troca quando a névoa DESEJADA muda. Empilhar todo tick é a armadilha que
 // o Spacecraft documenta: estoura o limite de identificadores de neblina.
-const FOG_BY_TIER = {
-  blaze: SUN_FOG_ID,
-  sunlit: SUNLIT_FOG_ID,
-  deep: FOG_ID,
-};
-
+// O bioma custom já traz a névoa do espaço; este push é o cinto de segurança
+// pra o caso de o bioma não aplicar na versão do jogo.
+//
+// Uma versão anterior trocava a névoa por faixas douradas perto do Sol, pra
+// "iluminar o sistema". Estava mexendo no lugar errado: quem tem que parecer
+// iluminado é o corpo celeste, não o vácuo entre eles. O espaço voltou a ser
+// uma névoa só.
+//
+// Empilha UMA vez por jogador — a armadilha que o Spacecraft documenta:
+// empilhar todo tick estoura o limite de identificadores de neblina.
 export function pushFog(player) {
-  const wanted = FOG_BY_TIER[sunLightTier(player.location)] ?? FOG_ID;
-  if (fogged.get(player.id) === wanted) return;
-  fogged.set(player.id, wanted);
+  if (fogged.get(player.id) === FOG_ID) return;
+  fogged.set(player.id, FOG_ID);
   try {
     player.runCommand(`fog @s remove ${FOG_LABEL}`);
-    player.runCommand(`fog @s push ${wanted} ${FOG_LABEL}`);
+    player.runCommand(`fog @s push ${FOG_ID} ${FOG_LABEL}`);
   } catch { }
 }
 
 export function popFog(player) {
   if (!fogged.delete(player.id)) return;
   try { player.runCommand(`fog @s remove ${FOG_LABEL}`); } catch { }
-}
-
-/**
- * Mantém o jogador enxergando no espaço.
- *
- * Não existe luz de céu aqui, então sem isto o lado escuro de um planeta é
- * preto puro, e o Sol "não ilumina" nada mesmo estando ali. Bedrock não expõe
- * luz ambiente por dimensão (`minecraft:dimension` só aceita bounds, gerador e
- * bioma), e o único jeito de verdade — travar a hora do mundo — é global e
- * congelaria o dia no Overworld também.
- *
- * A duração é longa e reposta bem antes de vencer: efeito que expira dá aquele
- * pisca na tela.
- */
-export function keepLit(player) {
-  if (!SPACE_ALWAYS_LIT) return;
-  if (system.currentTick % 100 !== 0) return;
-  try {
-    player.addEffect("night_vision", 30 * 20, { amplifier: 0, showParticles: false });
-  } catch { }
-}
-
-export function releaseLight(player) {
-  if (!SPACE_ALWAYS_LIT) return;
-  try { player.removeEffect("night_vision"); } catch { }
 }
 
 export function forgetPlayer(playerId) {
@@ -142,12 +118,75 @@ function marker(delta) {
   return delta > 0 ? "§8>" : "§8<";
 }
 
+// ---------------------------------------------------------------------------
+// Placar lateral
+// ---------------------------------------------------------------------------
+//
+// O canal que sobrevive a `hud @s hide all`. O slot lateral é do MUNDO, não do
+// jogador, então só é usado quando há um jogador só no espaço — com dois, cada
+// um veria as distâncias do outro. Nesse caso o rastreador volta pra barra de
+// ação sozinho.
+
+let objectiveReady = false;
+
+// O que está escrito agora, pra não reescrever linha por linha todo tick: cada
+// escrita no placar é um pacote de rede pro cliente.
+let sidebarShown = "";
+
+function sidebarObjective() {
+  try {
+    let obj = world.scoreboard.getObjective(HUD_OBJECTIVE);
+    if (!obj) obj = world.scoreboard.addObjective(HUD_OBJECTIVE, "§lRASTREADOR");
+    if (!objectiveReady) {
+      world.scoreboard.setObjectiveAtDisplaySlot("sidebar", { objective: obj });
+      objectiveReady = true;
+    }
+    return obj;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSidebar() {
+  // Zera o cache SEMPRE, mesmo sem placar montado: sem isso, quem sai do espaço
+  // e volta com o rastreador no mesmo estado não vê nada — o cache diz "já está
+  // escrito assim" e o placar, que foi removido, nunca é remontado.
+  sidebarShown = "";
+  if (!objectiveReady) return;
+  objectiveReady = false;
+  try { world.scoreboard.clearObjectiveAtDisplaySlot("sidebar"); } catch { }
+  try { world.scoreboard.removeObjective(HUD_OBJECTIVE); } catch { }
+}
+
+function renderSidebar(lines) {
+  const key = lines.join("\n");
+  if (key === sidebarShown) return true;
+
+  const obj = sidebarObjective();
+  if (!obj) return false;
+
+  try {
+    for (const p of obj.getParticipants()) obj.removeParticipant(p);
+    // O placar ordena por pontuação, de cima pra baixo. Contando ao contrário,
+    // a primeira linha da lista fica no topo.
+    let score = lines.length;
+    for (const line of lines) obj.setScore(line, score--);
+  } catch {
+    return false;
+  }
+  sidebarShown = key;
+  return true;
+}
+
 export function showCompass(player, warning) {
   if (!HUD_ENABLED) return;
   if (system.currentTick % HUD_INTERVAL_TICKS !== 0) return;
 
+  const channel = hudChannel(player);
+  if (channel === "off") return;
+
   if (warning) {
-    try { player.onScreenDisplay.setActionBar(warning); } catch { }
+    write(player, channel, [warning]);
     return;
   }
 
@@ -156,7 +195,7 @@ export function showCompass(player, warning) {
   let tracked;
   try { tracked = trackedBodies(player); } catch { tracked = []; }
   if (!tracked.length) {
-    try { player.onScreenDisplay.setActionBar("§8rastreador sem nada ligado"); } catch { }
+    write(player, channel, ["§8rastreador sem nada ligado"]);
     return;
   }
 
@@ -170,16 +209,39 @@ export function showCompass(player, warning) {
   if (touching && touching.dist <= touching.body.radius + PORTAL_MARGIN + 6) {
     const hint = hintFor(touching.body);
     if (hint) {
-      try { player.onScreenDisplay.setActionBar(hint); } catch { }
+      write(player, channel, [hint]);
       return;
     }
   }
 
-  const line = entries
-    .map((e) => `${marker(bearingDelta(player, e.body))} ${e.body.name} §f${Math.round(e.surface)}m`)
-    .join(" §8· ");
+  const lines = entries.map(
+    (e) => `${marker(bearingDelta(player, e.body))} ${e.body.name} §f${Math.round(e.surface)}m`
+  );
+  write(player, channel, lines);
+}
 
-  try { player.onScreenDisplay.setActionBar(line); } catch { }
+/**
+ * Escreve no canal pedido, com a barra de ação como reserva.
+ *
+ * O placar lateral é do mundo inteiro, então com mais de um jogador no espaço
+ * ele mostraria as distâncias de um só. Nesse caso o rastreador cai pra barra
+ * de ação sozinho, sem o jogador precisar mexer em nada.
+ */
+function write(player, channel, lines) {
+  if (channel === "sidebar" && soloInSpace(player)) {
+    if (renderSidebar(lines)) return;
+  }
+  try {
+    player.onScreenDisplay.setActionBar(lines.join(" §8· "));
+  } catch { }
+}
+
+function soloInSpace(player) {
+  try {
+    return player.dimension.getPlayers().length <= 1;
+  } catch {
+    return true;
+  }
 }
 
 function hintFor(body) {

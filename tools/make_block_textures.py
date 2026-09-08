@@ -1,23 +1,41 @@
 #!/usr/bin/env python3
-"""Gera as texturas 16x16 dos blocos dos corpos celestes, no estilo do jogo.
+"""Gera as texturas dos blocos dos corpos celestes, no estilo do jogo.
 
-A primeira versão era ruído fbm passado por rampas de cor contínuas: bonito de
-perto, mas com dezenas de tons e gradiente suave — cara de render, não de
-Minecraft. Textura de bloco do jogo é o contrário disso: **poucas cores
-chapadas**, sem gradiente, e o ruído aparece como mancha de pixel, não como
-degradê.
+Duas coisas separadas, e confundi-las já custou duas rodadas:
 
-Então aqui cada textura é só duas coisas:
+  DENTRO de um bloco   variação SUTIL — tons vizinhos, sem mancha escura.
+  ENTRE os blocos      variação GRANDE — é daqui que sai o desenho do planeta.
 
-  1. uma PALETA curta (3 a 5 tons) e as proporções de cada tom;
-  2. um ruído grosso que decide qual tom cai em cada pixel.
+As manchas de um corpo (os mares da Lua, o basalto de Marte) são BLOCOS
+DIFERENTES que o gerador espalha pela superfície, não pintura dentro da
+textura. Uma textura com tom escuro dentro dela repete aquela mesma mancha em
+cada bloco, e o planeta inteiro fica salpicado do mesmo carimbo.
 
-O pixel recebe a cor por RANKING, não por limiar: os 256 valores são ordenados
-e fatiados nas proporções pedidas. Assim a proporção sai exata em toda textura
-e nenhuma fica lavada ou escura demais por azar do ruído.
+O que já foi errado aqui, nesta ordem:
 
-As paletas vieram das referências que o usuário mandou — a da Lua é literalmente
-a do print dele (#D9E4FF … #505666).
+  1ª versão   ruído fbm com rampa contínua: dezenas de tons e degradê suave.
+              Cara de render.
+  2ª versão   4 tons quase idênticos em grão de 16x16 (`earth_land` tinha
+              faixa de luma 16). De longe vira uma cor chapada sem forma.
+  3ª versão   6 tons com faixa de até 170 — contraste alto DENTRO do bloco.
+              Resolveu o borrão e criou o carimbo: mancha escura repetida no
+              planeta inteiro.
+
+Agora:
+
+  1. o desenho é feito numa grade de 8x8 CÉLULAS, cada uma virando 2x2 pixels
+     na textura de 16x16 — pixel grosso, como no print de referência;
+  2. cada paleta tem 5 ou 6 tons VIZINHOS, com faixa de luma curta;
+  3. os blocos de um mesmo corpo ficam bem separados entre si, pra que a troca
+     de bloco no gerador seja o que se vê de longe;
+  4. o pixel recebe a cor por RANKING: os valores do ruído são ordenados e
+     fatiados nas proporções pedidas, então a proporção sai exata em toda
+     textura e nenhuma fica lavada por azar do sorteio.
+
+As cores saem das referências: a rampa da Lua é a do print
+(#505666 … #D9E4FF), fatiada em três blocos; a do Sol é a do sol do jogo
+(#FFD64A / #FFFFA9 / #FFFFD9); a de Marte vem do cubo vermelho
+(#6D3435 / #A6433B).
 """
 import math
 import os
@@ -25,6 +43,10 @@ import struct
 import zlib
 
 SIZE = 16
+# Lado da grade de desenho. 8 células em 16 pixels = cada célula é um quadrado
+# 2x2. É a resolução do print de referência, e é o que dá o pixel grosso.
+CELLS = 8
+CELL_PX = SIZE // CELLS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "packs", "Distant Horizons RP", "textures", "space_dim", "blocks")
 
@@ -83,35 +105,43 @@ def value_noise(x, y, period, seed):
 
 # --- Construção da textura ---------------------------------------------------
 def build(palette, weights, seed, clump=4, jitter=0.45):
-    """Uma textura de bloco.
+    """Uma textura de bloco, desenhada em células grossas.
 
-    palette : lista de cores "#RRGGBB", da mais escura pra mais clara (ou a
-              ordem que fizer sentido pro bloco)
+    palette : cores "#RRGGBB", da mais escura pra mais clara
     weights : proporção de cada cor; normalizada aqui
-    clump   : quantas células de ruído cabem nos 16 px. 3-4 dá mancha grossa,
-              tipo pedra do jogo; 8 dá grão fino, tipo areia.
-    jitter  : quanto de sorteio por pixel entra na conta. 0 deixa manchas de
+    clump   : quantas células de ruído cabem na grade. 3 dá mancha larga, tipo
+              pedra; 6 dá grão miúdo, tipo areia.
+    jitter  : quanto de sorteio por célula entra na conta. 0 deixa manchas de
               borda lisa (parece plástico); alto demais vira chuvisco.
     """
     cols = [hex_rgb(c) for c in palette]
 
     vals = []
-    for y in range(SIZE):
-        for x in range(SIZE):
-            n = value_noise(x / SIZE * clump, y / SIZE * clump, clump, seed)
-            j = _hash(x, y, 4096, seed + 977)
-            vals.append((n * (1 - jitter) + j * jitter, x, y))
+    for cy in range(CELLS):
+        for cx in range(CELLS):
+            n = value_noise(cx / CELLS * clump, cy / CELLS * clump, clump, seed)
+            j = _hash(cx, cy, 4096, seed + 977)
+            vals.append((n * (1 - jitter) + j * jitter, cx, cy))
 
     # Cor por ranking: garante a proporção exata pedida em weights.
     vals.sort(key=lambda v: v[0])
     total = sum(weights)
-    rows = [[None] * SIZE for _ in range(SIZE)]
+    cells = [[None] * CELLS for _ in range(CELLS)]
     i = 0
     for idx, w in enumerate(weights):
         take = round(len(vals) * w / total) if idx < len(weights) - 1 else len(vals) - i
-        for _, x, y in vals[i:i + take]:
-            rows[y][x] = cols[idx] + (255,)
+        for _, cx, cy in vals[i:i + take]:
+            cells[cy][cx] = cols[idx] + (255,)
         i += take
+
+    # Cada célula vira um quadrado CELL_PX x CELL_PX.
+    rows = []
+    for cy in range(CELLS):
+        line = []
+        for cx in range(CELLS):
+            line.extend([cells[cy][cx]] * CELL_PX)
+        for _ in range(CELL_PX):
+            rows.append(list(line))
     return rows
 
 
@@ -131,71 +161,82 @@ def build(palette, weights, seed, clump=4, jitter=0.45):
 
 TEXTURES = {
     # --- Sol -----------------------------------------------------------------
+    # Rampa do sol de referência (#FFD64A / #FFFFA9 / #FFFFD9), fatiada em três
+    # camadas. Cada bloco fica dentro da sua fatia: a diferença coroa → plasma →
+    # núcleo é entre BLOCOS, não dentro de nenhum deles.
     "sun_corona": (
-        ["#B87708", "#D18F12", "#E8A317", "#F5B82B"],
-        [1, 3, 4, 2], 353, 3, 0.42,
+        ["#D18E10", "#DE9C17", "#E8A81E", "#F0B227", "#F7BC33"],
+        [2, 3, 4, 3, 2], 562, 3, 0.40,
     ),
     "sun_plasma": (
-        ["#E8A317", "#F5B82B", "#FFCB2E", "#FFD84D"],
-        [1, 3, 4, 2], 101, 3, 0.42,
+        ["#F2B62A", "#F9C330", "#FFCF3E", "#FFD64A", "#FFE066"],
+        [2, 3, 4, 3, 2], 388, 3, 0.40,
     ),
     "sun_core": (
-        ["#FFCB2E", "#FFE55C", "#FFF7A0", "#FFFBD0"],
-        [1, 2, 4, 3], 31, 3, 0.40,
+        ["#FFE87A", "#FFF095", "#FFF6B4", "#FFFAC9", "#FFFDD9"],
+        [2, 3, 4, 3, 2], 432, 3, 0.38,
     ),
 
     # --- Terra ---------------------------------------------------------------
+    # Oceano, plataforma, continente, floresta e gelo já SÃO cinco blocos: é a
+    # troca entre eles que desenha os continentes. Dentro de cada um, só a
+    # granulação.
     "earth_ocean": (
-        ["#062C6E", "#0A3A8C", "#0049A6", "#0B57C4"],
-        [2, 4, 3, 1], 41, 4, 0.45,
+        ["#05327C", "#063E93", "#0847A5", "#0A51B4", "#0D5AC2"],
+        [2, 3, 4, 3, 2], 496, 3, 0.44,
     ),
     "earth_shallow": (
-        ["#00506E", "#006386", "#0A7FA8", "#1596C0"],
-        [2, 4, 3, 1], 340, 4, 0.45,
+        ["#045C79", "#056C91", "#06769E", "#0781AB", "#088BB8"],
+        [2, 3, 4, 3, 2], 623, 3, 0.44,
     ),
     "earth_land": (
-        ["#036E02", "#048400", "#068D00", "#00A200"],
-        [2, 4, 3, 1], 61, 4, 0.48,
+        ["#026E00", "#038500", "#049200", "#059F00", "#06AC0A"],
+        [2, 3, 4, 3, 2], 178, 3, 0.46,
     ),
     "earth_forest": (
-        ["#01430A", "#025C00", "#036E02", "#048400"],
-        [2, 4, 3, 1], 71, 4, 0.48,
+        ["#014A02", "#026002", "#026C02", "#037803", "#048404"],
+        [2, 3, 4, 3, 2], 178, 3, 0.46,
     ),
     "earth_ice": (
-        ["#C6D4EC", "#DDE7F8", "#EEF4FF", "#FFFFFF"],
-        [1, 3, 4, 2], 83, 4, 0.42,
+        ["#D6DFEE", "#E8EFFA", "#EFF4FD", "#F6F9FF", "#FFFFFF"],
+        [2, 3, 4, 3, 2], 382, 3, 0.42,
     ),
 
-    # --- Lua (paleta da referência) -----------------------------------------
+    # --- Lua -----------------------------------------------------------------
+    # A rampa do print (#505666 #5F677A #747D93 #9097A5 #AFB8CC #D9E4FF) fatiada
+    # em três blocos. É exatamente o que ele pediu lá atrás: "não é pra fazer um
+    # bloco da lua que tenha buraquinhos escuros, vai ter o regolito claro,
+    # escuro e etc". Os mares são regiões de centenas de blocos escuros que o
+    # gerador desenha — não um buraco pintado dentro de cada bloco.
     "moon_regolith_light": (
-        ["#AFB8CC", "#C6D0E8", "#D9E4FF", "#E6EEFF"],
-        [2, 4, 3, 1], 477, 4, 0.46,
+        ["#B9C2D6", "#C6CFE4", "#D2DBF1", "#D9E4FF", "#E2ECFF"],
+        [2, 3, 4, 3, 2], 495, 3, 0.44,
     ),
     "moon_regolith": (
-        ["#747D93", "#9097A5", "#AFB8CC", "#C6D0E8"],
-        [2, 4, 3, 1], 103, 4, 0.46,
+        ["#868D9C", "#9097A5", "#9AA1B0", "#A5ACBB", "#AFB8CC"],
+        [2, 3, 4, 3, 2], 807, 3, 0.44,
     ),
     "moon_regolith_dark": (
-        ["#41465A", "#505666", "#5F677A", "#747D93"],
-        [2, 4, 3, 1], 109, 4, 0.46,
+        ["#4A4F5E", "#505666", "#585E70", "#5F677A", "#6A7286"],
+        [2, 3, 4, 3, 2], 623, 3, 0.44,
     ),
 
     # --- Marte ---------------------------------------------------------------
     "mars_dust": (
-        ["#A8451F", "#B94A2C", "#C1522A", "#D16438"],
-        [2, 4, 3, 1], 127, 4, 0.47,
+        ["#A94523", "#B44A28", "#BA4E2A", "#C25730", "#CA6238"],
+        [2, 3, 4, 3, 2], 1068, 3, 0.45,
     ),
     "mars_rock": (
-        ["#7A2F19", "#8E3A21", "#A04628", "#B04E2E"],
-        [2, 4, 3, 1], 137, 4, 0.47,
+        ["#82361E", "#8B3A20", "#923D22", "#9A4326", "#A34B2C"],
+        [2, 3, 4, 3, 2], 499, 3, 0.45,
     ),
     "mars_rock_dark": (
-        ["#3F1710", "#4A1B0E", "#5C2312", "#6E2C18"],
-        [2, 4, 3, 1], 149, 4, 0.47,
+        ["#43190D", "#4A1B0E", "#501E10", "#582213", "#602716"],
+        [2, 3, 4, 3, 2], 1068, 3, 0.45,
     ),
     "mars_ice": (
-        ["#C9BBB1", "#D9CCC4", "#E8DCD4", "#F5EEE8"],
-        [1, 3, 4, 2], 157, 4, 0.42,
+        ["#D2C6BC", "#DCD1C8", "#E2D7CF", "#E9E0D8", "#F1E9E3"],
+        [2, 3, 4, 3, 2], 382, 3, 0.42,
     ),
 }
 
@@ -231,28 +272,119 @@ def average_color(rows):
 MAX_COLORS = 6      # textura de bloco do jogo é chapada; mais que isso é render
 MAX_BIAS = 14.0     # acima disso a textura vira bolinha repetida numa parede
 
+# Os dois números abaixo são a diferença medida entre o que estava aqui e a
+# referência que o usuário mandou. Sem eles, nada impedia a textura de voltar a
+# ser um borrão: as checagens antigas só olhavam CORES DEMAIS, e quatro tons
+# quase iguais passavam sem reclamação.
+#
+#   referência do usuário   6 tons, faixa de luma 144, células 8x8
+#   o que estava gerado     4 tons, faixa de 16 a 83, grão 16x16
+#
+# `earth_land` tinha faixa 16: quatro verdes indistinguíveis, que de longe
+# viram uma cor chapada sem forma. É essa a aparência que ele chamou de
+# "inteligência artificial".
+MIN_COLORS = 5      # menos que isso não tem o que desenhar
+
+# O contraste DENTRO de um bloco tem teto, não piso.
+#
+# Um tom escuro dentro da textura vira uma mancha, e a mancha se repete em cada
+# bloco: o planeta inteiro fica salpicado do mesmo carimbo. As manchas de
+# verdade — os mares da Lua, o basalto de Marte — são BLOCOS DIFERENTES que o
+# gerador espalha, e a separação entre eles é conferida logo abaixo.
+MAX_LUMA_RANGE = 46
+
+# E entre os blocos de um mesmo corpo a separação tem que existir, senão a troca
+# de bloco não desenha nada e o corpo vira uma cor só.
+#
+# Medida como distância de COR, não de brilho: a floresta e o continente da
+# Terra têm luma quase igual e matiz bem diferente — a mancha aparece
+# perfeitamente, e uma checagem só de luma reprovaria os dois sem motivo.
+MIN_BODY_SEPARATION = 24
+
+
+def color_distance(a, b):
+    ra, ga, ba = hex_rgb(a)
+    rb, gb, bb = hex_rgb(b)
+    return math.sqrt((ra - rb) ** 2 + (ga - gb) ** 2 + (ba - bb) ** 2)
+
+
+def luma_range(rows):
+    tones = {px[:3] for row in rows for px in row}
+    lums = [(c[0] + c[1] + c[2]) / 3 for c in tones]
+    return max(lums) - min(lums)
+
+
+def is_chunky(rows):
+    """A textura foi desenhada em células grossas, não pixel a pixel?"""
+    n = len(rows)
+    for y in range(0, n, CELL_PX):
+        for x in range(0, n, CELL_PX):
+            block = {rows[y + dy][x + dx][:3]
+                     for dy in range(CELL_PX) for dx in range(CELL_PX)}
+            if len(block) != 1:
+                return False
+    return True
+
 
 if __name__ == "__main__":
     failures = []
-    print(f"  {'bloco':22s} {'cores':>5s} {'média':>8s} {'centro':>7s}")
+    built = {}
+    print(f"  {'bloco':22s} {'cores':>5s} {'faixa':>6s} {'média':>8s} {'centro':>7s}")
     for name, (pal, w, seed, clump, jitter) in TEXTURES.items():
         rows = build(pal, w, seed, clump, jitter)
         write_png(os.path.join(OUT, f"{name}.png"), rows)
 
         nc = distinct_colors(rows)
         bias = center_bias(rows)
+        rng = luma_range(rows)
+        built[name] = rows
         flags = []
         if nc > MAX_COLORS:
             flags.append(f"cores demais (>{MAX_COLORS})")
+        if nc < MIN_COLORS:
+            flags.append(f"cores de menos (<{MIN_COLORS})")
         if bias > MAX_BIAS:
             flags.append("efeito bolinha")
+        if rng > MAX_LUMA_RANGE:
+            flags.append(f"contraste alto demais ({rng:.0f} > {MAX_LUMA_RANGE}) — "
+                         f"a mancha escura se repete no planeta inteiro")
+        if not is_chunky(rows):
+            flags.append(f"grão fino demais (não está na grade de {CELLS}x{CELLS})")
         if flags:
             failures.append(f"{name}: {', '.join(flags)}")
-        print(f"  {name:22s} {nc:5d} {average_color(rows):>8s} {bias:7.1f}"
+        print(f"  {name:22s} {nc:5d} {rng:6.0f} {average_color(rows):>8s} {bias:7.1f}"
               + ("   <-- " + "; ".join(flags) if flags else ""))
+
+    # --- separação entre os blocos de cada corpo -----------------------------
+    # É a troca de bloco que desenha o planeta. Dois blocos do mesmo corpo com
+    # luma parecida não produzem mancha nenhuma: o gerador troca e nada muda.
+    bodies = {}
+    for name in built:
+        bodies.setdefault(name.split("_")[0], []).append(name)
+
+    print()
+    for body, names in bodies.items():
+        if len(names) < 2:
+            continue
+        # Cada bloco precisa estar longe do MAIS PARECIDO com ele: dois tons de
+        # verde podem conviver desde que nenhum par fique indistinguível.
+        avg = {n: average_color(built[n]) for n in names}
+        for n in sorted(names):
+            others = [(color_distance(avg[n], avg[m]), m) for m in names if m != n]
+            gap, nearest = min(others)
+            mark = "" if gap >= MIN_BODY_SEPARATION else "   <-- perto demais"
+            print(f"  {body:6s} {n:22s} mais parecido com {nearest:22s} "
+                  f"distância {gap:5.0f}{mark}")
+            if gap < MIN_BODY_SEPARATION:
+                failures.append(
+                    f"{n} e {nearest} tem cor quase igual ({gap:.0f} < "
+                    f"{MIN_BODY_SEPARATION}) — trocar de bloco nao desenharia mancha"
+                )
 
     print(f"\n{len(TEXTURES)} texturas em {os.path.relpath(OUT, ROOT)}")
     if failures:
         print("FALHOU:\n  " + "\n  ".join(failures))
         raise SystemExit(1)
-    print(f"todas com no máximo {MAX_COLORS} cores e sem viés de centro")
+    print(f"todas em células {CELLS}x{CELLS}, {MIN_COLORS}-{MAX_COLORS} tons, "
+          f"faixa interna <= {MAX_LUMA_RANGE}, separadas por >= "
+          f"{MIN_BODY_SEPARATION}, sem viés de centro")

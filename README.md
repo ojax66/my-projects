@@ -506,6 +506,33 @@ pra exercitar tudo fora do jogo.
   `collision_box: false` e emitam luz, e que o núcleo seja sólido. Regenerar os
   blocos sem isso transformaria o Sol numa bola maciça sem ninguém notar.
 
+## As manchas são blocos, não pintura na textura
+
+Duas coisas separadas, e confundi-las custou duas rodadas:
+
+| | variação | quem faz |
+|---|---|---|
+| **dentro** de um bloco | sutil, tons vizinhos | a textura |
+| **entre** os blocos | grande | o gerador, trocando de bloco |
+
+Os mares da Lua e o basalto de Marte são **blocos diferentes** espalhados pela
+superfície. Uma textura com tom escuro dentro dela repete aquela mancha em cada
+bloco, e o planeta inteiro fica salpicado do mesmo carimbo.
+
+O histórico de erros aqui, medido:
+
+| versão | tons | faixa de luma no bloco | grão | resultado |
+|---|---|---|---|---|
+| 1ª | dezenas | contínua | 16×16 | cara de render |
+| 2ª | 4 | 16 a 83 | 16×16 | borrão sem forma |
+| 3ª | 6 | até 170 | 8×8 | carimbo repetido |
+| agora | 5 | ≤ 46 | 8×8 | — |
+
+O `make_block_textures.py` reprova as duas falhas: contraste **acima** do teto
+dentro de um bloco, e blocos do mesmo corpo com **cor parecida demais** (medida
+como distância de cor, não de brilho — a floresta e o continente da Terra têm
+luma quase igual e matiz bem diferente, e a mancha aparece perfeitamente).
+
 ## Os corpos são cubos
 
 Um planeta redondo feito de blocos é uma bola de degraus: de perto se veem as
@@ -622,45 +649,74 @@ Rastreador Estelar ou por `/scriptevent space_dim:tracker`. Sistema trancado
 aparece na lista, cinza — saber que existe algo pra achar é parte do jogo; o que
 ele não mostra é onde está.
 
-## O Sol acende o sistema inteiro
+## Quem brilha é o corpo, não o espaço
 
-Luz de bloco ilumina **superfícies**, e no vácuo não há superfície pra iluminar:
-um enxame de blocos de luz no espaço vazio não mudaria um pixel. Os três blocos
-do Sol já estão no máximo (emissão 15, `light_dampening` 0), e isso só serve pro
-que está encostado nele.
+Luz de bloco ilumina **superfícies**, e no vácuo não há superfície pra iluminar.
+Bedrock também não tem controle de luz ambiente pra dimensão custom: o
+`minecraft:dimension` aceita bounds, gerador e bioma padrão, e nada mais.
 
-E Bedrock **não tem botão de luz ambiente pra dimensão custom**: o
-`minecraft:dimension` aceita bounds, gerador e bioma padrão, e nada mais. O
-único mecanismo de verdade é a luz do céu, que depende da hora do mundo — o
-Spacecraft resolve travando `setTimeOfDay(6000)`, que é global e congelaria o
-dia no Overworld de todo mundo. Aqui isso não foi feito.
+Duas tentativas mexeram no lugar errado. A primeira acendia só o entorno do Sol
+— alcance 230, com a Terra a 520 e Marte a 1040, então ninguém via luz nenhuma.
+A segunda pintava o **espaço** de dourado em faixas e dava visão noturna ao
+jogador: o vazio deixava de parecer vazio.
 
-O que acende, então:
+O espaço voltou a ser uma névoa azul só. Quem aparece iluminado é o corpo:
 
-- **Três faixas de névoa cobrindo o sistema todo.** A primeira versão só tinha
-  "perto do Sol" e "longe", com o corte a **230 blocos** — e a Terra está a 520,
-  Marte a 1040. Ninguém nunca via luz nenhuma; o jogador passava a vida inteira
-  fora da faixa. Agora: `blaze` dentro do campo de calor, `sunlit` no resto do
-  sistema (até `SOLAR_SYSTEM_RADIUS`), `deep` fora dele.
-- **O modelo distante do Sol é emissivo.** No material `entity_emissive` o canal
-  alfa é a máscara de brilho: alfa 0 quer dizer *aceso*, não transparente — o
-  inverso do `entity_alphatest` dos outros corpos, onde alfa 0 é buraco. Trocar
-  os dois não dá erro nenhum (o corpo só fica invisível, ou opaco onde devia ser
-  vazado), então o validador confere o par.
-- **Brilho permanente em quem está no espaço** (`SPACE_ALWAYS_LIT`). Sem isso o
-  lado escuro de um planeta é preto puro, porque não há luz de céu aqui. É um
-  efeito de visão noturna reposto bem antes de vencer — efeito que expira dá
-  aquele pisca na tela. Desligue no config se preferir o espaço escuro.
-
-O validador confere que todo corpo cabe dentro de `SOLAR_SYSTEM_RADIUS` e que
-toda névoa citada pelo config existe no RP: um `fog push` pra uma névoa que não
-existe falha calado e o jogador fica com a anterior.
+- **Os modelos vistos de longe são todos emissivos.** No material
+  `entity_emissive` o canal alfa é a máscara de brilho: alfa 0 quer dizer
+  *aceso*, não transparente — o inverso do `entity_alphatest`. Trocar os dois
+  não dá erro (o corpo só fica preto, ou opaco onde devia ser vazado), então o
+  validador confere.
+- **Os blocos dos planetas emitem luz baixa** (`BODY_LIGHT`, 6). Sem isso a
+  superfície é preta e não se enxerga nada em cima dela. O preço, assumido: o
+  lado de trás também aparece iluminado, porque luz de bloco não tem direção.
+  O Sol continua no máximo, 15.
 
 ## O espaço é azul, não preto
 
 `#0B1436` no céu e na névoa, com o espalhamento volumétrico puxado pro azul.
 Preto puro não é o que se vê nas fotos: fica um buraco chapado, sem
 profundidade.
+
+## A gravidade segue a forma, e para na superfície
+
+Dois bugs, um deles bem feio: **o jogador ficava preso no núcleo do Sol**. A
+gravidade puxava pro centro sempre, então quem chegava ao núcleo continuava
+sendo empurrado pra dentro do bloco maciço e não saía mais.
+
+Agora:
+
+- **A direção segue o eixo dominante**, não o centro. Num cubo, puxar pro centro
+  empurra na diagonal perto das quinas e o "chão" muda de inclinação conforme
+  se anda pela face. Com o eixo dominante a gravidade fica sempre perpendicular
+  à face — e as **seis faces viram chão**, inclusive a de baixo, onde se anda de
+  cabeça pra baixo.
+- **O alvo é a superfície**, não o centro. O puxão para na casca; e quem já
+  estiver enfiado dentro do maciço é empurrado pra **fora**, até a superfície,
+  em vez de ser prensado mais fundo.
+- Camadas marcadas `passable` no config (a coroa e o plasma do Sol) não contam
+  como chão: passa-se direto por elas, então cair "até a coroa" seria cair em
+  lugar nenhum. Só o núcleo é chão dentro do Sol.
+
+`tools/tests/test_gravity_shape.mjs` mede o centro do Sol, o interior do núcleo,
+a casca e as seis faces.
+
+## Onde o rastreador escreve
+
+A barra de ação some quando outro addon roda `hud @s hide all` — o Spacecraft
+faz isso nas cinemáticas dele (`racoTriggers.js`) e desfaz com `hud @s reset
+all` no fim. Se a cinemática não terminar limpa (o jogador sai, morre, dá erro
+no meio), o HUD fica escondido **pra sempre**, e com ele a barra de ação. Não dá
+pra consultar esse estado por script: não existe consulta ao `hud`.
+
+O **placar lateral não é um `hud_element`** — `hud hide all` não o alcança. Por
+isso ele é o canal padrão. O jogador troca entre placar, barra de ação e
+desligado no primeiro botão do menu do rastreador, que é um formulário e aparece
+de qualquer jeito.
+
+Uma limitação real: o slot lateral é do **mundo**, não do jogador. Com dois
+jogadores no espaço, um veria as distâncias do outro — então nesse caso o
+rastreador cai pra barra de ação sozinho.
 
 ## Onde o jogador cai ao chegar
 

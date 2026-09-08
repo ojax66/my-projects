@@ -74,9 +74,12 @@ export const BODIES = [
     //
     // `shell >= radius` numa camada quer dizer esfera maciça — é assim que o
     // núcleo é gerado.
+    // `passable` marca a camada que não tem colisão: dá pra atravessar. A
+    // gravidade usa isso pra saber onde existe CHÃO — cair até a coroa não
+    // seria cair em lugar nenhum, já que se passa direto por ela.
     layers: [
-      { radius: 100, shell: 3, palette: "sun_corona" },
-      { radius: 62, shell: 2, palette: "sun_plasma" },
+      { radius: 100, shell: 3, palette: "sun_corona", passable: true },
+      { radius: 62, shell: 2, palette: "sun_plasma", passable: true },
       { radius: 22, shell: 22, palette: "sun_core" },
     ],
     // Campo de calor: começa BEM antes da superfície. Quanto mais perto, mais
@@ -365,34 +368,43 @@ export const SKY_MODEL_INTERVAL = 2;
 export const SKY_MODEL_MIN_SCALE = 0.005;
 export const SKY_MODEL_MAX_SCALE = 40;
 
+// ---------------------------------------------------------------------------
+// Onde o rastreador escreve
+// ---------------------------------------------------------------------------
+// A barra de ação some quando outro addon roda `hud @s hide all` — o Spacecraft
+// faz isso nas cinemáticas dele (racoTriggers.js) e desfaz com `hud @s reset
+// all` no fim. Se a cinemática não terminar limpa (o jogador sai, morre, dá
+// erro no meio), o HUD fica escondido pra sempre, e com ele a barra de ação.
+// Não dá pra ler esse estado por script: não existe consulta ao `hud`.
+//
+// O placar lateral NÃO é um `hud_element` — `hud hide all` não o alcança. Por
+// isso ele é o canal padrão: funciona mesmo com o HUD escondido.
+//
+// Canais: "sidebar" | "actionbar" | "off". O jogador troca no menu do
+// rastreador, que é um formulário e aparece de qualquer jeito.
+export const HUD_CHANNEL_DEFAULT = "sidebar";
+
+// Objetivo do placar usado pelo rastreador. Criado sozinho, e removido quando
+// ninguém está mais usando.
+export const HUD_OBJECTIVE = "space_dim_track";
+
 export const FOG_ID = "space_dim:fog_outer_space";
 
-// A luz do Sol no sistema.
+// A luz do Sol.
 //
-// Bedrock não tem botão de luz ambiente pra dimensão custom: `minecraft:dimension`
-// só aceita bounds, gerador e bioma padrão. O único jeito de verdade seria a luz
-// do céu, que depende da hora do mundo — o Spacecraft resolve travando
-// `setTimeOfDay(6000)`, que é GLOBAL e congela o dia de todo mundo, inclusive no
-// Overworld. Aqui isso não foi feito.
+// Duas tentativas anteriores erraram o alvo: a primeira acendia só o entorno do
+// Sol (alcance 230, com a Terra a 520 — ninguém via nada), e a segunda pintava
+// o ESPAÇO de dourado em faixas e dava visão noturna ao jogador. As duas
+// mexiam no lugar errado: o espaço tem que continuar sendo espaço.
 //
-// O que ilumina, então, são duas coisas: a névoa, que muda de cor conforme a
-// distância até o Sol, e um brilho permanente em quem está na dimensão.
+// O que ilumina são os CORPOS. Os blocos dos planetas emitem luz baixa
+// (BODY_LIGHT em tools/make_blocks.py) e os modelos vistos de longe são
+// emissivos, então todo corpo aparece iluminado — como um corpo recebendo luz
+// do Sol aparece. O vazio entre eles fica escuro, que é o certo.
 //
-// A primeira versão acendia só o entorno do Sol — alcance 230, com a Terra a
-// 520 e Marte a 1040. Na prática ninguém via luz nenhuma: o jogador passava a
-// vida inteira fora da faixa. Agora as faixas cobrem o sistema todo.
-export const SUN_FOG_ID = "space_dim:fog_sun_glow";        // dentro do campo de calor
-export const SUNLIT_FOG_ID = "space_dim:fog_sunlit_space"; // resto do sistema
-
 // Até onde vai o sistema solar, medido do Sol. Marte, o mais distante hoje,
-// está a 1040 — o resto é folga pra quem sair explorando a borda.
+// está a 1040. Ainda usado pelo rastreador e conferido pelo validate.py.
 export const SOLAR_SYSTEM_RADIUS = 1500;
-
-// Brilho permanente pra quem está no espaço. É o que faz as superfícies serem
-// visíveis longe do Sol; sem isso o lado escuro de um planeta é preto puro,
-// porque não há luz de céu nenhuma aqui. Desligue se preferir o espaço escuro
-// e navegar só pelo modelo dos corpos.
-export const SPACE_ALWAYS_LIT = true;
 export const FOG_LABEL = "space_dim_fog";
 
 // Bússola na action bar com rumo e distância dos corpos celestes. Sem ela não

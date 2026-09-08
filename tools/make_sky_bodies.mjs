@@ -149,10 +149,9 @@ function skyTexture(body) {
       if (!col) continue;
       const d = ((oy + v) * W + ox + u) * 4;
       px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2];
-      // No material emissivo do Bedrock o canal alfa é a MÁSCARA de brilho:
-      // alfa 0 quer dizer "acende sozinho", não "transparente". É assim que o
-      // Sol brilha no escuro do espaço em vez de virar uma silhueta.
-      px[d + 3] = body.glow ? 0 : 255;
+      // Alfa 0 = aceso, no material emissivo. Todo corpo usa isso: sem luz de
+      // céu no espaço, um modelo não-emissivo seria uma silhueta preta.
+      px[d + 3] = 0;
     }
   };
   blit('up', RES, 0);
@@ -222,8 +221,14 @@ function rpEntity(body) {
     'minecraft:client_entity': {
       description: {
         identifier: `${NS}:sky_${body.id}`,
-        // emissivo pro Sol (alfa 0 = aceso), alphatest pros demais (alfa 0 = buraco)
-        materials: { default: body.glow ? 'entity_emissive' : 'entity_alphatest' },
+        // TODO corpo é emissivo, não só o Sol. No espaço não há luz de céu:
+        // um modelo não-emissivo fica uma silhueta preta, e o planeta some.
+        // Emissivo é o que faz o corpo aparecer iluminado — que é como um
+        // corpo recebendo luz do Sol aparece.
+        //
+        // No material emissivo o canal alfa é a MÁSCARA de brilho: alfa 0 quer
+        // dizer "aceso", não "transparente". É o inverso do entity_alphatest.
+        materials: { default: 'entity_emissive' },
         textures: { default: `textures/${NS}/sky/${body.id}` },
         geometry: { default: `geometry.${NS}.sky_body` },
         animations: { size: `animation.${NS}.sky_body.size` },

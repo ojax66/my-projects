@@ -499,31 +499,23 @@ for bid in body_ids:
         err(f"sky_{bid}: a faixa de space_dim:size termina em {hi}, mas o config "
             f"pode pedir {max_scale}")
 
-# O material tem que combinar com o alfa da textura, e a regra e ao contrario
-# do que parece: em `entity_emissive` alfa 0 quer dizer ACESO; em
-# `entity_alphatest` alfa 0 quer dizer BURACO. Trocar os dois nao da erro
-# nenhum — o corpo so aparece invisivel, ou opaco onde devia ser vazado.
-glow_ids = set(re.findall(r'id:\s*"([a-z0-9_]+)"[\s\S]{0,2000?}?glow:\s*true', config_src))
-if not glow_ids:
-    # forma mais simples: procura o bloco de cada corpo e ve se tem glow
-    for m in re.finditer(r'id:\s*"([a-z0-9_]+)",([\s\S]*?)(?=\n  \{|\n\];)', config_src):
-        if re.search(r"^\s*glow:\s*true", m.group(2), re.M):
-            glow_ids.add(m.group(1))
-
+# Todo corpo visto de longe usa o material emissivo. No espaço nao ha luz de
+# ceu: um modelo nao-emissivo vira uma silhueta preta e o planeta some. E a
+# regra do alfa e ao contrario do que parece — em `entity_emissive` alfa 0
+# quer dizer ACESO, nao transparente —, entao trocar o material nao da erro
+# nenhum: o corpo so fica preto, ou opaco onde devia ser vazado.
 for bid in body_ids:
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
     if not isinstance(doc, dict):
         continue
     mat = (doc.get("minecraft:client_entity", {}).get("description", {})
               .get("materials", {}).get("default"))
-    want = "entity_emissive" if bid in glow_ids else "entity_alphatest"
-    if mat != want:
-        err(f"sky_{bid} usa o material {mat}, esperado {want} — "
-            f"em entity_emissive alfa 0 e ACESO, em entity_alphatest e BURACO, "
-            f"entao trocar os dois deixa o corpo invisivel ou opaco sem avisar")
+    if mat != "entity_emissive":
+        err(f"sky_{bid} usa o material {mat}, esperado entity_emissive — "
+            f"sem luz de ceu no espaco, um modelo nao-emissivo vira silhueta preta")
 
-# Toda névoa que o config cita tem que existir no RP. Uma névoa inexistente
-# nao da erro: o `fog push` falha calado e o jogador fica com a nevoa anterior.
+# Toda nevoa que o config cita tem que existir no RP. Uma nevoa inexistente nao
+# da erro: o `fog push` falha calado e o jogador fica com a nevoa anterior.
 for m in re.finditer(r'export const \w*FOG\w* = "(space_dim:[a-z0-9_]+)";', config_src):
     fog_id = m.group(1)
     found = any(
@@ -535,13 +527,10 @@ for m in re.finditer(r'export const \w*FOG\w* = "(space_dim:[a-z0-9_]+)";', conf
         err(f"o config usa a nevoa {fog_id}, que nao existe no RP — "
             f"o `fog push` falharia calado")
 
-# A luz do Sol tem que alcancar todo corpo do sistema. A primeira versao
-# acendia so o entorno dele (alcance 230) com a Terra a 520 e Marte a 1040:
-# ninguem via luz nenhuma, em lugar nenhum.
+# Todo corpo tem que caber dentro de SOLAR_SYSTEM_RADIUS: e o alcance que o
+# rastreador e a documentacao tratam como "o sistema".
 sys_radius = config_number("SOLAR_SYSTEM_RADIUS")
 if sys_radius:
-    centers = dict(re.findall(
-        r'id:\s*"(\w+)",[\s\S]{0,600?}?center:\s*\{\s*x:\s*(-?\d+)', config_src))
     coords = re.findall(
         r'id:\s*"(\w+)",[\s\S]*?center:\s*\{\s*x:\s*(-?\d+),\s*y:\s*\w+,\s*z:\s*(-?\d+)\s*\}',
         config_src)
@@ -554,7 +543,7 @@ if sys_radius:
             d = max(abs(x - sx), abs(z - sz))
             if d > sys_radius:
                 err(f"{bid} esta a {d} do Sol, alem de SOLAR_SYSTEM_RADIUS "
-                    f"({sys_radius:.0f}) — ficaria no escuro do espaco profundo")
+                    f"({sys_radius:.0f})")
 
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #

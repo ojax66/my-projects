@@ -30,7 +30,16 @@ FORMAT_VERSION = "1.21.80"
 #
 # `light_dampening=0` nos blocos do Sol deixa a luz atravessar as cascas, senão
 # o miolo dele ficaria escuro apesar de tudo em volta brilhar.
-def block(texture, map_color, pt, en, light=0, hardness=1.2, solid=True, dampening=None):
+#
+# Os blocos dos PLANETAS emitem luz baixa (BODY_LIGHT). Não é pra eles serem
+# lâmpadas: é que a dimensão do espaço não tem luz de céu nenhuma, então sem
+# isso a superfície de um planeta é preta e não se enxerga nada em cima dele.
+# Com emissão baixa o corpo aparece iluminado — que é o que se espera de um
+# corpo recebendo luz do Sol. O preço, assumido: o lado de trás também aparece
+# iluminado, porque luz de bloco não tem direção.
+BODY_LIGHT = 6
+
+def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True, dampening=None):
     return {
         "texture": texture,
         "map_color": map_color,

@@ -11,7 +11,16 @@
  * ========================================================================= */
 
 import { ActionFormData } from "@minecraft/server-ui";
-import { trackerState, toggleSystem, toggleBody } from "./tracker.js";
+import { trackerState, toggleSystem, toggleBody, hudChannel, cycleHudChannel } from "./tracker.js";
+
+// A barra de ação some quando outro addon roda `hud @s hide all` — o Spacecraft
+// faz isso nas cinemáticas dele. O placar lateral não é um `hud_element` e
+// sobrevive a isso, então é o padrão.
+const CHANNEL_LABEL = {
+  sidebar: "mostrar no placar lateral",
+  actionbar: "mostrar na barra de ação",
+  off: "§8não mostrar",
+};
 
 const ON = "§a●";
 const OFF = "§8○";
@@ -28,6 +37,10 @@ export async function openTracker(player) {
       "§7descoberto — só tira da tela."
     );
 
+  // Primeiro botão: onde o rastreador escreve. Fica no topo de propósito —
+  // quem chega aqui porque não está vendo nada precisa achar isto de cara.
+  form.button(`§f${CHANNEL_LABEL[hudChannel(player)]}\n§7toque pra trocar`);
+
   for (const system of state) {
     if (!system.unlocked) {
       form.button(`${LOCKED} §8${stripColor(system.name)}\n§8sem coordenadas`);
@@ -41,7 +54,14 @@ export async function openTracker(player) {
   const res = await form.show(player);
   if (res.canceled || res.selection === undefined) return;
 
-  const chosen = state[res.selection];
+  if (res.selection === 0) {
+    const next = cycleHudChannel(player);
+    say(player, `Rastreador: §f${CHANNEL_LABEL[next]}`);
+    await openTracker(player);
+    return;
+  }
+
+  const chosen = state[res.selection - 1];
   if (!chosen) return;
   if (!chosen.unlocked) {
     say(player, "§7Você ainda não tem as coordenadas desse sistema.");

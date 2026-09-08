@@ -35,6 +35,8 @@ export function __reset() {
     breakStructures: false,
     nextEntityId: 1,
     worldProps: new Map(),
+    objectives: new Map(),
+    displaySlots: new Map(),
   };
   system.currentTick = 0;
 }
@@ -139,7 +141,11 @@ class Entity {
   }
 
   get onScreenDisplay() {
-    return { setTitle() { }, setActionBar() { } };
+    const self = this;
+    return {
+      setTitle() { },
+      setActionBar(text) { self.__actionBar = text; (self.__actionBars ??= []).push(text); },
+    };
   }
 }
 
@@ -309,7 +315,39 @@ function noopEvent() {
   return { subscribe() { }, unsubscribe() { } };
 }
 
+// --- placar ------------------------------------------------------------------
+// O canal do rastreador que sobrevive a `hud @s hide all`.
+class Objective {
+  constructor(id, display) {
+    this.id = id;
+    this.displayName = display;
+    this.__scores = new Map();
+  }
+  setScore(participant, score) { this.__scores.set(participant, score); }
+  getScore(participant) { return this.__scores.get(participant); }
+  getParticipants() { return [...this.__scores.keys()]; }
+  removeParticipant(p) { return this.__scores.delete(p); }
+}
+
+const scoreboard = {
+  addObjective(id, display) {
+    const obj = new Objective(id, display);
+    state.objectives.set(id, obj);
+    return obj;
+  },
+  getObjective(id) { return state.objectives.get(id); },
+  removeObjective(id) {
+    const key = typeof id === "string" ? id : id?.id;
+    if (state.displaySlots.get("sidebar")?.id === key) state.displaySlots.delete("sidebar");
+    return state.objectives.delete(key);
+  },
+  setObjectiveAtDisplaySlot(slot, opts) { state.displaySlots.set(slot, opts.objective); },
+  getObjectiveAtDisplaySlot(slot) { return state.displaySlots.get(slot); },
+  clearObjectiveAtDisplaySlot(slot) { state.displaySlots.delete(slot); },
+};
+
 export const world = {
+  scoreboard,
   structureManager,
 
   getDimension(id) {

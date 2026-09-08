@@ -36,12 +36,43 @@ const system = mc.system;
 const GRAVITY_BODIES = BODIES.filter((b) => b.gravity);
 
 /**
+ * Onde este ponto pousaria neste corpo: o raio da superfície sólida logo
+ * abaixo dele. `null` quando não há chão nenhum abaixo — ou seja, quando ele
+ * já está dentro do bloco maciço.
+ *
+ * Camadas `passable` (a coroa e o plasma do Sol) não contam: passa-se direto
+ * por elas, então cair "até a coroa" seria cair em lugar nenhum.
+ */
+function landingRadius(body, d) {
+  let best = null;
+  for (let i = 0; i < body.layers.length; i++) {
+    const layer = body.layers[i];
+    if (layer.passable) continue;
+    if (layer.radius <= d && (best === null || layer.radius > best)) {
+      best = layer.radius;
+    }
+  }
+  return best;
+}
+
+/**
  * Puxão que os corpos fazem num ponto: vetor já com a intensidade.
  * Devolve null quando o ponto está fora do alcance de todos.
  *
- * A intensidade cai com o quadrado da distância, normalizada pra valer
- * `strength` encostando na superfície e zero na borda do alcance. O corte na
- * borda evita um degrau — a gravidade some suave em vez de ligar de repente.
+ * Duas coisas aqui não são óbvias, e as duas vieram de bugs.
+ *
+ * A DIREÇÃO segue o eixo dominante, não o centro. Num cubo, puxar na direção
+ * do centro te empurra na diagonal quando você está perto de uma quina, e o
+ * "chão" muda de inclinação conforme você anda pela face. Com o eixo dominante
+ * a gravidade fica sempre perpendicular à face em que você está — e como cada
+ * face tem a sua, dá pra andar nas seis, inclusive de cabeça pra baixo na de
+ * baixo.
+ *
+ * O ALVO é a superfície, não o centro. A versão anterior puxava pro centro
+ * sempre, então quem chegava ao núcleo do Sol continuava sendo empurrado pra
+ * dentro e ficava preso dentro do bloco central, sem conseguir sair. Agora o
+ * puxão para na casca; e quem já estiver enfiado dentro do maciço é empurrado
+ * pra FORA, até a superfície, em vez de ser prensado mais fundo.
  */
 export function gravityAt(location) {
   let gx = 0;
@@ -51,24 +82,50 @@ export function gravityAt(location) {
 
   for (let i = 0; i < GRAVITY_BODIES.length; i++) {
     const body = GRAVITY_BODIES[i];
-    const dx = body.center.x - location.x;
-    const dy = body.center.y - location.y;
-    const dz = body.center.z - location.z;
-    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const dx = location.x - body.center.x;
+    const dy = location.y - body.center.y;
+    const dz = location.z - body.center.z;
+
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    const az = Math.abs(dz);
+    const d = Math.max(ax, ay, az);          // distância de Chebyshev: cubo
 
     const outer = body.radius + body.gravity.reach;
     if (d > outer || d < 0.001) continue;
 
-    // Dentro do corpo a gravidade não cresce mais: já se está no fundo do poço.
+    const landing = landingRadius(body, d);
+
+    // Já pousado na casca: nada de continuar empurrando pra dentro.
+    const SETTLED = 0.6;
+    if (landing !== null && d - landing <= SETTLED) continue;
+
+    // Sem chão abaixo quer dizer que ele está DENTRO do maciço. Empurra pra
+    // fora, senão fica preso — foi o que travava quem entrava no núcleo.
+    const outward = landing === null;
+
+    // Eixo dominante: define em qual das seis faces ele está.
+    let ux = 0;
+    let uy = 0;
+    let uz = 0;
+    if (ax >= ay && ax >= az) ux = dx >= 0 ? 1 : -1;
+    else if (ay >= az) uy = dy >= 0 ? 1 : -1;
+    else uz = dz >= 0 ? 1 : -1;
+
+    // Pra dentro (rumo à casca) ou pra fora (destravando de dentro do maciço).
+    const sign = outward ? 1 : -1;
+
+    // Intensidade: cai com o quadrado da distância, valendo `strength` na
+    // superfície e sumindo suave na borda do alcance, pra não ligar de repente.
     const surface = Math.max(d, body.radius);
-    const falloff = (body.radius / surface) ** 2;         // 1 na superfície
-    const fade = Math.min(1, (outer - d) / body.gravity.reach); // 0 na borda
+    const falloff = (body.radius / surface) ** 2;
+    const fade = Math.min(1, (outer - d) / body.gravity.reach);
     const g = body.gravity.strength * falloff * fade;
     if (g <= 0) continue;
 
-    gx += (dx / d) * g;
-    gy += (dy / d) * g;
-    gz += (dz / d) * g;
+    gx += ux * sign * g;
+    gy += uy * sign * g;
+    gz += uz * sign * g;
     pulled = true;
   }
 

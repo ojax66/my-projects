@@ -15,7 +15,6 @@
 
 import * as mc from "@minecraft/server";
 import {
-  SOLAR_SYSTEM_RADIUS,
   BODIES,
   SUN_HEAT_ENABLED,
   FIRE_RESISTANCE_PROTECTS,
@@ -30,10 +29,6 @@ import { hasStarArmor, starArmorBlocksHeat, protectionTier, pressureMultiplier }
 const system = mc.system;
 
 // Corpos que têm campo de calor (hoje só o Sol, mas nada aqui presume isso).
-// O brilho alcança um pouco além do campo de calor: dá pra ver o Sol acender o
-// espaço antes de estar perto o bastante pra pegar fogo.
-const SUN_GLOW_MARGIN = 60;
-
 const HOT_BODIES = BODIES.filter((b) => b.heat);
 
 function isExempt(player, heatLevel = 0) {
@@ -60,31 +55,6 @@ function isExempt(player, heatLevel = 0) {
     return true;
   }
   return false;
-}
-
-/**
- * Em que faixa de luz do Sol este ponto está.
- *
- *   "blaze"   dentro do campo de calor: o Sol domina tudo
- *   "sunlit"  dentro do sistema: iluminado por ele, mesmo lá de Marte
- *   "deep"    fora do sistema: o azul do espaço profundo
- *
- * A luz de bloco não serve pra isto: ela ilumina superfícies, e no vácuo não há
- * superfície nenhuma pra iluminar — um enxame de blocos de luz no espaço vazio
- * não mudaria um pixel. Quem acende o sistema é a névoa, e é esta faixa que
- * decide qual delas vale.
- *
- * A versão anterior só tinha "perto do Sol" e "longe", com o corte a 230
- * blocos. A Terra está a 520 e Marte a 1040: ninguém nunca via luz do Sol.
- */
-export function sunLightTier(location) {
-  for (let i = 0; i < HOT_BODIES.length; i++) {
-    const body = HOT_BODIES[i];
-    const d = chebyshevTo(location, body);
-    if (d <= body.radius + body.heat.zone + SUN_GLOW_MARGIN) return "blaze";
-    if (d <= SOLAR_SYSTEM_RADIUS) return "sunlit";
-  }
-  return "deep";
 }
 
 /**

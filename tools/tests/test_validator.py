@@ -269,11 +269,11 @@ case("corpo alem do alcance da luz do Sol", shrink_system,
 
 # --- 12d. nevoa citada que nao existe ----------------------------------------
 def missing_fog(tmp):
-    os.remove(rp(tmp, "fogs", "sunlit_space.fog.json"))
+    os.remove(rp(tmp, "fogs", "outer_space.fog.json"))
 
 
 case("nevoa citada pelo config e ausente do RP", missing_fog,
-     r"nevoa space_dim:fog_sunlit_space, que nao existe")
+     r"nevoa space_dim:fog_outer_space, que nao existe")
 
 
 # --- 13. os geradores nao podem depender da ordem ----------------------------

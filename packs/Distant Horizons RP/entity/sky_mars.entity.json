@@ -4,7 +4,7 @@
     "description": {
       "identifier": "space_dim:sky_mars",
       "materials": {
-        "default": "entity_alphatest"
+        "default": "entity_emissive"
       },
       "textures": {
         "default": "textures/space_dim/sky/mars"

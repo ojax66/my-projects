@@ -24,7 +24,8 @@
         "explosion_resistance": 15
       },
       "minecraft:map_color": "#038500",
-      "minecraft:friction": 0.6
+      "minecraft:friction": 0.6,
+      "minecraft:light_emission": 6
     }
   }
 }

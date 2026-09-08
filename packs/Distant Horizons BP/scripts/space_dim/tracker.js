@@ -18,9 +18,11 @@
  * ========================================================================= */
 
 import { allTrackable, bodiesOf, defaultSystems, systemById, SYSTEMS } from "./catalog.js";
+import { HUD_CHANNEL_DEFAULT } from "./config.js";
 
 const PROP_UNLOCKED = "space_dim:known_systems";
 const PROP_HIDDEN = "space_dim:hidden_tracks";
+const PROP_CHANNEL = "space_dim:hud_channel";
 
 // ---------------------------------------------------------------------------
 // Leitura e escrita do estado
@@ -103,6 +105,28 @@ export function toggleSystem(player, systemId) {
 
 export function toggleBody(player, bodyId) {
   return toggle(player, "body:" + bodyId);
+}
+
+// ---------------------------------------------------------------------------
+// Onde o rastreador escreve
+// ---------------------------------------------------------------------------
+
+export const CHANNELS = ["sidebar", "actionbar", "off"];
+
+/** Canal escolhido por este jogador. */
+export function hudChannel(player) {
+  try {
+    const raw = player.getDynamicProperty(PROP_CHANNEL);
+    if (typeof raw === "string" && CHANNELS.includes(raw)) return raw;
+  } catch { }
+  return HUD_CHANNEL_DEFAULT;
+}
+
+/** Passa pro próximo canal e devolve o novo. */
+export function cycleHudChannel(player) {
+  const next = CHANNELS[(CHANNELS.indexOf(hudChannel(player)) + 1) % CHANNELS.length];
+  try { player.setDynamicProperty(PROP_CHANNEL, next); } catch { }
+  return next;
 }
 
 // ---------------------------------------------------------------------------

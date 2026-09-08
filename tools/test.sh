@@ -30,6 +30,10 @@ cp -r "$ROOT/tools/tests/stub/@minecraft" "$STAGE/node_modules/"
 cp "$ROOT/tools/tests"/*.mjs "$STAGE/"
 echo '{ "type": "module" }' > "$STAGE/package.json"
 
+# Os testes que conferem os packs (e não só os scripts) precisam achar o
+# repositório a partir da pasta temporária.
+export DH_REPO="$ROOT"
+
 cd "$STAGE"
 
 echo
@@ -71,6 +75,14 @@ node test_tracker.mjs
 echo
 echo "--- modelo e blocos sem buraco entre os dois ---"
 node test_sky_gap.mjs
+
+echo
+echo "--- onde o rastreador escreve ---"
+node test_hud.mjs
+
+echo
+echo "--- gravidade: forma do corpo e superfície ---"
+node test_gravity_shape.mjs
 
 echo
 echo "--- custo de geração (informativo) ---"

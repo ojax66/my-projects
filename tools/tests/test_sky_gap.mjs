@@ -12,6 +12,12 @@
 import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW, SKY_MODEL_DISTANCE,
          SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE } from './space_dim/config.js';
 
+// Os testes rodam numa pasta temporária com os scripts copiados; os packs
+// ficam no repositório, então o caminho vem daqui.
+const REPO = process.env.DH_REPO ?? '.';
+const RP_DIR = `${REPO}/packs/Distant Horizons RP`;
+const BP_DIR = `${REPO}/packs/Distant Horizons BP`;
+
 let failures = 0;
 const check = (name, ok, extra = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`);
@@ -55,31 +61,41 @@ for (const body of BODIES) {
 check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_MODEL_DISTANCE <= 64,
       `(${SKY_MODEL_DISTANCE} blocos)`);
 
-// --- A luz do Sol tem que alcançar o sistema inteiro -------------------------
+// --- Quem brilha é o corpo, não o espaço ------------------------------------
 //
-// A primeira versão acendia só o entorno do Sol: alcance 230, com a Terra a 520
-// e Marte a 1040. Na prática o jogador passava a vida fora da faixa e nunca via
-// luz nenhuma — "o sol não está iluminando" era literalmente verdade.
+// Duas tentativas anteriores mexeram no lugar errado: a primeira acendia só o
+// entorno do Sol (alcance 230, com a Terra a 520 — ninguém via nada), e a
+// segunda pintava o ESPAÇO de dourado em faixas e dava visão noturna ao
+// jogador. O espaço tem que continuar sendo espaço; quem aparece iluminado é o
+// corpo celeste.
 {
-  const { sunLightTier } = await import('./space_dim/hazards.js');
-  const sun = BODIES.find((b) => b.id === 'sun');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const BP = path.resolve('space_dim', '..', '..', '..', '..');
 
+  // Os modelos vistos de longe: todos emissivos. Sem luz de céu no espaço, um
+  // modelo não-emissivo vira uma silhueta preta e o corpo some.
+  const rpEntity = (id) => JSON.parse(fs.readFileSync(
+    path.join(RP_DIR, 'entity', `sky_${id}.entity.json`), 'utf8'));
   for (const body of BODIES) {
-    const tier = sunLightTier(body.center);
-    check(`${body.id} está dentro da luz do Sol`, tier !== 'deep',
-          `(faixa: ${tier})`);
+    const mat = rpEntity(body.id)['minecraft:client_entity']
+      .description.materials.default;
+    check(`${body.id}: o modelo distante é emissivo`, mat === 'entity_emissive',
+          `(${mat})`);
   }
 
-  // Encostado no Sol é a faixa mais forte, e ela não pode vazar pro sistema
-  // todo — senão não haveria diferença nenhuma entre chegar perto e não chegar.
-  check('encostado no Sol a faixa é a mais forte',
-        sunLightTier({ x: sun.center.x, y: sun.center.y, z: sun.center.z }) === 'blaze');
-  const terra = BODIES.find((b) => b.id === 'earth');
-  check('  e na Terra já não é', sunLightTier(terra.center) === 'sunlit');
-
-  // Fora do sistema volta a ser espaço profundo.
-  check('longe do sistema volta o espaço profundo',
-        sunLightTier({ x: sun.center.x + 9000, y: 128, z: sun.center.z }) === 'deep');
+  // Os blocos: emissão baixa, pra a superfície ser visível de perto. Não é pra
+  // serem lâmpadas — o Sol é o único no máximo.
+  const blockLight = (name) => {
+    const doc = JSON.parse(fs.readFileSync(
+      path.join(BP_DIR, 'blocks', `${name}.json`), 'utf8'));
+    return doc['minecraft:block'].components['minecraft:light_emission'] ?? 0;
+  };
+  for (const name of ['earth_land', 'moon_regolith', 'mars_dust']) {
+    const l = blockLight(name);
+    check(`${name}: emite luz, mas não é lâmpada`, l > 0 && l < 15, `(${l})`);
+  }
+  check('o Sol é o único no máximo', blockLight('sun_core') === 15);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
