@@ -9,10 +9,13 @@
  *     por cima de construção de alguém
  */
 import { world, system, __reset, __advance, __state, ItemStack } from '@minecraft/server';
-import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, WRECK_TEMPLATE_ITEM } from './space_dim/config.js';
+import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, REINFORCED_SUIT_PIECES,
+         REINFORCED_SUIT_PRESSURE_FACTOR, SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
+         WRECK_TEMPLATE_ITEM } from './space_dim/config.js';
 import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './space_dim/gravity.js';
-import { hasStarArmor, starArmorPieces } from './space_dim/starGear.js';
-import { applySunPressure } from './space_dim/hazards.js';
+import { hasStarArmor, starArmorPieces, hasReinforcedSuit, protectionTier,
+         pressureMultiplier, sustainInSpacecraftWorlds } from './space_dim/gear.js';
+import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
 import { buildWreckAt } from './space_dim/wreck.js';
 
 let failures = 0;
@@ -195,6 +198,98 @@ const spaceLoc = (body, d, axis = 'x') => ({
   outside.applyDamage = (n) => { outside.__damage += n; };
   for (let t = 0; t < 40; t++) { system.currentTick = t; applySunPressure(outside); }
   check('fora do Sol não há pressão', outside.__damage === 0);
+}
+
+// --- 7b. A escada de protecao: nada < traje reforcado < armadura de estrela --
+{
+  const wear = (p, pieces) => { for (const x of pieces) p.__wear(x.slot, x.item); };
+  const insideSun = () => ({ x: sun.center.x, y: sun.center.y, z: sun.center.z });
+
+  __reset();
+  const bare = world.__addPlayer({ id: 'b', dimensionId: DIMENSION_ID, location: insideSun() });
+  const suited = world.__addPlayer({ id: 's', dimensionId: DIMENSION_ID, location: insideSun() });
+  const starred = world.__addPlayer({ id: 't', dimensionId: DIMENSION_ID, location: insideSun() });
+  wear(suited, REINFORCED_SUIT_PIECES);
+  wear(starred, STAR_ARMOR_PIECES);
+
+  check('o traje reforçado é reconhecido', hasReinforcedSuit(suited) && !hasStarArmor(suited));
+  check('os degraus são lidos certo',
+        protectionTier(bare) === 'none' && protectionTier(suited) === 'suit'
+        && protectionTier(starred) === 'star');
+
+  // Meio traje nao conta.
+  const half = world.__addPlayer({ id: 'h', dimensionId: DIMENSION_ID, location: insideSun() });
+  for (let i = 0; i < 3; i++) half.__wear(REINFORCED_SUIT_PIECES[i].slot, REINFORCED_SUIT_PIECES[i].item);
+  check('meio traje não conta', !hasReinforcedSuit(half) && protectionTier(half) === 'none');
+
+  // Pressao: nada > traje > estrela, nessa ordem de sofrimento.
+  for (const p of [bare, suited, starred]) {
+    p.__damage = 0;
+    p.applyDamage = (n) => { p.__damage += n; };
+  }
+  for (let t = 0; t < 200; t++) {
+    system.currentTick = t;
+    applySunPressure(bare); applySunPressure(suited); applySunPressure(starred);
+  }
+  check('sem nada a pressão machuca mais que com o traje',
+        bare.__damage > suited.__damage && suited.__damage > 0,
+        `(nada ${bare.__damage}, traje ${suited.__damage})`);
+  check('a armadura de estrela anula a pressão', starred.__damage === 0);
+  check('o traje corta perto do fator configurado',
+        Math.abs(suited.__damage / bare.__damage - REINFORCED_SUIT_PRESSURE_FACTOR) < 0.25,
+        `(passou ${(suited.__damage / bare.__damage).toFixed(2)}, esperado ~${REINFORCED_SUIT_PRESSURE_FACTOR})`);
+}
+
+// --- 7c. O traje segura o calor da aproximacao, nao o de dentro -------------
+{
+  const at = (d) => ({ x: sun.center.x + d, y: sun.center.y, z: sun.center.z });
+  const makeSuited = (id, d) => {
+    const p = world.__addPlayer({ id, dimensionId: DIMENSION_ID, location: at(d) });
+    for (const x of REINFORCED_SUIT_PIECES) p.__wear(x.slot, x.item);
+    p.__fire = 0;
+    p.setOnFire = (s) => { p.__fire += s; return true; };
+    p.applyDamage = () => {};
+    return p;
+  };
+
+  __reset();
+  const approaching = makeSuited('ap', sun.radius + 10);   // fora, chegando perto
+  const within = makeSuited('in', sun.radius / 2);         // dentro do Sol
+  for (let t = 0; t < 40; t++) {
+    system.currentTick = t;
+    applySunHeat(approaching); applySunHeat(within);
+  }
+  check('com o traje dá pra encostar no Sol sem pegar fogo', approaching.__fire === 0);
+  check('mas dentro do Sol o traje não segura o calor', within.__fire > 0,
+        `(${within.__fire}s de fogo)`);
+}
+
+// --- 7d. O traje vale como traje nas dimensoes do Spacecraft ----------------
+// Sem isto, trocar o traje deles pelo melhorado faria o jogador sufocar na Lua.
+{
+  __reset();
+  const onMoon = world.__addPlayer({ id: 'moon', dimensionId: 'nv_sc:moon', location: { x: 0, y: 250, z: 0 } });
+  for (const x of REINFORCED_SUIT_PIECES) onMoon.__wear(x.slot, x.item);
+
+  check('sem mochila, o traje sozinho não sustenta',
+        !sustainInSpacecraftWorlds(onMoon) && !onMoon.hasTag(SPACECRAFT_SAFE_TAG));
+
+  onMoon.__wear('Offhand', OXYGEN_BACKPACK);
+  check('com traje e mochila, a tag do Spacecraft é reposta',
+        sustainInSpacecraftWorlds(onMoon) && onMoon.hasTag(SPACECRAFT_SAFE_TAG));
+
+  // Eles removem a tag quando o jogador esta no chao; repor todo tick resolve.
+  onMoon.removeTag(SPACECRAFT_SAFE_TAG);
+  sustainInSpacecraftWorlds(onMoon);
+  check('reposta de novo depois de eles removerem', onMoon.hasTag(SPACECRAFT_SAFE_TAG));
+
+  // No Overworld nao mexe em tag nenhuma.
+  __reset();
+  const home = world.__addPlayer({ id: 'home', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  for (const x of REINFORCED_SUIT_PIECES) home.__wear(x.slot, x.item);
+  home.__wear('Offhand', OXYGEN_BACKPACK);
+  check('no Overworld a tag não é tocada',
+        !sustainInSpacecraftWorlds(home) && !home.hasTag(SPACECRAFT_SAFE_TAG));
 }
 
 // --- 8. Destroços de OVNI ---------------------------------------------------

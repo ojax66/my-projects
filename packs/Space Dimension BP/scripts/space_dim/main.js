@@ -29,6 +29,7 @@ import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
 import { applySunHeat, applySunPressure } from "./hazards.js";
 import { forgetPlayer as forgetVehicle } from "./vehicle.js";
 import { applyEntityGravity } from "./gravity.js";
+import { sustainInSpacecraftWorlds } from "./gear.js";
 import { maybeDropWreck } from "./wreck.js";
 import {
   spawnAmbience,
@@ -110,6 +111,11 @@ system.runInterval(() => {
           popFog(player);
           releaseZeroGravity(player);
         }
+        // Traje reforçado nas dimensões do Spacecraft: sem isto, quem troca o
+        // traje deles pelo melhorado sufoca na Lua (eles procuram as peças
+        // deles pra decidir se o jogador respira).
+        sustainInSpacecraftWorlds(player);
+
         // A porta pro espaço existe no Overworld, na Lua e em Marte —
         // checkSpaceEntry decide, e sai barato onde não existe.
         checkSpaceEntry(player);

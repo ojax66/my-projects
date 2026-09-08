@@ -1,0 +1,59 @@
+{
+  "_comment": [
+    "O que este addon usa de OUTROS packs, e de onde vem.",
+    "",
+    "O traje reforçado é o traje do Spacecraft melhorado, então ele aponta pro",
+    "modelo, pra textura e pros itens DELES em vez de duplicar a arte aqui: os",
+    "packs de recurso se fundem no mundo, e copiar arte de outra pessoa pra",
+    "dentro deste addon não seria certo.",
+    "",
+    "Esta lista existe pra o validador não ter que liberar qualquer caminho que",
+    "comece com 'textures/nv/'. Ele confere referência por referência contra o",
+    "que está aqui — assim a dependência fica visível e revisável, e um caminho",
+    "errado de digitação continua sendo pego.",
+    "",
+    "Todos os caminhos abaixo foram conferidos contra o Spacecraft Venzenulon-7",
+    "(pack de comportamento d771161e / recurso 1da17be7).",
+    "",
+    "Se o Spacecraft não estiver no mundo, o traje reforçado fica sem textura —",
+    "mas ele também não teria como ser fabricado, já que a receita inteira é de",
+    "itens de lá."
+  ],
+
+  "spacecraft": {
+    "provider": "Spacecraft — Venzenulon 7",
+    "required_for": "space_dim:reinforced_spacesuit_*",
+
+    "textures": [
+      "textures/nv/moon/entity/spacesuit",
+      "textures/nv/moon/items/armor/spacesuit_helmet",
+      "textures/nv/moon/items/armor/spacesuit_chestplate",
+      "textures/nv/moon/items/armor/spacesuit_leggings",
+      "textures/nv/moon/items/armor/spacesuit_boots"
+    ],
+
+    "geometries": [
+      "geometry.nv_sc.nv_moon.spacesuit_helmet",
+      "geometry.nv_sc.nv_moon.spacesuit_chestplate",
+      "geometry.nv_sc.nv_moon.spacesuit_leggings",
+      "geometry.nv_sc.nv_moon.spacesuit_boots"
+    ],
+
+    "items": [
+      "nv_sc:spacesuit_helmet",
+      "nv_sc:spacesuit_chestplate",
+      "nv_sc:spacesuit_leggings",
+      "nv_sc:spacesuit_boots",
+      "nv_sc:titanium_plate",
+      "nv_sc:magnetite_ingot",
+      "nv_sc:andrenite_alloy",
+      "nv_sc:thermite_alloy",
+      "nv_sc:insulated_fabric",
+      "nv_sc:oxygen_backpack"
+    ]
+  },
+
+  "vanilla_geometry_prefixes": [
+    "geometry.humanoid."
+  ]
+}

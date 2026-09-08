@@ -44,6 +44,12 @@ PIECE_BONES = {
     "boots": ["rightLeg", "leftLeg"],
 }
 
+# Altura da bota, em unidades do modelo. O modelo enviado traz a perna INTEIRA
+# nos ossos de perna; bota é só o pé, então os cubos são cortados na base.
+BOOT_HEIGHT = 4
+# Ossos que levam esse corte.
+BOOT_TRIM_BONES = {"rightLeg", "leftLeg"}
+
 # --- Peças da armadura -------------------------------------------------------
 # Netherite é 3/8/6/3 de proteção e 407/592/555/481 de durabilidade. A de
 # estrela vem depois dela na progressão, então fica um degrau acima.
@@ -248,6 +254,62 @@ def render_icon(art):
     return rows
 
 
+# --- Corte da bota -----------------------------------------------------------
+def box_uv_faces(u, v, w, h, d):
+    """Onde cada face cai na textura, no layout de caixa do Bedrock.
+
+    Um `uv: [u, v]` com `size: [w, h, d]` se desdobra sempre assim; saber o
+    layout é o que permite recortar só a parte de baixo do desenho da perna.
+    """
+    return {
+        "up":    ([u + d, v], [w, d]),
+        "down":  ([u + d + w, v], [w, d]),
+        "west":  ([u, v + d], [d, h]),
+        "north": ([u + d, v + d], [w, h]),
+        "east":  ([u + d + w, v + d], [d, h]),
+        "south": ([u + d + w + d, v + d], [w, h]),
+    }
+
+
+def trim_leg_to_boot(cube, boot_h):
+    """Uma perna inteira vira só o pé, com a textura certa.
+
+    Encolher o cubo e deixar o `uv` de caixa mostraria o ALTO da perna — a coxa
+    esticada no pé. Então as faces laterais passam a ser declaradas uma a uma,
+    puxando as últimas `boot_h` linhas do desenho da perna; a de cima e a de
+    baixo ficam onde estavam.
+    """
+    ox, oy, oz = cube["origin"]
+    w, h, d = cube["size"]
+    if h <= boot_h:
+        return dict(cube)
+
+    u, v = cube["uv"]
+    faces = box_uv_faces(u, v, w, h, d)
+    drop = h - boot_h                     # quanto da perna fica de fora
+
+    out = {}
+    for name, (uv, size) in faces.items():
+        if name in ("up", "down"):
+            out[name] = {"uv": list(uv), "uv_size": list(size)}
+        else:
+            out[name] = {"uv": [uv[0], uv[1] + drop], "uv_size": [size[0], boot_h]}
+
+    # Com UV por face o `mirror` do cubo deixa de valer: a inversão vira a troca
+    # das faces laterais.
+    if cube.get("mirror"):
+        out["west"], out["east"] = out["east"], out["west"]
+
+    trimmed = {
+        "origin": [ox, oy, oz],
+        "size": [w, boot_h, d],
+        "uv": out,
+    }
+    if "inflate" in cube:
+        trimmed["inflate"] = cube["inflate"]
+    return trimmed
+
+
 # --- Divisão do modelo -------------------------------------------------------
 def split_geometry():
     """Um geo por peça, com os ossos renomeados pro esqueleto do jogador."""
@@ -268,6 +330,14 @@ def split_geometry():
         missing = [b for b in bones if b not in by_name]
         if missing:
             raise SystemExit(f"{piece}: faltam ossos {missing}")
+
+        piece_bones = []
+        for b in bones:
+            bone = dict(by_name[b])
+            if piece == "boots" and b in BOOT_TRIM_BONES:
+                bone["cubes"] = [trim_leg_to_boot(c, BOOT_HEIGHT) for c in bone.get("cubes", [])]
+            piece_bones.append(bone)
+
         geometries.append({
             "description": {
                 "identifier": f"geometry.{NS}.star_armor.{piece}",
@@ -277,7 +347,7 @@ def split_geometry():
                 "visible_bounds_height": desc.get("visible_bounds_height", 3.5),
                 "visible_bounds_offset": desc.get("visible_bounds_offset", [0, 1.25, 0]),
             },
-            "bones": [by_name[b] for b in bones],
+            "bones": piece_bones,
         })
 
     write_json(

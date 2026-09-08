@@ -208,6 +208,38 @@ export const STAR_ARMOR_PIECES = [
 export const STAR_ARMOR_PROTECTS_FROM_HEAT = true;
 
 // ---------------------------------------------------------------------------
+// Traje espacial reforçado
+// ---------------------------------------------------------------------------
+// O traje do Spacecraft melhorado com materiais dos planetas deles. Fica ENTRE
+// o traje comum e a armadura de estrela: ajuda, não anula.
+export const REINFORCED_SUIT_PIECES = [
+  { slot: "Head", item: "space_dim:reinforced_spacesuit_helmet" },
+  { slot: "Chest", item: "space_dim:reinforced_spacesuit_chestplate" },
+  { slot: "Legs", item: "space_dim:reinforced_spacesuit_leggings" },
+  { slot: "Feet", item: "space_dim:reinforced_spacesuit_boots" },
+];
+// Quanto da pressão do Sol ainda passa com o traje: 0,35 = corta 65%. Deixa
+// entrar e minerar um pouco, não deixa morar lá — pra isso é a de estrela.
+export const REINFORCED_SUIT_PRESSURE_FACTOR = 0.35;
+// O traje segura o calor da APROXIMAÇÃO (fora da superfície do Sol), mas não o
+// de dentro. Só a armadura de estrela aguenta lá dentro.
+export const REINFORCED_SUIT_BLOCKS_APPROACH_HEAT = true;
+
+// Dimensões do Spacecraft onde o traje reforçado precisa valer como traje.
+// O addon deles checa as peças DELES pra decidir se o jogador respira; quem
+// trocar pelo reforçado sufocaria na Lua sem isto. Ver gear/lifeSupport.
+export const SPACECRAFT_DIMENSIONS = [
+  "nv_sc:moon",
+  "nv_sc:mars",
+  "nv_sc:andrella",
+  "nv_sc:station",
+  "custom_dim:venzenulon_7",
+  "minecraft:the_end",
+];
+// A tag que o próprio Spacecraft usa pra suspender o dano de oxigênio.
+export const SPACECRAFT_SAFE_TAG = "nv_sc:cant_hurt";
+
+// ---------------------------------------------------------------------------
 // Veículos
 // ---------------------------------------------------------------------------
 // O OVNI viaja junto com o jogador. Qualquer montaria vai junto, menos as que

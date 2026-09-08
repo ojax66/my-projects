@@ -163,15 +163,75 @@ há uma rede embaixo: quem chegar perto do fundo da dimensão é devolvido pra
 cima. Montado, quem sobe é o veículo — teleportar o passageiro sozinho o
 desmontaria no meio do nada.
 
-## Pressão do Sol e a armadura de estrela
+## Pressão do Sol e os dois equipamentos
 
 Resistência a fogo resolve o **calor** e é o que permite entrar no Sol. Mas lá
 dentro continua a **pressão**, e ela é outra coisa: 6 de dano por segundo, mais
-lentidão e cegueira. Só a armadura de núcleo de estrela segura.
+lentidão e cegueira.
 
-Isso fecha um ciclo: a primeira ida ao núcleo é com poção, correndo, só pra
-arrancar alguns blocos e sair antes do esmagamento. Com o que se traz de lá sai
-a armadura — e aí o Sol vira um lugar onde dá pra ficar.
+Contra isso há dois degraus, e a diferença entre eles é o ponto:
+
+| | Calor da aproximação | Calor dentro do Sol | Pressão |
+|---|---|---|---|
+| nada | queima | queima | 6/s |
+| **Traje Espacial Reforçado** | protege | queima | 2/s (corta 65%) |
+| **Armadura de Estrela** | protege | protege | nenhuma |
+
+O traje **ajuda**; a armadura **anula**. Dá pra encostar no Sol de traje e
+entrar correndo com uma poção; morar lá dentro só de armadura.
+
+Isso fecha um ciclo: a primeira ida ao núcleo é de traje reforçado e poção,
+correndo, só pra arrancar alguns blocos e sair antes do esmagamento. Com o que
+se traz de lá sai a armadura — e aí o Sol vira um lugar onde dá pra ficar.
+
+## Traje Espacial Reforçado
+
+É o traje do **Spacecraft** melhorado com materiais dos planetas deles. Fica
+entre o traje comum e a armadura de estrela.
+
+Receita, por peça, na bancada normal (a peça do traje deles no meio):
+
+```
+ H M H       H  liga de termita      — a parte que aguenta calor
+ A S A       M  barra de magnetita   (Marte)
+ T F T       A  liga de andrenita    (Andrella)
+             T  placa de titânio     (Lua) — estrutura contra pressão
+             F  tecido isolante
+             S  a peça do traje do Spacecraft
+```
+
+| Peça | Proteção | Durabilidade |
+|---|---|---|
+| Capacete | 3 | 480 |
+| Peitoral | 7 | 620 |
+| Calças | 5 | 580 |
+| Botas | 3 | 500 |
+
+O traje base é 3 em tudo, com 320 de durabilidade; a armadura de estrela é
+4/9/7/4. O reforçado fica no meio dos dois.
+
+**O modelo e a textura são os do Spacecraft**, apontados por caminho em vez de
+copiados: os packs de recurso se fundem no mundo, então referenciar
+`textures/nv/moon/entity/spacesuit` e `geometry.nv_sc.nv_moon.spacesuit_*`
+funciona, e duplicar a arte de outra pessoa dentro deste addon não seria certo.
+Cada caminho emprestado está declarado em `tools/assets/external_assets.json` e
+foi conferido contra o addon deles — o validador confere um a um, então um erro
+de digitação continua sendo pego.
+
+### Um detalhe de convivência entre addons
+
+O Spacecraft decide se o jogador respira **procurando as quatro peças dele** no
+corpo. O traje reforçado ocupa os mesmos espaços com outros ids, então, pra ele,
+quem fez o upgrade está sem traje — e sufocaria na Lua justamente por ter
+melhorado o equipamento. Uma armadilha feia de cair.
+
+Não dá pra mudar o código deles, mas dá pra usar a chave que eles mesmos têm: a
+tag `nv_sc:cant_hurt`, que o loop deles consulta pra suspender o dano de
+oxigênio. Enquanto o jogador estiver numa dimensão deles, de traje reforçado e
+com a mochila carregada, a tag é reposta a cada tick. Eles a removem sozinhos
+quando o jogador está no chão, mas **consultam antes de remover**, dentro do
+mesmo tick — então repor uma vez por tick basta, e a ordem entre os dois loops
+não importa.
 
 ### A linha da armadura
 
@@ -209,6 +269,14 @@ O modelo veio pronto com capacete, peitoral e botas no mesmo geo;
 (`Head` → `head`, `Right Arm` → `rightArm`…) pros nomes do esqueleto do
 jogador — sem isso a armadura fica parada enquanto o jogador anda. A calça usa
 o modelo padrão do jogo, com a camada 64×32 que veio junto.
+
+As botas cobrem **só o pé**. Os ossos de perna do modelo trazem a perna
+inteira, então o gerador corta os cubos nos 4 blocos de baixo. Encolher o cubo
+e deixar o `uv` de caixa mostraria o alto da perna esticado no pé, então as
+faces laterais passam a ser declaradas uma a uma, puxando as últimas 4 linhas
+do desenho da perna; a de cima e a de baixo ficam onde estavam. No pé
+espelhado, as faces leste e oeste trocam de lugar — com UV por face o `mirror`
+do cubo deixa de valer.
 
 ## Destroços de OVNI
 
@@ -310,6 +378,10 @@ pra exercitar tudo fora do jogo.
   não é textura de bloco, é render) ou tiver viés centro/borda alto — o sinal
   de que ela vai virar bolinha repetida numa parede. Foi o que pegou a primeira
   versão da mancha solar, desenhada a partir da distância ao centro do bloco.
+- **`validate.py`** confere também o que vem de outros packs contra
+  `tools/assets/external_assets.json`: só os caminhos declarados ali passam sem
+  arquivo local, então um `spacesuitt` de digitação é pego, e uma receita que
+  cite um item do Spacecraft não declarado também.
 - **`validate.py`** confere ainda a cadeia dos itens: ícone com entrada no
   `item_texture.json` e arquivo no lugar, peça vestível com attachable (sem ele
   a armadura fica invisível no corpo), attachable apontando pra geometria que o

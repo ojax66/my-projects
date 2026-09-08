@@ -1,0 +1,40 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "space_dim:reinforced_spacesuit_boots"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "HMH",
+      "ASA",
+      "TFT"
+    ],
+    "key": {
+      "T": {
+        "item": "nv_sc:titanium_plate"
+      },
+      "M": {
+        "item": "nv_sc:magnetite_ingot"
+      },
+      "A": {
+        "item": "nv_sc:andrenite_alloy"
+      },
+      "H": {
+        "item": "nv_sc:thermite_alloy"
+      },
+      "F": {
+        "item": "nv_sc:insulated_fabric"
+      },
+      "S": {
+        "item": "nv_sc:spacesuit_boots"
+      }
+    },
+    "result": {
+      "item": "space_dim:reinforced_spacesuit_boots",
+      "count": 1
+    }
+  }
+}

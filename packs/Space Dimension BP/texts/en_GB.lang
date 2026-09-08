@@ -27,3 +27,9 @@ item.space_dim:star_helmet=Star Helmet
 item.space_dim:star_chestplate=Star Chestplate
 item.space_dim:star_leggings=Star Leggings
 item.space_dim:star_boots=Star Boots
+
+## traje espacial reforçado (gerado por tools/make_spacesuit.py)
+item.space_dim:reinforced_spacesuit_helmet=Reinforced Spacesuit Helmet
+item.space_dim:reinforced_spacesuit_chestplate=Reinforced Spacesuit Chestplate
+item.space_dim:reinforced_spacesuit_leggings=Reinforced Spacesuit Leggings
+item.space_dim:reinforced_spacesuit_boots=Reinforced Spacesuit Boots

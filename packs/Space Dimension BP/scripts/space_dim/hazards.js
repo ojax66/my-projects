@@ -14,16 +14,21 @@
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
-import { BODIES, SUN_HEAT_ENABLED, FIRE_RESISTANCE_PROTECTS } from "./config.js";
+import {
+  BODIES,
+  SUN_HEAT_ENABLED,
+  FIRE_RESISTANCE_PROTECTS,
+  REINFORCED_SUIT_BLOCKS_APPROACH_HEAT,
+} from "./config.js";
 import { distanceTo } from "./bodies.js";
-import { hasStarArmor, starArmorBlocksHeat } from "./starGear.js";
+import { hasStarArmor, starArmorBlocksHeat, protectionTier, pressureMultiplier } from "./gear.js";
 
 const system = mc.system;
 
 // Corpos que têm campo de calor (hoje só o Sol, mas nada aqui presume isso).
 const HOT_BODIES = BODIES.filter((b) => b.heat);
 
-function isExempt(player) {
+function isExempt(player, heatLevel = 0) {
   let mode;
   try { mode = player.getGameMode(); } catch { }
   if (mode === "Creative" || mode === "Spectator" || mode === "creative" || mode === "spectator") {
@@ -37,6 +42,15 @@ function isExempt(player) {
   // A armadura de estrela é a proteção permanente contra o calor — a poção é
   // só a forma de chegar lá a primeira vez.
   if (starArmorBlocksHeat(player)) return true;
+  // O traje reforçado segura o calor da aproximação, mas não o de dentro do
+  // Sol: dá pra encostar na superfície com ele, não dá pra atravessar.
+  if (
+    REINFORCED_SUIT_BLOCKS_APPROACH_HEAT &&
+    heatLevel < 1 &&
+    protectionTier(player) === "suit"
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -78,7 +92,7 @@ export function applySunHeat(player) {
 
   const { body, t } = heat;
 
-  if (isExempt(player)) {
+  if (isExempt(player, t)) {
     return t >= 1
       ? `§6${body.name}§r §7— dentro do Sol, protegido do calor`
       : `§6${body.name}§r §7— calor intenso, mas você está protegido`;
@@ -127,20 +141,28 @@ export function applySunPressure(player) {
     return null;
   }
 
-  if (hasStarArmor(player)) {
+  const passes = pressureMultiplier(player);
+  if (passes <= 0) {
     return `§e${inside.name}§r §7— a armadura de estrela aguenta a pressão`;
   }
 
+  const damage = Math.max(1, Math.round(inside.pressure.damage * passes));
   if (system.currentTick % 20 === 0) {
-    try { player.applyDamage(inside.pressure.damage); } catch { }
+    try { player.applyDamage(damage); } catch { }
     try { player.playSound("random.hurt", { volume: 1, pitch: 0.5 }); } catch { }
   }
   try {
-    player.addEffect("slowness", 40, { amplifier: 2, showParticles: false });
-    player.addEffect("blindness", 40, { amplifier: 0, showParticles: false });
+    // Com o traje reforçado o aperto é bem menor — dá pra trabalhar um pouco.
+    const amp = passes < 1 ? 0 : 2;
+    player.addEffect("slowness", 40, { amplifier: amp, showParticles: false });
+    if (passes >= 1) {
+      player.addEffect("blindness", 40, { amplifier: 0, showParticles: false });
+    }
   } catch { }
 
-  return `§4§lPRESSÃO ESMAGADORA §r§7— só a armadura de estrela protege`;
+  return passes < 1
+    ? `§6PRESSÃO §r§7— o traje segura em parte; a de estrela anula`
+    : `§4§lPRESSÃO ESMAGADORA §r§7— sem proteção nenhuma`;
 }
 
 /** Só a leitura, sem aplicar nada — usado pelos testes e pelo HUD. */

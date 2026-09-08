@@ -255,6 +255,44 @@ for bid, (path, doc) in sorted(declared_blocks.items()):
         if comps.get("minecraft:collision_box") is False:
             err("sun_core devia ser sólido — é o destino de quem atravessa o Sol")
 
+# --- 4c-bis. O que vem de outros packs ---------------------------------------
+#
+# O traje reforçado aponta pro modelo, textura e itens do Spacecraft em vez de
+# duplicar a arte deles aqui. Esses caminhos não existem NESTE pack, então o
+# validador precisa saber quais são legítimos — e só esses. Liberar qualquer
+# coisa que comece com "textures/nv/" deixaria um erro de digitação passar.
+EXTERNAL = {"textures": set(), "geometries": set(), "items": set(), "prefixes": []}
+_ext_path = os.path.join(ROOT, "tools", "assets", "external_assets.json")
+if os.path.isfile(_ext_path):
+    try:
+        with open(_ext_path, encoding="utf-8") as f:
+            _ext = json.load(f)
+        for key, block in _ext.items():
+            if key.startswith("_") or not isinstance(block, dict):
+                continue
+            EXTERNAL["textures"].update(block.get("textures", []))
+            EXTERNAL["geometries"].update(block.get("geometries", []))
+            EXTERNAL["items"].update(block.get("items", []))
+        EXTERNAL["prefixes"] = _ext.get("vanilla_geometry_prefixes", [])
+    except Exception as e:  # noqa: BLE001
+        err(f"external_assets.json ilegível: {e}")
+else:
+    warn("tools/assets/external_assets.json ausente — nada de outro pack é aceito")
+
+
+def texture_exists(path):
+    """A textura existe neste pack, ou é uma emprestada e declarada?"""
+    if path in EXTERNAL["textures"]:
+        return True
+    return any(os.path.isfile(os.path.join(RP, path + e)) for e in (".png", ".tga"))
+
+
+def geometry_known(geo, pack_geometries):
+    if geo in pack_geometries or geo in EXTERNAL["geometries"]:
+        return True
+    return any(geo.startswith(p) for p in EXTERNAL["prefixes"])
+
+
 # --- 4d. Itens, armadura, attachables e receitas ------------------------------
 #
 # Um item custom espalha as peças por seis arquivos nos dois packs. O que
@@ -304,7 +342,7 @@ for iid, (path, doc) in sorted(declared_items.items()):
         err(f"{iid} usa o ícone {icon}, ausente de item_texture.json")
     else:
         tex = item_tex_data[icon].get("textures")
-        if not any(os.path.isfile(os.path.join(RP, tex + e)) for e in (".png", ".tga")):
+        if not texture_exists(tex):
             err(f"{iid} aponta pra textura de ícone inexistente: {tex}")
 
     if iid not in item_lang:
@@ -320,10 +358,11 @@ for iid, (path, doc) in sorted(declared_items.items()):
         geo = desc.get("geometry", {}).get("default")
         if not geo:
             err(f"attachable de {iid} sem geometria")
-        elif geo not in pack_geometries and not geo.startswith("geometry.humanoid."):
-            err(f"attachable de {iid} usa a geometria {geo}, que o pack não define")
+        elif not geometry_known(geo, pack_geometries):
+            err(f"attachable de {iid} usa a geometria {geo}, que nem o pack define "
+                f"nem está declarada em external_assets.json")
         atex = desc.get("textures", {}).get("default")
-        if atex and not any(os.path.isfile(os.path.join(RP, atex + e)) for e in (".png", ".tga")):
+        if atex and not texture_exists(atex):
             err(f"attachable de {iid} aponta pra textura inexistente: {atex}")
 
 # Attachable órfão: existe mas nenhum item o usa.
@@ -340,8 +379,16 @@ def check_recipe_ref(ref, where):
     if not isinstance(ref, str):
         return
     name = ref.split("(")[0].strip()
-    if not name.startswith("space_dim:"):
+    if name.startswith("minecraft:"):
         return              # item do jogo: fora do nosso alcance conferir
+    if not name.startswith("space_dim:"):
+        # Item de outro addon (o Spacecraft). Só passa se estiver declarado —
+        # assim uma receita que dependa deles fica visível, e um id errado de
+        # digitação é pego em vez de virar receita que nunca funciona.
+        if name not in EXTERNAL["items"]:
+            err(f"receita {where} cita {name}, de outro addon, "
+                f"não declarado em external_assets.json")
+        return
     if name not in known:
         err(f"receita {where} cita {name}, que o addon não declara")
 

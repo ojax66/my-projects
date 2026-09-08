@@ -16,6 +16,7 @@
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
+import { hasReinforcedSuit, hasChargedBackpack, hasStarArmor } from "./gear.js";
 import {
   BREATHING_ENABLED,
   SPACESUIT_PIECES,
@@ -88,6 +89,12 @@ export function canBreathe(player) {
   if (player.hasTag("nv_sc:cant_hurt")) return true;
   if (inPressurizedVehicle(player)) return true;
   if (hasWorkingSpacesuit(player)) return true;
+  // O traje reforçado vale como traje aqui também — com a mochila, pela mesma
+  // regra do Spacecraft: traje melhor não é fonte de ar.
+  if (hasReinforcedSuit(player) && hasChargedBackpack(player)) return true;
+  // A armadura de estrela é selada por si: quem chegou nela já não depende de
+  // mochila pra respirar.
+  if (hasStarArmor(player)) return true;
   if (nearOxygenDistributor(player)) return true;
 
   return false;

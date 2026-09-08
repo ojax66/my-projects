@@ -22,6 +22,18 @@
     },
     "space_dim_star_boots": {
       "textures": "textures/space_dim/items/star_boots"
+    },
+    "space_dim_reinforced_spacesuit_helmet": {
+      "textures": "textures/nv/moon/items/armor/spacesuit_helmet"
+    },
+    "space_dim_reinforced_spacesuit_chestplate": {
+      "textures": "textures/nv/moon/items/armor/spacesuit_chestplate"
+    },
+    "space_dim_reinforced_spacesuit_leggings": {
+      "textures": "textures/nv/moon/items/armor/spacesuit_leggings"
+    },
+    "space_dim_reinforced_spacesuit_boots": {
+      "textures": "textures/nv/moon/items/armor/spacesuit_boots"
     }
   }
 }
