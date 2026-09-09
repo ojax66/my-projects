@@ -333,8 +333,8 @@ export const SPACE_DUST_INTERVAL_TICKS = 120;
 // o corpo daria lá longe — ver skybox.js.
 export const SKY_MODELS_ENABLED = true;
 
-// A que distância do jogador o modelo fica. Perto o bastante pra nunca sair de
-// cena, longe o bastante pra não atravessar a cabeça dele.
+// A que distância do jogador a ESTRELA fica. Só ela: o corpo em si fica no
+// centro da construção, do tamanho dela.
 export const SKY_MODEL_DISTANCE = 34;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
@@ -358,15 +358,6 @@ export const SKY_MODEL_HIDE_BELOW = GEN_RADIUS_CHUNKS * 16 - 24;
 // suave, mas 2 já não dá pra perceber e custa metade.
 export const SKY_MODEL_INTERVAL = 2;
 
-// Limites da propriedade de escala declarada nas entidades (BP/entities/sky_*).
-// Sair deles não faz o jogo reclamar: ele silenciosamente ignora o valor, e o
-// corpo ficaria do tamanho errado.
-// 0.005 e não 0.02: a Lua tem raio 12, e do outro lado do sistema ela precisa
-// de escala 0.013. Pedir menos que o mínimo declarado não dá erro — o motor
-// ignora calado e a Lua ficaria grande demais, do tamanho do menor valor
-// aceito.
-export const SKY_MODEL_MIN_SCALE = 0.005;
-
 // ---------------------------------------------------------------------------
 // Estrelas: o terceiro nível
 // ---------------------------------------------------------------------------
@@ -376,10 +367,9 @@ export const SKY_MODEL_MIN_SCALE = 0.005;
 // sistema em volta dela, e não um enfeite pintado no céu.
 export const STAR_ENTITY = "space_dim:sky_star";
 
-// Tamanho aparente de uma estrela. Fixo: a essa distância, dobrar ou triplicar
-// a distância não mudaria nada que o olho perceba.
-export const STAR_SCALE = 0.035;
-export const SKY_MODEL_MAX_SCALE = 40;
+// O tamanho da estrela é fixo e mora na entidade (minecraft:scale), não aqui:
+// a essa distância, dobrar ou triplicar a distância real não mudaria nada que o
+// olho perceba.
 
 // ---------------------------------------------------------------------------
 // Onde o rastreador escreve

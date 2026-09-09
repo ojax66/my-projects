@@ -483,32 +483,10 @@ for bid in body_ids:
     if not os.path.isfile(texture):
         err(f"corpo {bid} sem textura de ceu (textures/space_dim/sky/{bid}.png)")
 
-# A escala do modelo vem de uma propriedade de entidade. Se o config pedir um
-# valor fora da faixa declarada, o motor ignora calado e o corpo fica do
-# tamanho errado — nada no console, nenhum erro.
+# `config_number` continua servindo pras outras checagens do config.
 def config_number(name):
     m = re.search(rf"^export const {name} = ([0-9.]+);", config_src, re.M)
     return float(m.group(1)) if m else None
-
-min_scale = config_number("SKY_MODEL_MIN_SCALE")
-max_scale = config_number("SKY_MODEL_MAX_SCALE")
-for bid in body_ids:
-    path = os.path.join(BP, "entities", f"sky_{bid}.json")
-    doc = docs.get(path)
-    if not isinstance(doc, dict):
-        continue
-    props = doc.get("minecraft:entity", {}).get("description", {}).get("properties", {})
-    size = props.get("space_dim:size")
-    if not size:
-        err(f"sky_{bid} sem a propriedade space_dim:size — nao daria pra escalar")
-        continue
-    lo, hi = size.get("range", [None, None])
-    if min_scale is not None and lo is not None and lo > min_scale:
-        err(f"sky_{bid}: a faixa de space_dim:size comeca em {lo}, mas o config "
-            f"pode pedir {min_scale} — o motor ignoraria o valor calado")
-    if max_scale is not None and hi is not None and hi < max_scale:
-        err(f"sky_{bid}: a faixa de space_dim:size termina em {hi}, mas o config "
-            f"pode pedir {max_scale}")
 
 # Todo corpo visto de longe usa o material PROPRIO do addon, e ele tem que
 # existir de verdade no RP.
@@ -617,57 +595,41 @@ if isinstance(geo, dict):
                 err(f"a textura de ceu {bid}.png e {w}x{h}, mas o modelo declara "
                     f"{tw}x{th} — as faces cairiam no lugar errado")
 
-# A escala do modelo vem de component group, nao de molang.
+# O modelo tem que ter o TAMANHO DA CONSTRUCAO.
 #
-# A versao anterior usava uma animacao do cliente lendo `q.property`. Quando
-# esse molang nao resolve, ele devolve ZERO — e escala zero e um modelo de
-# tamanho zero: invisivel, sem erro, sem aviso. Nada nas ferramentas apontava
-# pra isso porque nada media a escala de verdade.
-steps_path = os.path.join(BP, "scripts", "space_dim", "skySteps.js")
-steps = []
-if os.path.isfile(steps_path):
-    with open(steps_path, encoding="utf-8") as f:
-        m = re.search(r"SKY_SIZE_STEPS = \[([^\]]*)\]", f.read())
-    if m:
-        steps = [float(x) for x in m.group(1).split(",") if x.strip()]
-if not steps:
-    err("scripts/space_dim/skySteps.js sem degraus de escala — "
-        "o modelo nao teria como ser dimensionado")
-if any(v <= 0 for v in steps):
-    err("ha um degrau de escala <= 0 em skySteps.js — escala zero e um modelo "
-        "invisivel, que e exatamente o defeito que isto substitui")
+# Historico: a escala vinha de uma conta de projecao que tratava o cubo do
+# geometry como tendo meia-aresta de 8 BLOCOS, quando ela e de 8 unidades — meio
+# bloco. Dezesseis vezes menor, e nada media isso. Agora e uma constante por
+# corpo: a aresta em blocos, 2*raio + 1.
+radii = {}
+for m in re.finditer(r'id:\s*"(\w+)",[\s\S]*?radius:\s*(\d+)', config_src):
+    radii.setdefault(m.group(1), int(m.group(2)))
 
-for bid in list(body_ids) + ["star"]:
+for bid in body_ids:
     doc = docs.get(os.path.join(BP, "entities", f"sky_{bid}.json"))
-    if not isinstance(doc, dict):
+    if not isinstance(doc, dict) or bid not in radii:
         continue
-    ent = doc.get("minecraft:entity", {})
-    groups = ent.get("component_groups", {})
-    events = ent.get("events", {})
-    if len(groups) != len(steps) or len(events) != len(steps):
-        err(f"sky_{bid} tem {len(groups)} grupos e {len(events)} eventos de "
-            f"escala, mas skySteps.js declara {len(steps)} degraus — as duas "
-            f"listas divergiram e o script pediria um evento inexistente")
-        continue
-    for i, value in enumerate(steps):
-        g = groups.get(f"space_dim:size_{i}", {})
-        got = g.get("minecraft:scale", {}).get("value")
-        if got is None:
-            err(f"sky_{bid}: grupo size_{i} sem minecraft:scale")
-        elif abs(float(got) - value) > 1e-6:
-            err(f"sky_{bid}: grupo size_{i} escala {got}, skySteps.js diz {value}")
-        if f"space_dim:set_size_{i}" not in events:
-            err(f"sky_{bid} sem o evento set_size_{i}")
+    comps = doc.get("minecraft:entity", {}).get("components", {})
+    got = comps.get("minecraft:scale", {}).get("value")
+    want = radii[bid] * 2 + 1
+    if got is None:
+        err(f"sky_{bid} sem minecraft:scale — o modelo sairia do tamanho errado")
+    elif abs(float(got) - want) > 1e-6:
+        err(f"sky_{bid} tem escala {got}, mas a construcao tem {want} blocos de "
+            f"aresta — o modelo e a construcao nao casariam")
+    if doc["minecraft:entity"].get("component_groups"):
+        err(f"sky_{bid} ainda tem component_groups de escala — a escala e uma "
+            f"constante agora, e duas fontes dao tamanhos diferentes")
 
-# E o RP nao pode voltar a animar a escala: seriam duas fontes brigando.
+# E o RP nao pode animar a escala: seria uma terceira fonte.
 for bid in list(body_ids) + ["star"]:
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
     if not isinstance(doc, dict):
         continue
     desc = doc.get("minecraft:client_entity", {}).get("description", {})
     if "animations" in desc or (desc.get("scripts", {}).get("animate")):
-        err(f"sky_{bid} voltou a animar a escala no cliente — a escala e do "
-            f"servidor agora, e duas fontes brigando dao o tamanho errado")
+        err(f"sky_{bid} anima a escala no cliente — ela e do servidor agora, e "
+            f"duas fontes brigando dao o tamanho errado")
 
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #

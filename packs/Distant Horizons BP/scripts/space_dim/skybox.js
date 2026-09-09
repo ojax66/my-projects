@@ -21,8 +21,10 @@
  *   perto           os BLOCOS. O gerador constrói dentro de GEN_RADIUS_CHUNKS
  *                   do jogador, ou seja 80 blocos. Fora disso não existe bloco
  *                   nenhum pra ver.
- *   no sistema      o MODELO do corpo, encolhido pelo tanto certo. É assim que
- *                   dá pra ver a Terra estando perto do Sol.
+ *   no sistema      o MODELO do corpo, do tamanho da construção e no centro
+ *                   dela. É assim que dá pra ver a Terra estando perto do Sol,
+ *                   e como os dois ocupam o mesmo espaço, chegar perto só troca
+ *                   um pelo outro sem nada saltar de lugar.
  *   fora do sistema uma ESTRELA: um ponto branco. Além da borda o corpo não é
  *                   mais um mundo que dá pra visitar — é o que ele parece de
  *                   longe mesmo, e é o que fecha a ideia de que cada pontinho
@@ -39,64 +41,20 @@ import {
   SKY_MODEL_DISTANCE,
   SKY_MODEL_HIDE_BELOW,
   SKY_MODEL_INTERVAL,
-  SKY_MODEL_MIN_SCALE,
-  SKY_MODEL_MAX_SCALE,
   SOLAR_SYSTEM_RADIUS,
   STAR_ENTITY,
-  STAR_SCALE,
 } from "./config.js";
 import { trackedBodies } from "./tracker.js";
-import { SKY_SIZE_STEPS } from "./skySteps.js";
 import { chebyshevTo } from "./bodies.js";
 
 const world = mc.world;
 const system = mc.system;
 
 const SKY_PREFIX = "space_dim:sky_";
-const SIZE_PROPERTY = "space_dim:size";
-
-// playerId|bodyId → índice do degrau já aplicado, pra não disparar o evento a
-// cada tick. Trocar de component group é barato, mas não de graça.
-const appliedStep = new Map();
-
-/** O degrau mais próximo da escala pedida. */
-function stepFor(scale) {
-  let best = 0;
-  let bestErr = Infinity;
-  for (let i = 0; i < SKY_SIZE_STEPS.length; i++) {
-    // Erro relativo: entre 0,01 e 0,014 a diferença absoluta é minúscula, mas a
-    // visual é a mesma que entre 1 e 1,4.
-    const err = Math.abs(Math.log(SKY_SIZE_STEPS[i] / scale));
-    if (err < bestErr) { bestErr = err; best = i; }
-  }
-  return best;
-}
-
-/**
- * Aplica a escala pelo component group da entidade.
- *
- * Não é `setProperty` + animação: quando o `q.property` do lado do cliente não
- * resolve, o molang devolve zero, e escala zero é um modelo invisível — sem
- * erro nenhum pra denunciar. Isto aqui é do servidor e não tem esse silêncio.
- */
-function applyScale(player, bodyId, entity, scale) {
-  const step = stepFor(scale);
-  const key = player.id + "|" + bodyId;
-  if (appliedStep.get(key) === step) return;
-  try {
-    entity.triggerEvent("space_dim:set_size_" + step);
-    appliedStep.set(key, step);
-  } catch (e) {
-    warnOnce("não deu pra escalar " + bodyId, e);
-  }
-  // A propriedade continua sendo escrita, só pro diagnóstico ler.
-  try { entity.setProperty(SIZE_PROPERTY, scale); } catch { }
-}
 
 // playerId → (bodyId → entidade)
 const models = new Map();
 
-/** É um modelo de céu? Usado aqui e pela gravidade, que não deve puxá-los. */
 export function isSkyModel(entity) {
   return typeof entity?.typeId === "string" && entity.typeId.startsWith(SKY_PREFIX);
 }
@@ -109,7 +67,6 @@ function dropModel(entity) {
 export function clearModels(playerId) {
   const mine = models.get(playerId);
   if (!mine) return;
-  for (const bodyId of mine.keys()) appliedStep.delete(playerId + "|" + bodyId);
   for (const entity of mine.values()) dropModel(entity);
   models.delete(playerId);
 }
@@ -170,20 +127,18 @@ export function describeSky(player) {
   if (!mine || !mine.size) return "nenhum modelo no céu";
   const parts = [];
   for (const [bodyId, entity] of mine) {
-    let size = "?";
-    try { size = Number(entity.getProperty(SIZE_PROPERTY)).toFixed(3); } catch { }
     const kind = entity.typeId === STAR_ENTITY ? "estrela" : "corpo";
-    const step = appliedStep.get(player.id + "|" + bodyId);
-    parts.push(
-      `${bodyId}: ${kind} escala ${size} (degrau ${step ?? "—"})` +
-      (entity.isValid ? "" : " §c(inválida)")
-    );
+    let onde = "?";
+    try {
+      const l = entity.location;
+      onde = `${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.z)}`;
+    } catch { }
+    parts.push(`${bodyId}: ${kind} em ${onde}${entity.isValid ? "" : " §c(inválida)"}`);
   }
   return parts.join("\n");
 }
 
 function hideModel(player, bodyId) {
-  appliedStep.delete(player.id + "|" + bodyId);
   const mine = models.get(player.id);
   if (!mine) return;
   const entity = mine.get(bodyId);
@@ -233,21 +188,24 @@ export function updateSky(player) {
     if (!entity) continue;
     shown.add(body.id);
 
-    const k = SKY_MODEL_DISTANCE / d;
+    // O CORPO fica no centro da construção, do tamanho dela — os dois ocupam o
+    // mesmo espaço, então chegar perto só troca um pelo outro no mesmo lugar.
+    //
+    // A ESTRELA não: ela é o ponto de luz que sobra do corpo visto de muito
+    // longe, e um ponto no lugar real estaria a milhares de blocos, fora de
+    // qualquer alcance. Essa fica presa ao jogador, na direção certa.
+    const where = star
+      ? { x: eye.x + dx * (SKY_MODEL_DISTANCE / d),
+          y: eye.y + dy * (SKY_MODEL_DISTANCE / d),
+          z: eye.z + dz * (SKY_MODEL_DISTANCE / d) }
+      : body.center;
+
     try {
-      entity.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
+      entity.teleport(where);
     } catch {
       hideModel(player, body.id);
       continue;
     }
-
-    const scale = star
-      ? STAR_SCALE
-      : Math.min(
-          SKY_MODEL_MAX_SCALE,
-          Math.max(SKY_MODEL_MIN_SCALE, (SKY_MODEL_DISTANCE * body.radius) / (d * 8))
-        );
-    applyScale(player, body.id, entity, scale);
   }
 
   // Corpo que saiu do rastreador (desligado no menu) perde o modelo.

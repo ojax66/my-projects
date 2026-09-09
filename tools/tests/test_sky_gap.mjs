@@ -9,8 +9,8 @@
  * da Lua sumia com a casca ainda a 178 blocos, e os blocos dela só começam a
  * existir a 80. Quase cem blocos em que a Lua não estava em lugar nenhum.
  */
-import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW, SKY_MODEL_DISTANCE,
-         SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE } from './space_dim/config.js';
+import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW,
+         SKY_MODEL_DISTANCE } from './space_dim/config.js';
 
 // Os testes rodam numa pasta temporária com os scripts copiados; os packs
 // ficam no repositório, então o caminho vem daqui.
@@ -44,21 +44,15 @@ for (const body of BODIES) {
         `(centro a ${centroNaTroca}, raio ${body.radius})`);
 }
 
-// O modelo tem que caber na faixa de escala declarada nas entidades em toda a
-// distância em que ele é usado: do ponto de troca até o outro lado do sistema.
-const LONGE = 4000;
-for (const body of BODIES) {
-  const perto = SKY_MODEL_HIDE_BELOW + body.radius;          // mais próximo em que aparece
-  const escalaPerto = (SKY_MODEL_DISTANCE * body.radius) / (perto * 8);
-  const escalaLonge = (SKY_MODEL_DISTANCE * body.radius) / (LONGE * 8);
-  check(`${body.id}: a escala cabe na faixa declarada`,
-        escalaPerto <= SKY_MODEL_MAX_SCALE && escalaLonge >= SKY_MODEL_MIN_SCALE,
-        `(${escalaLonge.toFixed(3)} a ${escalaPerto.toFixed(2)}, faixa ${SKY_MODEL_MIN_SCALE}–${SKY_MODEL_MAX_SCALE})`);
-}
+// O modelo tem o tamanho da construção, então não há faixa de escala pra
+// estourar nem conta de projeção pra errar — o que precisa valer é que a
+// entidade declare a aresta certa, e isso o test_tracker mede.
 
-// O modelo fica a SKY_MODEL_DISTANCE do jogador; ele não pode nascer dentro da
-// cabeça dele nem tão longe que saia de cena.
-check('a distância do modelo é confortável', SKY_MODEL_DISTANCE >= 16 && SKY_MODEL_DISTANCE <= 64,
+// A ESTRELA é a única que fica presa ao jogador (um ponto no lugar real estaria
+// a milhares de blocos, fora de qualquer alcance). Ela não pode nascer dentro
+// da cabeça dele nem tão longe que saia de cena.
+check('a distância da estrela é confortável',
+      SKY_MODEL_DISTANCE >= 16 && SKY_MODEL_DISTANCE <= 64,
       `(${SKY_MODEL_DISTANCE} blocos)`);
 
 // --- Quem brilha é o corpo, não o espaço ------------------------------------

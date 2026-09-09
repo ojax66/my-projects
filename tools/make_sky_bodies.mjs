@@ -45,7 +45,7 @@ fs.cpSync(path.join(ROOT, 'tools', 'tests', 'stub', '@minecraft'),
 fs.writeFileSync(path.join(STAGE, 'package.json'), '{ "type": "module" }');
 
 const { columnRuns } = await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'bodies.js')));
-const { BODIES, SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE } =
+const { BODIES } =
   await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'config.js')));
 
 const COLORS = JSON.parse(
@@ -185,42 +185,31 @@ const write = (p, o) => {
   fs.writeFileSync(p, JSON.stringify(o, null, 2) + '\n');
 };
 
-// --- Os degraus de escala -----------------------------------------------------
+// --- O tamanho do modelo -----------------------------------------------------
 //
-// A escala do modelo SAI DAQUI, não de uma animação lendo `q.property`.
+// O modelo tem o TAMANHO DA CONSTRUÇÃO e fica no CENTRO dela. Não é mais uma
+// projeção presa ao jogador.
 //
-// A versão anterior usava `"scale": "q.property('space_dim:size')"` numa
-// animação do cliente. Quando esse molang não resolve — e não há como saber que
-// não resolveu — ele devolve ZERO. Escala 0 é um modelo de tamanho zero:
-// invisível, sem erro, sem aviso. É o suspeito mais forte pra os corpos nunca
-// terem aparecido, e é o tipo de falha impossível de depurar de fora.
+// A versão anterior mantinha o modelo a 34 blocos de quem olha e o encolhia até
+// dar o mesmo ângulo do corpo lá longe. Duas coisas davam errado nisso: a conta
+// tratava o cubo do geometry como tendo meia-aresta de 8 BLOCOS, quando ela é
+// de 8 unidades, ou seja meio bloco — dezesseis vezes menor —, e mesmo com a
+// conta certa o modelo andava junto com o jogador enquanto a construção ficava
+// parada, então os dois nunca casavam na transição.
 //
-// `minecraft:scale` num component group é do SERVIDOR: sem molang, sem
-// sincronia com o cliente, sem silêncio. O preço é a escala ser discreta, em
-// degraus geométricos — a 1,4 de razão a diferença entre um degrau e o próximo
-// não se percebe, porque o corpo está longe e o tamanho muda devagar.
-const SIZE_RATIO = 1.4;
-const SIZE_STEPS = [];
-for (let v = SKY_MODEL_MIN_SCALE; v <= SKY_MODEL_MAX_SCALE * SIZE_RATIO; v *= SIZE_RATIO) {
-  SIZE_STEPS.push(Number(v.toPrecision(4)));
-}
+// Com tamanho e posição reais não há conta nenhuma pra errar: o modelo ocupa
+// exatamente o mesmo espaço que os blocos, e chegar perto só troca um pelo
+// outro no mesmo lugar.
+//
+// O cubo do geometry tem 16 unidades de aresta, que é UM bloco. Então a escala
+// é o número de blocos da aresta do corpo: 2*raio + 1.
+const bodyScale = (body) => body.radius * 2 + 1;
 
-function sizeGroups() {
-  const groups = {};
-  const events = {};
-  const all = SIZE_STEPS.map((_, j) => `${NS}:size_${j}`);
-  SIZE_STEPS.forEach((value, i) => {
-    groups[`${NS}:size_${i}`] = { 'minecraft:scale': { value } };
-    events[`${NS}:set_size_${i}`] = {
-      add: { component_groups: [`${NS}:size_${i}`] },
-      remove: { component_groups: all.filter((g) => g !== `${NS}:size_${i}`) },
-    };
-  });
-  return { groups, events };
-}
+// A estrela é outra coisa: não é o corpo, é o ponto de luz que sobra dele visto
+// de muito longe. Essa continua presa ao jogador, pequena e fixa.
+const STAR_SCALE_FIXED = 0.35;
 
 function bpEntity(body) {
-  const { groups, events } = sizeGroups();
   return {
     format_version: '1.21.80',
     'minecraft:entity': {
@@ -228,21 +217,6 @@ function bpEntity(body) {
         identifier: `${NS}:sky_${body.id}`,
         is_spawnable: false,
         is_summonable: true,
-        properties: {
-          // Quanto o cubo é encolhido. O cliente lê isto numa animação, que é
-          // como se muda escala em tempo de execução: `minecraft:scale` é fixo
-          // na definição e não aceita um número novo por entidade.
-          // A faixa vem do config, não de números escritos aqui: o script pede
-          // a escala com base nele, e se as duas listas divergirem o motor
-          // ignora o valor fora da faixa sem dizer nada — o corpo fica do
-          // tamanho errado e não há erro em lugar nenhum.
-          [`${NS}:size`]: {
-            type: 'float',
-            range: [SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE],
-            default: 1,
-            client_sync: true,
-          },
-        },
       },
       components: {
         // Nunca some, nunca colide, nunca é acertado, nunca é empurrado: é
@@ -258,9 +232,10 @@ function bpEntity(body) {
         'minecraft:fire_immune': true,
         'minecraft:conditional_bandwidth_optimization': {},
         'minecraft:type_family': { family: ['space_dim_sky'] },
+        // Do tamanho da construção, fixo. Sem degraus, sem evento, sem script
+        // escolhendo: o corpo tem um tamanho só e ele não muda.
+        'minecraft:scale': { value: bodyScale(body) },
       },
-      component_groups: groups,
-      events,
     },
   };
 }
@@ -321,13 +296,6 @@ for (const body of SKY) {
         identifier: `${NS}:sky_star`,
         is_spawnable: false,
         is_summonable: true,
-        properties: {
-          [`${NS}:size`]: {
-            type: 'float',
-            range: [SKY_MODEL_MIN_SCALE, SKY_MODEL_MAX_SCALE],
-            default: 1, client_sync: true,
-          },
-        },
       },
       components: {
         'minecraft:physics': { has_collision: false, has_gravity: false },
@@ -340,8 +308,8 @@ for (const body of SKY) {
         'minecraft:fire_immune': true,
         'minecraft:conditional_bandwidth_optimization': {},
         'minecraft:type_family': { family: ['space_dim_sky'] },
+        'minecraft:scale': { value: STAR_SCALE_FIXED },
       },
-      ...sizeGroups() && { component_groups: sizeGroups().groups, events: sizeGroups().events },
     },
   });
 
@@ -423,19 +391,6 @@ write(path.join(RP, 'render_controllers', 'sky_body.render_controllers.json'), {
     },
   },
 });
-
-// Os degraus também vão pro lado do script: ele precisa escolher o mais
-// próximo, e as duas listas não podem divergir.
-fs.writeFileSync(
-  path.join(BP, 'scripts', 'space_dim', 'skySteps.js'),
-  '/* GERADO por tools/make_sky_bodies.mjs — não edite à mão.\n' +
-  ' *\n' +
-  ' * Os degraus de escala dos corpos vistos de longe. Cada um é um component\n' +
-  ' * group com `minecraft:scale` na entidade; o script escolhe o mais próximo\n' +
-  ' * e dispara o evento correspondente.\n' +
-  ' */\n' +
-  'export const SKY_SIZE_STEPS = ' + JSON.stringify(SIZE_STEPS) + ';\n'
-);
 
 fs.rmSync(STAGE, { recursive: true, force: true });
 console.log(`${SKY.length} corpos + a estrela: ${SKY.map((b) => b.id).join(', ')}`);

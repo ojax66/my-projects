@@ -31,6 +31,40 @@ const AIR = "minecraft:air";
 const POLAR_CAP_HEIGHT = 0.82;
 const POLAR_CAP_WIDTH = 0.34;
 
+// O degradê do disco solar, medido do centro da face pra fora.
+// Até SUN_CORE_DISC é o branco do núcleo, até SUN_PLASMA_DISC o amarelo, e o
+// resto é o laranja da coroa.
+const SUN_CORE_DISC = 0.42;
+const SUN_PLASMA_DISC = 0.74;
+// Quanto a fronteira entre as faixas balança.
+const SUN_EDGE_NOISE = 0.34;
+
+/**
+ * Quão longe da MEIA da face este ponto está, de 0 a 1.
+ *
+ * Num cubo cada ponto pertence à face do eixo em que ele está mais distante do
+ * centro. Dentro dessa face, o que mede o afastamento são os OUTROS dois eixos
+ * — o da face é constante ali. Sem isso o degradê seria concêntrico ao corpo
+ * inteiro e as faces sairiam todas com a mesma cor chapada.
+ */
+function faceOffset(x, y, z, body) {
+  const R = body.radius;
+  const dx = Math.abs(x - body.center.x);
+  const dy = Math.abs(y - body.center.y);
+  const dz = Math.abs(z - body.center.z);
+
+  let a;
+  let b;
+  if (dx >= dy && dx >= dz) { a = dy; b = dz; }
+  else if (dy >= dz) { a = dx; b = dz; }
+  else { a = dx; b = dy; }
+
+  // Chebyshev entre os dois eixos da face: dá um disco QUADRADO, que é a forma
+  // certa aqui — um disco redondo numa face quadrada deixaria as quinas de fora
+  // do degradê.
+  return Math.min(1, Math.max(a, b) / R);
+}
+
 // ---------------------------------------------------------------------------
 // Paletas
 //
@@ -85,8 +119,27 @@ function polarness(x, y, z, body) {
 }
 
 const PALETTES = {
-  // Sol — uma paleta por camada, do âmbar da coroa ao creme do núcleo.
-  sun_corona() { return "space_dim:sun_corona"; },
+  // Sol — o disco tem VARIAÇÃO VISÍVEL: branco no miolo da face, amarelo em
+  // volta, laranja nas bordas e nas quinas. É o que se vê olhando pra ele.
+  //
+  // A variação é feita com os TRÊS BLOCOS do Sol, não pintada dentro de uma
+  // textura: é a mesma regra dos mares da Lua. E como a textura do modelo
+  // distante sai deste mesmo código, o Sol de longe ganha o mesmo degradê sem
+  // nada a mais.
+  //
+  // `t` é o quanto o ponto está longe do CENTRO DA FACE em que ele está: 0 no
+  // meio, 1 na borda. Numa esfera isso seria a latitude; num cubo o que vale é
+  // a distância aos dois eixos que não são o da face.
+  sun_corona(x, y, z, body) {
+    // Ruído na fronteira, senão as três faixas viram anéis de alvo de tiro. A
+    // borda fica irregular como a de uma chama, e é a mesma ideia da borda
+    // esfarrapada da calota polar.
+    const t = faceOffset(x, y, z, body)
+      + (surfaceNoise(x, y, z, 0.04) - 0.5) * SUN_EDGE_NOISE;
+    if (t < SUN_CORE_DISC) return "space_dim:sun_core";
+    if (t < SUN_PLASMA_DISC) return "space_dim:sun_plasma";
+    return "space_dim:sun_corona";
+  },
   sun_plasma() { return "space_dim:sun_plasma"; },
   sun_core() { return "space_dim:sun_core"; },
 

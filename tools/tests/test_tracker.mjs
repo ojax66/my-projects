@@ -126,11 +126,21 @@ const mk = (id = 'p1') =>
   check('cada corpo rastreado e distante ganha um modelo',
         models.length > 0, `(${models.length} modelos)`);
 
-  const dists = models.map((e) => Math.hypot(
-    e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
-  check('  todos ficam perto do jogador, dentro da renderização',
-        dists.every((d) => Math.abs(d - SKY_MODEL_DISTANCE) < 0.5),
-        `(distâncias: ${dists.map((d) => d.toFixed(1)).join(', ')})`);
+  // O modelo fica no CENTRO da construção, não numa projeção presa ao jogador:
+  // é o que faz ele e os blocos ocuparem o mesmo espaço, sem nada saltar de
+  // lugar quando um troca pelo outro.
+  const { BODIES: TODOS } = await import('./space_dim/config.js');
+  const foraDoLugar = models.filter((e) => {
+    const id = e.typeId.slice('space_dim:sky_'.length);
+    const body = TODOS.find((b) => b.id === id);
+    if (!body) return true;
+    return Math.hypot(e.location.x - body.center.x,
+                      e.location.y - body.center.y,
+                      e.location.z - body.center.z) > 0.001;
+  });
+  check('  cada modelo fica no centro da própria construção',
+        foraDoLugar.length === 0,
+        `(fora do lugar: ${foraDoLugar.map((e) => e.typeId).join(', ') || 'nenhum'})`);
 
   // Desligar um corpo no menu tem que apagar o modelo dele.
   const alvo = trackedBodies(p)[0];
@@ -207,54 +217,29 @@ const mk = (id = 'p1') =>
   clearModels(p.id);
 }
 
-// --- 8. A escala vem de um degrau do servidor, não de molang ----------------
+// --- 8. O modelo tem o tamanho da construção --------------------------------
 //
-// A versão anterior escalava com uma animação do cliente lendo
-// `q.property('space_dim:size')`. Quando esse molang não resolve, ele devolve
-// ZERO — e escala zero é um modelo de tamanho zero: invisível, sem erro, sem
-// aviso. É o suspeito de os corpos nunca terem aparecido.
+// A versão anterior mantinha o modelo a 34 blocos de quem olha e o encolhia até
+// dar o mesmo ângulo do corpo lá longe. A conta tratava o cubo do geometry como
+// tendo meia-aresta de 8 BLOCOS quando ela é de meio bloco — dezesseis vezes
+// menor — e, mesmo com a conta certa, o modelo andava junto com o jogador
+// enquanto a construção ficava parada.
 //
-// `minecraft:scale` num component group é do servidor e não tem esse silêncio.
+// Agora o tamanho é uma constante por corpo, declarada na entidade, e é a
+// aresta da construção em blocos.
 {
-  __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
+  const fs = await import('node:fs');
   const { BODIES } = await import('./space_dim/config.js');
+  const REPO = process.env.DH_REPO ?? '.';
 
-  const dim = world.getDimension(DIMENSION_ID);
-  const moon = BODIES.find((b) => b.id === 'moon');
-  const p = mk('escala');
-
-  // A distância exata da queixa: a Lua a 95 blocos, que é onde ela devia
-  // aparecer como modelo e não aparecia.
-  p.teleport({ x: moon.center.x, y: moon.center.y, z: moon.center.z + 95 });
-  __advance(2); updateSky(p);
-
-  const modelo = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_moon')[0];
-  check('a Lua a 95 blocos vira um modelo', !!modelo);
-  check('  e ele recebeu um degrau de escala',
-        (modelo?.__events ?? []).some((e) => e.startsWith('space_dim:set_size_')),
-        `(${(modelo?.__events ?? []).join(', ') || 'nenhum evento'})`);
-
-  // O degrau escolhido tem que bater com a escala pedida, e nunca ser zero.
-  const ev = (modelo?.__events ?? []).find((e) => e.startsWith('space_dim:set_size_'));
-  const idx = Number(ev?.slice('space_dim:set_size_'.length));
-  const escala = SKY_SIZE_STEPS[idx];
-  check('  o degrau é um tamanho de verdade, não zero',
-        escala > 0, `(degrau ${idx} = ${escala})`);
-
-  // A escala ideal pra Lua a 95: (34 * 12) / (95 * 8) = 0.537
-  const ideal = (34 * moon.radius) / (95 * 8);
-  check('  e fica perto do tamanho certo',
-        Math.abs(Math.log(escala / ideal)) < Math.log(1.4),
-        `(${escala} vs ideal ${ideal.toFixed(3)})`);
-
-  // Nenhum degrau da lista pode ser zero — um zero na tabela seria um corpo
-  // invisível de novo, agora pelo caminho do servidor.
-  check('nenhum degrau da tabela é zero', SKY_SIZE_STEPS.every((v) => v > 0),
-        `(${SKY_SIZE_STEPS.length} degraus, menor ${Math.min(...SKY_SIZE_STEPS)})`);
-
-  clearModels(p.id);
+  for (const body of BODIES) {
+    const doc = JSON.parse(fs.readFileSync(
+      `${REPO}/packs/Distant Horizons BP/entities/sky_${body.id}.json`, 'utf8'));
+    const escala = doc['minecraft:entity'].components['minecraft:scale']?.value;
+    const aresta = body.radius * 2 + 1;
+    check(`${body.id}: o modelo tem a aresta da construção`, escala === aresta,
+          `(escala ${escala}, construção ${aresta} blocos)`);
+  }
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

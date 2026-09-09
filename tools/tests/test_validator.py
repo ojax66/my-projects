@@ -194,19 +194,32 @@ case("corpo sem textura de ceu", drop_sky_texture,
      r"corpo earth sem textura de ceu")
 
 
-# --- 10. faixa da propriedade de escala menor do que o config pede -----------
+# --- 10. modelo com escala diferente da construcao ---------------------------
 #
-# O motor ignora calado um valor fora da faixa: o corpo fica do tamanho errado
-# e nada aparece no console.
-def narrow_scale(tmp):
+# O modelo tem que ocupar o mesmo espaco que os blocos. A versao anterior
+# calculava uma projecao presa ao jogador, e a conta tratava o cubo do geometry
+# como tendo meia-aresta de 8 BLOCOS quando ela e de meio bloco — dezesseis
+# vezes menor, e nada media isso.
+def wrong_model_size(tmp):
     path = bp(tmp, "entities", "sky_sun.json")
     doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:entity"]["description"]["properties"]["space_dim:size"]["range"] = [0.5, 2]
+    doc["minecraft:entity"]["components"]["minecraft:scale"]["value"] = 7
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
 
-case("faixa de escala menor do que o config usa", narrow_scale,
-     r"sky_sun: a faixa de space_dim:size")
+case("modelo com escala diferente da construcao", wrong_model_size,
+     r"sky_sun tem escala 7, mas a construcao tem 201")
+
+
+def scale_groups_back(tmp):
+    path = bp(tmp, "entities", "sky_earth.json")
+    doc = json.load(open(path, encoding="utf-8"))
+    doc["minecraft:entity"]["component_groups"] = {"space_dim:size_0": {}}
+    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+
+
+case("component groups de escala de volta", scale_groups_back,
+     r"ainda tem component_groups de escala")
 
 
 # --- 11. mapa estelar de um sistema que nao existe ---------------------------
@@ -341,28 +354,7 @@ case("textura de ceu com tamanho diferente do modelo", wrong_texture_size,
      r"moon\.png e 32x32, mas o modelo declara")
 
 
-# --- 12g. escala do ceu voltando a depender de molang ------------------------
-def zero_step(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons BP",
-                        "scripts", "space_dim", "skySteps.js")
-    src = open(path, encoding="utf-8").read()
-    open(path, "w", encoding="utf-8").write(src.replace("[0.005,", "[0,"))
-
-
-case("degrau de escala igual a zero", zero_step, r"degrau de escala <= 0")
-
-
-def steps_out_of_sync(tmp):
-    path = bp(tmp, "entities", "sky_moon.json")
-    doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:entity"]["component_groups"].pop("space_dim:size_3")
-    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
-
-
-case("degraus do BP fora de sincronia com skySteps.js", steps_out_of_sync,
-     r"as duas \s*listas divergiram|listas divergiram")
-
-
+# --- 12g. cliente voltando a animar a escala ---------------------------------
 def animate_scale_again(tmp):
     path = rp(tmp, "entity", "sky_earth.entity.json")
     doc = json.load(open(path, encoding="utf-8"))
@@ -371,7 +363,7 @@ def animate_scale_again(tmp):
 
 
 case("cliente voltando a animar a escala", animate_scale_again,
-     r"voltou a animar a escala")
+     r"anima a escala no cliente")
 
 
 # --- 13. os geradores nao podem depender da ordem ----------------------------

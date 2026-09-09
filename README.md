@@ -604,34 +604,61 @@ tamanho aparente  =  raio / distância real
 escala do modelo  =  (distância do modelo × raio) / (distância real × 8)
 ```
 
-### A escala é do servidor, em degraus
+### O modelo tem o tamanho da construção, e fica no centro dela
 
-A primeira versão escalava o modelo com uma animação do cliente:
+Primeiro o modelo era uma **projeção**: mantido a 34 blocos de quem olha e
+encolhido até dar o mesmo ângulo que o corpo daria lá longe. Duas coisas davam
+errado nisso.
 
-```json
-"bones": { "body": { "scale": "q.property('space_dim:size')" } }
-```
+A conta tratava o cubo do geometry como tendo meia-aresta de **8 blocos**,
+quando ela é de 8 *unidades* — meio bloco. Dezesseis vezes menor, e nada media
+isso. E mesmo com a conta certa o modelo andava junto com o jogador enquanto a
+construção ficava parada, então os dois nunca casavam na transição.
 
-Quando esse molang não resolve — e não há como saber que não resolveu —, ele
-devolve **zero**. Escala zero é um modelo de tamanho zero: **invisível, sem
-erro, sem aviso**. É a explicação mais provável pros corpos nunca terem
-aparecido, e é o tipo de falha que não dá pra depurar de fora: a entidade está
-lá, na posição certa, com a textura certa, e não desenha nada.
+Agora não há conta: o modelo fica **no centro da construção**, com a **aresta
+dela** (`2 × raio + 1`, porque o cubo do geometry tem 16 unidades = 1 bloco).
+Os dois ocupam o mesmo espaço, e chegar perto só troca um pelo outro no mesmo
+lugar.
 
-Agora a escala vem de `minecraft:scale` num **component group**, que é do
-servidor: sem molang, sem sincronia com o cliente, sem silêncio. O preço é ser
-discreta — 28 degraus numa progressão de razão 1,4, e o script dispara o evento
-do degrau mais próximo. A 1,4 a diferença entre um degrau e o próximo não se
-percebe, porque o corpo está longe e o tamanho muda devagar.
+| corpo | aresta | escala do modelo |
+|---|---|---|
+| Sol | 201 | 201 |
+| Terra | 53 | 53 |
+| Marte | 41 | 41 |
+| Lua | 25 | 25 |
 
-Junto foi outro defeito da mesma família: a geometria declarava
-`format_version 1.12.0` e usava **UV por face**, que só existe a partir de
-`1.16.0`. Uma geometria que falha ao carregar também não desenha nada, e
-também sem erro.
+Isso também apagou toda a maquinaria de degraus de escala que existia pra fazer
+a projeção variar. A **estrela** é a única que continua presa ao jogador: ela
+não é o corpo, é o ponto de luz que sobra dele visto de muito longe, e um ponto
+no lugar real estaria a milhares de blocos, fora de qualquer alcance.
 
-O `validate.py` agora cobra a cadeia inteira: nenhum degrau pode ser zero, os
-grupos e eventos do BP têm que bater com `skySteps.js`, e o RP não pode voltar a
-animar a escala (duas fontes brigando dão o tamanho errado).
+Antes disso, a escala vinha de uma animação do cliente lendo
+`q.property('space_dim:size')`. Quando esse molang não resolve — e não há como
+saber que não resolveu — ele devolve **zero**, e escala zero é um modelo de
+tamanho zero: invisível, sem erro, sem aviso. Junto foi outro defeito da mesma
+família: a geometria declarava `format_version 1.12.0` usando **UV por face**,
+que só existe a partir de `1.16.0`, e geometria que falha ao carregar também
+não desenha nada.
+
+## O disco do Sol tem variação visível
+
+Branco no miolo da face, amarelo em volta, laranja nas bordas e nas quinas.
+
+A variação é feita com os **três blocos** do Sol, não pintada dentro de uma
+textura — é a mesma regra dos mares da Lua, e pelo mesmo motivo: tom escuro
+dentro de uma textura vira um carimbo repetido em cada bloco.
+
+Num cubo, "distância do centro" não é a mesma coisa que numa esfera. Cada ponto
+pertence à face do eixo em que está mais distante do centro, e dentro dessa face
+o afastamento é medido pelos **outros dois eixos** — o da face é constante ali.
+Sem isso o degradê seria concêntrico ao corpo inteiro e cada face sairia de uma
+cor chapada. A medida é Chebyshev entre os dois eixos, o que dá um disco
+*quadrado*: um disco redondo numa face quadrada deixaria as quinas de fora.
+
+A fronteira entre as faixas leva ruído, senão viram anéis de alvo de tiro.
+
+E como a textura do modelo distante sai deste mesmo código, **o Sol de longe
+ganhou o degradê sem nada a mais**.
 
 A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
 que constrói o corpo de blocos, e cada pixel recebe a cor média da textura

@@ -28,10 +28,18 @@ const R = sun.radius;
   console.log('      coluna central:', blocks.join(' '));
 
   const kinds = runs.map(r => r.id);
-  check('a coluna central atravessa coroa, plasma e núcleo',
-        kinds.includes('space_dim:sun_corona') &&
-        kinds.includes('space_dim:sun_plasma') &&
-        kinds.includes('space_dim:sun_core'));
+  // O que importa aqui é a ESTRUTURA: cinco trechos de bloco na coluna, que são
+  // as duas travessias de cada uma das duas cascas mais o núcleo no meio.
+  //
+  // Não dá pra checar isto pelo id do bloco: a coroa é pintada com o tom claro
+  // no miolo da face, por causa do degradê do disco solar, então bem no eixo
+  // central ela aparece como `sun_core`. Quem confere as três COREs é o teste
+  // do degradê, mais abaixo, que olha a face inteira.
+  check('a coluna central atravessa as três camadas',
+        runs.length === 5, `(${runs.length} trechos)`);
+  check('  com o núcleo maciço no meio',
+        runs[2] && runs[2].y1 - runs[2].y0 + 1 >= sun.layers[2].radius * 2,
+        runs[2] ? `(${runs[2].y1 - runs[2].y0 + 1} blocos)` : '(nenhum)');
 
   // Tem que haver VÁCUO entre as camadas, senão não é atravessável — é maciço.
   let gaps = 0;
@@ -151,3 +159,56 @@ const R = sun.radius;
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);
+
+// --- O disco do Sol tem variação visível ------------------------------------
+//
+// Branco no miolo da face, amarelo em volta, laranja nas bordas. É o que se vê
+// olhando pra ele, e é feito com os TRÊS BLOCOS do Sol — não pintado dentro de
+// uma textura, que repetiria a mesma mancha em cada bloco.
+{
+  const sun = BODIES.find((b) => b.id === 'sun');
+  const R = sun.radius;
+  const blockAt = (dx, dy, dz) => {
+    const runs = columnRuns(sun.center.x + dx, sun.center.z + dz);
+    const y = sun.center.y + dy;
+    for (const r of runs) if (y >= r.y0 && y <= r.y1) return r.id;
+    return null;
+  };
+
+  // No meio da face da frente: o branco do núcleo.
+  check('o miolo da face do Sol é o tom mais claro',
+        blockAt(0, 0, R) === 'space_dim:sun_core', `(${blockAt(0, 0, R)})`);
+
+  // Na quina da mesma face: o laranja da coroa.
+  const q = Math.round(R * 0.95);
+  check('  a quina da face é o tom mais escuro',
+        blockAt(q, q, R) === 'space_dim:sun_corona', `(${blockAt(q, q, R)})`);
+
+  // E entre os dois, o amarelo — a faixa do meio existe de verdade.
+  const m = Math.round(R * 0.6);
+  check('  e há uma faixa intermediária entre eles',
+        blockAt(m, 0, R) === 'space_dim:sun_plasma', `(${blockAt(m, 0, R)})`);
+
+  // Os três aparecem em quantidade: se um deles for 1% a variação não se vê.
+  const conta = {};
+  for (let dx = -R; dx <= R; dx += 3) {
+    for (let dy = -R; dy <= R; dy += 3) {
+      const id = blockAt(dx, dy, R);
+      if (id) conta[id] = (conta[id] || 0) + 1;
+    }
+  }
+  const total = Object.values(conta).reduce((a, b) => a + b, 0);
+  for (const id of ['space_dim:sun_core', 'space_dim:sun_plasma', 'space_dim:sun_corona']) {
+    const pct = 100 * (conta[id] || 0) / total;
+    check(`  ${id.split(':')[1]} ocupa uma fatia visível da face`, pct >= 10,
+          `(${pct.toFixed(0)}%)`);
+  }
+
+  // A variação vale pra TODAS as faces, não só a da frente: senão o Sol teria
+  // um lado bonito e cinco chapados.
+  const faces = [[0, 0, -R], [R, 0, 0], [-R, 0, 0], [0, R, 0], [0, -R, 0]];
+  for (const [dx, dy, dz] of faces) {
+    check(`  o miolo de (${dx},${dy},${dz}) também é claro`,
+          blockAt(dx, dy, dz) === 'space_dim:sun_core', `(${blockAt(dx, dy, dz)})`);
+  }
+}
