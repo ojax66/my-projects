@@ -16,6 +16,18 @@
     "textures": "space_dim_sun_core",
     "sound": "stone"
   },
+  "space_dim:sun_flare": {
+    "textures": "space_dim_sun_flare",
+    "sound": "stone"
+  },
+  "space_dim:sun_ember": {
+    "textures": "space_dim_sun_ember",
+    "sound": "stone"
+  },
+  "space_dim:sun_edge": {
+    "textures": "space_dim_sun_edge",
+    "sound": "stone"
+  },
   "space_dim:earth_ocean": {
     "textures": "space_dim_earth_ocean",
     "sound": "stone"

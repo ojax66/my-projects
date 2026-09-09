@@ -31,13 +31,27 @@ const AIR = "minecraft:air";
 const POLAR_CAP_HEIGHT = 0.82;
 const POLAR_CAP_WIDTH = 0.34;
 
-// O degradê do disco solar, medido do centro da face pra fora.
-// Até SUN_CORE_DISC é o branco do núcleo, até SUN_PLASMA_DISC o amarelo, e o
-// resto é o laranja da coroa.
-const SUN_CORE_DISC = 0.42;
-const SUN_PLASMA_DISC = 0.74;
+/**
+ * O degradê do disco solar, do miolo da face pra borda.
+ *
+ * Seis tons, não três: com três a passagem do branco ao vermelho saía em
+ * faixas duras, e o que se quer é um degradê. Os limiares e as cores vêm da
+ * referência do autor, amostrada do centro pra quina.
+ *
+ * Cada faixa é um BLOCO diferente — o degradê é feito trocando de bloco, como
+ * os mares da Lua, não pintando tom escuro dentro de uma textura.
+ */
+const SUN_DISC = [
+  { until: 0.30, block: "space_dim:sun_core" },     // branco
+  { until: 0.45, block: "space_dim:sun_flare" },    // amarelo claro
+  { until: 0.58, block: "space_dim:sun_plasma" },   // amarelo
+  { until: 0.72, block: "space_dim:sun_ember" },    // laranja
+  { until: 0.86, block: "space_dim:sun_corona" },   // laranja avermelhado
+  { until: Infinity, block: "space_dim:sun_edge" }, // vermelho
+];
+
 // Quanto a fronteira entre as faixas balança.
-const SUN_EDGE_NOISE = 0.34;
+const SUN_EDGE_NOISE = 0.22;
 
 /**
  * Quão longe da MEIA da face este ponto está, de 0 a 1.
@@ -131,14 +145,14 @@ const PALETTES = {
   // meio, 1 na borda. Numa esfera isso seria a latitude; num cubo o que vale é
   // a distância aos dois eixos que não são o da face.
   sun_corona(x, y, z, body) {
-    // Ruído na fronteira, senão as três faixas viram anéis de alvo de tiro. A
-    // borda fica irregular como a de uma chama, e é a mesma ideia da borda
-    // esfarrapada da calota polar.
+    // Ruído na fronteira, senão os anéis viram alvo de tiro. A borda fica
+    // irregular como a de uma chama — mesma ideia da calota polar.
     const t = faceOffset(x, y, z, body)
       + (surfaceNoise(x, y, z, 0.04) - 0.5) * SUN_EDGE_NOISE;
-    if (t < SUN_CORE_DISC) return "space_dim:sun_core";
-    if (t < SUN_PLASMA_DISC) return "space_dim:sun_plasma";
-    return "space_dim:sun_corona";
+    for (let i = 0; i < SUN_DISC.length; i++) {
+      if (t < SUN_DISC[i].until) return SUN_DISC[i].block;
+    }
+    return SUN_DISC[SUN_DISC.length - 1].block;
   },
   sun_plasma() { return "space_dim:sun_plasma"; },
   sun_core() { return "space_dim:sun_core"; },

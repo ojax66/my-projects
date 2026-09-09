@@ -110,7 +110,10 @@ for (const body of BODIES) {
 // tem JSON no BP, entrada no blocks.json do RP, terrain_texture e textura.
 {
   const OWN_BLOCKS = new Set([
-    'space_dim:sun_corona','space_dim:sun_plasma','space_dim:sun_core',
+    // O Sol tem seis tons de superficie, nao tres: e com eles que o disco dele
+    // faz o degrade do branco ao vermelho, trocando de bloco.
+    'space_dim:sun_edge','space_dim:sun_corona','space_dim:sun_ember',
+    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_core',
     'space_dim:earth_ocean','space_dim:earth_shallow','space_dim:earth_land',
     'space_dim:earth_forest','space_dim:earth_ice',
     'space_dim:moon_regolith_light','space_dim:moon_regolith','space_dim:moon_regolith_dark',

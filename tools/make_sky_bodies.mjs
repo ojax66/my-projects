@@ -112,6 +112,46 @@ function blockAt(x, y, z) {
   return bestD <= 2 ? best : null;
 }
 
+// --- O disco do Sol, suave ----------------------------------------------------
+//
+// O Sol é o único corpo cuja face NÃO é amostrada bloco a bloco.
+//
+// A construção faz o degradê trocando de bloco, e com seis tons isso é o mais
+// perto que se chega com blocos. Mas o modelo visto de longe não tem essa
+// limitação: ele é uma textura, e pode ter a passagem contínua da referência —
+// branco no miolo, vermelho na borda, sem degrau visível.
+//
+// As cores são as MESMAS dos seis blocos, interpoladas. Então os dois não
+// divergem: é o mesmo degradê, um em blocos e outro em pixels.
+const SUN_RAMP = [
+  [0.00, '#FFFDF1'],
+  [0.30, '#FFFDF1'],
+  [0.45, '#FEEC9A'],
+  [0.58, '#FFDF64'],
+  [0.72, '#FFA123'],
+  [0.86, '#F05914'],
+  [1.00, '#AA300B'],
+];
+
+function sunColorAt(t) {
+  const stops = SUN_RAMP.map(([at, hex]) => [at, rgb(hex)]);
+  for (let i = 1; i < stops.length; i++) {
+    if (t > stops[i][0] && i < stops.length - 1) continue;
+    const [a, ca] = stops[i - 1];
+    const [b, cb] = stops[i];
+    const k = b === a ? 0 : Math.min(1, Math.max(0, (t - a) / (b - a)));
+    return [0, 1, 2].map((c) => Math.round(ca[c] + (cb[c] - ca[c]) * k));
+  }
+  return stops[stops.length - 1][1];
+}
+
+/** Distância do MEIO da face, de 0 a 1 — a mesma medida que bodies.js usa. */
+function faceOffset(u, v) {
+  const a = Math.abs((u + 0.5) / RES * 2 - 1);
+  const b = Math.abs((v + 0.5) / RES * 2 - 1);
+  return Math.min(1, Math.max(a, b));
+}
+
 // A face é amostrada em RES x RES. `pick(u, v)` devolve o ponto do mundo.
 // Um pixel por bloco da face, até o teto.
 //
@@ -140,6 +180,30 @@ function faceColors(body, pick) {
 
 function skyTexture(body) {
   const c = body.center, R = body.radius;
+
+  // O Sol: degradê contínuo, igual em todas as seis faces.
+  if (body.heat) {
+    const face = [];
+    for (let v = 0; v < RES; v++) {
+      for (let u = 0; u < RES; u++) face.push(sunColorAt(faceOffset(u, v)));
+    }
+    const W0 = RES * 4, H0 = RES * 3;
+    const px0 = Buffer.alloc(W0 * H0 * 4);
+    const put = (ox, oy) => {
+      for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
+        const col = face[v * RES + u];
+        const d = ((oy + v) * W0 + ox + u) * 4;
+        px0[d] = col[0]; px0[d + 1] = col[1]; px0[d + 2] = col[2]; px0[d + 3] = 0;
+      }
+    };
+    put(RES, 0); put(RES * 2, 0); put(0, RES);
+    put(RES, RES); put(RES * 2, RES); put(RES * 3, RES);
+    const dir0 = path.join(RP, 'textures', NS, 'sky');
+    fs.mkdirSync(dir0, { recursive: true });
+    writePng(path.join(dir0, `${body.id}.png`), W0, H0, px0);
+    return;
+  }
+
   const faces = {
     // ordem do box UV do Bedrock, com w = h = d = 16
     up:    faceColors(body, (a, b) => ({ x: c.x + a, y: c.y + R, z: c.z - b })),

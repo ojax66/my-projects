@@ -13,6 +13,15 @@
     "space_dim_sun_core": {
       "textures": "textures/space_dim/blocks/sun_core"
     },
+    "space_dim_sun_flare": {
+      "textures": "textures/space_dim/blocks/sun_flare"
+    },
+    "space_dim_sun_ember": {
+      "textures": "textures/space_dim/blocks/sun_ember"
+    },
+    "space_dim_sun_edge": {
+      "textures": "textures/space_dim/blocks/sun_edge"
+    },
     "space_dim_earth_ocean": {
       "textures": "textures/space_dim/blocks/earth_ocean"
     },

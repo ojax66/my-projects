@@ -54,12 +54,21 @@ def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True
 
 BLOCKS = {
     # --- Sol: atravessável, luminoso ----------------------------------------
-    "sun_corona": block("sun_corona", "#DE9C17", "Coroa Solar", "Solar Corona",
+    "sun_corona": block("sun_corona", "#F05914", "Coroa Solar", "Solar Corona",
                         light=15, hardness=2.0, solid=False, dampening=0),
-    "sun_plasma": block("sun_plasma", "#F9C330", "Plasma Solar", "Solar Plasma",
+    "sun_plasma": block("sun_plasma", "#FFDF64", "Plasma Solar", "Solar Plasma",
                         light=15, hardness=2.0, solid=False, dampening=0),
-    "sun_core":   block("sun_core", "#FFF095", "Núcleo Solar", "Solar Core",
+    "sun_core":   block("sun_core", "#FFFDF1", "Núcleo Solar", "Solar Core",
                         light=15, hardness=4.0, solid=True, dampening=0),
+    # Os três tons intermediários existem por um motivo só: dar ao disco do Sol
+    # o degradê da referência. Com três blocos ele saía em três faixas duras;
+    # com seis, a passagem do branco ao vermelho se lê como um degradê.
+    "sun_flare":  block("sun_flare", "#FEEC9A", "Fulgor Solar", "Solar Flare",
+                        light=15, hardness=2.0, solid=False, dampening=0),
+    "sun_ember":  block("sun_ember", "#FFA123", "Brasa Solar", "Solar Ember",
+                        light=15, hardness=2.0, solid=False, dampening=0),
+    "sun_edge":   block("sun_edge", "#AA300B", "Borda Solar", "Solar Edge",
+                        light=15, hardness=2.0, solid=False, dampening=0),
 
     # --- Terra ---------------------------------------------------------------
     "earth_ocean":   block("earth_ocean", "#063E93", "Oceano Profundo", "Deep Ocean"),

@@ -174,17 +174,33 @@ TEXTURES = {
     # Rampa do sol de referência (#FFD64A / #FFFFA9 / #FFFFD9), fatiada em três
     # camadas. Cada bloco fica dentro da sua fatia: a diferença coroa → plasma →
     # núcleo é entre BLOCOS, não dentro de nenhum deles.
+    # Os seis tons do disco solar, do vermelho da borda ao branco do miolo. As
+    # cores saem da referência que o autor mandou, amostrada do centro pra
+    # quina. Cada bloco continua com variação interna sutil: o degradê é feito
+    # pela TROCA de bloco, como os mares da Lua.
+    "sun_edge": (
+        ["#93290A", "#9E2D0B", "#AA300B", "#B6340C", "#C2380D"],
+        [2, 3, 4, 3, 2], 263, 3, 0.40,
+    ),
     "sun_corona": (
-        ["#D18E10", "#DE9C17", "#E8A81E", "#F0B227", "#F7BC33"],
-        [2, 3, 4, 3, 2], 888, 3, 0.40,
+        ["#D64E11", "#E35313", "#F05914", "#F76216", "#FD6B1B"],
+        [2, 3, 4, 3, 2], 742, 3, 0.40,
+    ),
+    "sun_ember": (
+        ["#E88C18", "#F5961D", "#FFA123", "#FFAC33", "#FFB744"],
+        [2, 3, 4, 3, 2], 354, 3, 0.40,
     ),
     "sun_plasma": (
-        ["#F2B62A", "#F9C330", "#FFCF3E", "#FFD64A", "#FFE066"],
-        [2, 3, 4, 3, 2], 53, 3, 0.40,
+        ["#F5CE4B", "#FAD657", "#FFDF64", "#FFE677", "#FFED8A"],
+        [2, 3, 4, 3, 2], 354, 3, 0.40,
+    ),
+    "sun_flare": (
+        ["#F3DE8A", "#F9E592", "#FEEC9A", "#FFF1AD", "#FFF6C0"],
+        [2, 3, 4, 3, 2], 190, 3, 0.38,
     ),
     "sun_core": (
-        ["#FFE87A", "#FFF095", "#FFF6B4", "#FFFAC9", "#FFFDD9"],
-        [2, 3, 4, 3, 2], 259, 3, 0.38,
+        ["#FFF4C8", "#FFF8DC", "#FFFDF1", "#FFFEF8", "#FFFFFF"],
+        [2, 3, 4, 3, 2], 863, 3, 0.38,
     ),
 
     # --- Terra ---------------------------------------------------------------

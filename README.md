@@ -640,213 +640,42 @@ família: a geometria declarava `format_version 1.12.0` usando **UV por face**,
 que só existe a partir de `1.16.0`, e geometria que falha ao carregar também
 não desenha nada.
 
-## O disco do Sol tem variação visível
+## O disco do Sol
 
-Branco no miolo da face, amarelo em volta, laranja nas bordas e nas quinas.
+Branco no miolo da face, passando por amarelo e laranja até o vermelho da borda.
+As cores saem da referência do autor, amostrada do centro pra quina.
 
-A variação é feita com os **três blocos** do Sol, não pintada dentro de uma
-textura — é a mesma regra dos mares da Lua, e pelo mesmo motivo: tom escuro
-dentro de uma textura vira um carimbo repetido em cada bloco.
+### Na construção: seis blocos
+
+Com três tons a passagem saía em faixas duras — parecia um alvo de tiro, não um
+degradê. São seis agora: `sun_core`, `sun_flare`, `sun_plasma`, `sun_ember`,
+`sun_corona`, `sun_edge`.
+
+A variação é feita trocando de **bloco**, não pintada dentro de uma textura — é
+a mesma regra dos mares da Lua, e pelo mesmo motivo: tom escuro dentro de uma
+textura vira um carimbo repetido em cada bloco. A fronteira entre as faixas
+leva ruído.
 
 Num cubo, "distância do centro" não é a mesma coisa que numa esfera. Cada ponto
 pertence à face do eixo em que está mais distante do centro, e dentro dessa face
 o afastamento é medido pelos **outros dois eixos** — o da face é constante ali.
 Sem isso o degradê seria concêntrico ao corpo inteiro e cada face sairia de uma
-cor chapada. A medida é Chebyshev entre os dois eixos, o que dá um disco
-*quadrado*: um disco redondo numa face quadrada deixaria as quinas de fora.
+cor chapada. A medida é Chebyshev entre os dois, o que dá um disco *quadrado*:
+um disco redondo numa face quadrada deixaria as quinas de fora.
 
-A fronteira entre as faixas leva ruído, senão viram anéis de alvo de tiro.
+### No modelo: degradê contínuo
 
-E como a textura do modelo distante sai deste mesmo código, **o Sol de longe
-ganhou o degradê sem nada a mais**.
+O Sol é o **único** corpo cuja face não é amostrada bloco a bloco. Os outros
+ganham a cor do bloco que está ali; o Sol ganha a rampa interpolada.
 
-A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
-que constrói o corpo de blocos, e cada pixel recebe a cor média da textura
-daquele bloco. O que se vê de longe é o que está lá.
+O motivo é que as duas versões têm limites diferentes. A construção é feita de
+blocos e seis tons é o mais perto que ela chega. O modelo é uma textura e pode
+ter a passagem contínua da referência, sem degrau visível. As cores são as
+mesmas dos seis blocos, interpoladas — então os dois não divergem: é o mesmo
+degradê, um em blocos e outro em pixels.
 
-### O de longe tem que ser o mesmo corpo do de perto
-
-Duas coisas quebravam isso, e as duas eram silenciosas.
-
-**Resolução.** Com 16 px por face, a face da Terra (53 blocos de lado) virava um
-pixel a cada 3,3 blocos, e a do Sol um a cada 12,6: os continentes viravam
-manchas. Agora são 64 px por face — abaixo de um bloco por pixel na Terra.
-
-**Box UV.** Box UV mapeia o *tamanho do cubo* direto em pixels: um cubo de 16
-unidades usa 16 px da textura. Com a textura em 256×192, três quartos dela
-ficariam sem uso e o corpo voltaria a ser uma mancha, sem nada avisando. As
-faces são mapeadas uma a uma agora, e o cubo continua com um bloco de lado.
-
-**A cor de cada bloco vem da textura de verdade**, não do `map_color` declarado
-à mão — `make_block_textures.py` exporta a média real de cada textura que ele
-gera. Era esse descompasso que fazia o planeta de longe não bater com o de
-perto.
-
-O `validate.py` cobra as três: o modelo não pode usar box UV, as seis faces
-precisam de UV, e o tamanho da textura tem que casar com o que o modelo declara.
-
-### Por que os corpos estavam invisíveis
-
-Uma entidade no vácuo não recebe luz nenhuma, então o modelo precisa **brilhar
-sozinho**. No Bedrock isso é o define `USE_EMISSIVE`, e ele usa o **canal alfa
-como máscara de brilho**: alfa 0 é brilho máximo.
-
-O erro foi escolher um material pronto pra isso. `entity_emissive_alpha` trata
-alfa 0 como **transparente** — e como a textura do céu é toda alfa 0, todo corpo
-ficou invisível, sem nada no jogo dizendo por quê. (Dá pra ver o sintoma abrindo
-`RP/textures/space_dim/sky/`: as imagens parecem vazias.)
-
-A saída é a mesma que o Spacecraft usa pra Terra distante dele: um **material
-próprio** em `RP/materials/entity.material`, herdando de `entity` — que é opaco
-e não tem teste de alfa — com `USE_EMISSIVE` ligado:
-
-```json
-"space_dim_sky:entity": {
-  "+defines": [ "USE_EMISSIVE" ],
-  "+states": [ "DisableCulling" ]
-}
-```
-
-Assim nenhum pixel é descartado e o alfa só decide o brilho. **A textura
-continuar parecendo vazia num visualizador de imagens é esperado**: o
-visualizador lê o alfa como transparência, que é o significado normal dele; no
-jogo, com este material, não é.
-
-Junto vai `should_update_bones_and_effects_offscreen`, senão a animação de
-escala congela quando o modelo sai da tela e ele volta com o tamanho de quando
-você desviou o olhar.
-
-O `validate.py` cobra a cadeia inteira — material declarado, herança, o define,
-e o flag de offscreen —, e `test_validator.py` quebra cada elo pra provar.
-
-`/scriptevent space_dim:sky` lista o que está desenhado no céu agora — tipo,
-escala e validade de cada modelo. Quando um corpo não aparece, é isso que separa
-"não foi criado" de "foi criado e não renderiza".
-
-### A troca é medida da casca, não do centro
-
-Primeira versão: o modelo sumia quando o **centro** do corpo chegava a 190
-blocos. Como cada corpo tem um raio diferente, o ponto de troca variava:
-
-| corpo | raio | casca quando o modelo sumia | blocos existem a partir de |
-|---|---|---|---|
-| Sol | 100 | 90 | 80 |
-| Terra | 26 | 164 | 80 |
-| Lua | 12 | **178** | 80 |
-| Marte | 20 | 170 | 80 |
-
-E o gerador só constrói dentro de `GEN_RADIUS_CHUNKS` do jogador — **80
-blocos**. Ou seja: entre 80 e 178 blocos não havia bloco nenhum construído *e* o
-modelo já tinha sumido. Quase cem blocos em que o planeta não estava em lugar
-nenhum.
-
-Agora a troca é medida da **casca** e o limite vem do alcance do gerador, com
-uma chunk de folga: `GEN_RADIUS_CHUNKS * 16 - 24` = 56 blocos da superfície. O
-mesmo ponto pra todo corpo, grande ou pequeno.
-`tools/tests/test_sky_gap.mjs` não deixa a folga sumir de novo — e também
-confere que a escala pedida cabe na faixa declarada nas entidades (a Lua, de
-raio 12, precisa de 0,013 lá da borda do sistema; o mínimo era 0,02, e pedir
-menos que o mínimo é ignorado calado).
-
-## O rastreador
-
-Era uma linha de texto com quatro corpos fixos. Agora é uma consulta a um
-catálogo, e o catálogo é feito pra crescer: cada sistema estelar novo é uma
-entrada em `catalog.js` e mais nada.
-
-Duas coisas separadas, e a diferença é o ponto:
-
-| | o que é | como muda |
-|---|---|---|
-| **desbloqueado** | o jogador descobriu o sistema | progresso, não se desfaz |
-| **ligado** | ele quer aquilo na tela agora | preferência, muda quando quiser |
-
-Desligar Marte não faz o jogador esquecer Marte. E o estado guarda o que está
-**desligado**, não o que está ligado — assim um corpo acrescentado ao catálogo
-depois aparece ligado sozinho, sem mexer no save de ninguém.
-
-**Mapa estelar** (`space_dim:star_chart_<sistema>`) é o papel com as
-coordenadas: usar abre o sistema pra sempre e some da mão. Um mapa repetido
-avisa e **não** é consumido — perder um item por engano é pior que carregar um a
-mais. O id do item carrega o id do sistema, então um sistema novo não precisa de
-código novo.
-
-O mesmo caminho serve pra upgrade de nave: `unlockSystem(player, id)`, ou
-`/scriptevent space_dim:unlock <sistema>`.
-
-O menu é um formulário de verdade (`@minecraft/server-ui`), aberto pelo item
-Rastreador Estelar ou por `/scriptevent space_dim:tracker`. Sistema trancado
-aparece na lista, cinza — saber que existe algo pra achar é parte do jogo; o que
-ele não mostra é onde está.
-
-## Quem brilha é o corpo, não o espaço
-
-Luz de bloco ilumina **superfícies**, e no vácuo não há superfície pra iluminar.
-Bedrock também não tem controle de luz ambiente pra dimensão custom: o
-`minecraft:dimension` aceita bounds, gerador e bioma padrão, e nada mais.
-
-Duas tentativas mexeram no lugar errado. A primeira acendia só o entorno do Sol
-— alcance 230, com a Terra a 520 e Marte a 1040, então ninguém via luz nenhuma.
-A segunda pintava o **espaço** de dourado em faixas e dava visão noturna ao
-jogador: o vazio deixava de parecer vazio.
-
-O espaço voltou a ser uma névoa azul só. Quem aparece iluminado é o corpo:
-
-- **Os modelos vistos de longe são todos emissivos.** No material
-  `entity_emissive` o canal alfa é a máscara de brilho: alfa 0 quer dizer
-  *aceso*, não transparente — o inverso do `entity_alphatest`. Trocar os dois
-  não dá erro (o corpo só fica preto, ou opaco onde devia ser vazado), então o
-  validador confere.
-- **Os blocos dos planetas emitem luz baixa** (`BODY_LIGHT`, 6). Sem isso a
-  superfície é preta e não se enxerga nada em cima dela. O preço, assumido: o
-  lado de trás também aparece iluminado, porque luz de bloco não tem direção.
-  O Sol continua no máximo, 15.
-
-## O espaço é azul, não preto
-
-`#0B1436` no céu e na névoa, com o espalhamento volumétrico puxado pro azul.
-Preto puro não é o que se vê nas fotos: fica um buraco chapado, sem
-profundidade.
-
-## A gravidade segue a forma, e para na superfície
-
-Dois bugs, um deles bem feio: **o jogador ficava preso no núcleo do Sol**. A
-gravidade puxava pro centro sempre, então quem chegava ao núcleo continuava
-sendo empurrado pra dentro do bloco maciço e não saía mais.
-
-Agora:
-
-- **A direção segue o eixo dominante**, não o centro. Num cubo, puxar pro centro
-  empurra na diagonal perto das quinas e o "chão" muda de inclinação conforme
-  se anda pela face. Com o eixo dominante a gravidade fica sempre perpendicular
-  à face — e as **seis faces viram chão**, inclusive a de baixo, onde se anda de
-  cabeça pra baixo.
-- **O alvo é a superfície**, não o centro. O puxão para na casca; e quem já
-  estiver enfiado dentro do maciço é empurrado pra **fora**, até a superfície,
-  em vez de ser prensado mais fundo.
-- Camadas marcadas `passable` no config (a coroa e o plasma do Sol) não contam
-  como chão: passa-se direto por elas, então cair "até a coroa" seria cair em
-  lugar nenhum. Só o núcleo é chão dentro do Sol.
-
-`tools/tests/test_gravity_shape.mjs` mede o centro do Sol, o interior do núcleo,
-a casca e as seis faces.
-
-## Onde o rastreador escreve
-
-A barra de ação some quando outro addon roda `hud @s hide all` — o Spacecraft
-faz isso nas cinemáticas dele (`racoTriggers.js`) e desfaz com `hud @s reset
-all` no fim. Se a cinemática não terminar limpa (o jogador sai, morre, dá erro
-no meio), o HUD fica escondido **pra sempre**, e com ele a barra de ação. Não dá
-pra consultar esse estado por script: não existe consulta ao `hud`.
-
-O **placar lateral não é um `hud_element`** — `hud hide all` não o alcança. Por
-isso ele é o canal padrão. O jogador troca entre placar, barra de ação e
-desligado no primeiro botão do menu do rastreador, que é um formulário e aparece
-de qualquer jeito.
-
-Uma limitação real: o slot lateral é do **mundo**, não do jogador. Com dois
-jogadores no espaço, um veria as distâncias do outro — então nesse caso o
-rastreador cai pra barra de ação sozinho.
+O `validate.py` mede os tons dessa textura: se ela cair pra menos de doze, o
+degradê virou faixa dura e perdeu o ponto.
 
 ## Onde o jogador cai ao chegar
 

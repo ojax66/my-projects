@@ -157,14 +157,15 @@ const R = sun.radius;
   }
 }
 
-console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
-process.exit(failures ? 1 : 0);
-
 // --- O disco do Sol tem variação visível ------------------------------------
 //
-// Branco no miolo da face, amarelo em volta, laranja nas bordas. É o que se vê
-// olhando pra ele, e é feito com os TRÊS BLOCOS do Sol — não pintado dentro de
-// uma textura, que repetiria a mesma mancha em cada bloco.
+// Branco no miolo da face, passando por amarelo e laranja até o vermelho da
+// borda. São SEIS blocos: com três a passagem saía em faixas duras, e o que se
+// quer é um degradê.
+//
+// A variação é feita trocando de BLOCO, não pintada dentro de uma textura — é a
+// mesma regra dos mares da Lua, e pelo mesmo motivo: tom escuro dentro de uma
+// textura vira um carimbo repetido em cada bloco.
 {
   const sun = BODIES.find((b) => b.id === 'sun');
   const R = sun.radius;
@@ -175,21 +176,29 @@ process.exit(failures ? 1 : 0);
     return null;
   };
 
-  // No meio da face da frente: o branco do núcleo.
-  check('o miolo da face do Sol é o tom mais claro',
-        blockAt(0, 0, R) === 'space_dim:sun_core', `(${blockAt(0, 0, R)})`);
+  // A rampa, do miolo da face pra borda.
+  const RAMPA = ['sun_core', 'sun_flare', 'sun_plasma', 'sun_ember',
+                 'sun_corona', 'sun_edge'];
 
-  // Na quina da mesma face: o laranja da coroa.
-  const q = Math.round(R * 0.95);
-  check('  a quina da face é o tom mais escuro',
-        blockAt(q, q, R) === 'space_dim:sun_corona', `(${blockAt(q, q, R)})`);
+  // Andando do centro da face pra quina, a ordem dos tons não pode voltar
+  // atrás: é isso que faz um degradê em vez de uma manchа.
+  const vistos = [];
+  for (let i = 0; i <= 40; i++) {
+    const off = Math.round((i / 40) * R * 0.99);
+    const id = blockAt(off, 0, R);
+    if (!id) continue;
+    const nome = id.replace('space_dim:', '');
+    if (vistos[vistos.length - 1] !== nome) vistos.push(nome);
+  }
+  const indices = vistos.map((n) => RAMPA.indexOf(n));
+  check('do miolo da face pra borda o Sol percorre a rampa',
+        indices.every((v, i) => v >= 0 && (i === 0 || v >= indices[i - 1])),
+        `(${vistos.join(' → ')})`);
+  check('  começando no tom mais claro', vistos[0] === 'sun_core', `(${vistos[0]})`);
+  check('  e terminando no mais escuro',
+        vistos[vistos.length - 1] === 'sun_edge', `(${vistos[vistos.length - 1]})`);
 
-  // E entre os dois, o amarelo — a faixa do meio existe de verdade.
-  const m = Math.round(R * 0.6);
-  check('  e há uma faixa intermediária entre eles',
-        blockAt(m, 0, R) === 'space_dim:sun_plasma', `(${blockAt(m, 0, R)})`);
-
-  // Os três aparecem em quantidade: se um deles for 1% a variação não se vê.
+  // Os seis aparecem de verdade: um tom que ocupa 1% não faz degradê nenhum.
   const conta = {};
   for (let dx = -R; dx <= R; dx += 3) {
     for (let dy = -R; dy <= R; dy += 3) {
@@ -198,17 +207,19 @@ process.exit(failures ? 1 : 0);
     }
   }
   const total = Object.values(conta).reduce((a, b) => a + b, 0);
-  for (const id of ['space_dim:sun_core', 'space_dim:sun_plasma', 'space_dim:sun_corona']) {
-    const pct = 100 * (conta[id] || 0) / total;
-    check(`  ${id.split(':')[1]} ocupa uma fatia visível da face`, pct >= 10,
-          `(${pct.toFixed(0)}%)`);
+  for (const nome of RAMPA) {
+    const pct = 100 * (conta['space_dim:' + nome] || 0) / total;
+    check(`  ${nome} ocupa uma fatia visível`, pct >= 4, `(${pct.toFixed(0)}%)`);
   }
 
-  // A variação vale pra TODAS as faces, não só a da frente: senão o Sol teria
-  // um lado bonito e cinco chapados.
+  // A variação vale pra TODAS as faces: senão o Sol teria um lado bonito e
+  // cinco chapados.
   const faces = [[0, 0, -R], [R, 0, 0], [-R, 0, 0], [0, R, 0], [0, -R, 0]];
   for (const [dx, dy, dz] of faces) {
     check(`  o miolo de (${dx},${dy},${dz}) também é claro`,
           blockAt(dx, dy, dz) === 'space_dim:sun_core', `(${blockAt(dx, dy, dz)})`);
   }
 }
+
+console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
+process.exit(failures ? 1 : 0);

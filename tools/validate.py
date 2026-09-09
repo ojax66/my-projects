@@ -631,6 +631,53 @@ for bid in list(body_ids) + ["star"]:
         err(f"sky_{bid} anima a escala no cliente — ela e do servidor agora, e "
             f"duas fontes brigando dao o tamanho errado")
 
+# A textura do Sol visto de longe e a UNICA que nao sai bloco a bloco: ela e o
+# degrade continuo da referencia, interpolando as cores dos mesmos seis blocos.
+# Se ela cair pra pouquissimos tons, virou faixa dura e perdeu o ponto.
+sun_tex = os.path.join(RP, "textures", "space_dim", "sky", "sun.png")
+if os.path.isfile(sun_tex):
+    import zlib as _zlib
+    with open(sun_tex, "rb") as f:
+        raw = f.read()
+    # conta cores distintas descomprimindo o IDAT
+    idat = b""
+    i = 8
+    while i < len(raw):
+        ln = struct.unpack(">I", raw[i:i + 4])[0]
+        typ = raw[i + 4:i + 8]
+        if typ == b"IDAT":
+            idat += raw[i + 8:i + 8 + ln]
+        i += 12 + ln
+    try:
+        data = _zlib.decompress(idat)
+        w, h = struct.unpack(">II", raw[16:24])
+        tones = set()
+        stride = w * 4
+        pos = 0
+        prev = bytearray(stride)
+        for _ in range(h):
+            f_ = data[pos]; pos += 1
+            line = bytearray(data[pos:pos + stride]); pos += stride
+            for x in range(stride):
+                a = line[x - 4] if x >= 4 else 0
+                b = prev[x]
+                c = prev[x - 4] if x >= 4 else 0
+                if f_ == 1: line[x] = (line[x] + a) & 255
+                elif f_ == 2: line[x] = (line[x] + b) & 255
+                elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
+                elif f_ == 4:
+                    pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                    pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                    line[x] = (line[x] + pr) & 255
+            prev = line
+            for x in range(w):
+                tones.add(bytes(line[x * 4:x * 4 + 3]))
+        if len(tones) < 12:
+            err(f"a textura do Sol visto de longe tem so {len(tones)} tons — "
+                f"o degrade dele virou faixa dura")
+    except Exception as e:  # noqa: BLE001
+        warn(f"nao consegui medir os tons da textura do Sol: {e}")
+
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #
 # O id do item de mapa carrega o id do sistema que ele abre. Um mapa apontando
