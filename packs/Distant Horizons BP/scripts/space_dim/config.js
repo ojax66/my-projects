@@ -78,7 +78,14 @@ export const BODIES = [
     // gravidade usa isso pra saber onde existe CHÃO — cair até a coroa não
     // seria cair em lugar nenhum, já que se passa direto por ela.
     layers: [
-      { radius: 100, shell: 3, palette: "sun_corona", passable: true },
+      // `modelOnly`: esta camada NÃO é construída de blocos — quem a desenha é
+      // o modelo visto de longe.
+      //
+      // Ela não fazia diferença nenhuma: era atravessável, então o jogador
+      // passava direto por ela sem nada acontecer, e custava 720 mil blocos —
+      // dois terços de todo o Sol. O disco do Sol que se vê é o modelo; a casca
+      // de blocos só aparecia como uma película fina que não muda nada.
+      { radius: 100, shell: 3, palette: "sun_corona", passable: true, modelOnly: true },
       { radius: 62, shell: 2, palette: "sun_plasma", passable: true },
       { radius: 22, shell: 22, palette: "sun_core" },
     ],
@@ -160,14 +167,14 @@ export const FIRE_RESISTANCE_PROTECTS = true;
 // e sai de graça. Se em celular pesar, baixe os dois.
 // ---------------------------------------------------------------------------
 export const GEN_RADIUS_CHUNKS = 5;
-export const CHUNKS_PER_TICK = 2;
+export const CHUNKS_PER_TICK = 4;
 
 // Teto de blocos escritos por tick. É ELE que segura o custo, não o número de
 // chunks: perto do Sol uma única chunk chega a 8 mil blocos, e duas por tick
 // sem teto dariam ~16 mil escritas num frame — travadinha garantida.
 // Estourou o teto, a chunk para onde está e retoma no tick seguinte, do ponto
 // exato onde parou. O Sol inteiro leva uns 12 s de geração contínua.
-export const BLOCK_BUDGET_PER_TICK = 2500;
+export const BLOCK_BUDGET_PER_TICK = 6000;
 
 // ---------------------------------------------------------------------------
 // Gravidade zero
@@ -333,9 +340,17 @@ export const SPACE_DUST_INTERVAL_TICKS = 120;
 // o corpo daria lá longe — ver skybox.js.
 export const SKY_MODELS_ENABLED = true;
 
-// A que distância do jogador a ESTRELA fica. Só ela: o corpo em si fica no
-// centro da construção, do tamanho dela.
-export const SKY_MODEL_DISTANCE = 34;
+// O alcance em que uma entidade ainda é desenhada pelo cliente.
+//
+// O modelo é posto na direção do corpo, à distância REAL dele — mas nunca além
+// disto, porque passando daqui o jogo deixa de desenhá-lo. Perto, o modelo fica
+// exatamente onde o corpo está; longe, encosta nesta borda e é escalado pra
+// compensar.
+//
+// Antes era uma distância fixa de 34 blocos, e o modelo ficava literalmente
+// dentro de tudo: atravessava a nave, atravessava construção, aparecia na
+// frente de blocos que deviam escondê-lo.
+export const SKY_MODEL_DISTANCE = 112;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
 //

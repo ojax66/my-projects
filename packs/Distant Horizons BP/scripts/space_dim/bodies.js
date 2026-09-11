@@ -64,8 +64,14 @@ const SUN_EDGE_NOISE = 0.22;
  * — o da face é constante ali. Sem isso o degradê seria concêntrico ao corpo
  * inteiro e as faces sairiam todas com a mesma cor chapada.
  */
-function faceOffset(x, y, z, body) {
-  const R = body.radius;
+function faceOffset(x, y, z, body, layer) {
+  // Normaliza pelo raio da CAMADA, não do corpo.
+  //
+  // Com a coroa virando `modelOnly`, a casca que se vê passou a ser a do plasma
+  // (raio 62 num corpo de raio 100). Medindo pelo corpo, o afastamento máximo
+  // na casca visível era 0,62 — a rampa parava no meio e os dois últimos tons
+  // do degradê nunca apareciam.
+  const R = layer?.radius ?? body.radius;
   const dx = Math.abs(x - body.center.x);
   const dy = Math.abs(y - body.center.y);
   const dz = Math.abs(z - body.center.z);
@@ -147,17 +153,20 @@ const PALETTES = {
   // `t` é o quanto o ponto está longe do CENTRO DA FACE em que ele está: 0 no
   // meio, 1 na borda. Numa esfera isso seria a latitude; num cubo o que vale é
   // a distância aos dois eixos que não são o da face.
-  sun_corona(x, y, z, body) {
+  // A camada da coroa não é mais construída de blocos (`modelOnly` no config):
+  // ela era atravessável, não mudava nada, e custava dois terços de todo o Sol.
+  // Quem a desenha é o modelo. O degradê ficou com a camada do plasma, que
+  // passou a ser a casca externa que se vê chegando perto.
+  sun_plasma(x, y, z, body, layer) {
     // Ruído na fronteira, senão os anéis viram alvo de tiro. A borda fica
     // irregular como a de uma chama — mesma ideia da calota polar.
-    const t = faceOffset(x, y, z, body)
+    const t = faceOffset(x, y, z, body, layer)
       + (surfaceNoise(x, y, z, 0.04) - 0.5) * SUN_EDGE_NOISE;
     for (let i = 0; i < SUN_DISC.length; i++) {
       if (t < SUN_DISC[i].until) return SUN_DISC[i].block;
     }
     return SUN_DISC[SUN_DISC.length - 1].block;
   },
-  sun_plasma() { return "space_dim:sun_plasma"; },
   sun_core() { return "space_dim:sun_core"; },
 
   // Terra: oceano profundo, plataforma continental, mata, floresta fechada e
@@ -211,6 +220,14 @@ const PALETTES = {
 // Consultas geométricas
 // ---------------------------------------------------------------------------
 
+/** O raio da camada mais externa que é construída de BLOCOS.
+ *
+ * A coroa do Sol é `modelOnly`: ela não vira bloco nenhum (quem a desenha é o
+ * modelo visto de longe), então medir a superfície pelo `radius` do corpo cai
+ * no vazio. */
+export const builtRadius = (body) =>
+  Math.max(...body.layers.filter((l) => !l.modelOnly).map((l) => l.radius));
+
 /** Distância euclidiana até o centro. Usada pela gravidade, que é radial. */
 export function distanceTo(loc, body) {
   const dx = loc.x - body.center.x;
@@ -256,6 +273,8 @@ function layersOverColumn(x, z) {
 
     for (let j = 0; j < b.layers.length; j++) {
       const layer = b.layers[j];
+      // Camada que só existe como modelo não vira bloco nenhum.
+      if (layer.modelOnly) continue;
       if (dh > layer.radius) continue;
       (hits ??= []).push({ body: b, layer, dh });
     }
@@ -313,9 +332,9 @@ export function columnRuns(x, z) {
       if (to < from) continue;
 
       let runStart = from;
-      let runId = palette(x, from, z, body);
+      let runId = palette(x, from, z, body, layer);
       for (let y = from + 1; y <= to + 1; y++) {
-        const id = y <= to ? palette(x, y, z, body) : null;
+        const id = y <= to ? palette(x, y, z, body, layer) : null;
         if (id === runId) continue;
         if (runId && runId !== AIR) runs.push({ y0: runStart, y1: y - 1, id: runId });
         runStart = y;

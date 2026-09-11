@@ -1,5 +1,5 @@
 import { system } from '@minecraft/server';
-import { generateColumn, isBudgetError } from './space_dim/bodies.js';
+import { generateColumn, isBudgetError, builtRadius } from './space_dim/bodies.js';
 import { BODIES, BLOCK_BUDGET_PER_TICK, CHUNKS_PER_TICK } from './space_dim/config.js';
 
 let failures = 0;
@@ -33,7 +33,9 @@ function mockDim(writes) {
 {
   const sun = BODIES.find(b => b.id === 'sun');
   // Chunk no meio da parede da esfera (a mais cara, medida antes).
-  const cx = Math.floor((sun.center.x + 96) / 16), cz = Math.floor(sun.center.z / 16);
+  // A borda da casca CONSTRUIDA: a coroa e so modelo e nao tem bloco nenhum,
+  // entao a chunk cara mudou de lugar quando ela saiu.
+  const cx = Math.floor((sun.center.x + builtRadius(sun) - 4) / 16), cz = Math.floor(sun.center.z / 16);
 
   const writes = new Map(); writes.ops = 0;
   const dim = mockDim(writes);
@@ -96,7 +98,7 @@ const PLANET_TICK_BUDGET = 6;
 // --- Tempo total pra gerar o Sol inteiro ------------------------------------
 {
   const sun = BODIES.find(b => b.id === 'sun');
-  const R = sun.radius;
+  const R = builtRadius(sun);
   const c0x = Math.floor((sun.center.x-R)/16), c1x = Math.floor((sun.center.x+R)/16);
   const c0z = Math.floor((sun.center.z-R)/16), c1z = Math.floor((sun.center.z+R)/16);
   const writes = new Map(); writes.ops = 0;

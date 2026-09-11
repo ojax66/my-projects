@@ -6,7 +6,7 @@ const generateColumn = (dim, x, z) => {
     for (let y = r.y0; y <= r.y1; y++) { dim.setBlockType({ x, y, z }, r.id); if (y > top) top = y; }
   return runs.length ? top : -64;
 };
-import { getHeight, distanceTo } from './space_dim/bodies.js';
+import { getHeight, distanceTo, builtRadius } from './space_dim/bodies.js';
 import { BODIES, DIM_MIN_Y } from './space_dim/config.js';
 
 
@@ -40,18 +40,21 @@ for (const body of BODIES) {
   const ys = [...dim.blocks.keys()].map(k => Number(k.split(',')[1])).sort((a, b) => a - b);
   // Faixa inclusiva: de cy-R a cy-(R-shell) sao shell+1 blocos por calota.
   // Camada macica (shell >= radius) e um bloco so, de -R a +R.
+  // Camadas `modelOnly` nao entram na conta: elas nao viram bloco nenhum — quem
+  // as desenha e o modelo visto de longe. A coroa do Sol e assim.
+  const construidas = body.layers.filter((L) => !L.modelOnly);
   let expected = 0;
-  for (const L of body.layers) {
+  for (const L of construidas) {
     expected += L.shell >= L.radius ? 2 * L.radius + 1 : 2 * (L.shell + 1);
   }
   check(`${body.id}: coluna central bate com as camadas`, ys.length === expected,
-        `(${ys.length} blocos, esperado ${expected} de ${body.layers.length} camada(s))`);
+        `(${ys.length} blocos, esperado ${expected} de ${construidas.length} camada(s) construida(s))`);
 
-  // O topo devolvido bate com o topo real da esfera.
+  // O topo devolvido bate com o topo da casca CONSTRUIDA.
   const top = getHeight(body.center.x, body.center.z);
-  check(`${body.id}: getHeight = topo da camada externa`,
-        top === Math.floor(body.center.y + body.radius),
-        `(${top} vs ${body.center.y + body.radius})`);
+  check(`${body.id}: getHeight = topo da camada construida`,
+        top === Math.floor(body.center.y + builtRadius(body)),
+        `(${top} vs ${body.center.y + builtRadius(body)})`);
 }
 
 // --- 3. A casca não tem buraco ----------------------------------------------
@@ -60,7 +63,9 @@ for (const body of BODIES) {
 for (const body of BODIES) {
   const dim = mockDim();
   let emptyColumns = 0, testedColumns = 0;
-  const R = body.radius;
+  // A casca construida, nao o raio do corpo: entre a coroa (so modelo) e o
+  // plasma nao ha bloco nenhum, e nao deveria haver.
+  const R = builtRadius(body);
   const step = Math.max(1, Math.floor(R / 22));
   for (let dx = -R; dx <= R; dx += step) {
     for (let dz = -R; dz <= R; dz += step) {
@@ -127,8 +132,8 @@ for (const body of BODIES) {
   const used = new Set();
   for (const body of BODIES) {
     const dim = mockDim();
-    const R = body.radius;
-    const step = Math.max(1, Math.floor(R / 14));
+    const R = builtRadius(body);
+    const step = Math.max(1, Math.floor(R / 22));
     for (let dx = -R; dx <= R; dx += step)
       for (let dz = -R; dz <= R; dz += step)
         generateColumn(dim, body.center.x + dx, body.center.z + dz);

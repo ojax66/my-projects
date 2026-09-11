@@ -739,11 +739,18 @@ if os.path.isfile(bodies_path):
     with open(bodies_path, encoding="utf-8") as f:
         bodies_src = f.read()
 
-# Quais paletas sao de camadas passable, lido do config.
+# Quais paletas sao de camadas passable CONSTRUIDAS, lido do config.
+#
+# Camada `modelOnly` nao vira bloco nenhum — quem a desenha e o modelo visto de
+# longe —, entao nao ha paleta pra conferir nela. A coroa do Sol e assim.
 passable_palettes = set()
-for m in re.finditer(
-        r"\{\s*radius:[^}]*?palette:\s*\"(\w+)\"[^}]*?passable:\s*true", config_src):
-    passable_palettes.add(m.group(1))
+for m in re.finditer(r"\{\s*radius:[^}]*?\}", config_src, re.S):
+    layer = m.group(0)
+    if "passable: true" not in layer or "modelOnly: true" in layer:
+        continue
+    pm = re.search(r'palette:\s*"(\w+)"', layer)
+    if pm:
+        passable_palettes.add(pm.group(1))
 
 def block_is_solid(block_id):
     doc = docs.get(os.path.join(BP, "blocks", block_id.split(":")[1] + ".json"))

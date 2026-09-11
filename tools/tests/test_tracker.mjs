@@ -130,14 +130,22 @@ const mk = (id = 'p1') =>
   // garantir que ele continue sendo renderizado: uma entidade parada no centro
   // real, a centenas de blocos, o jogo não desenha — foi o que fez os corpos
   // sumirem quando eles ficavam lá.
+  const { BODIES: TODOS } = await import('./space_dim/config.js');
   const dists = models.map((e) => Math.hypot(
     e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
-  check('  todos ficam a uma distância fixa do jogador',
-        dists.every((d) => Math.abs(d - SKY_MODEL_DISTANCE) < 0.5),
-        `(${dists.map((d) => d.toFixed(1)).join(', ')})`);
+  // Na posição REAL do corpo, mas nunca além do alcance em que o jogo ainda
+  // desenha uma entidade. Perto, o modelo fica exatamente onde o corpo está e
+  // entra em oclusão como qualquer coisa; longe, encosta nessa borda.
+  const reais = models.map((e) => {
+    const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
+    return Math.hypot(body.center.x - p.location.x, body.center.y - p.location.y,
+                      body.center.z - p.location.z);
+  });
+  check('  cada modelo fica à distância real, limitada ao alcance',
+        dists.every((d, i) => Math.abs(d - Math.min(reais[i], SKY_MODEL_DISTANCE)) < 0.5),
+        `(${dists.map((d, i) => `${d.toFixed(0)}/${Math.min(reais[i], SKY_MODEL_DISTANCE).toFixed(0)}`).join(' ')})`);
 
   // E na direção certa: o modelo tem que aparecer onde o corpo está.
-  const { BODIES: TODOS } = await import('./space_dim/config.js');
   const torto = models.filter((e) => {
     const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
     if (!body) return true;
@@ -270,6 +278,34 @@ const mk = (id = 'p1') =>
 
   check('nenhum degrau da tabela é zero', SKY_SIZE_STEPS.every((v) => v > 0),
         `(${SKY_SIZE_STEPS.length} degraus, menor ${Math.min(...SKY_SIZE_STEPS)})`);
+
+  clearModels(p.id);
+}
+
+// --- 9. Dentro de um corpo, nada de céu -------------------------------------
+//
+// O modelo fica a poucos blocos do jogador, então lá dentro do Sol a Terra, a
+// Lua e Marte apareciam flutuando no meio do plasma, atravessando as camadas
+// que deviam escondê-los.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { BODIES } = await import('./space_dim/config.js');
+  const dim = world.getDimension(DIMENSION_ID);
+  const sun = BODIES.find((b) => b.id === 'sun');
+  const p = mk('dentro');
+
+  // Fora, mas perto: o céu aparece.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 400 });
+  __advance(2); updateSky(p);
+  const fora = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
+  check('fora do Sol o céu aparece', fora > 0, `(${fora} modelos)`);
+
+  // Dentro do Sol: nada.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + 30 });
+  __advance(2); updateSky(p);
+  const dentro = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
+  check('dentro do Sol o céu some', dentro === 0, `(${dentro} modelos)`);
 
   clearModels(p.id);
 }

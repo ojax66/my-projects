@@ -51,9 +51,14 @@ for (const body of BODIES) {
 // A ESTRELA é a única que fica presa ao jogador (um ponto no lugar real estaria
 // a milhares de blocos, fora de qualquer alcance). Ela não pode nascer dentro
 // da cabeça dele nem tão longe que saia de cena.
-check('a distância da estrela é confortável',
-      SKY_MODEL_DISTANCE >= 16 && SKY_MODEL_DISTANCE <= 64,
-      `(${SKY_MODEL_DISTANCE} blocos)`);
+// O alcance em que uma entidade ainda é desenhada. Precisa ser maior que o
+// ponto de troca (senão o modelo nunca chegaria a aparecer) e não tão grande
+// que o jogo pare de desenhá-lo.
+check('o alcance do modelo é maior que o ponto de troca',
+      SKY_MODEL_DISTANCE > SKY_MODEL_HIDE_BELOW,
+      `(alcance ${SKY_MODEL_DISTANCE}, troca a ${SKY_MODEL_HIDE_BELOW})`);
+check('  e cabe numa distância de renderização comum',
+      SKY_MODEL_DISTANCE <= 128, `(${SKY_MODEL_DISTANCE} blocos)`);
 
 // --- Quem brilha é o corpo, não o espaço ------------------------------------
 //

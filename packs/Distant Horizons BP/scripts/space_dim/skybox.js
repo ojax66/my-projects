@@ -202,6 +202,18 @@ export function updateSky(player) {
   const shown = new Set();
   const eye = player.location;
 
+  // Dentro de um corpo, nada de céu.
+  //
+  // O modelo fica a poucos blocos do jogador, então lá dentro do Sol a Terra, a
+  // Lua e Marte apareciam flutuando no meio do plasma — atravessando as camadas
+  // que deviam escondê-los. Estando dentro de qualquer corpo, o céu some.
+  for (const body of wanted) {
+    if (chebyshevTo(eye, body) <= body.radius) {
+      clearModels(player.id);
+      return;
+    }
+  }
+
   for (const body of wanted) {
     const dx = body.center.x - eye.x;
     const dy = body.center.y - eye.y;
@@ -239,10 +251,15 @@ export function updateSky(player) {
     // A ESTRELA não: ela é o ponto de luz que sobra do corpo visto de muito
     // longe, e um ponto no lugar real estaria a milhares de blocos, fora de
     // qualquer alcance. Essa fica presa ao jogador, na direção certa.
-    // Sempre perto do jogador, na direção do corpo. É a única forma de
-    // garantir que o modelo continue sendo renderizado: uma entidade parada no
-    // centro real, a centenas de blocos, o jogo simplesmente não desenha.
-    const k = SKY_MODEL_DISTANCE / d;
+    // Na direção do corpo, à distância REAL dele — mas nunca além do alcance em
+    // que o jogo ainda desenha uma entidade.
+    //
+    // Perto, isso põe o modelo exatamente onde o corpo está: ele fica atrás do
+    // que estiver na frente, entra em oclusão como qualquer coisa, e não
+    // atravessa nada. Longe, ele encosta na borda do alcance e é encolhido pra
+    // dar o mesmo ângulo — que é a única forma de continuar visível.
+    const at = Math.min(d, SKY_MODEL_DISTANCE);
+    const k = at / d;
     try {
       entity.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
     } catch {
@@ -250,10 +267,10 @@ export function updateSky(player) {
       continue;
     }
 
-    // E escalado pra dar o mesmo ângulo que o corpo daria lá longe — ver a
-    // conta no cabeçalho. A estrela tem tamanho fixo, declarado na entidade.
+    // Escala pelo ângulo — ver a conta no cabeçalho. A estrela tem tamanho
+    // fixo, declarado na entidade.
     if (!star) {
-      applyScale(player, body, entity, (2 * SKY_MODEL_DISTANCE * body.radius) / d);
+      applyScale(player, body, entity, (2 * at * body.radius) / d);
     }
   }
 

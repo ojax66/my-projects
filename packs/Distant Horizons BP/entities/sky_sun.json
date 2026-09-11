@@ -234,6 +234,36 @@
         "minecraft:scale": {
           "value": 98.61
         }
+      },
+      "space_dim:size_35": {
+        "minecraft:scale": {
+          "value": 123.3
+        }
+      },
+      "space_dim:size_36": {
+        "minecraft:scale": {
+          "value": 154.1
+        }
+      },
+      "space_dim:size_37": {
+        "minecraft:scale": {
+          "value": 192.6
+        }
+      },
+      "space_dim:size_38": {
+        "minecraft:scale": {
+          "value": 240.7
+        }
+      },
+      "space_dim:size_39": {
+        "minecraft:scale": {
+          "value": 300.9
+        }
+      },
+      "space_dim:size_40": {
+        "minecraft:scale": {
+          "value": 376.2
+        }
       }
     },
     "events": {
@@ -278,7 +308,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -323,7 +359,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -368,7 +410,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -413,7 +461,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -458,7 +512,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -503,7 +563,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -548,7 +614,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -593,7 +665,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -638,7 +716,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -683,7 +767,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -728,7 +818,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -773,7 +869,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -818,7 +920,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -863,7 +971,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -908,7 +1022,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -953,7 +1073,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -998,7 +1124,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1043,7 +1175,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1088,7 +1226,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1133,7 +1277,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1178,7 +1328,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1223,7 +1379,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1268,7 +1430,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1313,7 +1481,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1358,7 +1532,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1403,7 +1583,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1448,7 +1634,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1493,7 +1685,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1538,7 +1736,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1583,7 +1787,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1628,7 +1838,13 @@
             "space_dim:size_31",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1673,7 +1889,13 @@
             "space_dim:size_30",
             "space_dim:size_32",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1718,7 +1940,13 @@
             "space_dim:size_30",
             "space_dim:size_31",
             "space_dim:size_33",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1763,7 +1991,13 @@
             "space_dim:size_30",
             "space_dim:size_31",
             "space_dim:size_32",
-            "space_dim:size_34"
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
           ]
         }
       },
@@ -1808,7 +2042,319 @@
             "space_dim:size_30",
             "space_dim:size_31",
             "space_dim:size_32",
-            "space_dim:size_33"
+            "space_dim:size_33",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_35": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_35"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_36": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_36"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_37": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_37"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_38",
+            "space_dim:size_39",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_38": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_38"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_39",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_39": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_39"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_40"
+          ]
+        }
+      },
+      "space_dim:set_size_40": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_40"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34",
+            "space_dim:size_35",
+            "space_dim:size_36",
+            "space_dim:size_37",
+            "space_dim:size_38",
+            "space_dim:size_39"
           ]
         }
       }

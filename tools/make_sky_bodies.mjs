@@ -123,14 +123,20 @@ function blockAt(x, y, z) {
 //
 // As cores são as MESMAS dos seis blocos, interpoladas. Então os dois não
 // divergem: é o mesmo degradê, um em blocos e outro em pixels.
+// A rampa do disco, com HALO: passando do vermelho ela continua escurecendo até
+// quase o preto do espaço. É o que faz a borda do Sol desvanecer em vez de
+// terminar num corte duro — na referência do autor o laranja se dissolve no
+// fundo, e era isso que faltava.
 const SUN_RAMP = [
-  [0.00, '#FFFDF1'],
-  [0.30, '#FFFDF1'],
-  [0.45, '#FEEC9A'],
-  [0.58, '#FFDF64'],
-  [0.72, '#FFA123'],
-  [0.86, '#F05914'],
-  [1.00, '#AA300B'],
+  [0.00, '#FFFFFF'],
+  [0.26, '#FFFDF1'],
+  [0.40, '#FEEC9A'],
+  [0.52, '#FFDF64'],
+  [0.64, '#FFA123'],
+  [0.76, '#F05914'],
+  [0.86, '#AA300B'],
+  [0.94, '#4A1405'],
+  [1.00, '#120503'],
 ];
 
 function sunColorAt(t) {
@@ -281,12 +287,13 @@ const write = (p, o) => {
 // `minecraft:scale` é fixo por component group, ela é discreta. Razão 1,25
 // entre degraus: a diferença não se percebe num corpo distante.
 //
-// A faixa: o Sol (raio 100) visto do ponto de troca (156 do centro) pede
-// 2×34×100/156 ≈ 43; a Lua (raio 12) vista da borda do sistema pede
-// 2×34×12/1500 ≈ 0,54. Com folga nas duas pontas.
+// A faixa vem da conta, com folga nas duas pontas. O `validate.py` confere que
+// ela cobre o que os corpos do config realmente pedem — quando o modelo passou
+// a ficar na posição real (até SKY_MODEL_DISTANCE), a faixa antiga deixou de
+// servir e foi ele que apontou.
 const SIZE_RATIO = 1.25;
 const SIZE_MIN = 0.05;
-const SIZE_MAX = 120;
+const SIZE_MAX = 400;
 const SIZE_STEPS = [];
 for (let v = SIZE_MIN; v <= SIZE_MAX; v *= SIZE_RATIO) {
   SIZE_STEPS.push(Number(v.toPrecision(4)));

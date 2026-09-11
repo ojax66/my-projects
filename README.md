@@ -604,44 +604,68 @@ tamanho aparente  =  raio / distância real
 escala do modelo  =  (distância do modelo × raio) / (distância real × 8)
 ```
 
-### O modelo fica preso ao jogador — e por quê
+### Onde o modelo fica
 
-Tentei as duas coisas, e uma delas não funciona no Bedrock.
+Ele vai **na direção do corpo, à distância real dele** — mas nunca além do
+alcance em que o jogo ainda desenha uma entidade (`SKY_MODEL_DISTANCE`).
 
-Pôr o modelo **no centro da construção, do tamanho dela** é o ideal: os dois
-ocupam o mesmo espaço e não há paralaxe nenhuma. Só que uma entidade parada a
-centenas de blocos **não é renderizada**, e os corpos sumiram de novo.
+```
+posição = jogador + direção_do_corpo × min(distância_real, alcance)
+```
 
-Então ele fica sempre a poucos blocos do jogador, na direção do corpo, escalado
-pra dar exatamente o mesmo ângulo. É a única forma de "não parar de ser
-renderizado" que o motor oferece.
+Isso dá as duas coisas de uma vez. Perto, o modelo fica exatamente onde o corpo
+está: entra em oclusão como qualquer coisa, fica atrás do que estiver na frente,
+e **não atravessa mais a nave nem construções**. Longe, encosta na borda do
+alcance e é escalado pra dar o mesmo ângulo — que é a única forma de continuar
+visível.
+
+As duas versões anteriores erraram por pontas opostas. **No centro real** o
+modelo não era renderizado: uma entidade parada a centenas de blocos o jogo
+simplesmente não desenha. **A 34 blocos fixos** ele era desenhado sempre, mas
+ficava dentro de tudo.
 
 ```
 ângulo do corpo real  =  raio / distância
-ângulo do modelo      =  (meia-aresta × escala) / SKY_MODEL_DISTANCE
-                      ⇒  escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+ângulo do modelo      =  (meia-aresta × escala) / distância_do_modelo
+                      ⇒  escala = 2 × distância_do_modelo × raio / distância
 ```
 
-O **2** é a parte que já errei: o cubo do geometry tem 16 unidades de aresta,
-que é *um bloco* — meia-aresta 0,5. A primeira versão dividia por 8, tratando a
-meia-aresta como 8 **blocos**: dezesseis vezes menor, e nada media isso.
+O **2** é a meia-aresta do cubo do geometry: 16 unidades de aresta é *um bloco*,
+então 0,5 — e não 8, que foi o erro de dezesseis vezes de uma versão anterior.
 
-O tamanho aparente fica idêntico ao da construção, então a troca de um pelo
-outro não muda nada na tela. O que muda é paralaxe — o modelo acompanha o
-jogador —, e a troca acontece a 56 blocos da casca, bem antes de isso ser
-perceptível.
+**Dentro de um corpo, o céu some.** Como o modelo fica perto do jogador, lá
+dentro do Sol a Terra, a Lua e Marte apareciam flutuando no meio do plasma,
+atravessando as camadas que deviam escondê-los.
 
-A escala vem de `minecraft:scale` em **degraus** de component group (razão
-1,25), porque `minecraft:scale` é fixo por grupo. Antes disso ela vinha de uma
-animação do cliente lendo `q.property`, que devolve **zero** quando não resolve
-— e escala zero é um modelo invisível, sem erro nenhum. Junto foi outro defeito
-da mesma família: a geometria declarava `format_version 1.12.0` usando **UV por
-face**, que só existe a partir de `1.16.0`, e geometria que falha ao carregar
-também não desenha nada.
+A escala vem de `minecraft:scale` em **degraus** de component group, porque ele
+é fixo por grupo. Antes vinha de uma animação do cliente lendo `q.property`, que
+devolve **zero** quando não resolve — e escala zero é um modelo invisível, sem
+erro nenhum.
 
-O `validate.py` confere que os degraus cobrem a faixa que a conta realmente
-pede: do maior corpo visto do ponto de troca até o menor visto da borda do
-sistema.
+A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
+que constrói o corpo de blocos, e cada pixel recebe a cor média da textura
+daquele bloco.
+
+## A coroa do Sol não é construída
+
+Ela era atravessável, então o jogador passava direto por ela sem nada acontecer
+— e custava **720 mil blocos**, dois terços de todo o Sol. Uma película que não
+mudava nada.
+
+Agora ela é `modelOnly` no config: não vira bloco nenhum, e quem a desenha é o
+modelo visto de longe. O Sol caiu de 1,08 milhão para **302 mil blocos**, e o
+tempo de geração contínua de 21,7s para 2,5s (com o orçamento por tick também
+aumentado).
+
+O degradê migrou junto, pra camada do plasma — que passou a ser a casca que se
+vê chegando perto. E isso trouxe um bug de tabela: `faceOffset` normalizava pelo
+raio do CORPO (100), mas a casca visível tem raio 62, então o afastamento máximo
+era 0,62 e **os dois últimos tons da rampa nunca apareciam**. Agora normaliza
+pelo raio da camada.
+
+`builtRadius(body)` é o raio da camada mais externa que é construída de blocos.
+Medir a superfície pelo `radius` do corpo agora cai no vazio, e era isso que os
+testes de geometria faziam.
 
 A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
 que constrói o corpo de blocos, e cada pixel recebe a cor média da textura

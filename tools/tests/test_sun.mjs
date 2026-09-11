@@ -6,7 +6,7 @@
  * senão não há o que atravessar.
  */
 import { world, system, __reset, __advance } from '@minecraft/server';
-import { columnRuns } from './space_dim/bodies.js';
+import { columnRuns, builtRadius } from './space_dim/bodies.js';
 import { BODIES } from './space_dim/config.js';
 import { applySunHeat, heatLevelAt } from './space_dim/hazards.js';
 
@@ -35,11 +35,18 @@ const R = sun.radius;
   // no miolo da face, por causa do degradê do disco solar, então bem no eixo
   // central ela aparece como `sun_core`. Quem confere as três COREs é o teste
   // do degradê, mais abaixo, que olha a face inteira.
-  check('a coluna central atravessa as três camadas',
-        runs.length === 5, `(${runs.length} trechos)`);
+  // Tres trechos: as duas travessias da casca do plasma mais o nucleo no meio.
+  // Eram cinco quando a coroa tambem era construida; ela virou `modelOnly` e
+  // nao vira bloco nenhum.
+  const construidas = sun.layers.filter((L) => !L.modelOnly);
+  check('a coluna central atravessa as camadas construídas',
+        runs.length === 2 * construidas.length - 1,
+        `(${runs.length} trechos, ${construidas.length} camadas construídas)`);
+  const meio = runs[Math.floor(runs.length / 2)];
+  const nucleo = construidas[construidas.length - 1];
   check('  com o núcleo maciço no meio',
-        runs[2] && runs[2].y1 - runs[2].y0 + 1 >= sun.layers[2].radius * 2,
-        runs[2] ? `(${runs[2].y1 - runs[2].y0 + 1} blocos)` : '(nenhum)');
+        meio && meio.y1 - meio.y0 + 1 >= nucleo.radius * 2,
+        meio ? `(${meio.y1 - meio.y0 + 1} blocos)` : '(nenhum)');
 
   // Tem que haver VÁCUO entre as camadas, senão não é atravessável — é maciço.
   let gaps = 0;
@@ -168,7 +175,9 @@ const R = sun.radius;
 // textura vira um carimbo repetido em cada bloco.
 {
   const sun = BODIES.find((b) => b.id === 'sun');
-  const R = sun.radius;
+  // A casca CONSTRUIDA: a coroa e `modelOnly` e nao tem bloco nenhum. O degrade
+  // ficou com a camada do plasma, que passou a ser a que se ve chegando perto.
+  const R = builtRadius(sun);
   const blockAt = (dx, dy, dz) => {
     const runs = columnRuns(sun.center.x + dx, sun.center.z + dz);
     const y = sun.center.y + dy;
@@ -231,7 +240,7 @@ const R = sun.radius;
 // atravessável.
 {
   const sun = BODIES.find((b) => b.id === 'sun');
-  const R = sun.radius;
+  const R = builtRadius(sun);
   const SOLIDOS = new Set(['space_dim:sun_core']);
   const blockAt2 = (dx, dy, dz) => {
     const runs = columnRuns(sun.center.x + dx, sun.center.z + dz);

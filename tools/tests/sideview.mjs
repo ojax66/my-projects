@@ -1,4 +1,4 @@
-import { columnRuns } from './space_dim/bodies.js';
+import { columnRuns, builtRadius } from './space_dim/bodies.js';
 const generateColumn = (dim, x, z) => {
   const runs = columnRuns(x, z);
   let top = -64;
@@ -36,11 +36,14 @@ const CH = {
   'space_dim:moon_regolith_dark':'@',
   'space_dim:mars_dust':'o', 'space_dim:mars_rock':'R',
   'space_dim:mars_rock_dark':'X', 'space_dim:mars_ice':'*',
-  'space_dim:sun_corona':'c', 'space_dim:sun_plasma':'p', 'space_dim:sun_core':'O',
+  'space_dim:sun_edge':'e', 'space_dim:sun_corona':'c', 'space_dim:sun_ember':'m',
+  'space_dim:sun_plasma':'p', 'space_dim:sun_flare':'f', 'space_dim:sun_blaze':'B',
+  'space_dim:sun_core':'O',
 };
 
 function render(body, face) {
-  const R = body.radius, cols = 62, rows = 31;
+  // A casca CONSTRUÍDA: a coroa do Sol é só modelo e não tem bloco nenhum.
+  const R = builtRadius(body), cols = 62, rows = 31;
   const counts = {};
   console.log(`\n=== ${body.id.toUpperCase()} — face ${face} (cubo de meia-aresta ${R}) ===`);
   for (let r = 0; r < rows; r++) {
