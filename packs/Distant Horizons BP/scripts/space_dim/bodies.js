@@ -42,7 +42,10 @@ const POLAR_CAP_WIDTH = 0.34;
  * os mares da Lua, não pintando tom escuro dentro de uma textura.
  */
 const SUN_DISC = [
-  { until: 0.30, block: "space_dim:sun_core" },     // branco
+  // `sun_blaze`, não `sun_core`: os dois são o mesmo branco, mas o núcleo é o
+  // chão MACIÇO lá no meio do Sol. Pintar a casca externa com ele fechou a
+  // primeira camada — dava pra encostar no Sol, não pra entrar.
+  { until: 0.30, block: "space_dim:sun_blaze" },    // branco, atravessável
   { until: 0.45, block: "space_dim:sun_flare" },    // amarelo claro
   { until: 0.58, block: "space_dim:sun_plasma" },   // amarelo
   { until: 0.72, block: "space_dim:sun_ember" },    // laranja

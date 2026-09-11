@@ -177,7 +177,9 @@ const R = sun.radius;
   };
 
   // A rampa, do miolo da face pra borda.
-  const RAMPA = ['sun_core', 'sun_flare', 'sun_plasma', 'sun_ember',
+  // `sun_blaze` e não `sun_core`: a casca externa tem que ser atravessável, e o
+  // core é o chão maciço do meio do Sol.
+  const RAMPA = ['sun_blaze', 'sun_flare', 'sun_plasma', 'sun_ember',
                  'sun_corona', 'sun_edge'];
 
   // Andando do centro da face pra quina, a ordem dos tons não pode voltar
@@ -194,7 +196,7 @@ const R = sun.radius;
   check('do miolo da face pra borda o Sol percorre a rampa',
         indices.every((v, i) => v >= 0 && (i === 0 || v >= indices[i - 1])),
         `(${vistos.join(' → ')})`);
-  check('  começando no tom mais claro', vistos[0] === 'sun_core', `(${vistos[0]})`);
+  check('  começando no tom mais claro', vistos[0] === 'sun_blaze', `(${vistos[0]})`);
   check('  e terminando no mais escuro',
         vistos[vistos.length - 1] === 'sun_edge', `(${vistos[vistos.length - 1]})`);
 
@@ -217,8 +219,40 @@ const R = sun.radius;
   const faces = [[0, 0, -R], [R, 0, 0], [-R, 0, 0], [0, R, 0], [0, -R, 0]];
   for (const [dx, dy, dz] of faces) {
     check(`  o miolo de (${dx},${dy},${dz}) também é claro`,
-          blockAt(dx, dy, dz) === 'space_dim:sun_core', `(${blockAt(dx, dy, dz)})`);
+          blockAt(dx, dy, dz) === 'space_dim:sun_blaze', `(${blockAt(dx, dy, dz)})`);
   }
+}
+
+// --- A casca externa do Sol é atravessável de ponta a ponta ------------------
+//
+// O degradê pintava o miolo de cada face com `sun_core`, que é o chão maciço do
+// núcleo: dava pra encostar no Sol, não pra entrar. E nada apontava pra isso —
+// o bloco existe, tem textura, tem nome, e o config diz que a camada é
+// atravessável.
+{
+  const sun = BODIES.find((b) => b.id === 'sun');
+  const R = sun.radius;
+  const SOLIDOS = new Set(['space_dim:sun_core']);
+  const blockAt2 = (dx, dy, dz) => {
+    const runs = columnRuns(sun.center.x + dx, sun.center.z + dz);
+    const y = sun.center.y + dy;
+    for (const r of runs) if (y >= r.y0 && y <= r.y1) return r.id;
+    return null;
+  };
+
+  const presos = [];
+  for (let dx = -R; dx <= R; dx += 5) {
+    for (let dy = -R; dy <= R; dy += 5) {
+      const id = blockAt2(dx, dy, R);
+      if (id && SOLIDOS.has(id)) presos.push(`${dx},${dy}`);
+    }
+  }
+  check('nenhum bloco sólido na casca externa do Sol', presos.length === 0,
+        `(${presos.length} pontos: ${presos.slice(0, 4).join(' ')}${presos.length > 4 ? '…' : ''})`);
+
+  // E o núcleo continua sólido, senão não há onde pousar lá dentro.
+  check('o núcleo continua sendo chão', blockAt2(0, 0, 0) === 'space_dim:sun_core',
+        `(${blockAt2(0, 0, 0)})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

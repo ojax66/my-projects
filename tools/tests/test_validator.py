@@ -194,32 +194,46 @@ case("corpo sem textura de ceu", drop_sky_texture,
      r"corpo earth sem textura de ceu")
 
 
-# --- 10. modelo com escala diferente da construcao ---------------------------
+# --- 10. degraus de escala do modelo ------------------------------------------
 #
-# O modelo tem que ocupar o mesmo espaco que os blocos. A versao anterior
-# calculava uma projecao presa ao jogador, e a conta tratava o cubo do geometry
-# como tendo meia-aresta de 8 BLOCOS quando ela e de meio bloco — dezesseis
-# vezes menor, e nada media isso.
-def wrong_model_size(tmp):
-    path = bp(tmp, "entities", "sky_sun.json")
+# O modelo fica preso ao jogador e e escalado pra dar o mesmo angulo que o corpo
+# daria la longe. A conta e `2 * distancia_do_modelo * raio / distancia`; a
+# versao anterior dividia por 8, tratando a meia-aresta do cubo como 8 BLOCOS
+# quando ela e meio bloco — dezesseis vezes menor, e nada media isso.
+def zero_step(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+                        "scripts", "space_dim", "skySteps.js")
+    src = open(path, encoding="utf-8").read()
+    open(path, "w", encoding="utf-8").write(src.replace("[0.05,", "[0,"))
+
+
+case("degrau de escala igual a zero", zero_step, r"degrau de escala <= 0")
+
+
+def steps_out_of_sync(tmp):
+    path = bp(tmp, "entities", "sky_moon.json")
     doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:entity"]["components"]["minecraft:scale"]["value"] = 7
+    doc["minecraft:entity"]["component_groups"].pop("space_dim:size_3")
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
 
-case("modelo com escala diferente da construcao", wrong_model_size,
-     r"sky_sun tem escala 7, mas a construcao tem 201")
+case("degraus do BP fora de sincronia com skySteps.js", steps_out_of_sync,
+     r"as listas divergiram")
 
 
-def scale_groups_back(tmp):
-    path = bp(tmp, "entities", "sky_earth.json")
-    doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:entity"]["component_groups"] = {"space_dim:size_0": {}}
-    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+def steps_too_narrow(tmp):
+    # tira os degraus grandes: o Sol visto do ponto de troca nao caberia
+    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+                        "scripts", "space_dim", "skySteps.js")
+    src = open(path, encoding="utf-8").read()
+    nums = re.search(r"\[(.*)\]", src).group(1).split(",")
+    curto = "[" + ",".join(nums[:10]) + "]"
+    open(path, "w", encoding="utf-8").write(
+        re.sub(r"\[.*\]", curto, src))
 
 
-case("component groups de escala de volta", scale_groups_back,
-     r"ainda tem component_groups de escala")
+case("degraus que nao cobrem o que a conta pede", steps_too_narrow,
+     r"a conta pede de")
 
 
 # --- 11. mapa estelar de um sistema que nao existe ---------------------------
@@ -364,6 +378,23 @@ def animate_scale_again(tmp):
 
 case("cliente voltando a animar a escala", animate_scale_again,
      r"anima a escala no cliente")
+
+
+# --- 12h. camada atravessavel pintada com bloco solido -----------------------
+#
+# O bug: o degrade do Sol pintava o miolo de cada face da casca externa com
+# `sun_core`, que e o chao macico do nucleo. A primeira camada do Sol fechou —
+# dava pra encostar nele, nao pra entrar — e nada apontava pra isso.
+def solid_on_passable_layer(tmp):
+    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+                        "scripts", "space_dim", "bodies.js")
+    src = open(path, encoding="utf-8").read()
+    open(path, "w", encoding="utf-8").write(
+        src.replace('block: "space_dim:sun_blaze"', 'block: "space_dim:sun_core"'))
+
+
+case("camada atravessavel pintada com bloco solido", solid_on_passable_layer,
+     r"pinta com space_dim:sun_core, que TEM colisao")
 
 
 # --- 13. os geradores nao podem depender da ordem ----------------------------

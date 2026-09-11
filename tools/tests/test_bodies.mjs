@@ -113,7 +113,12 @@ for (const body of BODIES) {
     // O Sol tem seis tons de superficie, nao tres: e com eles que o disco dele
     // faz o degrade do branco ao vermelho, trocando de bloco.
     'space_dim:sun_edge','space_dim:sun_corona','space_dim:sun_ember',
-    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_core',
+    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_blaze',
+    // `sun_blaze` e `sun_core` sao o mesmo branco com papeis opostos: o blaze e
+    // o miolo claro da casca externa, que TEM que ser atravessavel, e o core e
+    // o chao macico la no meio. Pintar a casca com o core fechou a primeira
+    // camada do Sol.
+    'space_dim:sun_core',
     'space_dim:earth_ocean','space_dim:earth_shallow','space_dim:earth_land',
     'space_dim:earth_forest','space_dim:earth_ice',
     'space_dim:moon_regolith_light','space_dim:moon_regolith','space_dim:moon_regolith_dark',

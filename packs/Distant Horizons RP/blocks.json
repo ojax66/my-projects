@@ -16,6 +16,10 @@
     "textures": "space_dim_sun_core",
     "sound": "stone"
   },
+  "space_dim:sun_blaze": {
+    "textures": "space_dim_sun_blaze",
+    "sound": "stone"
+  },
   "space_dim:sun_flare": {
     "textures": "space_dim_sun_flare",
     "sound": "stone"

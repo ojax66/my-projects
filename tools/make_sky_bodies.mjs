@@ -267,13 +267,51 @@ const write = (p, o) => {
 //
 // O cubo do geometry tem 16 unidades de aresta, que é UM bloco. Então a escala
 // é o número de blocos da aresta do corpo: 2*raio + 1.
-const bodyScale = (body) => body.radius * 2 + 1;
+// A escala do modelo, em degraus.
+//
+// O modelo fica preso ao jogador a SKY_MODEL_DISTANCE e é escalado pra dar o
+// mesmo ângulo que o corpo daria lá longe:
+//
+//     escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+//
+// (o cubo do geometry tem 16 unidades de aresta, que é um bloco: meia-aresta
+// 0,5 — e não 8, que foi o erro de dezesseis vezes da versão anterior.)
+//
+// Como a distância varia continuamente, a escala também varia; e como
+// `minecraft:scale` é fixo por component group, ela é discreta. Razão 1,25
+// entre degraus: a diferença não se percebe num corpo distante.
+//
+// A faixa: o Sol (raio 100) visto do ponto de troca (156 do centro) pede
+// 2×34×100/156 ≈ 43; a Lua (raio 12) vista da borda do sistema pede
+// 2×34×12/1500 ≈ 0,54. Com folga nas duas pontas.
+const SIZE_RATIO = 1.25;
+const SIZE_MIN = 0.05;
+const SIZE_MAX = 120;
+const SIZE_STEPS = [];
+for (let v = SIZE_MIN; v <= SIZE_MAX; v *= SIZE_RATIO) {
+  SIZE_STEPS.push(Number(v.toPrecision(4)));
+}
+
+function sizeGroups() {
+  const groups = {};
+  const events = {};
+  const all = SIZE_STEPS.map((_, j) => `${NS}:size_${j}`);
+  SIZE_STEPS.forEach((value, i) => {
+    groups[`${NS}:size_${i}`] = { 'minecraft:scale': { value } };
+    events[`${NS}:set_size_${i}`] = {
+      add: { component_groups: [`${NS}:size_${i}`] },
+      remove: { component_groups: all.filter((g) => g !== `${NS}:size_${i}`) },
+    };
+  });
+  return { groups, events };
+}
 
 // A estrela é outra coisa: não é o corpo, é o ponto de luz que sobra dele visto
 // de muito longe. Essa continua presa ao jogador, pequena e fixa.
 const STAR_SCALE_FIXED = 0.35;
 
 function bpEntity(body) {
+  const { groups, events } = sizeGroups();
   return {
     format_version: '1.21.80',
     'minecraft:entity': {
@@ -296,10 +334,9 @@ function bpEntity(body) {
         'minecraft:fire_immune': true,
         'minecraft:conditional_bandwidth_optimization': {},
         'minecraft:type_family': { family: ['space_dim_sky'] },
-        // Do tamanho da construção, fixo. Sem degraus, sem evento, sem script
-        // escolhendo: o corpo tem um tamanho só e ele não muda.
-        'minecraft:scale': { value: bodyScale(body) },
       },
+      component_groups: groups,
+      events,
     },
   };
 }
@@ -455,6 +492,19 @@ write(path.join(RP, 'render_controllers', 'sky_body.render_controllers.json'), {
     },
   },
 });
+
+// Os degraus vão pro lado do script: ele escolhe o mais próximo, e as duas
+// listas não podem divergir.
+fs.writeFileSync(
+  path.join(BP, 'scripts', 'space_dim', 'skySteps.js'),
+  '/* GERADO por tools/make_sky_bodies.mjs — não edite à mão.\n' +
+  ' *\n' +
+  ' * Os degraus de escala dos corpos vistos de longe. Cada um é um component\n' +
+  ' * group com `minecraft:scale` na entidade; o script escolhe o mais próximo\n' +
+  ' * e dispara o evento correspondente.\n' +
+  ' */\n' +
+  'export const SKY_SIZE_STEPS = ' + JSON.stringify(SIZE_STEPS) + ';\n'
+);
 
 fs.rmSync(STAGE, { recursive: true, force: true });
 console.log(`${SKY.length} corpos + a estrela: ${SKY.map((b) => b.id).join(', ')}`);

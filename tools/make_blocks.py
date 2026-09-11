@@ -60,9 +60,17 @@ BLOCKS = {
                         light=15, hardness=2.0, solid=False, dampening=0),
     "sun_core":   block("sun_core", "#FFFDF1", "Núcleo Solar", "Solar Core",
                         light=15, hardness=4.0, solid=True, dampening=0),
-    # Os três tons intermediários existem por um motivo só: dar ao disco do Sol
-    # o degradê da referência. Com três blocos ele saía em três faixas duras;
-    # com seis, a passagem do branco ao vermelho se lê como um degradê.
+    # O branco da SUPERFÍCIE, separado do branco do NÚCLEO.
+    #
+    # Os dois têm a mesma cor e papéis opostos: `sun_core` é o chão maciço lá no
+    # meio do Sol, e este aqui é o miolo claro da casca externa, que tem que ser
+    # atravessável. Pintar a superfície com `sun_core` fechou a primeira camada
+    # do Sol — dava pra encostar, não pra entrar.
+    "sun_blaze":  block("sun_blaze", "#FFFDF1", "Clarão Solar", "Solar Blaze",
+                        light=15, hardness=2.0, solid=False, dampening=0),
+    # Os tons intermediários existem por um motivo só: dar ao disco do Sol o
+    # degradê da referência. Com três blocos ele saía em faixas duras; com seis,
+    # a passagem do branco ao vermelho se lê como um degradê.
     "sun_flare":  block("sun_flare", "#FEEC9A", "Fulgor Solar", "Solar Flare",
                         light=15, hardness=2.0, solid=False, dampening=0),
     "sun_ember":  block("sun_ember", "#FFA123", "Brasa Solar", "Solar Ember",

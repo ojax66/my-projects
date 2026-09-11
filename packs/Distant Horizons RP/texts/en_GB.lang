@@ -7,6 +7,7 @@ biome.space_dim.espaco_sideral.name=Outer Space
 tile.space_dim:sun_corona.name=Solar Corona
 tile.space_dim:sun_plasma.name=Solar Plasma
 tile.space_dim:sun_core.name=Solar Core
+tile.space_dim:sun_blaze.name=Solar Blaze
 tile.space_dim:sun_flare.name=Solar Flare
 tile.space_dim:sun_ember.name=Solar Ember
 tile.space_dim:sun_edge.name=Solar Edge

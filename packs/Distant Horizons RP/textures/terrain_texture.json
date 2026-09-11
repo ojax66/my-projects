@@ -13,6 +13,9 @@
     "space_dim_sun_core": {
       "textures": "textures/space_dim/blocks/sun_core"
     },
+    "space_dim_sun_blaze": {
+      "textures": "textures/space_dim/blocks/sun_blaze"
+    },
     "space_dim_sun_flare": {
       "textures": "textures/space_dim/blocks/sun_flare"
     },

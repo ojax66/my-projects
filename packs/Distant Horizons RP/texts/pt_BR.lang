@@ -7,6 +7,7 @@ biome.space_dim.espaco_sideral.name=Espaço Sideral
 tile.space_dim:sun_corona.name=Coroa Solar
 tile.space_dim:sun_plasma.name=Plasma Solar
 tile.space_dim:sun_core.name=Núcleo Solar
+tile.space_dim:sun_blaze.name=Clarão Solar
 tile.space_dim:sun_flare.name=Fulgor Solar
 tile.space_dim:sun_ember.name=Brasa Solar
 tile.space_dim:sun_edge.name=Borda Solar

@@ -595,31 +595,76 @@ if isinstance(geo, dict):
                 err(f"a textura de ceu {bid}.png e {w}x{h}, mas o modelo declara "
                     f"{tw}x{th} — as faces cairiam no lugar errado")
 
-# O modelo tem que ter o TAMANHO DA CONSTRUCAO.
-#
-# Historico: a escala vinha de uma conta de projecao que tratava o cubo do
-# geometry como tendo meia-aresta de 8 BLOCOS, quando ela e de 8 unidades — meio
-# bloco. Dezesseis vezes menor, e nada media isso. Agora e uma constante por
-# corpo: a aresta em blocos, 2*raio + 1.
 radii = {}
 for m in re.finditer(r'id:\s*"(\w+)",[\s\S]*?radius:\s*(\d+)', config_src):
     radii.setdefault(m.group(1), int(m.group(2)))
 
-for bid in body_ids:
+# A escala do modelo e a PROJECAO do corpo, em degraus de component group.
+#
+# O modelo fica preso ao jogador a SKY_MODEL_DISTANCE e e escalado pra dar o
+# mesmo angulo que o corpo daria la longe:
+#
+#     escala = 2 * SKY_MODEL_DISTANCE * raio / distancia
+#
+# O 2 vem da meia-aresta do cubo do geometry, que e 0,5 bloco (16 unidades de
+# aresta). A versao anterior dividia por 8, tratando a meia-aresta como 8
+# BLOCOS: dezesseis vezes menor, e nada media isso.
+steps_path = os.path.join(BP, "scripts", "space_dim", "skySteps.js")
+steps = []
+if os.path.isfile(steps_path):
+    with open(steps_path, encoding="utf-8") as f:
+        m = re.search(r"SKY_SIZE_STEPS = \[([^\]]*)\]", f.read())
+    if m:
+        steps = [float(x) for x in m.group(1).split(",") if x.strip()]
+if not steps:
+    err("scripts/space_dim/skySteps.js sem degraus de escala")
+if any(v <= 0 for v in steps):
+    err("ha um degrau de escala <= 0 em skySteps.js — escala zero e um modelo "
+        "invisivel, que e exatamente o defeito que isto substitui")
+
+for bid in list(body_ids) + ["star"]:
     doc = docs.get(os.path.join(BP, "entities", f"sky_{bid}.json"))
-    if not isinstance(doc, dict) or bid not in radii:
+    if not isinstance(doc, dict):
         continue
-    comps = doc.get("minecraft:entity", {}).get("components", {})
-    got = comps.get("minecraft:scale", {}).get("value")
-    want = radii[bid] * 2 + 1
-    if got is None:
-        err(f"sky_{bid} sem minecraft:scale — o modelo sairia do tamanho errado")
-    elif abs(float(got) - want) > 1e-6:
-        err(f"sky_{bid} tem escala {got}, mas a construcao tem {want} blocos de "
-            f"aresta — o modelo e a construcao nao casariam")
-    if doc["minecraft:entity"].get("component_groups"):
-        err(f"sky_{bid} ainda tem component_groups de escala — a escala e uma "
-            f"constante agora, e duas fontes dao tamanhos diferentes")
+    ent = doc.get("minecraft:entity", {})
+    groups = ent.get("component_groups", {})
+    events = ent.get("events", {})
+    if bid == "star":
+        if "minecraft:scale" not in ent.get("components", {}):
+            err("sky_star sem minecraft:scale — a estrela tem tamanho fixo")
+        continue
+    if len(groups) != len(steps) or len(events) != len(steps):
+        err(f"sky_{bid} tem {len(groups)} grupos e {len(events)} eventos, mas "
+            f"skySteps.js declara {len(steps)} degraus — as listas divergiram e "
+            f"o script pediria um evento que nao existe")
+        continue
+    for i, value in enumerate(steps):
+        got = groups.get(f"space_dim:size_{i}", {}).get("minecraft:scale", {}).get("value")
+        if got is None or abs(float(got) - value) > 1e-6:
+            err(f"sky_{bid}: grupo size_{i} tem escala {got}, skySteps.js diz {value}")
+        if f"space_dim:set_size_{i}" not in events:
+            err(f"sky_{bid} sem o evento set_size_{i}")
+
+# A faixa dos degraus tem que cobrir o que a conta realmente pede: do corpo
+# maior visto do ponto de troca ate o menor visto da borda do sistema.
+model_dist = config_number("SKY_MODEL_DISTANCE")
+hide_below = None
+mh = re.search(r"export const SKY_MODEL_HIDE_BELOW = GEN_RADIUS_CHUNKS \* 16 - (\d+);",
+               config_src)
+gen_chunks = config_number("GEN_RADIUS_CHUNKS")
+if mh and gen_chunks:
+    hide_below = gen_chunks * 16 - int(mh.group(1))
+sys_radius = config_number("SOLAR_SYSTEM_RADIUS")
+
+if steps and model_dist and hide_below and sys_radius and radii:
+    piores = []
+    for bid, r in radii.items():
+        piores.append(2 * model_dist * r / (hide_below + r))   # mais perto
+        piores.append(2 * model_dist * r / sys_radius)          # mais longe
+    if max(piores) > max(steps) or min(piores) < min(steps):
+        err(f"os degraus vao de {min(steps)} a {max(steps)}, mas a conta pede de "
+            f"{min(piores):.3f} a {max(piores):.1f} — o modelo sairia do tamanho "
+            f"errado nas pontas")
 
 # E o RP nao pode animar a escala: seria uma terceira fonte.
 for bid in list(body_ids) + ["star"]:
@@ -677,6 +722,70 @@ if os.path.isfile(sun_tex):
                 f"o degrade dele virou faixa dura")
     except Exception as e:  # noqa: BLE001
         warn(f"nao consegui medir os tons da textura do Sol: {e}")
+
+# Uma camada marcada `passable` no config so pode ser pintada com blocos SEM
+# colisao.
+#
+# O bug que isto pega: a casca externa do Sol e atravessavel, mas o degrade
+# pintava o miolo de cada face com `sun_core`, que e o chao macico do nucleo.
+# A primeira camada do Sol fechou — dava pra encostar nele, nao pra entrar — e
+# nada apontava pra isso: o bloco existe, tem textura, tem nome, e o config diz
+# que a camada e atravessavel.
+#
+# A lista de blocos de cada paleta sai do proprio bodies.js.
+bodies_src = ""
+bodies_path = os.path.join(BP, "scripts", "space_dim", "bodies.js")
+if os.path.isfile(bodies_path):
+    with open(bodies_path, encoding="utf-8") as f:
+        bodies_src = f.read()
+
+# Quais paletas sao de camadas passable, lido do config.
+passable_palettes = set()
+for m in re.finditer(
+        r"\{\s*radius:[^}]*?palette:\s*\"(\w+)\"[^}]*?passable:\s*true", config_src):
+    passable_palettes.add(m.group(1))
+
+def block_is_solid(block_id):
+    doc = docs.get(os.path.join(BP, "blocks", block_id.split(":")[1] + ".json"))
+    if not isinstance(doc, dict):
+        return None
+    comps = doc.get("minecraft:block", {}).get("components", {})
+    return comps.get("minecraft:collision_box", True) is not False
+
+def palette_body(name):
+    """O corpo da funcao daquela paleta, dentro de PALETTES.
+
+    Nao da pra procurar ate o proximo `\n  },`: as paletas simples sao de UMA
+    linha (`sun_plasma() { return "..."; },`) e nao tem esse delimitador, entao
+    a busca engolia as paletas seguintes e acusava blocos que nao sao daquela.
+    O corte certo e a proxima declaracao de paleta, seja ela de uma linha ou de
+    um bloco.
+    """
+    start = re.search(rf"^  {name}\(", bodies_src, re.M)
+    if not start:
+        return ""
+    rest = bodies_src[start.end():]
+    nxt = re.search(r"^  \w+\(|^\};", rest, re.M)
+    return rest[:nxt.start()] if nxt else rest
+
+
+for palette in sorted(passable_palettes):
+    body_src = palette_body(palette)
+    # a rampa do disco solar mora numa constante; inclui ela quando citada
+    if "SUN_DISC" in body_src:
+        m2 = re.search(r"const SUN_DISC = \[(.*?)\];", bodies_src, re.S)
+        if m2:
+            body_src += m2.group(1)
+    used = set(re.findall(r'"(space_dim:\w+)"', body_src))
+    if not used:
+        warn(f"nao consegui ler os blocos da paleta {palette}")
+    for block_id in sorted(used):
+        solid = block_is_solid(block_id)
+        if solid is None:
+            err(f"a paleta {palette} usa {block_id}, que nao tem JSON de bloco")
+        elif solid:
+            err(f"a camada {palette} e `passable` no config, mas pinta com "
+                f"{block_id}, que TEM colisao — a camada ficaria fechada")
 
 # --- 4d-ter. mapas estelares e sistemas ---------------------------------------
 #

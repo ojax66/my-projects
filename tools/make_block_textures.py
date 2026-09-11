@@ -198,6 +198,12 @@ TEXTURES = {
         ["#F3DE8A", "#F9E592", "#FEEC9A", "#FFF1AD", "#FFF6C0"],
         [2, 3, 4, 3, 2], 190, 3, 0.38,
     ),
+    # Mesma cor do núcleo, papel oposto: este é o miolo claro da casca externa,
+    # e ele é atravessável.
+    "sun_blaze": (
+        ["#FFF4C8", "#FFF8DC", "#FFFDF1", "#FFFEF8", "#FFFFFF"],
+        [2, 3, 4, 3, 2], 863, 3, 0.38,
+    ),
     "sun_core": (
         ["#FFF4C8", "#FFF8DC", "#FFFDF1", "#FFFEF8", "#FFFFFF"],
         [2, 3, 4, 3, 2], 863, 3, 0.38,
@@ -327,6 +333,19 @@ MAX_LUMA_RANGE = 46
 # perfeitamente, e uma checagem só de luma reprovaria os dois sem motivo.
 MIN_BODY_SEPARATION = 24
 
+# Pares que dividem a mesma cor DE PROPÓSITO.
+#
+# `sun_blaze` e `sun_core` são o mesmo branco: o que muda entre eles não é a
+# aparência, é a colisão. Um é o miolo claro da casca externa, que tem que ser
+# atravessável; o outro é o chão maciço lá no meio do Sol. O jogador nunca vê os
+# dois lado a lado — estão separados por setenta e oito blocos de Sol.
+#
+# A exceção é declarada aqui, e não afrouxando o limiar: baixar o limiar pra
+# caber este par deixaria passar dois tons de verde que deveriam ser distintos.
+SAME_COLOR_ON_PURPOSE = {
+    frozenset({"sun_blaze", "sun_core"}),
+}
+
 
 def color_distance(a, b):
     ra, ga, ba = hex_rgb(a)
@@ -397,6 +416,10 @@ if __name__ == "__main__":
         avg = {n: average_color(built[n]) for n in names}
         for n in sorted(names):
             others = [(color_distance(avg[n], avg[m]), m) for m in names if m != n]
+            others = [o for o in others
+                      if frozenset({n, o[1]}) not in SAME_COLOR_ON_PURPOSE]
+            if not others:
+                continue
             gap, nearest = min(others)
             mark = "" if gap >= MIN_BODY_SEPARATION else "   <-- perto demais"
             print(f"  {body:6s} {n:22s} mais parecido com {nearest:22s} "

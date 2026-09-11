@@ -57,9 +57,1760 @@
         "family": [
           "space_dim_sky"
         ]
+      }
+    },
+    "component_groups": {
+      "space_dim:size_0": {
+        "minecraft:scale": {
+          "value": 0.05
+        }
       },
-      "minecraft:scale": {
-        "value": 53
+      "space_dim:size_1": {
+        "minecraft:scale": {
+          "value": 0.0625
+        }
+      },
+      "space_dim:size_2": {
+        "minecraft:scale": {
+          "value": 0.07813
+        }
+      },
+      "space_dim:size_3": {
+        "minecraft:scale": {
+          "value": 0.09766
+        }
+      },
+      "space_dim:size_4": {
+        "minecraft:scale": {
+          "value": 0.1221
+        }
+      },
+      "space_dim:size_5": {
+        "minecraft:scale": {
+          "value": 0.1526
+        }
+      },
+      "space_dim:size_6": {
+        "minecraft:scale": {
+          "value": 0.1907
+        }
+      },
+      "space_dim:size_7": {
+        "minecraft:scale": {
+          "value": 0.2384
+        }
+      },
+      "space_dim:size_8": {
+        "minecraft:scale": {
+          "value": 0.298
+        }
+      },
+      "space_dim:size_9": {
+        "minecraft:scale": {
+          "value": 0.3725
+        }
+      },
+      "space_dim:size_10": {
+        "minecraft:scale": {
+          "value": 0.4657
+        }
+      },
+      "space_dim:size_11": {
+        "minecraft:scale": {
+          "value": 0.5821
+        }
+      },
+      "space_dim:size_12": {
+        "minecraft:scale": {
+          "value": 0.7276
+        }
+      },
+      "space_dim:size_13": {
+        "minecraft:scale": {
+          "value": 0.9095
+        }
+      },
+      "space_dim:size_14": {
+        "minecraft:scale": {
+          "value": 1.137
+        }
+      },
+      "space_dim:size_15": {
+        "minecraft:scale": {
+          "value": 1.421
+        }
+      },
+      "space_dim:size_16": {
+        "minecraft:scale": {
+          "value": 1.776
+        }
+      },
+      "space_dim:size_17": {
+        "minecraft:scale": {
+          "value": 2.22
+        }
+      },
+      "space_dim:size_18": {
+        "minecraft:scale": {
+          "value": 2.776
+        }
+      },
+      "space_dim:size_19": {
+        "minecraft:scale": {
+          "value": 3.469
+        }
+      },
+      "space_dim:size_20": {
+        "minecraft:scale": {
+          "value": 4.337
+        }
+      },
+      "space_dim:size_21": {
+        "minecraft:scale": {
+          "value": 5.421
+        }
+      },
+      "space_dim:size_22": {
+        "minecraft:scale": {
+          "value": 6.776
+        }
+      },
+      "space_dim:size_23": {
+        "minecraft:scale": {
+          "value": 8.47
+        }
+      },
+      "space_dim:size_24": {
+        "minecraft:scale": {
+          "value": 10.59
+        }
+      },
+      "space_dim:size_25": {
+        "minecraft:scale": {
+          "value": 13.23
+        }
+      },
+      "space_dim:size_26": {
+        "minecraft:scale": {
+          "value": 16.54
+        }
+      },
+      "space_dim:size_27": {
+        "minecraft:scale": {
+          "value": 20.68
+        }
+      },
+      "space_dim:size_28": {
+        "minecraft:scale": {
+          "value": 25.85
+        }
+      },
+      "space_dim:size_29": {
+        "minecraft:scale": {
+          "value": 32.31
+        }
+      },
+      "space_dim:size_30": {
+        "minecraft:scale": {
+          "value": 40.39
+        }
+      },
+      "space_dim:size_31": {
+        "minecraft:scale": {
+          "value": 50.49
+        }
+      },
+      "space_dim:size_32": {
+        "minecraft:scale": {
+          "value": 63.11
+        }
+      },
+      "space_dim:size_33": {
+        "minecraft:scale": {
+          "value": 78.89
+        }
+      },
+      "space_dim:size_34": {
+        "minecraft:scale": {
+          "value": 98.61
+        }
+      }
+    },
+    "events": {
+      "space_dim:set_size_0": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_0"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_1": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_1"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_2": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_2"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_3": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_3"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_4": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_4"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_5": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_5"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_6": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_6"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_7": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_7"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_8": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_8"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_9": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_9"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_10": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_10"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_11": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_11"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_12": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_12"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_13": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_13"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_14": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_14"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_15": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_15"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_16": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_16"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_17": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_17"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_18": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_18"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_19": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_19"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_20": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_20"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_21": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_21"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_22": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_22"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_23": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_23"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_24": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_24"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_25": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_25"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_26": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_26"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_27": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_27"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_28": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_28"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_29": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_29"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_30": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_30"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_31": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_31"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_32",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_32": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_32"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_33",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_33": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_33"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_34"
+          ]
+        }
+      },
+      "space_dim:set_size_34": {
+        "add": {
+          "component_groups": [
+            "space_dim:size_34"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "space_dim:size_0",
+            "space_dim:size_1",
+            "space_dim:size_2",
+            "space_dim:size_3",
+            "space_dim:size_4",
+            "space_dim:size_5",
+            "space_dim:size_6",
+            "space_dim:size_7",
+            "space_dim:size_8",
+            "space_dim:size_9",
+            "space_dim:size_10",
+            "space_dim:size_11",
+            "space_dim:size_12",
+            "space_dim:size_13",
+            "space_dim:size_14",
+            "space_dim:size_15",
+            "space_dim:size_16",
+            "space_dim:size_17",
+            "space_dim:size_18",
+            "space_dim:size_19",
+            "space_dim:size_20",
+            "space_dim:size_21",
+            "space_dim:size_22",
+            "space_dim:size_23",
+            "space_dim:size_24",
+            "space_dim:size_25",
+            "space_dim:size_26",
+            "space_dim:size_27",
+            "space_dim:size_28",
+            "space_dim:size_29",
+            "space_dim:size_30",
+            "space_dim:size_31",
+            "space_dim:size_32",
+            "space_dim:size_33"
+          ]
+        }
       }
     }
   }

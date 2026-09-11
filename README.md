@@ -604,41 +604,48 @@ tamanho aparente  =  raio / distância real
 escala do modelo  =  (distância do modelo × raio) / (distância real × 8)
 ```
 
-### O modelo tem o tamanho da construção, e fica no centro dela
+### O modelo fica preso ao jogador — e por quê
 
-Primeiro o modelo era uma **projeção**: mantido a 34 blocos de quem olha e
-encolhido até dar o mesmo ângulo que o corpo daria lá longe. Duas coisas davam
-errado nisso.
+Tentei as duas coisas, e uma delas não funciona no Bedrock.
 
-A conta tratava o cubo do geometry como tendo meia-aresta de **8 blocos**,
-quando ela é de 8 *unidades* — meio bloco. Dezesseis vezes menor, e nada media
-isso. E mesmo com a conta certa o modelo andava junto com o jogador enquanto a
-construção ficava parada, então os dois nunca casavam na transição.
+Pôr o modelo **no centro da construção, do tamanho dela** é o ideal: os dois
+ocupam o mesmo espaço e não há paralaxe nenhuma. Só que uma entidade parada a
+centenas de blocos **não é renderizada**, e os corpos sumiram de novo.
 
-Agora não há conta: o modelo fica **no centro da construção**, com a **aresta
-dela** (`2 × raio + 1`, porque o cubo do geometry tem 16 unidades = 1 bloco).
-Os dois ocupam o mesmo espaço, e chegar perto só troca um pelo outro no mesmo
-lugar.
+Então ele fica sempre a poucos blocos do jogador, na direção do corpo, escalado
+pra dar exatamente o mesmo ângulo. É a única forma de "não parar de ser
+renderizado" que o motor oferece.
 
-| corpo | aresta | escala do modelo |
-|---|---|---|
-| Sol | 201 | 201 |
-| Terra | 53 | 53 |
-| Marte | 41 | 41 |
-| Lua | 25 | 25 |
+```
+ângulo do corpo real  =  raio / distância
+ângulo do modelo      =  (meia-aresta × escala) / SKY_MODEL_DISTANCE
+                      ⇒  escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+```
 
-Isso também apagou toda a maquinaria de degraus de escala que existia pra fazer
-a projeção variar. A **estrela** é a única que continua presa ao jogador: ela
-não é o corpo, é o ponto de luz que sobra dele visto de muito longe, e um ponto
-no lugar real estaria a milhares de blocos, fora de qualquer alcance.
+O **2** é a parte que já errei: o cubo do geometry tem 16 unidades de aresta,
+que é *um bloco* — meia-aresta 0,5. A primeira versão dividia por 8, tratando a
+meia-aresta como 8 **blocos**: dezesseis vezes menor, e nada media isso.
 
-Antes disso, a escala vinha de uma animação do cliente lendo
-`q.property('space_dim:size')`. Quando esse molang não resolve — e não há como
-saber que não resolveu — ele devolve **zero**, e escala zero é um modelo de
-tamanho zero: invisível, sem erro, sem aviso. Junto foi outro defeito da mesma
-família: a geometria declarava `format_version 1.12.0` usando **UV por face**,
-que só existe a partir de `1.16.0`, e geometria que falha ao carregar também
-não desenha nada.
+O tamanho aparente fica idêntico ao da construção, então a troca de um pelo
+outro não muda nada na tela. O que muda é paralaxe — o modelo acompanha o
+jogador —, e a troca acontece a 56 blocos da casca, bem antes de isso ser
+perceptível.
+
+A escala vem de `minecraft:scale` em **degraus** de component group (razão
+1,25), porque `minecraft:scale` é fixo por grupo. Antes disso ela vinha de uma
+animação do cliente lendo `q.property`, que devolve **zero** quando não resolve
+— e escala zero é um modelo invisível, sem erro nenhum. Junto foi outro defeito
+da mesma família: a geometria declarava `format_version 1.12.0` usando **UV por
+face**, que só existe a partir de `1.16.0`, e geometria que falha ao carregar
+também não desenha nada.
+
+O `validate.py` confere que os degraus cobrem a faixa que a conta realmente
+pede: do maior corpo visto do ponto de troca até o menor visto da borda do
+sistema.
+
+A textura das seis faces **não é desenhada à mão**: sai do mesmo `columnRuns()`
+que constrói o corpo de blocos, e cada pixel recebe a cor média da textura
+daquele bloco.
 
 ## O disco do Sol
 
@@ -648,20 +655,32 @@ As cores saem da referência do autor, amostrada do centro pra quina.
 ### Na construção: seis blocos
 
 Com três tons a passagem saía em faixas duras — parecia um alvo de tiro, não um
-degradê. São seis agora: `sun_core`, `sun_flare`, `sun_plasma`, `sun_ember`,
+degradê. São seis agora: `sun_blaze`, `sun_flare`, `sun_plasma`, `sun_ember`,
 `sun_corona`, `sun_edge`.
 
+**`sun_blaze` e `sun_core` são o mesmo branco, com papéis opostos.** O blaze é o
+miolo claro da casca externa e tem que ser **atravessável**; o core é o chão
+maciço lá no meio do Sol. A primeira versão do degradê pintou a casca com o
+core, e a primeira camada do Sol fechou: dava pra encostar nele, não pra entrar.
+Nada apontava pra isso — o bloco existe, tem textura, tem nome, e o config diz
+que a camada é atravessável.
+
+O `validate.py` agora lê as paletas do próprio `bodies.js` e cobra: camada
+marcada `passable` no config só pode ser pintada com blocos **sem colisão**.
+
+Os dois compartilharem a cor faz a checagem de separação reclamar, com razão
+pela regra dela. A exceção é declarada em `SAME_COLOR_ON_PURPOSE`, e não
+afrouxando o limiar: baixá-lo pra caber este par deixaria passar dois tons de
+verde que precisam ser distintos.
+
 A variação é feita trocando de **bloco**, não pintada dentro de uma textura — é
-a mesma regra dos mares da Lua, e pelo mesmo motivo: tom escuro dentro de uma
-textura vira um carimbo repetido em cada bloco. A fronteira entre as faixas
-leva ruído.
+a mesma regra dos mares da Lua. A fronteira entre as faixas leva ruído.
 
 Num cubo, "distância do centro" não é a mesma coisa que numa esfera. Cada ponto
 pertence à face do eixo em que está mais distante do centro, e dentro dessa face
-o afastamento é medido pelos **outros dois eixos** — o da face é constante ali.
-Sem isso o degradê seria concêntrico ao corpo inteiro e cada face sairia de uma
-cor chapada. A medida é Chebyshev entre os dois, o que dá um disco *quadrado*:
-um disco redondo numa face quadrada deixaria as quinas de fora.
+o afastamento é medido pelos **outros dois eixos**. A medida é Chebyshev entre
+os dois, o que dá um disco *quadrado*: um redondo numa face quadrada deixaria as
+quinas de fora.
 
 ### No modelo: degradê contínuo
 

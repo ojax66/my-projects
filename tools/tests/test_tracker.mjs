@@ -126,21 +126,34 @@ const mk = (id = 'p1') =>
   check('cada corpo rastreado e distante ganha um modelo',
         models.length > 0, `(${models.length} modelos)`);
 
-  // O modelo fica no CENTRO da construção, não numa projeção presa ao jogador:
-  // é o que faz ele e os blocos ocuparem o mesmo espaço, sem nada saltar de
-  // lugar quando um troca pelo outro.
+  // O modelo fica PRESO ao jogador, na direção do corpo. É a única forma de
+  // garantir que ele continue sendo renderizado: uma entidade parada no centro
+  // real, a centenas de blocos, o jogo não desenha — foi o que fez os corpos
+  // sumirem quando eles ficavam lá.
+  const dists = models.map((e) => Math.hypot(
+    e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
+  check('  todos ficam a uma distância fixa do jogador',
+        dists.every((d) => Math.abs(d - SKY_MODEL_DISTANCE) < 0.5),
+        `(${dists.map((d) => d.toFixed(1)).join(', ')})`);
+
+  // E na direção certa: o modelo tem que aparecer onde o corpo está.
   const { BODIES: TODOS } = await import('./space_dim/config.js');
-  const foraDoLugar = models.filter((e) => {
-    const id = e.typeId.slice('space_dim:sky_'.length);
-    const body = TODOS.find((b) => b.id === id);
+  const torto = models.filter((e) => {
+    const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
     if (!body) return true;
-    return Math.hypot(e.location.x - body.center.x,
-                      e.location.y - body.center.y,
-                      e.location.z - body.center.z) > 0.001;
+    const dir = (a, b, c) => {
+      const n = Math.hypot(a, b, c);
+      return [a / n, b / n, c / n];
+    };
+    const real = dir(body.center.x - p.location.x, body.center.y - p.location.y,
+                     body.center.z - p.location.z);
+    const mod = dir(e.location.x - p.location.x, e.location.y - p.location.y,
+                    e.location.z - p.location.z);
+    return Math.abs(real[0] - mod[0]) + Math.abs(real[1] - mod[1]) +
+           Math.abs(real[2] - mod[2]) > 0.01;
   });
-  check('  cada modelo fica no centro da própria construção',
-        foraDoLugar.length === 0,
-        `(fora do lugar: ${foraDoLugar.map((e) => e.typeId).join(', ') || 'nenhum'})`);
+  check('  e na direção do corpo de verdade', torto.length === 0,
+        `(torto: ${torto.map((e) => e.typeId).join(', ') || 'nenhum'})`);
 
   // Desligar um corpo no menu tem que apagar o modelo dele.
   const alvo = trackedBodies(p)[0];
@@ -217,29 +230,48 @@ const mk = (id = 'p1') =>
   clearModels(p.id);
 }
 
-// --- 8. O modelo tem o tamanho da construção --------------------------------
+// --- 8. A escala do modelo é a projeção do corpo ----------------------------
 //
-// A versão anterior mantinha o modelo a 34 blocos de quem olha e o encolhia até
-// dar o mesmo ângulo do corpo lá longe. A conta tratava o cubo do geometry como
-// tendo meia-aresta de 8 BLOCOS quando ela é de meio bloco — dezesseis vezes
-// menor — e, mesmo com a conta certa, o modelo andava junto com o jogador
-// enquanto a construção ficava parada.
+// O modelo fica a SKY_MODEL_DISTANCE do jogador e tem que dar o MESMO ÂNGULO
+// que o corpo daria lá longe. O cubo do geometry tem 16 unidades de aresta, que
+// é um bloco: meia-aresta 0,5. Igualando os ângulos:
 //
-// Agora o tamanho é uma constante por corpo, declarada na entidade, e é a
-// aresta da construção em blocos.
+//     escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+//
+// A versão anterior dividia por 8, tratando a meia-aresta como 8 BLOCOS —
+// dezesseis vezes menor, e nada media isso.
 {
-  const fs = await import('node:fs');
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
   const { BODIES } = await import('./space_dim/config.js');
-  const REPO = process.env.DH_REPO ?? '.';
 
-  for (const body of BODIES) {
-    const doc = JSON.parse(fs.readFileSync(
-      `${REPO}/packs/Distant Horizons BP/entities/sky_${body.id}.json`, 'utf8'));
-    const escala = doc['minecraft:entity'].components['minecraft:scale']?.value;
-    const aresta = body.radius * 2 + 1;
-    check(`${body.id}: o modelo tem a aresta da construção`, escala === aresta,
-          `(escala ${escala}, construção ${aresta} blocos)`);
-  }
+  const dim = world.getDimension(DIMENSION_ID);
+  const moon = BODIES.find((b) => b.id === 'moon');
+  const p = mk('projecao');
+
+  // A Lua a 95 blocos: o caso que ele reportou.
+  p.teleport({ x: moon.center.x, y: moon.center.y, z: moon.center.z + 95 });
+  __advance(2); updateSky(p);
+
+  const modelo = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_moon')[0];
+  check('a Lua a 95 blocos vira um modelo', !!modelo);
+
+  const ev = (modelo?.__events ?? []).find((e) => e.startsWith('space_dim:set_size_'));
+  const escala = SKY_SIZE_STEPS[Number(ev?.slice('space_dim:set_size_'.length))];
+  check('  e recebeu um degrau de escala', escala > 0, `(${ev} = ${escala})`);
+
+  // O ângulo do modelo tem que bater com o do corpo real.
+  const anguloReal = moon.radius / 95;
+  const anguloModelo = (0.5 * escala) / SKY_MODEL_DISTANCE;
+  check('  o ângulo do modelo bate com o do corpo',
+        Math.abs(Math.log(anguloModelo / anguloReal)) < Math.log(1.25),
+        `(modelo ${anguloModelo.toFixed(4)} vs real ${anguloReal.toFixed(4)})`);
+
+  check('nenhum degrau da tabela é zero', SKY_SIZE_STEPS.every((v) => v > 0),
+        `(${SKY_SIZE_STEPS.length} degraus, menor ${Math.min(...SKY_SIZE_STEPS)})`);
+
+  clearModels(p.id);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

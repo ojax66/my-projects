@@ -16,22 +16,35 @@
  *
  * (8 porque o cubo do geometry tem meia-aresta 8 na escala 1.)
  *
- * São três níveis, e o meio deles é o que faltava:
+ * São três níveis:
  *
  *   perto           os BLOCOS. O gerador constrói dentro de GEN_RADIUS_CHUNKS
- *                   do jogador, ou seja 80 blocos. Fora disso não existe bloco
- *                   nenhum pra ver.
- *   no sistema      o MODELO do corpo, do tamanho da construção e no centro
- *                   dela. É assim que dá pra ver a Terra estando perto do Sol,
- *                   e como os dois ocupam o mesmo espaço, chegar perto só troca
- *                   um pelo outro sem nada saltar de lugar.
- *   fora do sistema uma ESTRELA: um ponto branco. Além da borda o corpo não é
- *                   mais um mundo que dá pra visitar — é o que ele parece de
- *                   longe mesmo, e é o que fecha a ideia de que cada pontinho
- *                   no espaço é uma estrela de verdade.
+ *                   do jogador, ou seja 80 blocos.
+ *   no sistema      o MODELO do corpo.
+ *   fora do sistema uma ESTRELA: um ponto branco.
  *
- * Chegando perto o modelo sai de cena e os blocos assumem, senão o jogador
- * veria um cubinho pairando na frente do planeta de verdade.
+ * O modelo fica SEMPRE a poucos blocos do jogador, na direção do corpo, e é
+ * escalado pra dar exatamente o mesmo ângulo que o corpo daria lá longe. Não é
+ * capricho: uma entidade parada no centro real, a centenas de blocos, não é
+ * renderizada — a tentativa de colocá-la lá fez os corpos sumirem de novo. Preso
+ * ao jogador ele nunca sai do alcance, que é a única forma de "não parar de ser
+ * renderizado" que o Bedrock oferece.
+ *
+ *     ângulo do corpo real  =  raio / distância
+ *     ângulo do modelo      =  (meia-aresta × escala) / SKY_MODEL_DISTANCE
+ *
+ * O cubo do geometry tem 16 unidades de aresta, que é UM bloco: meia-aresta de
+ * 0,5. Igualando os dois:
+ *
+ *     escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+ *
+ * A versão anterior usava `SKY_MODEL_DISTANCE × raio / (distância × 8)`, que
+ * trata a meia-aresta como 8 BLOCOS em vez de meio — dezesseis vezes menor.
+ *
+ * O tamanho aparente fica idêntico ao da construção, então a troca de um pelo
+ * outro não muda nada na tela. O que muda é paralaxe: o modelo acompanha o
+ * jogador. A troca acontece a SKY_MODEL_HIDE_BELOW da casca, bem antes de a
+ * diferença ficar perceptível.
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
@@ -45,6 +58,7 @@ import {
   STAR_ENTITY,
 } from "./config.js";
 import { trackedBodies } from "./tracker.js";
+import { SKY_SIZE_STEPS } from "./skySteps.js";
 import { chebyshevTo } from "./bodies.js";
 
 const world = mc.world;
@@ -67,6 +81,7 @@ function dropModel(entity) {
 export function clearModels(playerId) {
   const mine = models.get(playerId);
   if (!mine) return;
+  for (const bodyId of mine.keys()) appliedStep.delete(playerId + "|" + bodyId);
   for (const entity of mine.values()) dropModel(entity);
   models.delete(playerId);
 }
@@ -138,7 +153,37 @@ export function describeSky(player) {
   return parts.join("\n");
 }
 
+// playerId|bodyId → degrau de escala já aplicado, pra não disparar o evento a
+// cada tick.
+const appliedStep = new Map();
+
+/** O degrau mais próximo da escala pedida. */
+function stepFor(scale) {
+  let best = 0;
+  let bestErr = Infinity;
+  for (let i = 0; i < SKY_SIZE_STEPS.length; i++) {
+    // Erro relativo: entre 0,01 e 0,014 a diferença absoluta é minúscula, mas a
+    // visual é a mesma que entre 1 e 1,4.
+    const err = Math.abs(Math.log(SKY_SIZE_STEPS[i] / scale));
+    if (err < bestErr) { bestErr = err; best = i; }
+  }
+  return best;
+}
+
+function applyScale(player, body, entity, scale) {
+  const step = stepFor(scale);
+  const key = player.id + "|" + body.id;
+  if (appliedStep.get(key) === step) return;
+  try {
+    entity.triggerEvent("space_dim:set_size_" + step);
+    appliedStep.set(key, step);
+  } catch (e) {
+    warnOnce("não deu pra escalar " + body.id, e);
+  }
+}
+
 function hideModel(player, bodyId) {
+  appliedStep.delete(player.id + "|" + bodyId);
   const mine = models.get(player.id);
   if (!mine) return;
   const entity = mine.get(bodyId);
@@ -194,17 +239,21 @@ export function updateSky(player) {
     // A ESTRELA não: ela é o ponto de luz que sobra do corpo visto de muito
     // longe, e um ponto no lugar real estaria a milhares de blocos, fora de
     // qualquer alcance. Essa fica presa ao jogador, na direção certa.
-    const where = star
-      ? { x: eye.x + dx * (SKY_MODEL_DISTANCE / d),
-          y: eye.y + dy * (SKY_MODEL_DISTANCE / d),
-          z: eye.z + dz * (SKY_MODEL_DISTANCE / d) }
-      : body.center;
-
+    // Sempre perto do jogador, na direção do corpo. É a única forma de
+    // garantir que o modelo continue sendo renderizado: uma entidade parada no
+    // centro real, a centenas de blocos, o jogo simplesmente não desenha.
+    const k = SKY_MODEL_DISTANCE / d;
     try {
-      entity.teleport(where);
+      entity.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
     } catch {
       hideModel(player, body.id);
       continue;
+    }
+
+    // E escalado pra dar o mesmo ângulo que o corpo daria lá longe — ver a
+    // conta no cabeçalho. A estrela tem tamanho fixo, declarado na entidade.
+    if (!star) {
+      applyScale(player, body, entity, (2 * SKY_MODEL_DISTANCE * body.radius) / d);
     }
   }
 
