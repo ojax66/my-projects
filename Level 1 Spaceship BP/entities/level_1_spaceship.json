@@ -1,0 +1,656 @@
+{
+	"format_version": "1.21.90",
+	"minecraft:entity": {
+		"description": {
+			"identifier": "nave:level_1_spaceship",
+			"is_spawnable": true,
+			"is_summonable": true,
+			"is_experimental": false,
+			"animations": {
+				"nave_damage_controller": "controller.animation.nave.ship_damage",
+				"nave_captured_controller": "controller.animation.nave.ship_captured"
+			},
+			"scripts": {
+				"animate": [
+					"nave_damage_controller",
+					"nave_captured_controller"
+				]
+			}
+		},
+		"components": {
+			"minecraft:conditional_bandwidth_optimization": {
+				"default_values": {
+					"max_optimized_distance": 60,
+					"max_dropped_ticks": 20,
+					"use_motion_prediction_hints": true
+				},
+				"conditional_values": [
+					{
+						"max_optimized_distance": 0,
+						"max_dropped_ticks": 0,
+						"conditional_values": [
+							{
+								"test": "is_moving",
+								"subject": "self",
+								"operator": "==",
+								"value": true
+							}
+						]
+					}
+				]
+			},
+			"minecraft:physics": {
+				"has_gravity": false,
+				"has_collision": true
+			},
+			"minecraft:movement": {
+				"value": 0.6
+			},
+			"minecraft:flying_speed": {
+				"value": 0.5
+			},
+			"minecraft:underwater_movement": {
+				"value": 0.5
+			},
+			"minecraft:movement.basic": {},
+			"minecraft:jump.static": {},
+			"minecraft:input_air_controlled": {
+				"strafe_speed_modifier": 0.4,
+				"backwards_movement_modifier": 8.8
+			},
+			"minecraft:body_rotation_always_follows_head": {},
+			"minecraft:scale": {
+				"value": 1
+			},
+			"minecraft:collision_box": {
+				"height": 2.8,
+				"width": 3.8
+			},
+			"minecraft:health": {
+				"value": 70
+			},
+			"minecraft:knockback_resistance": {
+				"value": 1
+			},
+			"minecraft:fire_immune": true,
+			"minecraft:breathable": {
+				"breathes_solids": false,
+				"breathes_water": false,
+				"breathes_lava": true,
+				"generates_bubbles": false
+			},
+			"minecraft:healable": {
+				"force_use": false,
+				"items": [
+					{
+						"heal_amount": 20,
+						"item": "minecraft:iron_ingot"
+					}
+				]
+			},
+			"minecraft:nameable": {},
+			"minecraft:pushable": {
+				"is_pushable": false,
+				"is_pushable_by_piston": false
+			},
+			"minecraft:type_family": {
+				"family": [
+					"nave_spaceship",
+					"dlb_van_airplane",
+					"dlb_van_planes"
+				]
+			},
+			"minecraft:loot": {
+				"table": "loot_tables/nave/spaceship_death.json"
+			},
+			"minecraft:interact": {
+				"interactions": [
+					{
+						"on_interact": {
+							"filters": {
+								"all_of": [
+									{
+										"test": "has_equipment",
+										"domain": "hand",
+										"subject": "other",
+										"value": "minecraft:shears"
+									}
+								]
+							},
+							"event": "nave:disassembled"
+						},
+						"hurt_item": 2,
+						"interact_text": "action.interact.nave.disassemble"
+					}
+				]
+			},
+			"minecraft:rideable": {
+				"controlling_seat": 0,
+				"crouching_skip_interact": true,
+				"pull_in_entities": true,
+				"seat_count": 3,
+				"rider_can_interact": true,
+				"family_types": [
+					"player"
+				],
+				"interact_text": "action.interact.nave.ride",
+				"seats": [
+					{
+						"position": [-0.53, 1.85, -0.3]
+					},
+					{
+						"position": [0.53, 1.85, -0.3]
+					},
+					{
+						"position": [-0.26, 1.5, -1.15]
+					}
+				],
+				"dismount_mode": "default"
+			},
+			"minecraft:damage_sensor": {
+				"triggers": [
+					{
+						"cause": "all",
+						"on_damage": {
+							"filters": [
+								{
+									"all_of": [
+										{
+											"test": "is_riding",
+											"subject": "other",
+											"value": true
+										},
+										{
+											"test": "has_damage",
+											"subject": "self",
+											"value": "attack"
+										}
+									]
+								}
+							],
+							"event": "nave:ship_horn"
+						},
+						"deals_damage": "no"
+					},
+					{
+						"cause": "fall",
+						"deals_damage": "no"
+					}
+				]
+			},
+			"minecraft:entity_sensor": {
+				"subsensors": [
+					{
+						"event": "nave:tag_riding_on",
+						"event_filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_riding",
+										"subject": "self",
+										"value": true
+									}
+								]
+							}
+						]
+					},
+					{
+						"event": "nave:tag_riding_off",
+						"event_filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_riding",
+										"subject": "self",
+										"value": false
+									},
+									{
+										"test": "has_tag",
+										"subject": "self",
+										"value": "nave:riding_on"
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			"minecraft:despawn": {
+				"filters": {
+					"all_of": [
+						{
+							"test": "is_daytime",
+							"subject": "self",
+							"value": true
+						},
+						{
+							"test": "has_tag",
+							"subject": "self",
+							"value": "nave_ship_captured",
+							"operator": "!="
+						},
+						{
+							"test": "distance_to_nearest_player",
+							"operator": ">=",
+							"value": 6
+						}
+					]
+				}
+			}
+		},
+		"component_groups": {
+			"nave:disassembled_group": {
+				"minecraft:loot": {
+					"table": "loot_tables/nave/spaceship_disassembled.json"
+				},
+				"minecraft:health": {
+					"value": -1
+				}
+			},
+			"nave:tag_riding_on": {
+				"minecraft:collision_box": {
+					"height": 1,
+					"width": 1
+				}
+			},
+			"nave:collision_restart": {
+				"minecraft:collision_box": {
+					"height": 2.8,
+					"width": 3.8
+				}
+			},
+			"nave:damaged": {
+				"minecraft:damage_sensor": {
+					"triggers": [
+						{
+							"cause": "all",
+							"on_damage": {
+								"filters": [
+									{
+										"all_of": [
+											{
+												"test": "is_riding",
+												"subject": "other",
+												"value": true
+											},
+											{
+												"test": "has_damage",
+												"subject": "self",
+												"value": "attack"
+											}
+										]
+									}
+								],
+								"event": "nave:ship_horn"
+							},
+							"deals_damage": "no"
+						},
+						{
+							"cause": "fall",
+							"deals_damage": "yes",
+							"on_damage": {
+								"event": "nave:crash_explosion"
+							}
+						}
+					]
+				}
+			},
+			"nave:no_damaged": {
+				"minecraft:damage_sensor": {
+					"triggers": [
+						{
+							"cause": "all",
+							"on_damage": {
+								"filters": [
+									{
+										"all_of": [
+											{
+												"test": "is_riding",
+												"subject": "other",
+												"value": true
+											},
+											{
+												"test": "has_damage",
+												"subject": "self",
+												"value": "attack"
+											}
+										]
+									}
+								],
+								"event": "nave:ship_horn"
+							},
+							"deals_damage": "no"
+						},
+						{
+							"cause": "fall",
+							"deals_damage": "no"
+						}
+					]
+				}
+			},
+			"nave:death": {
+				"minecraft:health": {
+					"value": 0
+				}
+			},
+			"nave:despawn": {
+				"minecraft:instant_despawn": {}
+			},
+			"nave:despawn_timer": {
+				"minecraft:timer": {
+					"looping": true,
+					"time": 0.1,
+					"time_down_event": {
+						"event": "nave:despawn"
+					}
+				}
+			},
+			"nave:start_animation": {
+				"minecraft:mark_variant": {
+					"value": 30
+				}
+			},
+			"nave:stop_animation": {
+				"minecraft:mark_variant": {
+					"value": 0
+				}
+			},
+			"nave:abduct_golem": {
+				"minecraft:spawn_entity": {
+					"entities": [
+						{
+							"spawn_entity": "minecraft:iron_golem",
+							"should_leash": true,
+							"single_use": true,
+							"max_wait_time": 0,
+							"min_wait_time": 0,
+							"num_to_spawn": 1
+						}
+					]
+				}
+			},
+			"nave:abduct_cat": {
+				"minecraft:spawn_entity": {
+					"entities": [
+						{
+							"spawn_entity": "minecraft:cat",
+							"should_leash": true,
+							"single_use": true,
+							"max_wait_time": 0,
+							"min_wait_time": 0,
+							"num_to_spawn": 1
+						}
+					]
+				}
+			},
+			"nave:abduct_timer": {
+				"minecraft:timer": {
+					"looping": false,
+					"time": 0.5,
+					"time_down_event": {
+						"event": "nave:abduct_entities"
+					}
+				}
+			}
+		},
+		"events": {
+			"nave:disassembled": {
+				"add": {
+					"component_groups": [
+						"nave:disassembled_group"
+					]
+				}
+			},
+			"nave:ship_horn": {
+				"queue_command": {
+					"command": [
+						"playsound mob.wither.shoot @a ~ ~ ~ 0.6 1.6"
+					]
+				}
+			},
+			"nave:tag_riding_on": {
+				"sequence": [
+					{
+						"queue_command": {
+							"command": [
+								"tag @s add nave:riding_on"
+							]
+						},
+						"add": {
+							"component_groups": [
+								"nave:tag_riding_on"
+							]
+						}
+					}
+				]
+			},
+			"nave:tag_riding_off": {
+				"sequence": [
+					{
+						"queue_command": {
+							"command": [
+								"tag @s remove nave:riding_on"
+							]
+						}
+					},
+					{
+						"add": {
+							"component_groups": [
+								"nave:collision_restart"
+							]
+						}
+					}
+				]
+			},
+			"nave:damaged": {
+				"add": {
+					"component_groups": [
+						"nave:damaged"
+					]
+				}
+			},
+			"nave:no_damaged": {
+				"add": {
+					"component_groups": [
+						"nave:no_damaged"
+					]
+				}
+			},
+			"nave:crash_explosion": {
+				"sequence": [
+					{
+						"queue_command": {
+							"command": [
+								"particle minecraft:huge_explosion_emitter ~ ~ ~",
+								"playsound random.explode @a ~ ~ ~ 1 0.8"
+							]
+						}
+					},
+					{
+						"add": {
+							"component_groups": [
+								"nave:death"
+							]
+						}
+					}
+				]
+			},
+			"nave:tag_ship_captured": {
+				"queue_command": {
+					"command": [
+						"tag @s add nave_ship_captured"
+					]
+				},
+				"add": {
+					"component_groups": [
+						"nave:stop_animation"
+					]
+				}
+			},
+			"nave:despawn": {
+				"sequence": [
+					{
+						"filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_in_village",
+										"subject": "self",
+										"value": false
+									},
+									{
+										"test": "has_tag",
+										"subject": "self",
+										"value": "nave_ship_captured",
+										"operator": "!="
+									}
+								]
+							}
+						],
+						"add": {
+							"component_groups": [
+								"nave:despawn"
+							]
+						}
+					}
+				]
+			},
+			"nave:abduct_entities": {
+				"sequence": [
+					{
+						"randomize": [
+							{
+								"weight": 10,
+								"add": {
+									"component_groups": [
+										"nave:abduct_golem"
+									]
+								}
+							},
+							{
+								"weight": 15,
+								"add": {
+									"component_groups": [
+										"nave:abduct_cat"
+									]
+								}
+							},
+							{
+								"weight": 75
+							}
+						]
+					}
+				]
+			},
+			"minecraft:entity_spawned": {
+				"sequence": [
+					{
+						"filters": [
+							{
+								"all_of": [
+									{
+										"test": "distance_to_nearest_player",
+										"operator": "<=",
+										"value": 6
+									}
+								]
+							}
+						],
+						"queue_command": {
+							"command": [
+								"tag @s add nave_ship_captured"
+							]
+						}
+					},
+					{
+						"filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_in_village",
+										"subject": "self",
+										"value": true
+									},
+									{
+										"test": "has_tag",
+										"subject": "self",
+										"value": "nave_ship_captured",
+										"operator": "!="
+									},
+									{
+										"test": "distance_to_nearest_player",
+										"operator": ">",
+										"value": 6
+									}
+								]
+							}
+						],
+						"add": {
+							"component_groups": [
+								"nave:abduct_timer"
+							]
+						}
+					},
+					{
+						"filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_in_village",
+										"subject": "self",
+										"value": true
+									},
+									{
+										"test": "has_tag",
+										"subject": "self",
+										"value": "nave_ship_captured",
+										"operator": "!="
+									},
+									{
+										"test": "distance_to_nearest_player",
+										"operator": ">",
+										"value": 6
+									}
+								]
+							}
+						],
+						"queue_command": {
+							"command": [
+								"tp @s ~ ~19 ~"
+							]
+						},
+						"add": {
+							"component_groups": [
+								"nave:start_animation"
+							]
+						}
+					},
+					{
+						"filters": [
+							{
+								"all_of": [
+									{
+										"test": "is_in_village",
+										"subject": "self",
+										"value": false
+									},
+									{
+										"test": "has_tag",
+										"subject": "self",
+										"value": "nave_ship_captured",
+										"operator": "!="
+									}
+								]
+							}
+						],
+						"add": {
+							"component_groups": [
+								"nave:despawn_timer"
+							]
+						}
+					}
+				]
+			}
+		}
+	}
+}

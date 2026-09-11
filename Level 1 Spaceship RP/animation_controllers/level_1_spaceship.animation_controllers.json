@@ -1,0 +1,155 @@
+{
+	"format_version": "1.10.0",
+	"animation_controllers": {
+		"controller.animation.nave.death": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"blend_transition": 0.3,
+					"transitions": [
+						{
+							"death": "!query.is_alive"
+						}
+					]
+				},
+				"death": {
+					"animations": [
+						"death_animation"
+					]
+				}
+			}
+		},
+		"controller.animation.nave.up_down": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"blend_transition": 0.2,
+					"transitions": [
+						{
+							"up": "query.vertical_speed>1"
+						},
+						{
+							"down": "query.vertical_speed<-1"
+						}
+					]
+				},
+				"up": {
+					"animations": [
+						"up_animation"
+					],
+					"blend_transition": 0.2,
+					"transitions": [
+						{
+							"default": "query.vertical_speed<1"
+						}
+					]
+				},
+				"down": {
+					"animations": [
+						"down_animation"
+					],
+					"blend_transition": 0.2,
+					"transitions": [
+						{
+							"default": "query.vertical_speed>=-1"
+						}
+					]
+				}
+			}
+		},
+		"controller.animation.nave.yaw_moment": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"blend_transition": 1,
+					"transitions": [
+						{
+							"yaw_moment": "q.ground_speed > 1.5"
+						}
+					]
+				},
+				"yaw_moment": {
+					"animations": [
+						"yaw_moment_animation"
+					],
+					"blend_transition": 1,
+					"transitions": [
+						{
+							"default": "q.ground_speed < 1"
+						}
+					]
+				}
+			}
+		},
+		"controller.animation.nave.landing_gear": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"blend_transition": 0.6,
+					"transitions": [
+						{
+							"in_air": "!query.is_on_ground"
+						}
+					]
+				},
+				"in_air": {
+					"animations": [
+						"landing_gear_animation"
+					],
+					"blend_transition": 0.5,
+					"transitions": [
+						{
+							"default": "query.is_on_ground"
+						}
+					]
+				}
+			}
+		},
+		"controller.animation.nave.damage": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"transitions": [
+						{
+							"moving_damaged": "query.modified_move_speed>0.1 && query.has_rider>0 && query.health < 10"
+						}
+					]
+				},
+				"moving_damaged": {
+					"animations": [
+						"damage_smoke_animation"
+					],
+					"transitions": [
+						{
+							"default": "query.modified_move_speed<0.1 || query.health >= 10"
+						}
+					]
+				}
+			}
+		},
+		"controller.animation.nave.ground": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"transitions": [
+						{
+							"flying": "!query.is_on_ground || query.has_rider || query.mark_variant == 30"
+						}
+					]
+				},
+				"flying": {
+					"animations": [
+						"ship_circle_animation",
+						"engine_sound_animation",
+						"ship_idle_animation"
+					],
+					"transitions": [
+						{
+							"default": "query.is_on_ground && !query.has_rider && query.mark_variant == 0"
+						}
+					]
+				}
+			}
+		}
+	}
+}

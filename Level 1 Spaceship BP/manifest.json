@@ -1,0 +1,26 @@
+{
+	"format_version": 2,
+	"header": {
+		"name": "§eLevel 1 Spaceship§r BP",
+		"description": "Nave pilotável com a programação de voo do UFO.",
+		"uuid": "b7431aff-4b44-41fe-9a15-638fc2418906",
+		"version": [1, 0, 0],
+		"min_engine_version": [1, 21, 0]
+	},
+	"modules": [
+		{
+			"type": "data",
+			"uuid": "efa2aa57-6796-4f18-bd55-b72650a137b5",
+			"version": [1, 0, 0]
+		}
+	],
+	"dependencies": [
+		{
+			"uuid": "474394f1-642f-4261-889a-e5fd524bd581",
+			"version": [1, 0, 0]
+		}
+	],
+	"metadata": {
+		"product_type": "addon"
+	}
+}

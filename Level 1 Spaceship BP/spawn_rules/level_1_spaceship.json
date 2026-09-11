@@ -1,0 +1,40 @@
+{
+	"format_version": "1.8.0",
+	"minecraft:spawn_rules": {
+		"description": {
+			"identifier": "nave:level_1_spaceship",
+			"population_control": "animal"
+		},
+		"conditions": [
+			{
+				"minecraft:weight": {
+					"default": 12
+				},
+				"minecraft:spawns_on_surface": {},
+				"minecraft:density_limit": {
+					"surface": 1,
+					"underground": 0
+				},
+				"minecraft:brightness_filter": {
+					"min": 0,
+					"max": 10
+				},
+				"minecraft:spawns_on_block_filter": [
+					"minecraft:grass_block",
+					"minecraft:grass_path",
+					"minecraft:sand",
+					"minecraft:snow",
+					"minecraft:stone"
+				],
+				"minecraft:distance_filter": {
+					"min": 1,
+					"max": 128
+				},
+				"minecraft:herd": {
+					"min_size": 1,
+					"max_size": 1
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,164 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.nave.ship_idle": {
+			"loop": true,
+			"animation_length": 3.0833,
+			"bones": {
+				"nave_ship": {
+					"relative_to": {
+						"rotation": "entity"
+					},
+					"rotation": [
+						"math.sin(query.anim_time * 120) * 6",
+						"math.cos(query.anim_time * 120) * 3",
+						"math.cos(query.anim_time * 120) * 6"
+					],
+					"position": [
+						0,
+						"math.sin(query.anim_time * 90) * 0.5",
+						0
+					]
+				},
+				"octagon": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"3.0833": [0, 360, 0]
+					}
+				},
+				"octagon5": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"3.0833": [0, -360, 0]
+					}
+				}
+			}
+		},
+		"animation.nave.yaw_moment_air": {
+			"loop": true,
+			"bones": {
+				"nave_main": {
+					"rotation": [
+						0,
+						0,
+						"math.max(-8, math.min(8, query.yaw_speed * -0.3))"
+					]
+				}
+			}
+		},
+		"animation.nave.up": {
+			"loop": true,
+			"bones": {
+				"nave_root": {
+					"rotation": [-7, 0, 0],
+					"position": [0, 2, 0]
+				}
+			}
+		},
+		"animation.nave.down": {
+			"loop": true,
+			"bones": {
+				"nave_root": {
+					"rotation": [7, 0, 0],
+					"position": [0, -2, 0]
+				}
+			}
+		},
+		"animation.nave.death": {
+			"loop": false,
+			"animation_length": 2,
+			"bones": {
+				"nave_main": {
+					"scale": 0.1
+				}
+			}
+		},
+		"animation.nave.spawn_timer": {
+			"loop": "hold_on_last_frame",
+			"animation_length": 0.5,
+			"bones": {
+				"nave_main": {
+					"scale": {
+						"0.4167": [0, 0, 0],
+						"0.5": [1, 1, 1]
+					}
+				}
+			}
+		},
+		"animation.nave.landing_gear": {
+			"loop": "hold_on_last_frame",
+			"animation_length": 1,
+			"bones": {
+				"Wheels": {
+					"position": {
+						"0.75": [0, 0, 0],
+						"1.0": [0, 8, 0]
+					},
+					"scale": {
+						"0.75": [1, 1, 1],
+						"1.0": [0, 0, 0]
+					}
+				},
+				"Wheels2": {
+					"position": {
+						"0.75": [0, 0, 0],
+						"1.0": [0, 8, 0]
+					},
+					"scale": {
+						"0.75": [1, 1, 1],
+						"1.0": [0, 0, 0]
+					}
+				},
+				"Wheels3": {
+					"position": {
+						"0.75": [0, 0, 0],
+						"1.0": [0, 8, 0]
+					},
+					"scale": {
+						"0.75": [1, 1, 1],
+						"1.0": [0, 0, 0]
+					}
+				},
+				"Wheels4": {
+					"position": {
+						"0.75": [0, 0, 0],
+						"1.0": [0, 8, 0]
+					},
+					"scale": {
+						"0.75": [1, 1, 1],
+						"1.0": [0, 0, 0]
+					}
+				}
+			}
+		},
+		"animation.nave.ship_circle": {
+			"loop": true,
+			"animation_length": 0.8,
+			"particle_effects": {
+				"0.0": {
+					"effect": "nave_ship_circle",
+					"locator": "ufo_move"
+				}
+			}
+		},
+		"animation.nave.damage_smoke": {
+			"loop": true,
+			"animation_length": 0.05,
+			"particle_effects": {
+				"0.0": {
+					"effect": "nave_damage_smoke",
+					"locator": "ufo_move"
+				}
+			}
+		},
+		"animation.nave.engine_sound": {
+			"loop": true,
+			"animation_length": 0.25,
+			"sound_effects": {
+				"0.0": {
+					"effect": "nave_engine_sound"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,60 @@
+{
+	"format_version": "1.10.0",
+	"minecraft:client_entity": {
+		"description": {
+			"identifier": "nave:level_1_spaceship",
+			"materials": {
+				"default": "entity_alphatest"
+			},
+			"textures": {
+				"default": "textures/nave/level_1_spaceship"
+			},
+			"geometry": {
+				"default": "geometry.nave.level_1_spaceship"
+			},
+			"render_controllers": [
+				"controller.render.nave.ship"
+			],
+			"spawn_egg": {
+				"base_color": "#2E3440",
+				"overlay_color": "#00C4FF"
+			},
+			"animations": {
+				"ship_idle_animation": "animation.nave.ship_idle",
+				"yaw_moment_animation": "animation.nave.yaw_moment_air",
+				"up_animation": "animation.nave.up",
+				"down_animation": "animation.nave.down",
+				"death_animation": "animation.nave.death",
+				"spawn_timer_animation": "animation.nave.spawn_timer",
+				"landing_gear_animation": "animation.nave.landing_gear",
+				"ship_circle_animation": "animation.nave.ship_circle",
+				"damage_smoke_animation": "animation.nave.damage_smoke",
+				"engine_sound_animation": "animation.nave.engine_sound",
+				"death_controller": "controller.animation.nave.death",
+				"up_down_controller": "controller.animation.nave.up_down",
+				"yaw_moment_controller": "controller.animation.nave.yaw_moment",
+				"landing_gear_controller": "controller.animation.nave.landing_gear",
+				"damage_controller": "controller.animation.nave.damage",
+				"ground_controller": "controller.animation.nave.ground"
+			},
+			"scripts": {
+				"animate": [
+					"death_controller",
+					"yaw_moment_controller",
+					"up_down_controller",
+					"landing_gear_controller",
+					"damage_controller",
+					"ground_controller",
+					"spawn_timer_animation"
+				]
+			},
+			"sound_effects": {
+				"nave_engine_sound": "nave.ship_engine"
+			},
+			"particle_effects": {
+				"nave_ship_circle": "nave:ship_circle",
+				"nave_damage_smoke": "minecraft:basic_smoke_particle"
+			}
+		}
+	}
+}

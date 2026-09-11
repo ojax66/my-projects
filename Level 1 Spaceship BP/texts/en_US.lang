@@ -1,0 +1,7 @@
+pack.name=§eLevel 1 Spaceship§r
+pack.description=Flyable spaceship using the UFO flight programming.
+entity.nave:level_1_spaceship.name=§bLevel 1 Spaceship§r
+item.spawn_egg.entity.nave:level_1_spaceship.name=§bSpawn Level 1 Spaceship§r
+action.interact.nave.ride=§aFly the spaceship!
+action.interact.nave.disassemble=§eDisassemble (shears)
+action.hint.exit.nave:level_1_spaceship=§aCrouch or jump to exit!

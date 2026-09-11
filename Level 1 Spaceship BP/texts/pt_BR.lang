@@ -1,0 +1,7 @@
+pack.name=§eLevel 1 Spaceship§r
+pack.description=Nave pilotável usando a programação de voo do UFO.
+entity.nave:level_1_spaceship.name=§bNave Level 1§r
+item.spawn_egg.entity.nave:level_1_spaceship.name=§bGerar Nave Level 1§r
+action.interact.nave.ride=§aPilotar a nave!
+action.interact.nave.disassemble=§eDesmontar (tesoura)
+action.hint.exit.nave:level_1_spaceship=§aAgache ou pule para sair!
