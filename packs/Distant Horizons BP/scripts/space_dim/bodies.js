@@ -225,8 +225,22 @@ const PALETTES = {
  * A coroa do Sol é `modelOnly`: ela não vira bloco nenhum (quem a desenha é o
  * modelo visto de longe), então medir a superfície pelo `radius` do corpo cai
  * no vazio. */
-export const builtRadius = (body) =>
-  Math.max(...body.layers.filter((l) => !l.modelOnly).map((l) => l.radius));
+export const builtRadius = (body) => {
+  // Um corpo do catálogo pode não ter camadas (nada a construir); aí o raio
+  // nominal é a única casca que existe.
+  const built = (body.layers ?? []).filter((l) => !l.modelOnly);
+  return built.length ? Math.max(...built.map((l) => l.radius)) : body.radius;
+};
+
+/**
+ * Corpo cuja superfície de fora só existe como MODELO.
+ *
+ * A coroa do Sol é `modelOnly`: nenhum bloco vai desenhá-la, nunca. Então a
+ * troca normal — chegou perto, some o modelo e os blocos assumem — não vale pra
+ * ele: quem chegasse perto veria a coroa desaparecer e sobrar só a bola de
+ * plasma do raio 62. O modelo de um corpo assim fica ligado em toda distância.
+ */
+export const alwaysModel = (body) => (body.layers ?? []).some((l) => l.modelOnly);
 
 /** Distância euclidiana até o centro. Usada pela gravidade, que é radial. */
 export function distanceTo(loc, body) {

@@ -656,15 +656,29 @@ if mh and gen_chunks:
     hide_below = gen_chunks * 16 - int(mh.group(1))
 sys_radius = config_number("SOLAR_SYSTEM_RADIUS")
 
-if steps and model_dist and hide_below and sys_radius and radii:
-    piores = []
-    for bid, r in radii.items():
-        piores.append(2 * model_dist * r / (hide_below + r))   # mais perto
-        piores.append(2 * model_dist * r / sys_radius)          # mais longe
-    if max(piores) > max(steps) or min(piores) < min(steps):
+near_dist = config_number("SKY_MODEL_NEAREST")
+if steps and near_dist and sys_radius and radii:
+    # escala = 2 * at * raio / distancia, com at <= distancia.
+    #
+    #   maior: at == distancia (corpo mais perto que o degrau) -> 2 * raio
+    #   menor: at == SKY_MODEL_NEAREST, corpo na borda do sistema
+    maior = 2 * max(radii.values())
+    menor = 2 * near_dist * min(radii.values()) / sys_radius
+    if maior > max(steps) or menor < min(steps):
         err(f"os degraus vao de {min(steps)} a {max(steps)}, mas a conta pede de "
-            f"{min(piores):.3f} a {max(piores):.1f} — o modelo sairia do tamanho "
+            f"{menor:.3f} a {maior:.1f} — o modelo sairia do tamanho "
             f"errado nas pontas")
+
+# O degrau mais longe tem que caber na distancia de simulacao do Bedrock, que no
+# celular comeca em 4 chunks — 64 blocos. Alem dela a entidade descarrega e para
+# de ser desenhada: foi assim que os modelos sumiram com SKY_MODEL_DISTANCE=112.
+if model_dist and model_dist > 48:
+    err(f"SKY_MODEL_DISTANCE e {model_dist}, perto demais dos 64 blocos da "
+        f"distancia de simulacao — o modelo descarrega e para de aparecer")
+if near_dist and model_dist and near_dist >= model_dist:
+    err(f"SKY_MODEL_NEAREST ({near_dist}) tem que ser menor que "
+        f"SKY_MODEL_DISTANCE ({model_dist}): sem faixa nao ha degrau por corpo "
+        f"e os modelos voltam a se atravessar")
 
 # E o RP nao pode animar a escala: seria uma terceira fonte.
 for bid in list(body_ids) + ["star"]:

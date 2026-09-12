@@ -56,6 +56,11 @@ function resolve(entry, system) {
       name: entry.name ?? body.name,
       center: body.center,
       radius: body.radius,
+      // As CAMADAS vêm junto. O corpo resolvido é o que o resto do addon vê, e
+      // sem elas builtRadius() e alwaysModel() não têm o que ler: o céu passava
+      // a achar que o Sol constrói até o raio 100 (constrói até 62) e que a
+      // coroa dele não era só-modelo. A coroa sumia de perto por causa disto.
+      layers: body.layers,
       systemId: system.id,
       generated: true,                      // tem blocos de verdade
     };

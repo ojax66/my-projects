@@ -10,7 +10,7 @@
  * existir a 80. Quase cem blocos em que a Lua não estava em lugar nenhum.
  */
 import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW,
-         SKY_MODEL_DISTANCE } from './space_dim/config.js';
+         SKY_MODEL_DISTANCE, SKY_MODEL_NEAREST } from './space_dim/config.js';
 
 // Os testes rodam numa pasta temporária com os scripts copiados; os packs
 // ficam no repositório, então o caminho vem daqui.
@@ -48,17 +48,32 @@ for (const body of BODIES) {
 // estourar nem conta de projeção pra errar — o que precisa valer é que a
 // entidade declare a aresta certa, e isso o test_tracker mede.
 
-// A ESTRELA é a única que fica presa ao jogador (um ponto no lugar real estaria
-// a milhares de blocos, fora de qualquer alcance). Ela não pode nascer dentro
-// da cabeça dele nem tão longe que saia de cena.
-// O alcance em que uma entidade ainda é desenhada. Precisa ser maior que o
-// ponto de troca (senão o modelo nunca chegaria a aparecer) e não tão grande
-// que o jogo pare de desenhá-lo.
-check('o alcance do modelo é maior que o ponto de troca',
-      SKY_MODEL_DISTANCE > SKY_MODEL_HIDE_BELOW,
-      `(alcance ${SKY_MODEL_DISTANCE}, troca a ${SKY_MODEL_HIDE_BELOW})`);
-check('  e cabe numa distância de renderização comum',
-      SKY_MODEL_DISTANCE <= 128, `(${SKY_MODEL_DISTANCE} blocos)`);
+// Os degraus de profundidade dos modelos.
+//
+// O de trás tem que caber na DISTÂNCIA DE SIMULAÇÃO do Bedrock — 4 chunks, 64
+// blocos, no celular. Passando dela a entidade descarrega e para de ser
+// desenhada: foi exatamente isso que fez os corpos sumirem com o modelo indo
+// pra posição real, a 112 blocos.
+check('o degrau mais longe cabe na distância de simulação',
+      SKY_MODEL_DISTANCE <= 48, `(${SKY_MODEL_DISTANCE} de 64 blocos)`);
+check('  e o mais perto não nasce em cima da nave',
+      SKY_MODEL_NEAREST >= 12, `(${SKY_MODEL_NEAREST} blocos)`);
+check('  e há faixa pra um degrau por corpo',
+      SKY_MODEL_NEAREST < SKY_MODEL_DISTANCE,
+      `(${SKY_MODEL_NEAREST}..${SKY_MODEL_DISTANCE})`);
+
+// A troca pra blocos é medida da casca CONSTRUÍDA. O Sol tem raio 100 e só
+// constrói até 62 — a coroa é `modelOnly` —, então medir pelo raio nominal
+// desligava o modelo dele com os blocos ainda a 94 de distância.
+for (const body of BODIES) {
+  const construido = Math.max(...body.layers.filter((l) => !l.modelOnly)
+                                            .map((l) => l.radius));
+  const soModelo = body.layers.some((l) => l.modelOnly);
+  if (!soModelo) continue;
+  check(`${body.id}: tem camada só-modelo, então o modelo nunca se desliga`,
+        construido < body.radius,
+        `(constrói até ${construido}, corpo vai até ${body.radius})`);
+}
 
 // --- Quem brilha é o corpo, não o espaço ------------------------------------
 //

@@ -23,28 +23,30 @@
  *   no sistema      o MODELO do corpo.
  *   fora do sistema uma ESTRELA: um ponto branco.
  *
- * O modelo fica SEMPRE a poucos blocos do jogador, na direção do corpo, e é
- * escalado pra dar exatamente o mesmo ângulo que o corpo daria lá longe. Não é
- * capricho: uma entidade parada no centro real, a centenas de blocos, não é
- * renderizada — a tentativa de colocá-la lá fez os corpos sumirem de novo. Preso
- * ao jogador ele nunca sai do alcance, que é a única forma de "não parar de ser
- * renderizado" que o Bedrock oferece.
+ * O modelo fica SEMPRE perto do jogador, na direção do corpo, e é escalado pra
+ * dar exatamente o mesmo ângulo que o corpo daria lá longe. Não é capricho: o
+ * Bedrock só mantém e desenha entidade dentro da DISTÂNCIA DE SIMULAÇÃO, que no
+ * celular começa em 4 chunks (64 blocos). Pôr o modelo na posição real, a 112
+ * blocos, descarregava a entidade — e foi o que fez os corpos sumirem de novo.
  *
  *     ângulo do corpo real  =  raio / distância
- *     ângulo do modelo      =  (meia-aresta × escala) / SKY_MODEL_DISTANCE
+ *     ângulo do modelo      =  (meia-aresta × escala) / distância do modelo
  *
  * O cubo do geometry tem 16 unidades de aresta, que é UM bloco: meia-aresta de
  * 0,5. Igualando os dois:
  *
- *     escala = 2 × SKY_MODEL_DISTANCE × raio / distância
+ *     escala = 2 × distância do modelo × raio / distância real
  *
- * A versão anterior usava `SKY_MODEL_DISTANCE × raio / (distância × 8)`, que
- * trata a meia-aresta como 8 BLOCOS em vez de meio — dezesseis vezes menor.
+ * A distância do modelo não é a mesma pra todos: cada corpo ganha um degrau
+ * entre SKY_MODEL_NEAREST e SKY_MODEL_DISTANCE, na ordem da distância real. Na
+ * versão de distância única dois cubos em direções parecidas se interpenetravam;
+ * em degraus diferentes o da frente só tapa o de trás.
  *
  * O tamanho aparente fica idêntico ao da construção, então a troca de um pelo
  * outro não muda nada na tela. O que muda é paralaxe: o modelo acompanha o
- * jogador. A troca acontece a SKY_MODEL_HIDE_BELOW da casca, bem antes de a
- * diferença ficar perceptível.
+ * jogador. A troca acontece a SKY_MODEL_HIDE_BELOW da casca CONSTRUÍDA, bem
+ * antes de a diferença ficar perceptível — e não acontece nunca pra quem tem
+ * camada `modelOnly`, porque desse não há bloco que assuma o lugar.
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
@@ -53,13 +55,14 @@ import {
   SKY_MODELS_ENABLED,
   SKY_MODEL_DISTANCE,
   SKY_MODEL_HIDE_BELOW,
+  SKY_MODEL_NEAREST,
   SKY_MODEL_INTERVAL,
   SOLAR_SYSTEM_RADIUS,
   STAR_ENTITY,
 } from "./config.js";
 import { trackedBodies } from "./tracker.js";
 import { SKY_SIZE_STEPS } from "./skySteps.js";
-import { chebyshevTo } from "./bodies.js";
+import { alwaysModel, builtRadius, chebyshevTo } from "./bodies.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -214,23 +217,44 @@ export function updateSky(player) {
     }
   }
 
+  // Quem vai aparecer, e a que distância real está.
+  const alvos = [];
   for (const body of wanted) {
     const dx = body.center.x - eye.x;
     const dy = body.center.y - eye.y;
     const dz = body.center.z - eye.z;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (d < 0.001) { hideModel(player, body.id); continue; }
 
-    // Distância até a CASCA, não até o centro: é a casca que o jogador vê, e
-    // é ela que o gerador constrói. Medir do centro fazia o Sol (raio 100) e a
-    // Lua (raio 12) trocarem de modelo pra bloco em momentos completamente
-    // diferentes — ver SKY_MODEL_HIDE_BELOW no config.
-    const gap = chebyshevTo(eye, body) - body.radius;
+    // Distância até a casca CONSTRUÍDA, não até o raio nominal.
+    //
+    // O Sol tem raio 100 mas só constrói até 62: a coroa é `modelOnly`. Medindo
+    // pelo raio nominal, o modelo dele se desligava com a casca de blocos ainda
+    // a 94 blocos de distância — nem coroa nem blocos, o Sol simplesmente não
+    // estava lá. builtRadius() devolve a casca que existe de verdade.
+    const gap = chebyshevTo(eye, body) - builtRadius(body);
 
     // Perto o bastante pra os blocos estarem construídos: eles é que mandam.
-    if (gap <= SKY_MODEL_HIDE_BELOW || d < 0.001) {
+    // Menos pra quem tem camada `modelOnly` — nenhum bloco vai desenhá-la, então
+    // o modelo desse fica ligado em toda distância.
+    if (gap <= SKY_MODEL_HIDE_BELOW && !alwaysModel(body)) {
       hideModel(player, body.id);
       continue;
     }
+    alvos.push({ body, dx, dy, dz, d });
+  }
+
+  // Um degrau de profundidade por corpo, na ordem da distância REAL: o que está
+  // mais perto de verdade fica no degrau mais perto do jogador. Dois cubos no
+  // mesmo raio se interpenetram; em degraus diferentes o da frente só tapa o de
+  // trás, que é o que a distância real manda.
+  alvos.sort((a, b) => a.d - b.d);
+  const passo = alvos.length > 1
+    ? (SKY_MODEL_DISTANCE - SKY_MODEL_NEAREST) / (alvos.length - 1)
+    : 0;
+
+  for (let i = 0; i < alvos.length; i++) {
+    const { body, dx, dy, dz, d } = alvos[i];
 
     // Uma regra só: passou do raio do sistema, é estrela.
     //
@@ -245,25 +269,16 @@ export function updateSky(player) {
     if (!entity) continue;
     shown.add(body.id);
 
-    // O CORPO fica no centro da construção, do tamanho dela — os dois ocupam o
-    // mesmo espaço, então chegar perto só troca um pelo outro no mesmo lugar.
-    //
-    // A ESTRELA não: ela é o ponto de luz que sobra do corpo visto de muito
-    // longe, e um ponto no lugar real estaria a milhares de blocos, fora de
-    // qualquer alcance. Essa fica presa ao jogador, na direção certa.
-    // Na direção do corpo, à distância REAL dele — mas nunca além do alcance em
-    // que o jogo ainda desenha uma entidade.
-    //
-    // Perto, isso põe o modelo exatamente onde o corpo está: ele fica atrás do
-    // que estiver na frente, entra em oclusão como qualquer coisa, e não
-    // atravessa nada. Longe, ele encosta na borda do alcance e é encolhido pra
-    // dar o mesmo ângulo — que é a única forma de continuar visível.
-    const at = Math.min(d, SKY_MODEL_DISTANCE);
+    // Na direção do corpo, no degrau dele — ou na posição real, se o corpo
+    // estiver mais perto que o degrau (aí o modelo cai exatamente em cima da
+    // construção e entra em oclusão como qualquer coisa).
+    const at = Math.min(d, SKY_MODEL_NEAREST + passo * i);
     const k = at / d;
     try {
       entity.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
     } catch {
       hideModel(player, body.id);
+      shown.delete(body.id);
       continue;
     }
 

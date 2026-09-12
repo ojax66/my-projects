@@ -15,7 +15,8 @@ import {
   unlockedSystems, isSystemUnlocked, unlockSystem,
   isBodyOn, toggleBody, toggleSystem, trackedBodies, trackerState,
 } from './space_dim/tracker.js';
-import { DIMENSION_ID, SKY_MODEL_DISTANCE, SKY_MODEL_HIDE_BELOW } from './space_dim/config.js';
+import { DIMENSION_ID, SKY_MODEL_DISTANCE, SKY_MODEL_HIDE_BELOW,
+         SKY_MODEL_NEAREST } from './space_dim/config.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -133,17 +134,34 @@ const mk = (id = 'p1') =>
   const { BODIES: TODOS } = await import('./space_dim/config.js');
   const dists = models.map((e) => Math.hypot(
     e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
-  // Na posição REAL do corpo, mas nunca além do alcance em que o jogo ainda
-  // desenha uma entidade. Perto, o modelo fica exatamente onde o corpo está e
-  // entra em oclusão como qualquer coisa; longe, encosta nessa borda.
+  // Cada corpo tem o SEU degrau de profundidade, entre SKY_MODEL_NEAREST e
+  // SKY_MODEL_DISTANCE, na ordem da distância real: o mais perto de verdade fica
+  // no degrau mais perto do jogador. Dois cubos no mesmo raio se interpenetram;
+  // em degraus diferentes o da frente só tapa o de trás.
+  //
+  // E o degrau mais longe cabe na distância de simulação (64 blocos): passando
+  // dela a entidade descarrega e para de ser desenhada — foi o que fez os
+  // corpos sumirem quando o modelo ia pra posição real, a 112 blocos.
   const reais = models.map((e) => {
     const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
     return Math.hypot(body.center.x - p.location.x, body.center.y - p.location.y,
                       body.center.z - p.location.z);
   });
-  check('  cada modelo fica à distância real, limitada ao alcance',
-        dists.every((d, i) => Math.abs(d - Math.min(reais[i], SKY_MODEL_DISTANCE)) < 0.5),
-        `(${dists.map((d, i) => `${d.toFixed(0)}/${Math.min(reais[i], SKY_MODEL_DISTANCE).toFixed(0)}`).join(' ')})`);
+  const ordem = reais.map((r, i) => i).sort((a, b) => reais[a] - reais[b]);
+  const passo = models.length > 1
+    ? (SKY_MODEL_DISTANCE - SKY_MODEL_NEAREST) / (models.length - 1) : 0;
+  const esperado = new Array(models.length);
+  ordem.forEach((idx, rank) => {
+    esperado[idx] = Math.min(reais[idx], SKY_MODEL_NEAREST + passo * rank);
+  });
+  check('  cada modelo fica no degrau de profundidade dele',
+        dists.every((d, i) => Math.abs(d - esperado[i]) < 0.5),
+        `(${dists.map((d, i) => `${d.toFixed(0)}/${esperado[i].toFixed(0)}`).join(' ')})`);
+  check('  nenhum modelo passa da distância de simulação',
+        dists.every((d) => d <= 64), `(o mais longe a ${Math.max(...dists).toFixed(0)})`);
+  check('  e dois modelos nunca ficam na mesma profundidade',
+        new Set(dists.map((d) => d.toFixed(2))).size === dists.length,
+        `(${dists.map((d) => d.toFixed(0)).join(', ')})`);
 
   // E na direção certa: o modelo tem que aparecer onde o corpo está.
   const torto = models.filter((e) => {
@@ -216,8 +234,11 @@ const mk = (id = 'p1') =>
   __advance(2); updateSky(p);
   check('perto do Sol dá pra ver a Terra como modelo', modelosDe('earth').length === 1,
         `(${modelosDe('earth').length})`);
-  check('  e o Sol, que está colado, fica por conta dos blocos',
-        modelosDe('sun').length === 0);
+  // O Sol NÃO: a coroa dele é `modelOnly`, não existe bloco que a desenhe.
+  // Colado nele o modelo continua ligado — é ele que é a camada de fora. Ver o
+  // bloco 10 mais abaixo.
+  check('  e o do Sol, que está colado, continua ligado do mesmo jeito',
+        modelosDe('sun').length === 1, `(${modelosDe('sun').length})`);
 
   // Perto de Marte: o Sol está a 1040 — modelo também.
   const mars = BODIES.find((b) => b.id === 'mars');
@@ -269,9 +290,13 @@ const mk = (id = 'p1') =>
   const escala = SKY_SIZE_STEPS[Number(ev?.slice('space_dim:set_size_'.length))];
   check('  e recebeu um degrau de escala', escala > 0, `(${ev} = ${escala})`);
 
-  // O ângulo do modelo tem que bater com o do corpo real.
+  // O ângulo do modelo tem que bater com o do corpo real. A distância do modelo
+  // é a do degrau que ele recebeu, então sai dele mesmo — não de uma constante.
+  const aonde = Math.hypot(modelo.location.x - p.location.x,
+                           modelo.location.y - p.location.y,
+                           modelo.location.z - p.location.z);
   const anguloReal = moon.radius / 95;
-  const anguloModelo = (0.5 * escala) / SKY_MODEL_DISTANCE;
+  const anguloModelo = (0.5 * escala) / aonde;
   check('  o ângulo do modelo bate com o do corpo',
         Math.abs(Math.log(anguloModelo / anguloReal)) < Math.log(1.25),
         `(modelo ${anguloModelo.toFixed(4)} vs real ${anguloReal.toFixed(4)})`);
@@ -306,6 +331,52 @@ const mk = (id = 'p1') =>
   __advance(2); updateSky(p);
   const dentro = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
   check('dentro do Sol o céu some', dentro === 0, `(${dentro} modelos)`);
+
+  clearModels(p.id);
+}
+
+// --- 10. A coroa do Sol não se desliga nunca --------------------------------
+//
+// A camada de fora do Sol é `modelOnly`: raio 100, nenhum bloco. Quem desenha
+// é o modelo, e só ele. A troca normal — chegou perto, some o modelo e os
+// blocos assumem — apagava a coroa e deixava só a bola de plasma do raio 62.
+//
+// Dois furos separados faziam isso:
+//   1. a troca media do raio NOMINAL (100) e não da casca construída (62), então
+//      o modelo se desligava com os blocos ainda a 94 blocos de distância;
+//   2. mesmo com a medida certa, nenhum bloco assume o lugar da coroa.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { BODIES, SKY_MODEL_HIDE_BELOW } = await import('./space_dim/config.js');
+  const dim = world.getDimension(DIMENSION_ID);
+  const sun = BODIES.find((b) => b.id === 'sun');
+  const earth = BODIES.find((b) => b.id === 'earth');
+  const p = mk('coroa');
+
+  const modelosDe = (id) =>
+    dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+
+  // Colado na coroa: 2 blocos fora do raio nominal. Aqui o modelo do Sol seria
+  // desligado por qualquer regra de distância — e não pode ser.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 2 });
+  __advance(2); updateSky(p);
+  check('colado na coroa, o modelo do Sol continua lá',
+        modelosDe('sun').length === 1, `(${modelosDe('sun').length})`);
+
+  // E na faixa que o furo abria: casca construída (62) já bem dentro do alcance
+  // dos blocos, mas ainda fora da coroa.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 20 });
+  __advance(2); updateSky(p);
+  check('  e a 20 blocos da coroa também', modelosDe('sun').length === 1);
+
+  // O contraste: a Terra NÃO tem camada só-modelo, então na mesma situação —
+  // perto o bastante pros blocos existirem — o modelo dela sai de cena.
+  p.teleport({ x: earth.center.x, y: earth.center.y,
+               z: earth.center.z + earth.radius + SKY_MODEL_HIDE_BELOW - 4 });
+  __advance(2); updateSky(p);
+  check('a Terra, que é toda de bloco, troca pelos blocos',
+        modelosDe('earth').length === 0, `(${modelosDe('earth').length})`);
 
   clearModels(p.id);
 }

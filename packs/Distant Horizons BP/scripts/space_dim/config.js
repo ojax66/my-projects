@@ -340,17 +340,29 @@ export const SPACE_DUST_INTERVAL_TICKS = 120;
 // o corpo daria lá longe — ver skybox.js.
 export const SKY_MODELS_ENABLED = true;
 
-// O alcance em que uma entidade ainda é desenhada pelo cliente.
+// A faixa de profundidades em que os modelos ficam do jogador.
 //
-// O modelo é posto na direção do corpo, à distância REAL dele — mas nunca além
-// disto, porque passando daqui o jogo deixa de desenhá-lo. Perto, o modelo fica
-// exatamente onde o corpo está; longe, encosta nesta borda e é escalado pra
-// compensar.
+// Aqui morava o bug que fez os corpos sumirem de novo. O Bedrock só mantém e
+// desenha entidade dentro da DISTÂNCIA DE SIMULAÇÃO, que no celular começa em
+// 4 chunks — 64 blocos. O modelo estava indo pra posição REAL do corpo, até 112
+// blocos: passava dos 64, a entidade descarregava, parava de ser desenhada, e
+// no tick seguinte o script via `isValid` falso, apagava, criava outra em cima
+// do jogador e mandava de volta pros mesmos 112, que descarregava de novo.
 //
-// Antes era uma distância fixa de 34 blocos, e o modelo ficava literalmente
-// dentro de tudo: atravessava a nave, atravessava construção, aparecia na
-// frente de blocos que deviam escondê-lo.
-export const SKY_MODEL_DISTANCE = 112;
+// É exatamente o pisca-pisca das fotos: duas a UM bloco de distância uma da
+// outra, numa não há corpo nenhum e na outra a Lua e a Terra estão lá.
+//
+// Então o modelo volta a ficar perto — bem dentro dos 64 — e é encolhido pra
+// dar o mesmo ângulo que o corpo daria lá longe.
+//
+// Mas não todos na MESMA distância, que foi o problema da versão de 34 blocos:
+// dois cubos no mesmo raio, em direções parecidas, se interpenetram — o "os
+// modelos se atravessam". Cada corpo ganha o SEU degrau de profundidade, na
+// ordem da distância real: o que está mais perto de verdade fica no degrau mais
+// perto. Assim um nunca atravessa o outro; o da frente simplesmente tapa o de
+// trás, que é o que tem que acontecer.
+export const SKY_MODEL_NEAREST = 16;
+export const SKY_MODEL_DISTANCE = 40;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
 //
