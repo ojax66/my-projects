@@ -191,7 +191,7 @@ def drop_sky_texture(tmp):
 
 
 case("corpo sem textura de ceu", drop_sky_texture,
-     r"corpo earth sem textura de ceu")
+     r"corpo earth sem a textura de ceu")
 
 
 # --- 10. degraus de escala do modelo ------------------------------------------
@@ -439,7 +439,7 @@ def scrambled_generators():
 def paint_black_corner(tmp):
     import struct
     import zlib
-    tex = rp(tmp, "textures", "space_dim", "sky", "sun.png")
+    tex = rp(tmp, "textures", "space_dim", "sky", "earth.png")
     with open(tex, "rb") as f:
         raw = f.read()
     w, h = struct.unpack(">II", raw[16:24])
@@ -466,6 +466,80 @@ def paint_black_corner(tmp):
 
 case("textura de ceu com texel preto puro", paint_black_corner, r"preto\(s\) puro")
 
+
+
+# --- as cascas do Sol volumetrico -------------------------------------------
+#
+# O Sol deixou de ser um cubo com textura e virou um empilhado de cascas
+# transl0cidas. Cada peca disso quebra sozinha e em silencio: material errado,
+# casca faltando, alfa no extremo, ordem invertida. Uma regra pra cada.
+def glow_geo(tmp):
+    return rp(tmp, "models", "entity", "sky_glow.geo.json")
+
+
+def material_sem_mistura(tmp):
+    caminho = rp(tmp, "materials", "entity.material")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["materials"]["space_dim_glow:entity"] = doc["materials"].pop(
+        "space_dim_glow:entity_emissive_alpha")
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("material das cascas sem mistura", material_sem_mistura,
+     r"esperado 'entity_emissive_alpha'")
+
+
+def cascas_de_menos(tmp):
+    with open(glow_geo(tmp), encoding="utf-8") as f:
+        doc = json.load(f)
+    bone = doc["minecraft:geometry"][0]["bones"][0]
+    bone["cubes"] = bone["cubes"][:2]
+    with open(glow_geo(tmp), "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("cascas de menos no Sol volumetrico", cascas_de_menos, r"casca\(s\) —")
+
+
+def casca_descentrada(tmp):
+    with open(glow_geo(tmp), encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]["origin"][0] += 3
+    with open(glow_geo(tmp), "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("casca do Sol fora do centro", casca_descentrada, r"nao esta centrada")
+
+
+def cascas_opacas(tmp):
+    import struct
+    import zlib
+    tex = rp(tmp, "textures", "space_dim", "sky", "glow_sun.png")
+    with open(tex, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    lines = bytearray()
+    for y in range(h):
+        lines.append(0)
+        for x in range(w):
+            lines += bytes((200, 100, 40, 255))     # alfa no extremo
+
+    def chunk(typ, data):
+        body = typ + data
+        return struct.pack(">I", len(data)) + body + struct.pack(
+            ">I", zlib.crc32(body) & 0xffffffff)
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    with open(tex, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+                + chunk(b"IDAT", zlib.compress(bytes(lines), 9))
+                + chunk(b"IEND", b""))
+
+
+case("cascas do Sol com alfa opaco", cascas_opacas, r"alfa 255")
 
 scrambled_generators()
 

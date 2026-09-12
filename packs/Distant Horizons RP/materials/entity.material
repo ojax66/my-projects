@@ -5,6 +5,10 @@
     "space_dim_sky:entity": {
       "+defines": [ "USE_EMISSIVE" ],
       "+states": [ "DisableCulling" ]
+    },
+
+    "space_dim_glow:entity_emissive_alpha": {
+      "+states": [ "DisableCulling", "DisableDepthWrite" ]
     }
   }
 }

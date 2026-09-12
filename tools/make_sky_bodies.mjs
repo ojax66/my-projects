@@ -237,8 +237,63 @@ function fillGaps(px, W, H, painted) {
   }
 }
 
+// --- O Sol como VOLUME: cascas concêntricas ----------------------------------
+//
+// Medi a referência: numa varredura horizontal atravessando a aresta interna do
+// cubo dele, o brilho NÃO cai. Sobe do contorno até o meio e desce do outro
+// lado, liso, como se as duas faces fossem uma coisa só. E os anéis seguem a
+// SILHUETA — hexagonais visto de quina, quadrados visto de frente.
+//
+// Isso não é uma textura. Nenhuma textura por face consegue: a silhueta muda
+// com o ângulo da câmera, e a mesma aresta que está no contorno de um ângulo
+// está no meio do corpo de outro. Qualquer desenho fixo que escureça a borda da
+// face escurece as arestas internas junto — foi exatamente o que ele apontou.
+//
+// O que produz aquilo é VOLUME: luz somada ao longo do caminho que o raio
+// percorre dentro do corpo. No meio da silhueta o raio atravessa o cubo
+// inteiro; encostado no contorno, quase nada. Daí o miolo estourado e a queda
+// até o vermelho na borda, sem aresta nenhuma aparecer.
+//
+// Dá pra fazer isso com geometria: cascas concêntricas translúcidas e
+// emissivas. Cada casca que o raio cruza soma um tanto de luz, então o
+// resultado é a soma ao longo do caminho — que é a conta certa. E some por
+// construção: não há "borda de face" pra escurecer.
+//
+// O material é `entity_emissive_alpha`, onde o alfa é opacidade e o brilho vem
+// de (1 - alfa). Meio a meio: cada superfície soma metade da cor e tampa
+// metade do que está atrás.
+// 16 cascas: com 8 as faixas ficavam visíveis como degraus. Cada casca é um
+// passo do degradê, então o número delas é a resolução dele.
+const GLOW_SHELLS = 16;
+const GLOW_CELL = 4;
+const GLOW_ALPHA = 128;
+
+/** Uma célula chapada por casca: do miolo branco à borda vermelha. */
+function glowTexture(body) {
+  const W = GLOW_SHELLS * GLOW_CELL;
+  const H = GLOW_CELL;
+  const px = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < GLOW_SHELLS; i++) {
+    const col = sunColorAt(i / (GLOW_SHELLS - 1));
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < GLOW_CELL; x++) {
+        const d = (y * W + i * GLOW_CELL + x) * 4;
+        px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2]; px[d + 3] = GLOW_ALPHA;
+      }
+    }
+  }
+  const dir = path.join(RP, 'textures', NS, 'sky');
+  fs.mkdirSync(dir, { recursive: true });
+  writePng(path.join(dir, `glow_${body.id}.png`), W, H, px);
+}
+
+const isVolumetric = (body) => !!body.volumetric;
+
 function skyTexture(body) {
   const c = body.center, R = body.radius;
+
+  // O corpo volumétrico não tem planificação: ele é feito de cascas.
+  if (isVolumetric(body)) { glowTexture(body); return; }
 
   // O Sol: degradê contínuo, igual em todas as seis faces.
   if (body.heat) {
@@ -422,9 +477,22 @@ function rpEntity(body) {
         // dizer TRANSPARENTE, e como a textura inteira é alfa 0, todo corpo
         // ficou invisível. Herdando de `entity` nenhum pixel é descartado, e o
         // alfa só decide o brilho.
-        materials: { default: 'space_dim_sky' },
-        textures: { default: `textures/${NS}/sky/${body.id}` },
-        geometry: { default: `geometry.${NS}.sky_body` },
+        //
+        // O corpo VOLUMÉTRICO é outra coisa: ele é um empilhado de cascas
+        // translúcidas, então precisa de um material que MISTURE. Aí
+        // `entity_emissive_alpha` é o certo, e o alfa volta a querer dizer
+        // transparência — por isso a textura dele não é alfa 0, é alfa 128.
+        materials: { default: isVolumetric(body) ? 'space_dim_glow' : 'space_dim_sky' },
+        textures: {
+          default: isVolumetric(body)
+            ? `textures/${NS}/sky/glow_${body.id}`
+            : `textures/${NS}/sky/${body.id}`,
+        },
+        geometry: {
+          default: isVolumetric(body)
+            ? `geometry.${NS}.sky_glow`
+            : `geometry.${NS}.sky_body`,
+        },
         // Sem animação de escala: ela vem de `minecraft:scale`, no servidor.
         scripts: { should_update_bones_and_effects_offscreen: true },
         render_controllers: [`controller.render.${NS}.sky_body`],
@@ -497,6 +565,42 @@ for (const body of SKY) {
 }
 
 // --- compartilhados ----------------------------------------------------------
+
+// As cascas do corpo volumétrico. A de fora tem 16 unidades — um bloco —, igual
+// ao cubo do sky_body, pra a conta de escala continuar valendo sem mudança.
+//
+// Declaradas de FORA pra DENTRO: a parte emissiva soma e não depende da ordem,
+// mas a parte opaca sim, e assim a casca clara do miolo fica por cima.
+write(path.join(RP, 'models', 'entity', 'sky_glow.geo.json'), {
+  format_version: '1.16.0',
+  'minecraft:geometry': [{
+    description: {
+      identifier: `geometry.${NS}.sky_glow`,
+      texture_width: GLOW_SHELLS * GLOW_CELL, texture_height: GLOW_CELL,
+      visible_bounds_width: 64, visible_bounds_height: 64,
+      visible_bounds_offset: [0, 0, 0],
+    },
+    bones: [{
+      name: 'body',
+      pivot: [0, 0, 0],
+      cubes: Array.from({ length: GLOW_SHELLS }, (_, k) => {
+        const i = GLOW_SHELLS - 1 - k;
+        const size = (16 * (i + 1)) / GLOW_SHELLS;
+        const cell = { uv: [i * GLOW_CELL, 0], uv_size: [GLOW_CELL, GLOW_CELL] };
+        return {
+          origin: [-size / 2, -size / 2, -size / 2],
+          size: [size, size, size],
+          uv: {
+            up: { ...cell }, down: { ...cell }, east: { ...cell },
+            north: { ...cell }, west: { ...cell }, south: { ...cell },
+          },
+        };
+      }),
+    }],
+  }],
+});
+
+
 write(path.join(RP, 'models', 'entity', 'sky_body.geo.json'), {
   // 1.16.0 e não 1.12.0: UV por face só existe a partir daí. Em 1.12.0 o campo
   // `uv` como objeto não é entendido, e uma geometria que falha ao carregar não

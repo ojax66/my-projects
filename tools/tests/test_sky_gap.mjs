@@ -92,14 +92,23 @@ for (const body of BODIES) {
   const rpEntity = (id) => JSON.parse(fs.readFileSync(
     path.join(RP_DIR, 'entity', `sky_${id}.entity.json`), 'utf8'));
   for (const body of BODIES) {
-    const mat = rpEntity(body.id)['minecraft:client_entity']
-      .description.materials.default;
-    // Material próprio (RP/materials/entity.material): herda de `entity`, que
-    // é opaco e sem teste de alfa, e liga USE_EMISSIVE. Os materiais prontos
-    // não servem: `entity_emissive_alpha` trata alfa 0 como TRANSPARENTE, e a
-    // textura do céu é toda alfa 0 — foi o que deixou todo corpo invisível.
-    check(`${body.id}: o modelo distante usa o material do addon`,
-          mat === 'space_dim_sky', `(${mat})`);
+    const desc = rpEntity(body.id)['minecraft:client_entity'].description;
+    const mat = desc.materials.default;
+    // Duas famílias, e cada uma com o seu material — os dois do addon, nenhum
+    // pronto.
+    //
+    // Corpo OPACO: `space_dim_sky`, que herda de `entity` (opaco, sem teste de
+    // alfa) e liga USE_EMISSIVE. Aqui alfa quer dizer BRILHO, e a textura é
+    // toda alfa 0. `entity_emissive_alpha` não serve: nele alfa 0 é
+    // TRANSPARENTE, e foi o que deixou todo corpo invisível uma vez.
+    //
+    // Corpo VOLUMÉTRICO (o Sol): `space_dim_glow`, que herda justamente de
+    // `entity_emissive_alpha` — porque aqui a mistura é o ponto. São cascas
+    // empilhadas: sem misturar, a de fora tapa todas as de dentro.
+    const volumetrico = desc.geometry.default.endsWith('sky_glow');
+    const esperado = volumetrico ? 'space_dim_glow' : 'space_dim_sky';
+    check(`${body.id}: o modelo distante usa o material certo do addon`,
+          mat === esperado, `(${mat}, esperado ${esperado})`);
   }
 
   // Os blocos: emissão baixa, pra a superfície ser visível de perto. Não é pra
@@ -129,6 +138,14 @@ for (const body of BODIES) {
   check('o material do céu existe no RP', !!key, `(${key})`);
   check('  herda de entity (opaco, sem teste de alfa)', key?.endsWith(':entity'));
   check('  e liga USE_EMISSIVE', (mats[key]?.['+defines'] ?? []).includes('USE_EMISSIVE'));
+
+  // E o das cascas, que é o oposto: tem que misturar.
+  const gk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_glow');
+  check('o material das cascas existe no RP', !!gk, `(${gk})`);
+  check('  herda de entity_emissive_alpha (mistura por alfa)',
+        gk?.endsWith(':entity_emissive_alpha'));
+  check('  e desliga o culling, senão metade das faces não soma',
+        (mats[gk]?.['+states'] ?? []).includes('DisableCulling'));
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

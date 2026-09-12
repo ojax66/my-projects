@@ -471,17 +471,76 @@ for extra in ("star",):
     if not os.path.isfile(os.path.join(RP, "textures", "space_dim", "sky", f"{extra}.png")):
         err(f"falta a textura da {extra}")
 
+def png_rgba(path):
+    import zlib as _z
+    with open(path, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    idat = b""
+    i = 8
+    while i < len(raw):
+        ln = struct.unpack(">I", raw[i:i + 4])[0]
+        if raw[i + 4:i + 8] == b"IDAT":
+            idat += raw[i + 8:i + 8 + ln]
+        i += 12 + ln
+    data = _z.decompress(idat)
+    stride = w * 4
+    out = bytearray()
+    prev = bytearray(stride)
+    pos = 0
+    for _ in range(h):
+        f_ = data[pos]; pos += 1
+        line = bytearray(data[pos:pos + stride]); pos += stride
+        for x in range(stride):
+            a = line[x - 4] if x >= 4 else 0
+            b = prev[x]
+            c = prev[x - 4] if x >= 4 else 0
+            if f_ == 1: line[x] = (line[x] + a) & 255
+            elif f_ == 2: line[x] = (line[x] + b) & 255
+            elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
+            elif f_ == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[x] = (line[x] + pr) & 255
+        prev = line
+        out += line
+    return w, h, out
+
+
+# Cada corpo declara na entidade do RP qual textura, geometria e material usa.
+# Nem todos usam os mesmos: o Sol e VOLUMETRICO — um empilhado de cascas
+# transl0cidas —, entao usa `sky_glow` com `entity_emissive_alpha`, enquanto os
+# outros usam o cubo unico com o material opaco emissivo. Ler da entidade em vez
+# de fixar o nome e o que mantem as duas familias conferidas pelas mesmas regras.
+def sky_desc(bid):
+    doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
+    if not isinstance(doc, dict):
+        return {}
+    return doc.get("minecraft:client_entity", {}).get("description", {})
+
+
+def sky_texture_path(bid):
+    ref = sky_desc(bid).get("textures", {}).get("default")
+    if not ref:
+        return os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    return os.path.join(RP, *ref.split("/")) + ".png"
+
+
+def sky_is_glow(bid):
+    return sky_desc(bid).get("geometry", {}).get("default", "").endswith("sky_glow")
+
+
 for bid in body_ids:
     bp_entity = os.path.join(BP, "entities", f"sky_{bid}.json")
     rp_entity = os.path.join(RP, "entity", f"sky_{bid}.entity.json")
-    texture = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    texture = sky_texture_path(bid)
     if not os.path.isfile(bp_entity):
         err(f"corpo {bid} sem entidade de ceu no BP (entities/sky_{bid}.json) — "
             f"ele sumiria passando da distancia de renderizacao")
     if not os.path.isfile(rp_entity):
         err(f"corpo {bid} sem entidade de ceu no RP (entity/sky_{bid}.entity.json)")
     if not os.path.isfile(texture):
-        err(f"corpo {bid} sem textura de ceu (textures/space_dim/sky/{bid}.png)")
+        err(f"corpo {bid} sem a textura de ceu que a entidade declara ({texture})")
 
 # `config_number` continua servindo pras outras checagens do config.
 def config_number(name):
@@ -496,27 +555,58 @@ def config_number(name):
 # todo corpo ficou invisivel e nada no jogo dizia por que. O material proprio
 # herda de `entity`, que e opaco e nao tem teste de alfa, e liga USE_EMISSIVE.
 SKY_MATERIAL = "space_dim_sky"
+GLOW_MATERIAL = "space_dim_glow"
 
-material_defined = False
+mat_doc = {}
 mat_path = os.path.join(RP, "materials", "entity.material")
 if os.path.isfile(mat_path):
     with open(mat_path, encoding="utf-8") as f:
         mat_doc = json.load(f)
-    for key in mat_doc.get("materials", {}):
-        if key.split(":")[0] == SKY_MATERIAL:
-            material_defined = True
-            base = key.split(":")[1] if ":" in key else ""
-            entry = mat_doc["materials"][key]
-            if base != "entity":
-                err(f"o material {SKY_MATERIAL} herda de '{base}', esperado 'entity' — "
-                    f"as outras bases descartam ou misturam por alfa, e a textura "
-                    f"do ceu e toda alfa 0")
-            if "USE_EMISSIVE" not in (entry.get("+defines") or []):
-                err(f"o material {SKY_MATERIAL} nao liga USE_EMISSIVE — "
-                    f"sem isso o alfa nao vira brilho e o corpo fica preto")
-if not material_defined:
+mats = mat_doc.get("materials", {})
+
+
+def material_base(name):
+    for key in mats:
+        if key.split(":")[0] == name:
+            return key.split(":")[1] if ":" in key else "", mats[key]
+    return None, None
+
+
+# O material dos corpos OPACOS: herda de `entity` e liga USE_EMISSIVE, que e o
+# que transforma o canal alfa em mascara de brilho. Trocar a base por uma que
+# mistura ou descarta por alfa deixaria todo corpo invisivel — a textura deles e
+# toda alfa 0.
+base, entry = material_base(SKY_MATERIAL)
+if entry is None:
     err(f"RP/materials/entity.material nao define {SKY_MATERIAL} — "
         f"os corpos vistos de longe nao teriam material")
+else:
+    if base != "entity":
+        err(f"o material {SKY_MATERIAL} herda de '{base}', esperado 'entity' — "
+            f"as outras bases descartam ou misturam por alfa, e a textura "
+            f"do ceu e toda alfa 0")
+    if "USE_EMISSIVE" not in (entry.get("+defines") or []):
+        err(f"o material {SKY_MATERIAL} nao liga USE_EMISSIVE — "
+            f"sem isso o alfa nao vira brilho e o corpo fica preto")
+
+# O material das CASCAS e o oposto: ele TEM que misturar, senao a casca de fora
+# tapa todas as de dentro e o volume vira um cubo chapado. `entity_emissive_alpha`
+# mistura por alfa e tira o brilho de (1 - alfa) — por isso a textura das cascas
+# nao e alfa 0, e sim alfa intermediario.
+glow_base, glow_entry = material_base(GLOW_MATERIAL)
+if any(sky_is_glow(b) for b in body_ids):
+    if glow_entry is None:
+        err(f"RP/materials/entity.material nao define {GLOW_MATERIAL} — "
+            f"o corpo volumetrico ficaria sem material")
+    else:
+        if glow_base != "entity_emissive_alpha":
+            err(f"o material {GLOW_MATERIAL} herda de '{glow_base}', esperado "
+                f"'entity_emissive_alpha' — sem mistura a casca de fora tapa as "
+                f"de dentro e nao ha volume nenhum")
+        if "DisableCulling" not in (glow_entry.get("+states") or []):
+            err(f"o material {GLOW_MATERIAL} sem DisableCulling — metade das "
+                f"faces de cada casca nao seria desenhada e a soma cairia pela "
+                f"metade")
 
 for bid in list(body_ids) + ["star"]:
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
@@ -524,8 +614,9 @@ for bid in list(body_ids) + ["star"]:
         continue
     desc = doc.get("minecraft:client_entity", {}).get("description", {})
     mat = desc.get("materials", {}).get("default")
-    if mat != SKY_MATERIAL:
-        err(f"sky_{bid} usa o material {mat}, esperado {SKY_MATERIAL}")
+    esperado = GLOW_MATERIAL if sky_is_glow(bid) else SKY_MATERIAL
+    if mat != esperado:
+        err(f"sky_{bid} usa o material {mat}, esperado {esperado}")
     if not desc.get("scripts", {}).get("should_update_bones_and_effects_offscreen"):
         err(f"sky_{bid} sem should_update_bones_and_effects_offscreen — "
             f"a escala congelaria quando o modelo saisse da tela")
@@ -533,7 +624,7 @@ for bid in list(body_ids) + ["star"]:
 # E a textura tem que ser toda alfa 0: e assim que USE_EMISSIVE le brilho
 # maximo. Uma textura opaca aqui daria um corpo preto no vacuo.
 for bid in list(body_ids) + ["star"]:
-    tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    tex = sky_texture_path(bid)
     if not os.path.isfile(tex):
         continue
     with open(tex, "rb") as f:
@@ -585,7 +676,9 @@ if isinstance(geo, dict):
             err(f"sky_body.geo.json sem UV pras faces: {sorted(faltando)}")
         # E a textura do corpo tem que ter o tamanho que o modelo declara.
         for bid in list(body_ids) + ["star"]:
-            tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+            if sky_is_glow(bid):
+                continue          # esse usa sky_glow, conferido logo abaixo
+            tex = sky_texture_path(bid)
             if not os.path.isfile(tex):
                 continue
             with open(tex, "rb") as f:
@@ -598,6 +691,72 @@ if isinstance(geo, dict):
 radii = {}
 for m in re.finditer(r'id:\s*"(\w+)",[\s\S]*?radius:\s*(\d+)', config_src):
     radii.setdefault(m.group(1), int(m.group(2)))
+
+# --- O corpo VOLUMETRICO: as cascas -----------------------------------------
+#
+# O Sol nao e um cubo com textura: e um empilhado de cascas transl0cidas, e o
+# brilho e a soma do que o raio atravessa. E isso que reproduz a referencia —
+# miolo estourado, queda ate o vermelho no contorno, e nenhuma aresta interna
+# aparecendo, porque nao ha borda de face pra escurecer.
+#
+# Cada peca disso pode quebrar sozinha e em silencio, entao cada uma tem regra.
+for bid in body_ids:
+    if not sky_is_glow(bid):
+        continue
+    gpath = os.path.join(RP, "models", "entity", "sky_glow.geo.json")
+    gdoc = docs.get(gpath)
+    if not isinstance(gdoc, dict):
+        err(f"sky_{bid} usa geometry.space_dim.sky_glow, que nao existe no RP")
+        continue
+    gentry = (gdoc.get("minecraft:geometry") or [{}])[0]
+    gdesc = gentry.get("description", {})
+    cubes = (gentry.get("bones") or [{}])[0].get("cubes") or []
+    if len(cubes) < 4:
+        err(f"sky_glow tem so {len(cubes)} casca(s) — com poucas o degrade vira "
+            f"degrau e o volume some")
+    # As cascas tem que ser ANINHADAS e de tamanhos diferentes: duas do mesmo
+    # tamanho somariam no mesmo lugar em vez de somar ao longo do caminho.
+    tamanhos = [c.get("size", [0])[0] for c in cubes]
+    if len(set(tamanhos)) != len(tamanhos):
+        err(f"sky_glow tem cascas de tamanho repetido ({tamanhos}) — elas tem "
+            f"que ser aninhadas pra a soma seguir o caminho do raio")
+    if max(tamanhos) != 16:
+        err(f"a casca de fora do sky_glow tem {max(tamanhos)} unidades, esperado "
+            f"16 — a conta de escala do skybox supoe uma aresta de um bloco")
+    for c in cubes:
+        sz = c.get("size", [0, 0, 0])
+        org = c.get("origin", [0, 0, 0])
+        if sz[0] != sz[1] or sz[1] != sz[2]:
+            err(f"casca do sky_glow nao e cubica: {sz}")
+        if [round(v + sz[i] / 2, 4) for i, v in enumerate(org)] != [0, 0, 0]:
+            err(f"casca do sky_glow de tamanho {sz[0]} nao esta centrada "
+                f"(origin {org}) — descentrada ela sai por um lado do corpo")
+
+    # A textura: uma celula chapada por casca, todas com o MESMO alfa, e esse
+    # alfa nem 0 nem 255. Em 0 a casca some (foi o que deixou os corpos
+    # invisiveis da primeira vez); em 255 ela fica opaca, tapa as de dentro e
+    # ainda por cima perde o brilho, que vem de (1 - alfa).
+    tex = sky_texture_path(bid)
+    if os.path.isfile(tex):
+        try:
+            gw, gh, gpx = png_rgba(tex)
+            if (gw, gh) != (gdesc.get("texture_width"), gdesc.get("texture_height")):
+                err(f"a textura {os.path.basename(tex)} e {gw}x{gh}, mas sky_glow "
+                    f"declara {gdesc.get('texture_width')}x{gdesc.get('texture_height')}")
+            alfas = {gpx[k + 3] for k in range(0, len(gpx), 4)}
+            if len(alfas) != 1:
+                err(f"as cascas de {bid} tem alfas diferentes ({sorted(alfas)}) — "
+                    f"cada casca tem que somar a mesma fatia de luz")
+            a = next(iter(alfas))
+            if a in (0, 255):
+                err(f"as cascas de {bid} tem alfa {a}: em 0 elas somem, em 255 "
+                    f"ficam opacas e sem brilho. Precisa ser intermediario")
+            cores = {tuple(gpx[k:k + 3]) for k in range(0, len(gpx), 4)}
+            if len(cores) < len(cubes):
+                err(f"as cascas de {bid} tem {len(cores)} cor(es) pra "
+                    f"{len(cubes)} casca(s) — alguma nao recebeu a sua")
+        except Exception as e:  # noqa: BLE001
+            warn(f"nao consegui conferir as cascas de {bid}: {e}")
 
 # A escala do modelo e a PROJECAO do corpo, em degraus de component group.
 #
@@ -690,52 +849,36 @@ for bid in list(body_ids) + ["star"]:
         err(f"sky_{bid} anima a escala no cliente — ela e do servidor agora, e "
             f"duas fontes brigando dao o tamanho errado")
 
-# A textura do Sol visto de longe e a UNICA que nao sai bloco a bloco: ela e o
-# degrade continuo da referencia, interpolando as cores dos mesmos seis blocos.
-# Se ela cair pra pouquissimos tons, virou faixa dura e perdeu o ponto.
-sun_tex = os.path.join(RP, "textures", "space_dim", "sky", "sun.png")
-if os.path.isfile(sun_tex):
-    import zlib as _zlib
-    with open(sun_tex, "rb") as f:
-        raw = f.read()
-    # conta cores distintas descomprimindo o IDAT
-    idat = b""
-    i = 8
-    while i < len(raw):
-        ln = struct.unpack(">I", raw[i:i + 4])[0]
-        typ = raw[i + 4:i + 8]
-        if typ == b"IDAT":
-            idat += raw[i + 8:i + 8 + ln]
-        i += 12 + ln
+# As cascas do Sol vao do miolo CLARO pra borda ESCURA, nessa ordem.
+#
+# A ordem e o degrade inteiro: invertida, o Sol fica vermelho no meio e branco
+# na borda, e nada mais no addon notaria. As cascas sao declaradas de fora pra
+# dentro no geometry, e a cor de cada uma vem da celula que o UV dela aponta.
+for bid in body_ids:
+    if not sky_is_glow(bid):
+        continue
+    gdoc = docs.get(os.path.join(RP, "models", "entity", "sky_glow.geo.json"))
+    tex = sky_texture_path(bid)
+    if not isinstance(gdoc, dict) or not os.path.isfile(tex):
+        continue
     try:
-        data = _zlib.decompress(idat)
-        w, h = struct.unpack(">II", raw[16:24])
-        tones = set()
-        stride = w * 4
-        pos = 0
-        prev = bytearray(stride)
-        for _ in range(h):
-            f_ = data[pos]; pos += 1
-            line = bytearray(data[pos:pos + stride]); pos += stride
-            for x in range(stride):
-                a = line[x - 4] if x >= 4 else 0
-                b = prev[x]
-                c = prev[x - 4] if x >= 4 else 0
-                if f_ == 1: line[x] = (line[x] + a) & 255
-                elif f_ == 2: line[x] = (line[x] + b) & 255
-                elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
-                elif f_ == 4:
-                    pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
-                    pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
-                    line[x] = (line[x] + pr) & 255
-            prev = line
-            for x in range(w):
-                tones.add(bytes(line[x * 4:x * 4 + 3]))
-        if len(tones) < 12:
-            err(f"a textura do Sol visto de longe tem so {len(tones)} tons — "
-                f"o degrade dele virou faixa dura")
+        gw, gh, gpx = png_rgba(tex)
+        cubes = ((gdoc.get("minecraft:geometry") or [{}])[0]
+                 .get("bones") or [{}])[0].get("cubes") or []
+        porTamanho = []
+        for c in cubes:
+            u = c.get("uv", {}).get("north", {}).get("uv", [0, 0])
+            k = (min(gh - 1, 0) * gw + min(gw - 1, int(u[0]))) * 4
+            lum = 0.299 * gpx[k] + 0.587 * gpx[k + 1] + 0.114 * gpx[k + 2]
+            porTamanho.append((c.get("size", [0])[0], lum))
+        porTamanho.sort()
+        lums = [l for _, l in porTamanho]
+        if lums and any(lums[i] < lums[i + 1] - 1 for i in range(len(lums) - 1)):
+            err(f"as cascas de {bid} nao escurecem de dentro pra fora "
+                f"({[round(l) for l in lums]}) — o degrade do Sol esta invertido "
+                f"ou embaralhado")
     except Exception as e:  # noqa: BLE001
-        warn(f"nao consegui medir os tons da textura do Sol: {e}")
+        warn(f"nao consegui conferir a ordem das cascas de {bid}: {e}")
 
 # Nenhuma textura de ceu pode ter texel PRETO PURO.
 #
@@ -749,44 +892,10 @@ if os.path.isfile(sun_tex):
 #
 # O gerador preenche os buracos com a cor pintada mais proxima. Esta regra
 # existe pra isso nunca mais voltar sem ninguem ver.
-def png_rgba(path):
-    import zlib as _z
-    with open(path, "rb") as f:
-        raw = f.read()
-    w, h = struct.unpack(">II", raw[16:24])
-    idat = b""
-    i = 8
-    while i < len(raw):
-        ln = struct.unpack(">I", raw[i:i + 4])[0]
-        if raw[i + 4:i + 8] == b"IDAT":
-            idat += raw[i + 8:i + 8 + ln]
-        i += 12 + ln
-    data = _z.decompress(idat)
-    stride = w * 4
-    out = bytearray()
-    prev = bytearray(stride)
-    pos = 0
-    for _ in range(h):
-        f_ = data[pos]; pos += 1
-        line = bytearray(data[pos:pos + stride]); pos += stride
-        for x in range(stride):
-            a = line[x - 4] if x >= 4 else 0
-            b = prev[x]
-            c = prev[x - 4] if x >= 4 else 0
-            if f_ == 1: line[x] = (line[x] + a) & 255
-            elif f_ == 2: line[x] = (line[x] + b) & 255
-            elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
-            elif f_ == 4:
-                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
-                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
-                line[x] = (line[x] + pr) & 255
-        prev = line
-        out += line
-    return w, h, out
 
 
 for bid in list(body_ids) + ["star"]:
-    tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    tex = sky_texture_path(bid)
     if not os.path.isfile(tex):
         continue
     try:

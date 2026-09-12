@@ -4,13 +4,13 @@
     "description": {
       "identifier": "space_dim:sky_sun",
       "materials": {
-        "default": "space_dim_sky"
+        "default": "space_dim_glow"
       },
       "textures": {
-        "default": "textures/space_dim/sky/sun"
+        "default": "textures/space_dim/sky/glow_sun"
       },
       "geometry": {
-        "default": "geometry.space_dim.sky_body"
+        "default": "geometry.space_dim.sky_glow"
       },
       "scripts": {
         "should_update_bones_and_effects_offscreen": true

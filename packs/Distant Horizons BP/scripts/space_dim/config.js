@@ -68,6 +68,16 @@ export const BODIES = [
     name: "§6Sol",
     center: { x: -520, y: ORBIT_Y, z: 120 },
     radius: 100,
+    // O modelo do Sol é VOLUMÉTRICO: cascas concêntricas translúcidas em vez de
+    // um cubo com textura por face.
+    //
+    // Medindo a referência, o brilho dela não cai ao atravessar a aresta interna
+    // do cubo, e os anéis seguem a SILHUETA — hexagonais de quina, quadrados de
+    // frente. Nenhuma textura por face faz isso: a silhueta muda com o ângulo, e
+    // qualquer borda escura desenhada na face escurece as arestas internas
+    // junto. O que produz aquilo é luz somada ao longo do caminho dentro do
+    // corpo, e é isso que as cascas fazem.
+    volumetric: true,
     // O Sol é ATRAVESSÁVEL: coroa e plasma são cascas sem colisão, com vácuo
     // entre elas, e no meio o núcleo sólido. Quem furar o calor entra de
     // verdade, camada por camada, até ter onde pousar.
