@@ -723,6 +723,69 @@ if os.path.isfile(sun_tex):
     except Exception as e:  # noqa: BLE001
         warn(f"nao consegui medir os tons da textura do Sol: {e}")
 
+# Nenhuma textura de ceu pode ter texel PRETO PURO.
+#
+# A planificacao 4x3 tem doze celulas e so seis carregam face. As outras seis
+# nasciam zeradas, ou seja (0,0,0). Preto parado num canto nao usado parece
+# inofensivo e nao e: com o corpo longe o modelo fica pequeno e a GPU desce de
+# mipmap, cada nivel e a media de quatro texels do nivel acima, e essa media
+# ATRAVESSA a borda da celula. A borda de cada face vai se lambuzando de preto —
+# a moldura escura em volta do Sol, pior quanto mais longe, que e justo quando o
+# modelo e a unica coisa visivel.
+#
+# O gerador preenche os buracos com a cor pintada mais proxima. Esta regra
+# existe pra isso nunca mais voltar sem ninguem ver.
+def png_rgba(path):
+    import zlib as _z
+    with open(path, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    idat = b""
+    i = 8
+    while i < len(raw):
+        ln = struct.unpack(">I", raw[i:i + 4])[0]
+        if raw[i + 4:i + 8] == b"IDAT":
+            idat += raw[i + 8:i + 8 + ln]
+        i += 12 + ln
+    data = _z.decompress(idat)
+    stride = w * 4
+    out = bytearray()
+    prev = bytearray(stride)
+    pos = 0
+    for _ in range(h):
+        f_ = data[pos]; pos += 1
+        line = bytearray(data[pos:pos + stride]); pos += stride
+        for x in range(stride):
+            a = line[x - 4] if x >= 4 else 0
+            b = prev[x]
+            c = prev[x - 4] if x >= 4 else 0
+            if f_ == 1: line[x] = (line[x] + a) & 255
+            elif f_ == 2: line[x] = (line[x] + b) & 255
+            elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
+            elif f_ == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[x] = (line[x] + pr) & 255
+        prev = line
+        out += line
+    return w, h, out
+
+for bid in list(body_ids) + ["star"]:
+    tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+    if not os.path.isfile(tex):
+        continue
+    try:
+        w_, h_, px_ = png_rgba(tex)
+    except Exception as e:  # noqa: BLE001
+        warn(f"nao consegui ler {bid}.png: {e}")
+        continue
+    black = sum(1 for k in range(0, len(px_), 4)
+                if px_[k] == 0 and px_[k + 1] == 0 and px_[k + 2] == 0)
+    if black:
+        err(f"a textura de ceu {bid}.png tem {black} texel(s) preto(s) puro(s) "
+            f"de {w_ * h_} — o mipmap mistura isso na borda das faces e o corpo "
+            f"ganha moldura escura quando esta longe")
+
 # Uma camada marcada `passable` no config so pode ser pintada com blocos SEM
 # colisao.
 #

@@ -186,6 +186,45 @@ function faceColors(body, pick) {
   return out;
 }
 
+// --- Nada de preto na folha ---------------------------------------------------
+//
+// A textura é uma planificação 4x3: doze células, das quais só SEIS carregam
+// face. As outras seis nasciam do Buffer.alloc, ou seja (0,0,0) — preto puro.
+//
+// Isso não é inofensivo. Quando o corpo está longe o modelo fica pequeno na
+// tela e a GPU desce de mipmap: cada nível é a média de quatro texels do nível
+// acima, e a média ATRAVESSA a borda das células. Então a borda de cada face
+// vai se misturando com o preto vizinho — é a moldura escura em volta do Sol,
+// e ela piora exatamente quando o corpo fica mais distante, que é justo quando
+// o modelo é o que se vê.
+//
+// A correção é a de sempre em atlas de textura: não deixar buraco. Cada texel
+// não pintado recebe a cor do texel pintado mais próximo (dilatação em ondas a
+// partir das faces), então a média do mipmap só pode cair em cor do corpo.
+// Vale pros outros corpos também: a Terra tinha a mesma moldura preta.
+function fillGaps(px, W, H, painted) {
+  let front = [];
+  for (let i = 0; i < W * H; i++) if (painted[i]) front.push(i);
+  while (front.length) {
+    const next = [];
+    for (const i of front) {
+      const x = i % W, y = (i / W) | 0, d = i * 4;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const j = ny * W + nx;
+        if (painted[j]) continue;
+        painted[j] = 1;
+        const e = j * 4;
+        px[e] = px[d]; px[e + 1] = px[d + 1]; px[e + 2] = px[d + 2];
+        px[e + 3] = 0;               // alfa 0 = brilho, igual ao resto
+        next.push(j);
+      }
+    }
+    front = next;
+  }
+}
+
 function skyTexture(body) {
   const c = body.center, R = body.radius;
 
@@ -197,15 +236,18 @@ function skyTexture(body) {
     }
     const W0 = RES * 4, H0 = RES * 3;
     const px0 = Buffer.alloc(W0 * H0 * 4);
+    const painted0 = new Uint8Array(W0 * H0);
     const put = (ox, oy) => {
       for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
         const col = face[v * RES + u];
-        const d = ((oy + v) * W0 + ox + u) * 4;
+        const i = (oy + v) * W0 + ox + u, d = i * 4;
         px0[d] = col[0]; px0[d + 1] = col[1]; px0[d + 2] = col[2]; px0[d + 3] = 0;
+        painted0[i] = 1;
       }
     };
     put(RES, 0); put(RES * 2, 0); put(0, RES);
     put(RES, RES); put(RES * 2, RES); put(RES * 3, RES);
+    fillGaps(px0, W0, H0, painted0);
     const dir0 = path.join(RP, 'textures', NS, 'sky');
     fs.mkdirSync(dir0, { recursive: true });
     writePng(path.join(dir0, `${body.id}.png`), W0, H0, px0);
@@ -223,12 +265,14 @@ function skyTexture(body) {
   };
 
   const W = RES * 4, H = RES * 3;
-  const px = Buffer.alloc(W * H * 4);          // tudo transparente por padrão
+  const px = Buffer.alloc(W * H * 4);
+  const painted = new Uint8Array(W * H);
   const blit = (face, ox, oy) => {
     for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
       const col = faces[face][v * RES + u];
       if (!col) continue;
-      const d = ((oy + v) * W + ox + u) * 4;
+      const i = (oy + v) * W + ox + u, d = i * 4;
+      painted[i] = 1;
       px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2];
       // Alfa 0 = BRILHO MÁXIMO no material `space_dim_sky` (USE_EMISSIVE), e o
       // pixel continua opaco porque o material herda de `entity`.
@@ -245,6 +289,7 @@ function skyTexture(body) {
   blit('north', RES, RES);
   blit('west', RES * 2, RES);
   blit('south', RES * 3, RES);
+  fillGaps(px, W, H, painted);
 
   const dir = path.join(RP, 'textures', NS, 'sky');
   fs.mkdirSync(dir, { recursive: true });

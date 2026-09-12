@@ -430,6 +430,42 @@ def scrambled_generators():
             fails += 1
 
 
+
+# --- moldura preta no atlas do ceu -------------------------------------------
+#
+# Metade de cada textura de ceu (as seis celulas nao usadas da planificacao 4x3)
+# nascia preta. O mipmap mistura isso na borda das faces e o corpo ganha uma
+# moldura escura justamente quando esta longe.
+def paint_black_corner(tmp):
+    import struct
+    import zlib
+    tex = rp(tmp, "textures", "space_dim", "sky", "sun.png")
+    with open(tex, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    # reescreve a textura inteira: preta no canto de cima a esquerda (celula que
+    # nao carrega face), branca no resto
+    lines = bytearray()
+    for y in range(h):
+        lines.append(0)
+        for x in range(w):
+            black = x < 64 and y < 64
+            lines += bytes((0, 0, 0, 0) if black else (255, 255, 255, 0))
+
+    def chunk(typ, data):
+        body = typ + data
+        return struct.pack(">I", len(data)) + body + struct.pack(
+            ">I", zlib.crc32(body) & 0xffffffff)
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    with open(tex, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+                + chunk(b"IDAT", zlib.compress(bytes(lines), 9))
+                + chunk(b"IEND", b""))
+
+
+case("textura de ceu com texel preto puro", paint_black_corner, r"preto\(s\) puro")
+
 scrambled_generators()
 
 
