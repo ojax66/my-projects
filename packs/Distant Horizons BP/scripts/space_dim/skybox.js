@@ -89,6 +89,18 @@ export function clearModels(playerId) {
   models.delete(playerId);
 }
 
+/** Tira todos os modelos de um jogador menos um. */
+function clearModelsExcept(playerId, keepId) {
+  const mine = models.get(playerId);
+  if (!mine) return;
+  for (const [bodyId, entity] of [...mine]) {
+    if (bodyId === keepId) continue;
+    appliedStep.delete(playerId + "|" + bodyId);
+    dropModel(entity);
+    mine.delete(bodyId);
+  }
+}
+
 /**
  * Modelos órfãos: se o jogo fechou no meio de uma sessão, os modelos daquela
  * sessão ficaram no mundo sem dono. Ninguém mais vai movê-los, então saem.
@@ -205,16 +217,39 @@ export function updateSky(player) {
   const shown = new Set();
   const eye = player.location;
 
-  // Dentro de um corpo, nada de céu.
+  // Dentro de um corpo o céu some — MENOS a casca só-modelo do corpo em que se
+  // está.
   //
-  // O modelo fica a poucos blocos do jogador, então lá dentro do Sol a Terra, a
-  // Lua e Marte apareciam flutuando no meio do plasma — atravessando as camadas
-  // que deviam escondê-los. Estando dentro de qualquer corpo, o céu some.
+  // Os outros corpos têm que sair: o modelo fica a poucos blocos do jogador, e
+  // lá dentro do Sol a Terra, a Lua e Marte apareciam flutuando no meio do
+  // plasma, atravessando as camadas que deviam escondê-los.
+  //
+  // A coroa do Sol é o contrário: ela É a camada em que o jogador está, e não
+  // tem bloco nenhum: nada mais no jogo vai desenhá-la. Sumir aqui era o pulo
+  // feio de antes — cruzava o raio 100 e a coroa evaporava.
+  //
+  // Lá dentro ela não pode mais ser desenhada como um corpo visto de fora: não
+  // há ângulo pra projetar, o jogador está DENTRO. Então ela vira um céu — um
+  // cubo do tamanho do corpo, centrado no próprio jogador, com a textura da
+  // coroa. Tudo que estiver mais perto que isso (a bola de plasma, a nave)
+  // desenha na frente, que é o que se veria de dentro de verdade. E centrado no
+  // jogador ele está sempre à distância zero: nunca descarrega.
+  let dentro = null;
   for (const body of wanted) {
-    if (chebyshevTo(eye, body) <= body.radius) {
-      clearModels(player.id);
-      return;
+    if (chebyshevTo(eye, body) <= body.radius) { dentro = body; break; }
+  }
+  if (dentro) {
+    const coroa = alwaysModel(dentro);
+    clearModelsExcept(player.id, coroa ? dentro.id : null);
+    if (!coroa) return;
+    const entity = ensureModel(player, dentro, false);
+    if (entity) {
+      try {
+        entity.teleport(eye);
+        applyScale(player, dentro, entity, 2 * dentro.radius);
+      } catch { hideModel(player, dentro.id); }
     }
+    return;
   }
 
   // Quem vai aparecer, e a que distância real está.

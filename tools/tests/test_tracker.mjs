@@ -326,11 +326,41 @@ const mk = (id = 'p1') =>
   const fora = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
   check('fora do Sol o céu aparece', fora > 0, `(${fora} modelos)`);
 
-  // Dentro do Sol: nada.
+  // Dentro do Sol: some tudo menos a coroa dele, que é a camada em que o
+  // jogador está e que nenhum bloco desenha.
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + 30 });
   __advance(2); updateSky(p);
-  const dentro = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
-  check('dentro do Sol o céu some', dentro === 0, `(${dentro} modelos)`);
+  const restam = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
+  check('dentro do Sol os outros corpos somem',
+        restam.every((e) => e.typeId === 'space_dim:sky_sun'),
+        `(${restam.map((e) => e.typeId).join(', ') || 'nenhum'})`);
+  check('  mas a coroa do Sol continua', restam.length === 1);
+
+  // E lá dentro ela vira um céu: cubo do tamanho do corpo, centrado no jogador.
+  // Não há ângulo pra projetar quando se está dentro, e centrado no jogador o
+  // modelo está sempre à distância zero — nunca descarrega.
+  const coroa = restam[0];
+  const longe = Math.hypot(coroa.location.x - p.location.x,
+                           coroa.location.y - p.location.y,
+                           coroa.location.z - p.location.z);
+  check('  centrada no jogador', longe < 0.5, `(a ${longe.toFixed(2)} blocos)`);
+
+  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
+  const evc = (coroa.__events ?? []).filter((e) => e.startsWith('space_dim:set_size_')).pop();
+  const escalaCoroa = SKY_SIZE_STEPS[Number(evc?.slice('space_dim:set_size_'.length))];
+  check('  e do tamanho do corpo',
+        Math.abs(Math.log(escalaCoroa / (2 * sun.radius))) < Math.log(1.25),
+        `(${escalaCoroa} vs ${2 * sun.radius})`);
+
+  // Voltando pra fora, ela volta a ser projetada de longe.
+  p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 300 });
+  __advance(2); updateSky(p);
+  const fora2 = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_sun')[0];
+  const longe2 = Math.hypot(fora2.location.x - p.location.x,
+                            fora2.location.y - p.location.y,
+                            fora2.location.z - p.location.z);
+  check('saindo do Sol a coroa volta a ser um corpo distante', longe2 > 1,
+        `(a ${longe2.toFixed(0)} blocos)`);
 
   clearModels(p.id);
 }
