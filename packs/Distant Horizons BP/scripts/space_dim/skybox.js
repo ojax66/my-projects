@@ -254,7 +254,7 @@ export function updateSky(player) {
     if (entity) {
       try {
         entity.teleport(eye);
-        applyScale(player, dentro, entity, 2 * dentro.radius);
+        applyScale(player, dentro, entity, 2 * dentro.radius * (dentro.halo ?? 1));
       } catch { hideModel(player, dentro.id); }
     }
     return;
@@ -327,8 +327,12 @@ export function updateSky(player) {
 
     // Escala pelo ângulo — ver a conta no cabeçalho. A estrela tem tamanho
     // fixo, declarado na entidade.
+    //
+    // `halo` estica o cubo pra fora do corpo: a textura dele tem o disco no
+    // meio, ocupando 1/halo da face, e o brilho em volta. O disco continua
+    // dando exatamente o ângulo do corpo real — quem cresce é só o brilho.
     if (!star) {
-      applyScale(player, body, entity, (2 * at * body.radius) / d);
+      applyScale(player, body, entity, (2 * at * body.radius * (body.halo ?? 1)) / d);
     }
   }
 

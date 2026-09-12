@@ -662,7 +662,12 @@ if steps and near_dist and sys_radius and radii:
     #
     #   maior: at == distancia (corpo mais perto que o degrau) -> 2 * raio
     #   menor: at == SKY_MODEL_NEAREST, corpo na borda do sistema
-    maior = 2 * max(radii.values())
+    # O cubo do corpo com halo e maior que o corpo: o disco fica no meio e o
+    # brilho em volta. Quem manda no degrau e o cubo inteiro.
+    halos = {}
+    for m in re.finditer(r'id:\s*"(\w+)",[\s\S]*?halo:\s*([\d.]+)', config_src):
+        halos.setdefault(m.group(1), float(m.group(2)))
+    maior = 2 * max(r * halos.get(bid, 1.0) for bid, r in radii.items())
     menor = 2 * near_dist * min(radii.values()) / sys_radius
     if maior > max(steps) or menor < min(steps):
         err(f"os degraus vao de {min(steps)} a {max(steps)}, mas a conta pede de "
@@ -783,6 +788,45 @@ def png_rgba(path):
         prev = line
         out += line
     return w, h, out
+
+
+# O HALO do Sol se apaga na COR DO ESPACO, e ela tem que ser a mesma em todo
+# lugar: no fog, no ceu do bioma e no SPACE_COLOR que o gerador usa.
+#
+# O halo nao usa transparencia — o material do ceu e opaco. Ele funciona porque
+# o fundo e uma cor so: "sumir" e "chegar na cor do fundo" dao a mesma imagem.
+# Se os valores divergirem, o halo vira um quadrado visivel em volta do Sol.
+space_color = None
+msc = re.search(r'export const SPACE_COLOR = "(#[0-9A-Fa-f]{6})";', config_src)
+if msc:
+    space_color = msc.group(1).upper()
+    fog_doc = docs.get(os.path.join(RP, "fogs", "outer_space.fog.json"))
+    if isinstance(fog_doc, dict):
+        got = (fog_doc.get("minecraft:fog_settings", {}).get("distance", {})
+               .get("air", {}).get("fog_color", "")).upper()
+        if got != space_color:
+            err(f"o fog do espaco e {got} mas SPACE_COLOR e {space_color} — o "
+                f"halo do Sol se apaga na cor errada e vira um quadrado")
+
+    # E o canto da textura do Sol — o ponto mais de fora do halo — tem que ser
+    # exatamente essa cor.
+    sun_png = os.path.join(RP, "textures", "space_dim", "sky", "sun.png")
+    if os.path.isfile(sun_png):
+        try:
+            w_s, h_s, px_s = png_rgba(sun_png)
+            alvo = tuple(int(space_color[i:i + 2], 16) for i in (1, 3, 5))
+            # canto superior esquerdo da celula da face de cima (RES=64)
+            i0 = (0 * w_s + 64) * 4
+            canto = (px_s[i0], px_s[i0 + 1], px_s[i0 + 2])
+            # Tolerancia de 2 niveis: a conversao linear->sRGB no fim da queda
+            # nao cai exatamente no valor de partida, e 2/255 e invisivel. O
+            # que a regra pega e o halo terminando numa cor OUTRA.
+            folga = max(abs(canto[i] - alvo[i]) for i in range(3))
+            if folga > 2:
+                err(f"o canto do halo do Sol e {canto}, esperado {alvo} "
+                    f"({space_color}, folga de 2) — ele nao se apaga no fundo")
+        except Exception as e:  # noqa: BLE001
+            warn(f"nao consegui conferir o halo do Sol: {e}")
 
 for bid in list(body_ids) + ["star"]:
     tex = os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")

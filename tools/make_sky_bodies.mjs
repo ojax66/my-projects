@@ -45,7 +45,7 @@ fs.cpSync(path.join(ROOT, 'tools', 'tests', 'stub', '@minecraft'),
 fs.writeFileSync(path.join(STAGE, 'package.json'), '{ "type": "module" }');
 
 const { columnRuns } = await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'bodies.js')));
-const { BODIES } =
+const { BODIES, SPACE_COLOR } =
   await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'config.js')));
 
 const COLORS = JSON.parse(
@@ -131,15 +131,46 @@ function blockAt(x, y, z) {
 // Cada parada é a cor real de um dos seis blocos do Sol (block_colors.json), na
 // posição do MEIO da camada que aquele bloco ocupa em SUN_DISC. Assim o modelo
 // visto de longe é o mesmo degradê da construção vista de perto, só que contínuo.
+// As paradas são as cores reais dos seis blocos do Sol; o que mudou foram as
+// POSIÇÕES. Na referência o miolo branco ocupa quase metade do disco e o
+// vermelho é uma faixa fina na borda — o meu tinha o branco em 20% e sobrava
+// laranja demais.
 const SUN_RAMP = [
   [0.00, '#FFFFFF'],   // miolo, mais claro que o próprio bloco
-  [0.15, '#FFFBEA'],   // sun_blaze
-  [0.375, '#FBEA9F'],  // sun_flare
-  [0.515, '#FCDE67'],  // sun_plasma
-  [0.65, '#F9A128'],   // sun_ember
-  [0.79, '#EC5A14'],   // sun_corona
+  [0.22, '#FFFBEA'],   // sun_blaze
+  [0.42, '#FBEA9F'],   // sun_flare
+  [0.58, '#FCDE67'],   // sun_plasma
+  [0.72, '#F9A128'],   // sun_ember
+  [0.86, '#EC5A14'],   // sun_corona
   [1.00, '#AA300B'],   // sun_edge
 ];
+
+// O HALO: o laranja que continua fora da silhueta e some no espaço.
+//
+// Ele não é feito com transparência — o material do céu é opaco. Não precisa:
+// o fundo é SPACE_COLOR e só ele, então chegar na cor do fundo é o mesmo que
+// sumir. `t` aqui já é o pedaço FORA do disco, de 0 (encostado na borda do Sol)
+// a 1 (canto da face).
+//
+// A queda é quadrática: forte perto da borda, longa cauda depois. É o que dá o
+// aspecto de brilho em vez de moldura.
+const SPACE_RGB = rgb(SPACE_COLOR);
+
+// A mistura é feita em LUZ, não em bytes de sRGB.
+//
+// Interpolar #C4400F até #0B1436 direto no valor do pixel passa por marrons
+// lavados no meio do caminho — a "franja suja" clássica. Em espaço linear a
+// queda tem a cara de luz que apaga: fica laranja mais tempo e some rápido no
+// fim, sem passar por cor nenhuma que não seja o laranja escurecendo.
+const toLinear = (v) => Math.pow(v / 255, 2.2);
+const toSrgb = (v) => Math.round(255 * Math.pow(Math.max(0, Math.min(1, v)), 1 / 2.2));
+const SPACE_LIN = SPACE_RGB.map(toLinear);
+
+function haloColorAt(s) {
+  const base = rgb('#D2470F').map(toLinear);   // o laranja logo fora da borda
+  const k = Math.pow(1 - Math.min(1, Math.max(0, s)), 2.6);
+  return [0, 1, 2].map((c) => toSrgb(SPACE_LIN[c] + (base[c] - SPACE_LIN[c]) * k));
+}
 
 function sunColorAt(t) {
   const stops = SUN_RAMP.map(([at, hex]) => [at, rgb(hex)]);
@@ -228,11 +259,18 @@ function fillGaps(px, W, H, painted) {
 function skyTexture(body) {
   const c = body.center, R = body.radius;
 
-  // O Sol: degradê contínuo, igual em todas as seis faces.
+  // O Sol: degradê contínuo, igual em todas as seis faces, mais o halo.
   if (body.heat) {
+    // Com halo a face representa raio*halo: o disco ocupa a fração 1/halo do
+    // meio, e o resto é brilho. Sem halo, `g` vale 1 e nada muda.
+    const halo = body.halo ?? 1;
+    const g = 1 / halo;
     const face = [];
     for (let v = 0; v < RES; v++) {
-      for (let u = 0; u < RES; u++) face.push(sunColorAt(faceOffset(u, v)));
+      for (let u = 0; u < RES; u++) {
+        const t = faceOffset(u, v);
+        face.push(t <= g ? sunColorAt(t / g) : haloColorAt((t - g) / (1 - g)));
+      }
     }
     const W0 = RES * 4, H0 = RES * 3;
     const px0 = Buffer.alloc(W0 * H0 * 4);
