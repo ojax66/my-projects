@@ -123,20 +123,22 @@ function blockAt(x, y, z) {
 //
 // As cores são as MESMAS dos seis blocos, interpoladas. Então os dois não
 // divergem: é o mesmo degradê, um em blocos e outro em pixels.
-// A rampa do disco, com HALO: passando do vermelho ela continua escurecendo até
-// quase o preto do espaço. É o que faz a borda do Sol desvanecer em vez de
-// terminar num corte duro — na referência do autor o laranja se dissolve no
-// fundo, e era isso que faltava.
+// A rampa NÃO tem preto. O preto da referência é o espaço ATRÁS do Sol, não o
+// Sol: a face do corpo é o disco inteiro, então ela vai do branco do miolo até
+// o vermelho da borda e para aí. Tentar desvanecer pro fundo só pintava um anel
+// escuro em volta de cada face, que é o contrário do que a referência mostra.
+//
+// Cada parada é a cor real de um dos seis blocos do Sol (block_colors.json), na
+// posição do MEIO da camada que aquele bloco ocupa em SUN_DISC. Assim o modelo
+// visto de longe é o mesmo degradê da construção vista de perto, só que contínuo.
 const SUN_RAMP = [
-  [0.00, '#FFFFFF'],
-  [0.26, '#FFFDF1'],
-  [0.40, '#FEEC9A'],
-  [0.52, '#FFDF64'],
-  [0.64, '#FFA123'],
-  [0.76, '#F05914'],
-  [0.86, '#AA300B'],
-  [0.94, '#4A1405'],
-  [1.00, '#120503'],
+  [0.00, '#FFFFFF'],   // miolo, mais claro que o próprio bloco
+  [0.15, '#FFFBEA'],   // sun_blaze
+  [0.375, '#FBEA9F'],  // sun_flare
+  [0.515, '#FCDE67'],  // sun_plasma
+  [0.65, '#F9A128'],   // sun_ember
+  [0.79, '#EC5A14'],   // sun_corona
+  [1.00, '#AA300B'],   // sun_edge
 ];
 
 function sunColorAt(t) {
