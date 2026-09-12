@@ -132,8 +132,11 @@ const mk = (id = 'p1') =>
   // real, a centenas de blocos, o jogo não desenha — foi o que fez os corpos
   // sumirem quando eles ficavam lá.
   const { BODIES: TODOS } = await import('./space_dim/config.js');
+  // Tudo medido da CABEÇA: é de lá que sai o raio da câmera, e é de lá que o
+  // skybox projeta. Medir dos pés dava quase 6° de erro no degrau de 16 blocos.
+  const olho = p.getHeadLocation();
   const dists = models.map((e) => Math.hypot(
-    e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
+    e.location.x - olho.x, e.location.y - olho.y, e.location.z - olho.z));
   // Cada corpo tem o SEU degrau de profundidade, entre SKY_MODEL_NEAREST e
   // SKY_MODEL_DISTANCE, na ordem da distância real: o mais perto de verdade fica
   // no degrau mais perto do jogador. Dois cubos no mesmo raio se interpenetram;
@@ -144,8 +147,8 @@ const mk = (id = 'p1') =>
   // corpos sumirem quando o modelo ia pra posição real, a 112 blocos.
   const reais = models.map((e) => {
     const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
-    return Math.hypot(body.center.x - p.location.x, body.center.y - p.location.y,
-                      body.center.z - p.location.z);
+    return Math.hypot(body.center.x - olho.x, body.center.y - olho.y,
+                      body.center.z - olho.z);
   });
   const ordem = reais.map((r, i) => i).sort((a, b) => reais[a] - reais[b]);
   const passo = models.length > 1
@@ -157,6 +160,14 @@ const mk = (id = 'p1') =>
   check('  cada modelo fica no degrau de profundidade dele',
         dists.every((d, i) => Math.abs(d - esperado[i]) < 0.5),
         `(${dists.map((d, i) => `${d.toFixed(0)}/${esperado[i].toFixed(0)}`).join(' ')})`);
+  // E a projeção sai da CABEÇA. Medida dos pés, no degrau de 16 blocos o erro é
+  // atan(1,62/16) ≈ 5,8° — o modelo desce e para de casar com a construção que
+  // ele está substituindo.
+  const pes = models.map((e) => Math.hypot(
+    e.location.x - p.location.x, e.location.y - p.location.y, e.location.z - p.location.z));
+  check('  e a projeção sai da cabeça, não dos pés',
+        dists.some((d, i) => Math.abs(d - pes[i]) > 0.01),
+        `(da cabeça ${dists[0].toFixed(2)}, dos pés ${pes[0].toFixed(2)})`);
   check('  nenhum modelo passa da distância de simulação',
         dists.every((d) => d <= 64), `(o mais longe a ${Math.max(...dists).toFixed(0)})`);
   check('  e dois modelos nunca ficam na mesma profundidade',
@@ -171,10 +182,10 @@ const mk = (id = 'p1') =>
       const n = Math.hypot(a, b, c);
       return [a / n, b / n, c / n];
     };
-    const real = dir(body.center.x - p.location.x, body.center.y - p.location.y,
-                     body.center.z - p.location.z);
-    const mod = dir(e.location.x - p.location.x, e.location.y - p.location.y,
-                    e.location.z - p.location.z);
+    const real = dir(body.center.x - olho.x, body.center.y - olho.y,
+                     body.center.z - olho.z);
+    const mod = dir(e.location.x - olho.x, e.location.y - olho.y,
+                    e.location.z - olho.z);
     return Math.abs(real[0] - mod[0]) + Math.abs(real[1] - mod[1]) +
            Math.abs(real[2] - mod[2]) > 0.01;
   });
@@ -292,9 +303,9 @@ const mk = (id = 'p1') =>
 
   // O ângulo do modelo tem que bater com o do corpo real. A distância do modelo
   // é a do degrau que ele recebeu, então sai dele mesmo — não de uma constante.
-  const aonde = Math.hypot(modelo.location.x - p.location.x,
-                           modelo.location.y - p.location.y,
-                           modelo.location.z - p.location.z);
+  const cab8 = p.getHeadLocation();
+  const aonde = Math.hypot(modelo.location.x - cab8.x, modelo.location.y - cab8.y,
+                           modelo.location.z - cab8.z);
   const anguloReal = moon.radius / 95;
   const anguloModelo = (0.5 * escala) / aonde;
   check('  o ângulo do modelo bate com o do corpo',
@@ -340,10 +351,10 @@ const mk = (id = 'p1') =>
   // Não há ângulo pra projetar quando se está dentro, e centrado no jogador o
   // modelo está sempre à distância zero — nunca descarrega.
   const coroa = restam[0];
-  const longe = Math.hypot(coroa.location.x - p.location.x,
-                           coroa.location.y - p.location.y,
-                           coroa.location.z - p.location.z);
-  check('  centrada no jogador', longe < 0.5, `(a ${longe.toFixed(2)} blocos)`);
+  const cab = p.getHeadLocation();
+  const longe = Math.hypot(coroa.location.x - cab.x, coroa.location.y - cab.y,
+                           coroa.location.z - cab.z);
+  check('  centrada na cabeça do jogador', longe < 0.5, `(a ${longe.toFixed(2)} blocos)`);
 
   const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
   const evc = (coroa.__events ?? []).filter((e) => e.startsWith('space_dim:set_size_')).pop();
@@ -356,9 +367,9 @@ const mk = (id = 'p1') =>
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 300 });
   __advance(2); updateSky(p);
   const fora2 = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_sun')[0];
-  const longe2 = Math.hypot(fora2.location.x - p.location.x,
-                            fora2.location.y - p.location.y,
-                            fora2.location.z - p.location.z);
+  const c2 = p.getHeadLocation();
+  const longe2 = Math.hypot(fora2.location.x - c2.x, fora2.location.y - c2.y,
+                            fora2.location.z - c2.z);
   check('saindo do Sol a coroa volta a ser um corpo distante', longe2 > 1,
         `(a ${longe2.toFixed(0)} blocos)`);
 

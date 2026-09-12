@@ -109,7 +109,12 @@ class Entity {
   getProperty(k) { return this.__entityProps?.get(k); }
   setDynamicProperty(k, v) { (this.__props ??= new Map()).set(k, v); }
   getDynamicProperty(k) { return this.__props?.get(k); }
-  getHeadLocation() { return this.location; }
+  // A cabeça fica 1,62 acima dos pés, como no jogo. Importa: é da cabeça que
+  // sai o raio da câmera, e um modelo posto a 16 blocos na direção medida dos
+  // PÉS aparece quase 6° abaixo de onde deveria.
+  getHeadLocation() {
+    return { x: this.location.x, y: this.location.y + 1.62, z: this.location.z };
+  }
 
   getComponent(name) {
     if (name === "riding" || name === "minecraft:riding") {

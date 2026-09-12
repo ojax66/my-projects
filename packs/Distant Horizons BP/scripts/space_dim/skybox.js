@@ -215,7 +215,15 @@ export function updateSky(player) {
   try { wanted = trackedBodies(player); } catch { return; }
 
   const shown = new Set();
-  const eye = player.location;
+
+  // Da CABEÇA, não dos pés.
+  //
+  // `player.location` são os pés. Enquanto o modelo ficava longe isso não
+  // aparecia, mas no degrau de 16 blocos a diferença de 1,62 vira quase 6° de
+  // erro — o modelo desce da posição do corpo e deixa de casar com a construção
+  // que ele deveria estar substituindo.
+  let eye;
+  try { eye = player.getHeadLocation(); } catch { eye = player.location; }
 
   // Dentro de um corpo o céu some — MENOS a casca só-modelo do corpo em que se
   // está.
