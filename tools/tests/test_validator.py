@@ -467,22 +467,6 @@ def paint_black_corner(tmp):
 case("textura de ceu com texel preto puro", paint_black_corner, r"preto\(s\) puro")
 
 
-# --- o halo do Sol tem que se apagar na cor do espaco ------------------------
-#
-# O halo nao usa transparencia: ele so funciona porque o fundo e uma cor so.
-# Se o fog mudar e o SPACE_COLOR nao, o halo vira um quadrado em volta do Sol.
-def fog_de_outra_cor(tmp):
-    caminho = rp(tmp, "fogs", "outer_space.fog.json")
-    with open(caminho, encoding="utf-8") as f:
-        doc = json.load(f)
-    doc["minecraft:fog_settings"]["distance"]["air"]["fog_color"] = "#123456"
-    with open(caminho, "w", encoding="utf-8") as f:
-        json.dump(doc, f, indent=2)
-
-
-case("fog do espaco de cor diferente do SPACE_COLOR", fog_de_outra_cor,
-     r"halo do Sol se apaga na cor errada")
-
 scrambled_generators()
 
 

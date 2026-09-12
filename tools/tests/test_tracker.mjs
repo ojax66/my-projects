@@ -306,10 +306,8 @@ const mk = (id = 'p1') =>
   const cab8 = p.getHeadLocation();
   const aonde = Math.hypot(modelo.location.x - cab8.x, modelo.location.y - cab8.y,
                            modelo.location.z - cab8.z);
-  // O ângulo que importa é o do DISCO, não o do cubo: com halo o cubo é maior
-  // que o corpo de propósito, e o disco ocupa 1/halo dele.
   const anguloReal = moon.radius / 95;
-  const anguloModelo = (0.5 * escala / (moon.halo ?? 1)) / aonde;
+  const anguloModelo = (0.5 * escala) / aonde;
   check('  o ângulo do modelo bate com o do corpo',
         Math.abs(Math.log(anguloModelo / anguloReal)) < Math.log(1.25),
         `(modelo ${anguloModelo.toFixed(4)} vs real ${anguloReal.toFixed(4)})`);
@@ -361,10 +359,8 @@ const mk = (id = 'p1') =>
   const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
   const evc = (coroa.__events ?? []).filter((e) => e.startsWith('space_dim:set_size_')).pop();
   const escalaCoroa = SKY_SIZE_STEPS[Number(evc?.slice('space_dim:set_size_'.length))];
-  // Do tamanho do corpo VEZES o halo: o cubo é maior que o Sol porque a textura
-  // dele leva o brilho em volta do disco.
-  const alvoCoroa = 2 * sun.radius * (sun.halo ?? 1);
-  check('  e do tamanho do corpo, com o halo',
+  const alvoCoroa = 2 * sun.radius;
+  check('  e do tamanho do corpo',
         Math.abs(Math.log(escalaCoroa / alvoCoroa)) < Math.log(1.25),
         `(${escalaCoroa} vs ${alvoCoroa})`);
 

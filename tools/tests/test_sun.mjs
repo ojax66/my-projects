@@ -191,12 +191,17 @@ const R = sun.radius;
   const RAMPA = ['sun_blaze', 'sun_flare', 'sun_plasma', 'sun_ember',
                  'sun_corona', 'sun_edge'];
 
-  // Andando do centro da face pra quina, a ordem dos tons não pode voltar
-  // atrás: é isso que faz um degradê em vez de uma manchа.
+  // Andando do centro da face pra QUINA, a ordem dos tons não pode voltar
+  // atrás: é isso que faz um degradê em vez de uma mancha.
+  //
+  // Pra quina, e não pro meio da aresta, porque o degradê é medido pela
+  // distância 3D até o centro: o meio da face está a R, o meio da aresta a R·√2
+  // e a quina a R·√3. Só indo pra quina se percorre a rampa inteira — é isso
+  // que dá anéis REDONDOS em vez de quadrados, e é o ponto do redesenho.
   const vistos = [];
   for (let i = 0; i <= 40; i++) {
     const off = Math.round((i / 40) * R * 0.99);
-    const id = blockAt(off, 0, R);
+    const id = blockAt(off, off, R);
     if (!id) continue;
     const nome = id.replace('space_dim:', '');
     if (vistos[vistos.length - 1] !== nome) vistos.push(nome);
@@ -209,6 +214,13 @@ const R = sun.radius;
   check('  e terminando no mais escuro',
         vistos[vistos.length - 1] === 'sun_edge', `(${vistos[vistos.length - 1]})`);
 
+  // E indo pelo eixo, NÃO se chega no tom mais escuro: o meio da aresta está a
+  // R·√2, não a R·√3. É a prova de que os anéis são redondos — com a medida
+  // quadrada de antes a borda inteira da face era o último tom.
+  const noEixo = blockAt(Math.round(R * 0.99), 0, R);
+  check('  pelo eixo o degradê para antes do tom mais escuro',
+        noEixo !== 'space_dim:sun_edge', `(${noEixo})`);
+
   // Os seis aparecem de verdade: um tom que ocupa 1% não faz degradê nenhum.
   const conta = {};
   for (let dx = -R; dx <= R; dx += 3) {
@@ -220,7 +232,10 @@ const R = sun.radius;
   const total = Object.values(conta).reduce((a, b) => a + b, 0);
   for (const nome of RAMPA) {
     const pct = 100 * (conta['space_dim:' + nome] || 0) / total;
-    check(`  ${nome} ocupa uma fatia visível`, pct >= 4, `(${pct.toFixed(0)}%)`);
+    // Os tons de fora vivem nas QUINAS (só o canto passa de R·√2), então a
+    // fatia deles é naturalmente menor que a do miolo. O que a regra pega é um
+    // tom que sumiu.
+    check(`  ${nome} ocupa uma fatia visível`, pct >= 1.5, `(${pct.toFixed(1)}%)`);
   }
 
   // A variação vale pra TODAS as faces: senão o Sol teria um lado bonito e

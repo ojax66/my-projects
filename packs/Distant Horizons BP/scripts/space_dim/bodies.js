@@ -45,11 +45,14 @@ const SUN_DISC = [
   // `sun_blaze`, não `sun_core`: os dois são o mesmo branco, mas o núcleo é o
   // chão MACIÇO lá no meio do Sol. Pintar a casca externa com ele fechou a
   // primeira camada — dava pra encostar no Sol, não pra entrar.
-  { until: 0.30, block: "space_dim:sun_blaze" },    // branco, atravessável
-  { until: 0.45, block: "space_dim:sun_flare" },    // amarelo claro
-  { until: 0.58, block: "space_dim:sun_plasma" },   // amarelo
-  { until: 0.72, block: "space_dim:sun_ember" },    // laranja
-  { until: 0.86, block: "space_dim:sun_corona" },   // laranja avermelhado
+  // As faixas seguem as proporções da referência: miolo branco ocupando mais da
+  // metade do raio da face, e o fogo numa borda FINA. Antes o laranja comia
+  // quase metade do corpo e o Sol parecia uma caixa laranja com um ponto claro.
+  { until: 0.50, block: "space_dim:sun_blaze" },    // branco, atravessável
+  { until: 0.68, block: "space_dim:sun_flare" },    // amarelo claro
+  { until: 0.80, block: "space_dim:sun_plasma" },   // amarelo
+  { until: 0.89, block: "space_dim:sun_ember" },    // laranja
+  { until: 0.95, block: "space_dim:sun_corona" },   // laranja avermelhado
   { until: Infinity, block: "space_dim:sun_edge" }, // vermelho
 ];
 
@@ -82,10 +85,23 @@ function faceOffset(x, y, z, body, layer) {
   else if (dy >= dz) { a = dx; b = dz; }
   else { a = dx; b = dy; }
 
-  // Chebyshev entre os dois eixos da face: dá um disco QUADRADO, que é a forma
-  // certa aqui — um disco redondo numa face quadrada deixaria as quinas de fora
-  // do degradê.
-  return Math.min(1, Math.max(a, b) / R);
+  // Anéis de SUPERELIPSE: redondos por dentro, quadrados na borda.
+  //
+  // Chebyshev puro — max(a,b) — dá anéis QUADRADOS, e era o que estava errado
+  // comparado com a referência: lá os anéis de dentro são claramente redondos.
+  //
+  // Mas trocar por distância redonda pura também não serve: aí o tom mais
+  // escuro só aparece nas quinas, o contorno do corpo some e o cubo vira uma
+  // bola lavada.
+  //
+  // A norma-p com p = 3 é o meio-termo exato: as curvas de nível de dentro são
+  // arredondadas, e a borda inteira da face chega no último tom (o meio da
+  // aresta dá 1, a quina dá 2^(1/3) e satura). Silhueta desenhada, anéis
+  // redondos.
+  const P = 3;
+  const ua = Math.min(1, a / R);
+  const ub = Math.min(1, b / R);
+  return Math.min(1, Math.pow(Math.pow(ua, P) + Math.pow(ub, P), 1 / P));
 }
 
 // ---------------------------------------------------------------------------

@@ -68,23 +68,6 @@ export const BODIES = [
     name: "§6Sol",
     center: { x: -520, y: ORBIT_Y, z: 120 },
     radius: 100,
-    // O BRILHO em volta, em raios do corpo.
-    //
-    // O que faltava pro Sol ser o da referência não era o degradê do disco —
-    // era o halo: o laranja que continua FORA da silhueta e some no espaço.
-    //
-    // Brilho de verdade pede transparência, e o material do céu é opaco (alfa
-    // ali quer dizer brilho, não transparência). Mas não precisa: o fundo do
-    // espaço é uma cor sólida e conhecida, SPACE_COLOR — medi nas fotos dele e
-    // o pixel é (11,19,55), exatamente a cor do fog. Contra um fundo uniforme,
-    // "sumir no transparente" e "chegar na cor do fundo" dão a MESMA imagem.
-    //
-    // Foi por isso que a tentativa anterior de halo ficou feia: ela escurecia
-    // até quase o preto (#120503) enquanto o espaço é azul-marinho. O anel
-    // escuro que ele viu era a diferença entre as duas cores.
-    //
-    // O modelo passa a ter raio*halo, e o disco do Sol ocupa 1/halo da face.
-    halo: 1.55,
     // O Sol é ATRAVESSÁVEL: coroa e plasma são cascas sem colisão, com vácuo
     // entre elas, e no meio o núcleo sólido. Quem furar o calor entra de
     // verdade, camada por camada, até ter onde pousar.
@@ -434,11 +417,6 @@ export const HUD_CHANNEL_DEFAULT = "sidebar";
 // Objetivo do placar usado pelo rastreador. Criado sozinho, e removido quando
 // ninguém está mais usando.
 export const HUD_OBJECTIVE = "space_dim_track";
-
-// A cor do espaço. É o fog e o céu do bioma, e é o fundo contra o qual o halo
-// do Sol se apaga — os três TÊM que ser o mesmo valor, senão o halo vira um
-// quadrado visível. O validate.py confere.
-export const SPACE_COLOR = "#0B1436";
 
 export const FOG_ID = "space_dim:fog_outer_space";
 

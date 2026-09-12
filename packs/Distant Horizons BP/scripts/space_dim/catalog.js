@@ -61,7 +61,6 @@ function resolve(entry, system) {
       // a achar que o Sol constrói até o raio 100 (constrói até 62) e que a
       // coroa dele não era só-modelo. A coroa sumia de perto por causa disto.
       layers: body.layers,
-      halo: body.halo,
       systemId: system.id,
       generated: true,                      // tem blocos de verdade
     };
