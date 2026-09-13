@@ -78,17 +78,16 @@ export const BODIES = [
     // junto. O que produz aquilo é luz somada ao longo do caminho dentro do
     // corpo, e é isso que as cascas fazem.
     volumetric: true,
-    // Como o Sol se vê POR DENTRO.
+    // Como o Sol se vê POR DENTRO: pela NEBLINA, não por um modelo.
     //
-    // De fora ele é um empilhado de 16 cascas, e é isso que dá o miolo
-    // estourado da referência. Mas por dentro o jogador fica atrás de TODAS
-    // elas de uma vez, e a soma vira um branco chapado — dá pra ver a nave e
-    // mais nada.
+    // Tentei um modelo de interior — poucas cascas, cor de brasa — e ele não
+    // pode funcionar: o material é opaco (ver a nota da atmosfera da Terra),
+    // então um cubo em volta do jogador é uma parede de cor sólida. Trocaria o
+    // branco chapado por um vermelho chapado.
     //
-    // Então dentro é outro modelo: poucas cascas, cor de brasa e alfa que deixa
-    // enxergar através. A aparência de fora não muda em nada, que era a
-    // condição — isto só existe pra quando se está lá dentro.
-    interior: { color: "#3E1605", reach: 1, shells: 2, alpha: 46 },
+    // Quem resolve é FOG_INSIDE_ID: a tela inteira fica da cor do Sol, que é o
+    // que estar dentro dele tem que parecer, e ainda dá pra ver a nave e os
+    // blocos por perto.
     // O Sol é ATRAVESSÁVEL: coroa e plasma são cascas sem colisão, com vácuo
     // entre elas, e no meio o núcleo sólido. Quem furar o calor entra de
     // verdade, camada por camada, até ter onde pousar.
@@ -146,16 +145,22 @@ export const BODIES = [
     // quem entrar nele, como um bloco gigante — ver solidBodies() em bodies.js.
     built: false,
     solid: true,
-    // Atmosfera: o mesmo empilhado de cascas do Sol, fraquinho e azulado.
+    // Atmosfera: uma BORDA azulada na própria textura do planeta.
     //
-    // `reach` é até onde ela vai, em raios do corpo; `alpha` é quanto cada
-    // casca tampa do que está atrás. Alfa baixo é o que faz a coisa somar luz
-    // quase sem escurecer — é o que separa "atmosfera" de "cúpula de vidro".
+    // A primeira versão era um cubo de cascas por fora, como o Sol. Ela virou um
+    // quadrado azul-escuro tapando a Terra inteira, e a medição na foto dele
+    // explicou por quê: o pixel do quadrado era (10,19,48), exatamente a cor da
+    // textura da atmosfera. Ou seja, o material NÃO mistura — o alfa dele só
+    // controla o brilho, e a superfície sai opaca de qualquer jeito.
     //
-    // O contorno fica mais aceso que o meio de graça: um raio que passa
-    // raspando atravessa as cascas de fora dos dois lados, um que vai pro meio
-    // do disco bate no planeta e para na metade.
-    atmosphere: { color: "#0A1430", reach: 1.13, shells: 3, alpha: 6 },
+    // Com material opaco não existe casca transparente: qualquer cubo maior que
+    // o planeta tapa o planeta. Então a atmosfera passou pra dentro da textura
+    // da superfície, onde ela não pode tapar nada: perto da borda da face a cor
+    // do chão é puxada pro azul, o que dá o halo de limbo visto de longe.
+    //
+    // `strength` é quanto a borda é puxada (0 a 1) e `edge` é onde ela começa,
+    // na mesma medida de superelipse do resto.
+    atmosphere: { color: "#6E9FE0", edge: 0.62, strength: 0.85 },
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     gravity: { reach: 46, strength: 0.03 },

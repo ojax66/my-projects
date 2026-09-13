@@ -355,17 +355,10 @@ const mk = (id = 'p1') =>
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + 30 });
   __advance(2); updateSky(p);
   const restam = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
-  // Lá dentro o Sol troca de modelo: `sky_in_sun` em vez de `sky_sun`. O de fora
-  // é o empilhado de 16 cascas, e o jogador dentro dele fica atrás de todas de
-  // uma vez — a soma vira um branco chapado e não dá pra enxergar nada. O de
-  // dentro tem poucas cascas e deixa ver através; de fora nada muda.
   check('dentro do Sol os outros corpos somem',
-        restam.every((e) => e.typeId.startsWith('space_dim:sky_')
-                            && e.typeId.includes('sun')),
+        restam.every((e) => e.typeId === 'space_dim:sky_sun'),
         `(${restam.map((e) => e.typeId).join(', ') || 'nenhum'})`);
   check('  mas o Sol continua', restam.length === 1);
-  check('  e lá dentro ele usa o modelo de interior',
-        restam[0]?.typeId === 'space_dim:sky_in_sun', `(${restam[0]?.typeId})`);
 
   // E lá dentro ela vira um céu: cubo do tamanho do corpo, centrado no jogador.
   // Não há ângulo pra projetar quando se está dentro, e centrado no jogador o
@@ -556,11 +549,12 @@ const mk = (id = 'p1') =>
         faltando.length === 0, faltando.join(', '));
 }
 
-// --- 14. A atmosfera é MESMO criada junto com o corpo -----------------------
+// --- 14. A atmosfera é borda na textura, NÃO uma entidade -------------------
 //
-// Ela nunca chegou a aparecer no jogo, e não era o desenho: `atmosphere` não
-// vinha pelo catálogo, então a entidade simplesmente não nascia. Este bloco
-// olha a entidade no mundo, não o arquivo — é o que teria pego aquilo.
+// A primeira versão era um cubo de cascas em volta do planeta, e ela virou um
+// quadrado azul tapando a Terra inteira: o material é opaco, então casca por
+// fora tapa o que está dentro. Este bloco prova que não voltou a existir
+// entidade de atmosfera nenhuma — é o desenho da superfície que faz o halo.
 {
   __reset();
   const { updateSky, clearModels } = await import('./space_dim/skybox.js');
@@ -569,23 +563,17 @@ const mk = (id = 'p1') =>
   const p = mk('atmo');
   __advance(2); updateSky(p);
 
+  const cascas = dim.getEntities()
+    .filter((e) => e.typeId.startsWith('space_dim:sky_atmo_')
+                   || e.typeId.startsWith('space_dim:sky_in_'));
+  check('nenhuma entidade de casca em volta dos corpos', cascas.length === 0,
+        `(${cascas.map((e) => e.typeId).join(', ') || 'nenhuma'})`);
+
   for (const body of BODIES.filter((b) => b.atmosphere)) {
     const corpo = dim.getEntities()
       .filter((e) => e.typeId === `space_dim:sky_${body.id}`);
-    const atmo = dim.getEntities()
-      .filter((e) => e.typeId === `space_dim:sky_atmo_${body.id}`);
-    check(`${body.id}: a atmosfera nasce junto com o corpo`,
-          corpo.length === 1 && atmo.length === 1,
-          `(corpo ${corpo.length}, atmosfera ${atmo.length})`);
-
-    // No mesmo lugar do corpo: ela é uma casca em volta dele, não um objeto
-    // solto perto.
-    if (corpo.length && atmo.length) {
-      const d = Math.hypot(atmo[0].location.x - corpo[0].location.x,
-                           atmo[0].location.y - corpo[0].location.y,
-                           atmo[0].location.z - corpo[0].location.z);
-      check('  e no mesmo ponto que ele', d < 0.01, `(${d.toFixed(3)})`);
-    }
+    check(`${body.id}: o corpo com atmosfera aparece normalmente`,
+          corpo.length === 1, `(${corpo.length})`);
   }
   clearModels(p.id);
 }

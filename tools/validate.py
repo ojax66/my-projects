@@ -802,63 +802,66 @@ if "solid: true" in config_src and "solidPushOut" not in grav_src:
 #
 # Alfa alto aqui nao e "atmosfera mais forte": e uma cupula de vidro fosco
 # tampando o planeta. O efeito depende de cada casca somar pouco.
+# A atmosfera é uma BORDA na textura da superfície, não uma casca por fora.
+#
+# A primeira versão era um cubo de cascas em volta do planeta, e ela virou um
+# quadrado azul-escuro tapando a Terra inteira. A medição na foto dele fechou o
+# caso: o pixel do quadrado era (10,19,48), exatamente a cor da textura da
+# atmosfera — ou seja, a casca saiu OPACA. O material nao mistura; o alfa dele so
+# controla brilho.
+#
+# Com material opaco nao existe casca transparente: qualquer cubo maior que o
+# planeta tapa o planeta. Entao a regra aqui e o contrario da de antes — atmosfera
+# com entidade propria e o bug, nao a solucao.
 for bid, trecho in BODY_SRC.items():
-  for campo, prefixo in (("atmosphere", "atmo_"), ("interior", "in_")):
-    m = re.search(campo + r":\s*\{([^}]*)\}", trecho)
+    m = re.search(r"atmosphere:\s*\{([^}]*)\}", trecho)
     if not m:
         continue
     corpo = m.group(1)
-    alpha = re.search(r"alpha:\s*(\d+)", corpo)
-    reach = re.search(r"reach:\s*([\d.]+)", corpo)
-    shells = re.search(r"shells:\s*(\d+)", corpo)
-    limite = 40 if campo == "atmosphere" else 90
-    if alpha and int(alpha.group(1)) > limite:
-        err(f"o {campo} de {bid} tem alfa {alpha.group(1)} — acima de ~{limite} "
-            f"a casca deixa de somar luz e vira uma parede tampando tudo")
-    if alpha and int(alpha.group(1)) == 0:
-        err(f"o {campo} de {bid} tem alfa 0 — no material que mistura isso e "
-            f"transparente, e ele simplesmente nao aparece")
-    if campo == "atmosphere" and reach and float(reach.group(1)) <= 1:
-        err(f"a atmosfera de {bid} tem reach {reach.group(1)} — precisa passar "
-            f"de 1, senao ela fica DENTRO da superficie e nao se ve nada")
-    # O interior envolve o jogador: com muitas cascas ele fica atras de TODAS de
-    # uma vez e a soma vira um branco chapado — que e exatamente o problema que
-    # o modelo de interior existe pra resolver.
-    if campo == "interior" and shells and int(shells.group(1)) > 4:
-        err(f"o interior de {bid} tem {shells.group(1)} cascas — com muitas, "
-            f"quem esta dentro fica atras de todas e a tela vira um chapado")
-    for nome, caminho in (
-        ("BP", os.path.join(BP, "entities", f"sky_{prefixo}{bid}.json")),
-        ("RP", os.path.join(RP, "entity", f"sky_{prefixo}{bid}.entity.json")),
-        ("modelo", os.path.join(RP, "models", "entity", f"{prefixo}{bid}.geo.json")),
-        ("textura", os.path.join(RP, "textures", "space_dim", "sky", f"{prefixo}{bid}.png")),
+    for proibido, oque in (
+        (os.path.join(BP, "entities", f"sky_atmo_{bid}.json"), "entidade no BP"),
+        (os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json"), "entidade no RP"),
+        (os.path.join(RP, "models", "entity", f"atmo_{bid}.geo.json"), "modelo"),
     ):
-        if not os.path.isfile(caminho):
-            err(f"o {campo} de {bid} nao tem {nome} ({caminho})")
+        if os.path.isfile(proibido):
+            err(f"a atmosfera de {bid} voltou a ter {oque} — com material opaco "
+                f"uma casca por fora TAPA o planeta; ela tem que ser borda na "
+                f"textura da superficie")
 
-    doc = docs.get(os.path.join(RP, "entity", f"sky_{prefixo}{bid}.entity.json"))
-    if isinstance(doc, dict):
-        d = doc.get("minecraft:client_entity", {}).get("description", {})
-        if d.get("materials", {}).get("default") != GLOW_MATERIAL:
-            err(f"o {campo} de {bid} nao usa {GLOW_MATERIAL} — sem mistura a "
-                f"casca de fora vira uma parede opaca")
-    gdoc = docs.get(os.path.join(RP, "models", "entity", f"{prefixo}{bid}.geo.json"))
-    if isinstance(gdoc, dict) and shells:
-        cubes = ((gdoc.get("minecraft:geometry") or [{}])[0]
-                 .get("bones") or [{}])[0].get("cubes") or []
-        if len(cubes) != int(shells.group(1)):
-            err(f"o {campo} de {bid} tem {len(cubes)} casca(s) no modelo, mas "
-                f"o config pede {shells.group(1)}")
-        tam = [c.get("size", [0])[0] for c in cubes]
-        if tam and max(tam) != 16:
-            err(f"a casca de fora do {campo} de {bid} tem {max(tam)} unidades, "
-                f"esperado 16 — a conta de escala do skybox supoe um bloco")
-        if reach and tam:
-            esperado = round(16 / float(reach.group(1)), 3)
-            if abs(min(tam) - esperado) > 0.01:
-                err(f"a casca de dentro do {campo} de {bid} tem {min(tam)}, "
-                    f"esperado {esperado} (16/reach) — ela tem que cair em cima "
-                    f"da superficie, nem dentro nem solta no ar")
+    edge = re.search(r"edge:\s*([\d.]+)", corpo)
+    strength = re.search(r"strength:\s*([\d.]+)", corpo)
+    if not edge or not strength:
+        err(f"a atmosfera de {bid} sem edge/strength — ela e uma borda na "
+            f"textura agora, e sao esses dois que a definem")
+        continue
+    if not 0.3 <= float(edge.group(1)) < 1:
+        err(f"a atmosfera de {bid} tem edge {edge.group(1)} — fora de 0,3..1 ela "
+            f"some (perto de 1) ou cobre o planeta inteiro (perto de 0)")
+    if not 0 < float(strength.group(1)) <= 1:
+        err(f"a atmosfera de {bid} tem strength {strength.group(1)} — fora de "
+            f"0..1 ela nao e uma mistura")
+
+    # E a borda tem que estar MESMO na textura: a quina da face puxada pro azul.
+    tex = sky_texture_path(bid)
+    cor = re.search(r'color:\s*"(#[0-9A-Fa-f]{6})"', corpo)
+    if os.path.isfile(tex) and cor:
+        try:
+            tw, th, tpx = png_rgba(tex)
+            alvo = tuple(int(cor.group(1)[i:i + 2], 16) for i in (1, 3, 5))
+            cel = tw // 4                       # a face ocupa um quarto da folha
+            def le(x, y):
+                k = (y * tw + x) * 4
+                return (tpx[k], tpx[k + 1], tpx[k + 2])
+            # canto da face do norte (coluna 1, linha 1) contra o meio dela
+            quina = le(cel + 1, cel + 1)
+            meio = le(cel + cel // 2, cel + cel // 2)
+            perto = sum(abs(quina[i] - alvo[i]) for i in range(3))
+            longe = sum(abs(meio[i] - alvo[i]) for i in range(3))
+            if perto >= longe:
+                err(f"a textura de {bid} nao tem a borda de atmosfera: a quina "
+                    f"{quina} nao esta mais perto de {alvo} que o meio {meio}")
+        except Exception as e:  # noqa: BLE001
+            warn(f"nao consegui conferir a borda de atmosfera de {bid}: {e}")
 
 # A neblina de DENTRO tem que existir e ser CURTA.
 #

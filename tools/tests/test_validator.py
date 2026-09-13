@@ -580,35 +580,37 @@ case("config marca solid mas a gravidade nao aplica", gravidade_sem_barreira,
      r"nao chama solidPushOut")
 
 
-def atmosfera_opaca(tmp):
-    src = le_config(tmp).replace("shells: 3, alpha: 6", "shells: 3, alpha: 200", 1)
+def atmosfera_como_casca(tmp):
+    # A atmosfera voltando a ser uma entidade por fora: com material opaco isso
+    # tapa o planeta inteiro, que foi o bug que ele fotografou.
+    caminho = bp(tmp, "entities", "sky_atmo_earth.json")
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump({"format_version": "1.21.80"}, f)
+
+
+case("atmosfera voltando a ser casca por fora", atmosfera_como_casca,
+     r"TAPA o planeta")
+
+
+def atmosfera_sem_borda(tmp):
+    src = le_config(tmp).replace("edge: 0.62, strength: 0.85",
+                                 "edge: 0.62, strength: 0.0", 1)
     grava_config(tmp, src)
 
 
-case("atmosfera com alfa de cupula", atmosfera_opaca, r"vira uma parede tampando")
+case("atmosfera com strength zero", atmosfera_sem_borda, r"nao e uma mistura")
 
 
-def atmosfera_por_dentro(tmp):
-    src = le_config(tmp).replace("reach: 1.13", "reach: 0.9", 1)
+def atmosfera_borda_fora_da_faixa(tmp):
+    src = le_config(tmp).replace("edge: 0.62", "edge: 0.05", 1)
     grava_config(tmp, src)
 
 
-case("atmosfera com reach menor que 1", atmosfera_por_dentro,
-     r"precisa passar de 1")
+case("atmosfera com edge fora da faixa", atmosfera_borda_fora_da_faixa,
+     r"cobre o planeta inteiro")
 
 
-# --- o interior do Sol e a neblina de dentro --------------------------------
-def interior_com_muitas_cascas(tmp):
-    src = le_config(tmp).replace(
-        'interior: { color: "#3E1605", reach: 1, shells: 2, alpha: 46 }',
-        'interior: { color: "#3E1605", reach: 1, shells: 12, alpha: 46 }', 1)
-    grava_config(tmp, src)
-
-
-case("interior com cascas demais", interior_com_muitas_cascas,
-     r"a tela vira um chapado")
-
-
+# --- a neblina de dentro do Sol --------------------------------------------
 def neblina_de_dentro_longa(tmp):
     caminho = rp(tmp, "fogs", "inside_sun.fog.json")
     with open(caminho, encoding="utf-8") as f:

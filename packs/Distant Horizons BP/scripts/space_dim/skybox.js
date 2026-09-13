@@ -154,8 +154,8 @@ export function sweepOrphans(dimension) {
  * A entidade de um SLOT deste jogador, criando se preciso.
  *
  * Slot e não corpo porque um corpo pode ter mais de uma: a Terra tem o modelo
- * dela e, por cima, a atmosfera. São entidades separadas porque o material é
- * por entidade — o corpo é opaco e a atmosfera mistura.
+ * dela e, se tivesse, qualquer casca por cima. Slot e não corpo porque material
+ * é por entidade, não por parte do modelo.
  */
 function ensureModel(player, slot, wanted) {
   let mine = models.get(player.id);
@@ -178,8 +178,6 @@ function ensureModel(player, slot, wanted) {
   return created;
 }
 
-/** O slot da atmosfera de um corpo. */
-const atmoSlot = (bodyId) => "atmo:" + bodyId;
 
 // Um aviso por mensagem, não um por tick: isto roda a cada dois ticks por
 // jogador e por corpo, e um erro repetido encheria o console em segundos.
@@ -348,17 +346,7 @@ export function updateSky(player) {
     const coroa = alwaysModel(dentro);
     clearModelsExcept(player.id, coroa ? dentro.id : null);
     if (!coroa) return;
-    // Por dentro, o modelo é OUTRO quando o corpo tem um.
-    //
-    // O Sol de fora é um empilhado de 16 cascas, e é isso que dá o miolo
-    // estourado. Mas lá dentro o jogador fica atrás de todas elas de uma vez e a
-    // soma vira um branco chapado — dava pra ver a nave e mais nada. O modelo de
-    // interior tem poucas cascas e deixa enxergar através; a aparência de fora
-    // não muda em nada.
-    const wanted = dentro.interior
-      ? SKY_PREFIX + "in_" + dentro.id
-      : SKY_PREFIX + dentro.id;
-    const entity = ensureModel(player, dentro.id, wanted);
+    const entity = ensureModel(player, dentro.id, SKY_PREFIX + dentro.id);
     if (entity) {
       try {
         entity.teleport(eye);
@@ -377,7 +365,6 @@ export function updateSky(player) {
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (d < 0.001) {
       hideModel(player, body.id);
-      hideModel(player, atmoSlot(body.id));
       continue;
     }
 
@@ -394,7 +381,6 @@ export function updateSky(player) {
     // o modelo desse fica ligado em toda distância.
     if (gap <= SKY_MODEL_HIDE_BELOW && !alwaysModel(body)) {
       hideModel(player, body.id);
-      hideModel(player, atmoSlot(body.id));
       continue;
     }
     alvos.push({ body, dx, dy, dz, d });
@@ -451,22 +437,6 @@ export function updateSky(player) {
       applyScale(player, body.id, entity, (2 * at * body.radius) / d);
     }
 
-    // A atmosfera: mesma posição, um pouco maior.
-    //
-    // Como estrela o corpo é um pontinho — atmosfera ali não quer dizer nada,
-    // e ainda custaria uma entidade por corpo distante.
-    if (body.atmosphere && !star) {
-      const slot = atmoSlot(body.id);
-      const atmo = ensureModel(player, slot, SKY_PREFIX + "atmo_" + body.id);
-      if (atmo) {
-        try {
-          atmo.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
-          applyScale(player, slot, atmo,
-                     (2 * at * body.radius * body.atmosphere.reach) / d);
-          shown.add(slot);
-        } catch { hideModel(player, slot); }
-      }
-    }
   }
 
   // Corpo que saiu do rastreador (desligado no menu) perde o modelo.
