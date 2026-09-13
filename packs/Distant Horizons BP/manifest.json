@@ -3,7 +3,7 @@
   "header": {
     "name": "pack.name",
     "description": "pack.description",
-    "uuid": "c47cd3fd-3453-4247-93b6-b0693f01deec",
+    "uuid": "6bdcce51-0e55-47cc-91b9-47a60c9e8c90",
     "version": [
       1,
       2,
@@ -19,7 +19,7 @@
   "modules": [
     {
       "type": "data",
-      "uuid": "cd8da553-5171-4cad-9b34-8a2253221376",
+      "uuid": "4b3d903c-fc5b-4096-ada8-18ca96dc7228",
       "version": [
         1,
         2,
@@ -29,7 +29,7 @@
     {
       "type": "script",
       "language": "javascript",
-      "uuid": "5c769627-4e45-443e-afed-b75061ba665f",
+      "uuid": "98d3e542-3480-4dcf-843e-547fc3232dca",
       "entry": "scripts/space_dim/main.js",
       "version": [
         1,
@@ -40,7 +40,7 @@
   ],
   "dependencies": [
     {
-      "uuid": "ec3fca59-48ab-4533-b68f-722ec2095b39",
+      "uuid": "f8339867-b1b2-40e2-885e-a876d834b7c3",
       "version": [
         1,
         2,

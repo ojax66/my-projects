@@ -397,6 +397,27 @@ export const SKY_MODELS_ENABLED = true;
 // ordem da distância real: o que está mais perto de verdade fica no degrau mais
 // perto. Assim um nunca atravessa o outro; o da frente simplesmente tapa o de
 // trás, que é o que tem que acontecer.
+// Jogadores a menos que isto um do outro DIVIDEM um único conjunto de modelos.
+//
+// O modelo é um truque de ponto de vista: ele fica perto de quem olha e é
+// encolhido pra dar o mesmo ângulo do corpo lá longe. Isso só está certo pra UM
+// observador — e em multijogador cada um tinha o seu conjunto, então todo mundo
+// via os cubos dos outros flutuando no lugar errado. Era o que estava "bugado".
+//
+// Não tem como esconder uma entidade de um jogador só no Bedrock. O que dá pra
+// fazer é: quem está junto (mesma nave, mesmo canto) recebe UM conjunto só, e o
+// erro de paralaxe entre eles é o ângulo entre a posição de cada um e o modelo
+// — a 2 blocos de distância num degrau de 24, dá menos de 5 graus.
+export const SKY_SHARE_RADIUS = 16;
+
+// Até esta distância o modelo vai pra posição REAL do corpo, no tamanho real.
+//
+// O truque do modelo perto quebra de perto: pousando num planeta, a superfície
+// do cubo encolhido fica mais perto de você do que o chão em que você está. Aqui
+// não precisa de truque nenhum — o corpo já está dentro da distância de
+// simulação, então o modelo vai pro lugar dele e no tamanho dele, e aí é exato.
+export const SKY_MODEL_REAL_BELOW = 48;
+
 export const SKY_MODEL_NEAREST = 16;
 export const SKY_MODEL_DISTANCE = 40;
 

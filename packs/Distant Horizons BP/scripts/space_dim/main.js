@@ -32,7 +32,7 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
-import { updateSky, clearModels, sweepOrphans, describeSky } from "./skybox.js";
+import { updateSkyAll, clearModels, sweepOrphans, describeSky } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
 import { openTracker } from "./trackerUI.js";
@@ -114,6 +114,9 @@ system.runInterval(() => {
     }
   }
 
+  // Quem está no espaço neste tick. O céu deles é resolvido junto, no fim.
+  const noEspaco = [];
+
   for (const player of players) {
     try {
       const here = inSpace(player);
@@ -141,9 +144,10 @@ system.runInterval(() => {
       wasInSpace.add(player.id);
       pushFog(player);
       spawnAmbience(player);
-      // Os corpos que o rastreador mostra, sempre visíveis por mais longe que
-      // estejam de verdade.
-      updateSky(player);
+      // O céu é resolvido de uma vez pra todos, depois do laço: jogadores que
+      // estão juntos dividem um conjunto de modelos só. Um conjunto por jogador
+      // fazia cada um ver os cubos dos outros flutuando no lugar errado.
+      noEspaco.push(player);
       // O renascimento nunca fica aqui: se o jogo mexeu, é devolvido.
       guardSpawnTick(player);
 
@@ -170,6 +174,11 @@ system.runInterval(() => {
       onError("loop do jogador", e);
     }
   }
+
+  // Os corpos que o rastreador mostra, sempre visíveis por mais longe que
+  // estejam de verdade — e um conjunto só pra cada grupo de jogadores juntos.
+  try { updateSkyAll(noEspaco); }
+  catch (e) { onError("céu", e); }
 }, 1);
 
 // ---------------------------------------------------------------------------

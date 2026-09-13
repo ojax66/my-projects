@@ -56,7 +56,9 @@ import {
   SKY_MODEL_DISTANCE,
   SKY_MODEL_HIDE_BELOW,
   SKY_MODEL_NEAREST,
+  SKY_MODEL_REAL_BELOW,
   SKY_MODEL_INTERVAL,
+  SKY_SHARE_RADIUS,
   SOLAR_SYSTEM_RADIUS,
   STAR_ENTITY,
 } from "./config.js";
@@ -215,6 +217,58 @@ function hideModel(player, slot) {
   mine.delete(slot);
 }
 
+/**
+ * O céu de TODOS os jogadores do espaço, de uma vez.
+ *
+ * Por que não um por um: o modelo é um truque de ponto de vista — fica perto de
+ * quem olha e é encolhido pra dar o mesmo ângulo do corpo lá longe. Isso só está
+ * certo pra UM observador, e no Bedrock não dá pra esconder uma entidade de um
+ * jogador só. Com um conjunto por jogador, cada um via os cubos dos outros
+ * flutuando no lugar errado — era o que estava bugado em multijogador.
+ *
+ * Então quem está junto divide um conjunto só. O erro de paralaxe dentro do
+ * grupo é o ângulo entre cada um e o modelo: a dois blocos de distância num
+ * degrau de 24, menos de cinco graus. Quem está longe ganha o seu, e os
+ * conjuntos ficam longe o bastante um do outro pra não se atrapalharem.
+ */
+export function updateSkyAll(players) {
+  if (!SKY_MODELS_ENABLED) return;
+  if (system.currentTick % SKY_MODEL_INTERVAL !== 0) return;
+
+  // Agrupamento guloso, na ordem do id: o primeiro de cada grupo é a âncora, e
+  // a ordem do id é estável, então o grupo não fica trocando de dono a cada
+  // tick (o que faria os modelos nascerem e morrerem sem parar).
+  const vivos = players.filter((p) => p?.isValid);
+  vivos.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  const ancoras = [];
+  const donoDe = new Map();
+  for (const p of vivos) {
+    let grupo = null;
+    for (const a of ancoras) {
+      const d = distXZY(p.location, a.location);
+      if (d <= SKY_SHARE_RADIUS) { grupo = a; break; }
+    }
+    if (grupo) donoDe.set(p.id, grupo.id);
+    else { ancoras.push(p); donoDe.set(p.id, p.id); }
+  }
+
+  // Quem deixou de ser âncora larga os modelos dele; senão eles ficariam
+  // parados no mundo, sem ninguém pra mover.
+  for (const p of vivos) {
+    if (donoDe.get(p.id) !== p.id) clearModels(p.id);
+  }
+
+  for (const a of ancoras) updateSky(a);
+}
+
+function distXZY(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
 export function updateSky(player) {
   if (!SKY_MODELS_ENABLED) return;
   if (system.currentTick % SKY_MODEL_INTERVAL !== 0) return;
@@ -250,9 +304,15 @@ export function updateSky(player) {
   // coroa. Tudo que estiver mais perto que isso (a bola de plasma, a nave)
   // desenha na frente, que é o que se veria de dentro de verdade. E centrado no
   // jogador ele está sempre à distância zero: nunca descarrega.
+  //
+  // Corpo SÓLIDO nunca entra aqui: não dá pra estar dentro de um. Pousar nele
+  // deixa o jogador exatamente no raio, e com `<=` isso contava como "dentro" —
+  // o céu sumia e o planeta virava uma caixa em volta da cabeça no instante em
+  // que se encostava nele. Era o "some quando chega perto demais".
   let dentro = null;
   for (const body of wanted) {
-    if (chebyshevTo(eye, body) <= body.radius) { dentro = body; break; }
+    if (body.solid) continue;
+    if (chebyshevTo(eye, body) < body.radius) { dentro = body; break; }
   }
   if (dentro) {
     const coroa = alwaysModel(dentro);
@@ -326,10 +386,16 @@ export function updateSky(player) {
     if (!entity) continue;
     shown.add(body.id);
 
-    // Na direção do corpo, no degrau dele — ou na posição real, se o corpo
-    // estiver mais perto que o degrau (aí o modelo cai exatamente em cima da
-    // construção e entra em oclusão como qualquer coisa).
-    const at = Math.min(d, SKY_MODEL_NEAREST + passo * i);
+    // Perto, a posição REAL; longe, o degrau.
+    //
+    // O degrau é um truque de ponto de vista, e ele quebra de perto: pousando
+    // num planeta, a superfície do cubo encolhido fica mais perto do jogador do
+    // que o chão em que ele está. Dentro de SKY_MODEL_REAL_BELOW o corpo já cabe
+    // na distância de simulação, então o modelo vai pro lugar dele no tamanho
+    // dele e não há truque nenhum pra quebrar.
+    const at = d <= SKY_MODEL_REAL_BELOW
+      ? d
+      : Math.min(d, SKY_MODEL_NEAREST + passo * i);
     const k = at / d;
     try {
       entity.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });

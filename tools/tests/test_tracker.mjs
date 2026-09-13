@@ -123,7 +123,11 @@ const mk = (id = 'p1') =>
   system.currentTick = 0;
   __advance(2);
   skybox.updateSky(p);
-  const models = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
+  // Sem as atmosferas: elas são entidades de céu também, mas não são corpos —
+  // acompanham o corpo delas e têm o tamanho aumentado de propósito.
+  const models = dim.getEntities().filter(
+    (e) => e.typeId.startsWith('space_dim:sky_') &&
+           !e.typeId.startsWith('space_dim:sky_atmo_'));
   check('cada corpo rastreado e distante ganha um modelo',
         models.length > 0, `(${models.length} modelos)`);
 
@@ -203,14 +207,23 @@ const mk = (id = 'p1') =>
         `(${alvo.id}: ${restantes.length})`);
   toggleBody(p, alvo.id);
 
-  // Chegando perto, o modelo sai e o corpo de blocos assume.
+  // Chegando perto, o modelo só sai se houver BLOCO pra assumir o lugar dele.
+  //
+  // Hoje não há: os planetas são `built: false` e a casca de fora do Sol é
+  // `modelOnly`. Então a regra que vale é a inversa — nenhum deles se desliga —
+  // e é isso que este bloco tem que medir, senão ele viraria decoração.
   const perto = trackedBodies(p).find((b) => b.id === 'moon') ?? trackedBodies(p)[0];
   p.teleport({ x: perto.center.x, y: perto.center.y, z: perto.center.z + 10 });
   __advance(2);
   skybox.updateSky(p);
   const aindaLa = dim.getEntities()
     .filter((e) => e.typeId === `space_dim:sky_${perto.id}`);
-  check(`modelo some abaixo de ${SKY_MODEL_HIDE_BELOW} blocos`, aindaLa.length === 0,
+  const temBloco = perto.built !== false &&
+    !(perto.layers ?? []).some((l) => l.modelOnly);
+  check(temBloco
+          ? `modelo some abaixo de ${SKY_MODEL_HIDE_BELOW} blocos`
+          : 'corpo sem bloco não desliga o modelo nem colado nele',
+        temBloco ? aindaLa.length === 0 : aindaLa.length === 1,
         `(${perto.id}: ${aindaLa.length})`);
 
   skybox.clearModels(p.id);
@@ -412,15 +425,128 @@ const mk = (id = 'p1') =>
   __advance(2); updateSky(p);
   check('  e a 20 blocos da coroa também', modelosDe('sun').length === 1);
 
-  // O contraste: a Terra NÃO tem camada só-modelo, então na mesma situação —
-  // perto o bastante pros blocos existirem — o modelo dela sai de cena.
+  // E a Terra, que também não tem bloco nenhum (`built: false`), segue a mesma
+  // regra: colada nela o modelo continua. Antes ela era o contraste deste
+  // bloco — tinha blocos e trocava —, e foi justamente tirar os blocos dela que
+  // fez o modelo sumir de perto enquanto `built` não chegava pelo catálogo.
   p.teleport({ x: earth.center.x, y: earth.center.y,
                z: earth.center.z + earth.radius + SKY_MODEL_HIDE_BELOW - 4 });
   __advance(2); updateSky(p);
-  check('a Terra, que é toda de bloco, troca pelos blocos',
-        modelosDe('earth').length === 0, `(${modelosDe('earth').length})`);
+  check('a Terra, sem bloco nenhum, também não desliga o modelo',
+        modelosDe('earth').length === 1, `(${modelosDe('earth').length})`);
 
   clearModels(p.id);
+}
+
+// --- 11. Multijogador: um conjunto de modelos por GRUPO ---------------------
+//
+// O modelo é um truque de ponto de vista: fica perto de quem olha e é encolhido
+// pra dar o mesmo ângulo do corpo lá longe. Isso só vale pra UM observador, e no
+// Bedrock não dá pra esconder uma entidade de um jogador só — então com um
+// conjunto por jogador cada um via os cubos dos outros flutuando no lugar
+// errado. Quem está junto passa a dividir um conjunto só.
+{
+  __reset();
+  const { updateSkyAll, clearModels } = await import('./space_dim/skybox.js');
+  const { SKY_SHARE_RADIUS } = await import('./space_dim/config.js');
+  // Relida a cada chamada: __reset() cria uma dimensão NOVA, e uma referência
+  // guardada antes dele conta as entidades da dimensão velha.
+  const conta = () =>
+    world.getDimension(DIMENSION_ID).getEntities()
+      .filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
+
+  const a = mk('mp_a');
+  const b = mk('mp_b');
+  const longe = mk('mp_c');
+  const base = { x: 0, y: 128, z: 300 };
+  a.teleport(base);
+  b.teleport({ x: base.x + 2, y: base.y, z: base.z });          // mesma nave
+
+  __advance(2); updateSkyAll([a, b]);
+  const juntos = conta();
+  check('dois jogadores juntos dividem um conjunto de modelos', juntos > 0);
+
+  __reset();
+  const so = mk('mp_so');
+  so.teleport(base);
+  __advance(2); updateSkyAll([so]);
+  check('  e é o mesmo tanto de um jogador sozinho', conta() === juntos,
+        `(${juntos} com dois, ${conta()} com um)`);
+
+  // Separados, cada grupo tem o seu: aí os conjuntos estão longe um do outro e
+  // não se atrapalham.
+  __reset();
+  const x = mk('mp_x');
+  const y = mk('mp_y');
+  x.teleport(base);
+  y.teleport({ x: base.x + SKY_SHARE_RADIUS * 4, y: base.y, z: base.z });
+  __advance(2); updateSkyAll([x, y]);
+  check('separados, cada um tem o seu conjunto', conta() === juntos * 2,
+        `(${conta()} vs ${juntos * 2})`);
+
+  clearModels(x.id); clearModels(y.id);
+}
+
+// --- 12. Pousar num planeta não faz o modelo sumir --------------------------
+//
+// A guarda "dentro de um corpo, nada de céu" usava `<=` no raio. Corpo sólido
+// deixa o jogador exatamente NO raio ao pousar, então encostar contava como
+// estar dentro: o céu sumia e o planeta virava uma caixa em volta da cabeça.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { BODIES, SKY_MODEL_REAL_BELOW } = await import('./space_dim/config.js');
+  const dim = world.getDimension(DIMENSION_ID);
+  const terra = BODIES.find((b) => b.id === 'earth');
+  const p = mk('pouso');
+  const modelosDe = (id) =>
+    dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+
+  // Pousado: exatamente no raio, que é onde a barreira deixa o jogador.
+  p.teleport({ x: terra.center.x, y: terra.center.y + terra.radius,
+               z: terra.center.z });
+  __advance(2); updateSky(p);
+  check('pousado na Terra o modelo dela continua lá',
+        modelosDe('earth').length === 1, `(${modelosDe('earth').length})`);
+
+  // E de perto ele vai pra posição REAL, no tamanho real: o truque do modelo
+  // encolhido quebra aqui, porque a superfície dele ficaria mais perto do
+  // jogador que o chão em que ele está.
+  const m = modelosDe('earth')[0];
+  const aoCentro = Math.hypot(m.location.x - terra.center.x,
+                              m.location.y - terra.center.y,
+                              m.location.z - terra.center.z);
+  check('  e no lugar de verdade do corpo, não num degrau', aoCentro < 0.5,
+        `(a ${aoCentro.toFixed(2)} do centro)`);
+
+  const cab = p.getHeadLocation();
+  const dReal = Math.hypot(terra.center.x - cab.x, terra.center.y - cab.y,
+                           terra.center.z - cab.z);
+  check('  (e essa distância cabe na faixa de posição real)',
+        dReal <= SKY_MODEL_REAL_BELOW, `(${dReal.toFixed(0)} de ${SKY_MODEL_REAL_BELOW})`);
+
+  clearModels(p.id);
+}
+
+// --- 13. O corpo do catálogo chega inteiro ----------------------------------
+//
+// resolve() já foi uma lista de campos escolhidos a dedo, e a lista mordeu três
+// vezes: sem `layers` a coroa do Sol sumia de perto, sem `halo` o brilho não
+// escalava, sem `built`/`solid`/`atmosphere` os planetas sumiam ao chegar perto.
+// Campo novo em BODIES tem que chegar aqui sozinho.
+{
+  const { BODIES } = await import('./space_dim/config.js');
+  const resolvidos = new Map(allTrackable().map((b) => [b.id, b]));
+  const faltando = [];
+  for (const body of BODIES) {
+    const r = resolvidos.get(body.id);
+    if (!r) { faltando.push(`${body.id} (não resolveu)`); continue; }
+    for (const campo of Object.keys(body)) {
+      if (!(campo in r)) faltando.push(`${body.id}.${campo}`);
+    }
+  }
+  check('o corpo resolvido traz todo campo que BODIES tem',
+        faltando.length === 0, faltando.join(', '));
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

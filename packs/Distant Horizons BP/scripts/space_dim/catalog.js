@@ -45,6 +45,17 @@ const byId = new Map(BODIES.map((b) => [b.id, b]));
 
 /**
  * Junta o que o catálogo diz com o que BODIES sabe.
+ *
+ * O corpo sai daqui INTEIRO, com tudo que estava em BODIES. Isto já foi uma
+ * lista de campos escolhidos a dedo, e a lista mordeu três vezes seguidas:
+ * ficou sem `layers` e a coroa do Sol sumia de perto; ficou sem `halo` e o
+ * brilho não escalava; ficou sem `built`, `solid` e `atmosphere` e os planetas
+ * sumiam ao chegar perto, porque sem `built` ninguém sabia que eles não têm
+ * bloco pra assumir o lugar do modelo.
+ *
+ * Copiar tudo tira a classe inteira de bug do mapa: campo novo em BODIES chega
+ * aqui sozinho.
+ *
  * @returns {{id, name, center, radius, systemId, generated}|null}
  */
 function resolve(entry, system) {
@@ -52,15 +63,8 @@ function resolve(entry, system) {
     const body = byId.get(entry.ref);
     if (!body) return null;                 // referência morta: some da lista
     return {
-      id: body.id,
+      ...body,
       name: entry.name ?? body.name,
-      center: body.center,
-      radius: body.radius,
-      // As CAMADAS vêm junto. O corpo resolvido é o que o resto do addon vê, e
-      // sem elas builtRadius() e alwaysModel() não têm o que ler: o céu passava
-      // a achar que o Sol constrói até o raio 100 (constrói até 62) e que a
-      // coroa dele não era só-modelo. A coroa sumia de perto por causa disto.
-      layers: body.layers,
       systemId: system.id,
       generated: true,                      // tem blocos de verdade
     };
