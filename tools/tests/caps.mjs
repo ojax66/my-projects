@@ -1,6 +1,9 @@
 import { columnRuns } from './space_dim/bodies.js';
+// `true`: os planetas são `built: false` e não colocam bloco no mundo, mas a
+// paleta deles continua desenhando a textura do modelo — e é dela que as
+// calotas fazem parte.
 const generateColumn = (dim, x, z) => {
-  const runs = columnRuns(x, z);
+  const runs = columnRuns(x, z, true);
   let top = -64;
   for (const r of runs)
     for (let y = r.y0; y <= r.y1; y++) { dim.setBlockType({ x, y, z }, r.id); if (y > top) top = y; }

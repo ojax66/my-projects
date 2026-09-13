@@ -123,6 +123,28 @@ export const BODIES = [
     name: "§bTerra",
     center: { x: 0, y: ORBIT_Y, z: 0 },
     radius: 26,
+    // Sem blocos: o planeta é o MODELO, e só ele.
+    //
+    // A versão de blocos piscava na troca com o modelo e não mostrava nada que
+    // o modelo já não mostre — as duas têm o mesmo tamanho e o mesmo desenho.
+    // Os blocos, as paletas e as texturas continuam todos no addon, intactos,
+    // pras dimensões de planeta que vêm depois; o que mudou é só que ninguém os
+    // coloca AQUI.
+    //
+    // Em troca o modelo deixa de ser atravessável: `solid` faz o corpo empurrar
+    // quem entrar nele, como um bloco gigante — ver solidBodies() em bodies.js.
+    built: false,
+    solid: true,
+    // Atmosfera: o mesmo empilhado de cascas do Sol, fraquinho e azulado.
+    //
+    // `reach` é até onde ela vai, em raios do corpo; `alpha` é quanto cada
+    // casca tampa do que está atrás. Alfa baixo é o que faz a coisa somar luz
+    // quase sem escurecer — é o que separa "atmosfera" de "cúpula de vidro".
+    //
+    // O contorno fica mais aceso que o meio de graça: um raio que passa
+    // raspando atravessa as cascas de fora dos dois lados, um que vai pro meio
+    // do disco bate no planeta e para na metade.
+    atmosphere: { color: "#060C1C", reach: 1.13, shells: 3, alpha: 6 },
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     gravity: { reach: 46, strength: 0.03 },
@@ -136,6 +158,8 @@ export const BODIES = [
     name: "§7Lua",
     center: { x: 0, y: ORBIT_Y, z: 190 },
     radius: 12,
+    built: false,
+    solid: true,
     layers: [{ radius: 12, shell: 4, palette: "moon" }],
     portal: { kind: "spacecraft", planet: "nv_sc:moon" },
     // Lua puxa pouco, como na vida real.
@@ -149,6 +173,8 @@ export const BODIES = [
     name: "§cMarte",
     center: { x: 520, y: ORBIT_Y, z: -120 },
     radius: 20,
+    built: false,
+    solid: true,
     layers: [{ radius: 20, shell: 4, palette: "mars" }],
     portal: { kind: "spacecraft", planet: "nv_sc:mars" },
     gravity: { reach: 38, strength: 0.022 },

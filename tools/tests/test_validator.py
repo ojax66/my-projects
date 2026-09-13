@@ -541,6 +541,61 @@ def cascas_opacas(tmp):
 
 case("cascas do Sol com alfa opaco", cascas_opacas, r"alfa 255")
 
+
+# --- planetas sem bloco e a atmosfera ---------------------------------------
+def bp_config(tmp):
+    return bp(tmp, "scripts", "space_dim", "config.js")
+
+
+def le_config(tmp):
+    with open(bp_config(tmp), encoding="utf-8") as f:
+        return f.read()
+
+
+def grava_config(tmp, src):
+    with open(bp_config(tmp), "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+def planeta_sem_barreira(tmp):
+    # Terra sem `solid`: sem bloco e sem barreira, ela fica atravessavel.
+    src = le_config(tmp).replace("    built: false,\n    solid: true,",
+                                 "    built: false,", 1)
+    grava_config(tmp, src)
+
+
+case("corpo built:false sem barreira", planeta_sem_barreira,
+     r"built:false mas nao e solid")
+
+
+def gravidade_sem_barreira(tmp):
+    caminho = bp(tmp, "scripts", "space_dim", "gravity.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src.replace("solidPushOut", "semBarreira"))
+
+
+case("config marca solid mas a gravidade nao aplica", gravidade_sem_barreira,
+     r"nao chama solidPushOut")
+
+
+def atmosfera_opaca(tmp):
+    src = le_config(tmp).replace("shells: 3, alpha: 6", "shells: 3, alpha: 200", 1)
+    grava_config(tmp, src)
+
+
+case("atmosfera com alfa de cupula", atmosfera_opaca, r"vira uma cupula")
+
+
+def atmosfera_por_dentro(tmp):
+    src = le_config(tmp).replace("reach: 1.13", "reach: 0.9", 1)
+    grava_config(tmp, src)
+
+
+case("atmosfera com reach menor que 1", atmosfera_por_dentro,
+     r"precisa passar de 1")
+
 scrambled_generators()
 
 

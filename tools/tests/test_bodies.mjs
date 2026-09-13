@@ -6,6 +6,18 @@ const generateColumn = (dim, x, z) => {
     for (let y = r.y0; y <= r.y1; y++) { dim.setBlockType({ x, y, z }, r.id); if (y > top) top = y; }
   return runs.length ? top : -64;
 };
+// Igual, mas amostrando TAMBÉM os corpos `built: false`.
+//
+// Eles não colocam bloco no mundo, mas a forma e a paleta deles continuam
+// valendo: é de lá que sai a textura do modelo visto de longe. Os testes de
+// superfície — buraco na casca, variedade, proporção de cada bloco — são sobre
+// esse desenho, então têm que continuar rodando pros planetas.
+const paintColumn = (dim, x, z) => {
+  const runs = columnRuns(x, z, true);
+  for (const r of runs)
+    for (let y = r.y0; y <= r.y1; y++) dim.setBlockType({ x, y, z }, r.id);
+  return runs.length;
+};
 import { getHeight, distanceTo, builtRadius } from './space_dim/bodies.js';
 import { BODIES, DIM_MIN_Y } from './space_dim/config.js';
 
@@ -32,8 +44,28 @@ const check = (name, ok, extra = '') => {
   check('coluna longe de tudo fica vazia', dim.blocks.size === 0 && h === DIM_MIN_Y);
 }
 
+// --- 1b. Corpo `built: false` não coloca bloco nenhum ------------------------
+//
+// Os planetas viraram só modelo. Os blocos, as paletas e as texturas continuam
+// no addon pras dimensões de planeta que vêm depois — o que não pode acontecer
+// é alguém COLOCAR eles aqui. E a forma tem que continuar amostrável, senão o
+// gerador da textura do céu não tem de onde tirar as cores da superfície.
+for (const body of BODIES.filter((b) => b.built === false)) {
+  const dim = mockDim();
+  for (const [dx, dz] of [[0, 0], [body.radius - 1, 0], [0, body.radius - 1]]) {
+    generateColumn(dim, body.center.x + dx, body.center.z + dz);
+  }
+  check(`${body.id}: built:false não coloca bloco nenhum`, dim.blocks.size === 0,
+        `(${dim.blocks.size} blocos)`);
+  check(`  e getHeight nele é vácuo`,
+        getHeight(body.center.x, body.center.z) === DIM_MIN_Y);
+  const amostra = columnRuns(body.center.x, body.center.z, true);
+  check('  mas a forma continua amostrável pra textura do céu',
+        amostra.length > 0, `(${amostra.length} trecho(s))`);
+}
+
 // --- 2. Cada corpo gera, e só na própria área --------------------------------
-for (const body of BODIES) {
+for (const body of BODIES.filter((b) => b.built !== false)) {
   const dim = mockDim();
   // Coluna passando exatamente pelo centro: deve dar duas calotas.
   generateColumn(dim, body.center.x, body.center.z);
@@ -60,7 +92,7 @@ for (const body of BODIES) {
 // --- 3. A casca não tem buraco ----------------------------------------------
 // Para uma amostra de colunas dentro do raio, toda coluna que cruza a esfera
 // precisa ter pelo menos 1 bloco - senão daria pra "vazar" pra dentro.
-for (const body of BODIES) {
+for (const body of BODIES.filter((b) => b.built !== false)) {
   const dim = mockDim();
   let emptyColumns = 0, testedColumns = 0;
   // A casca construida, nao o raio do corpo: entre a coroa (so modelo) e o
@@ -94,7 +126,7 @@ for (const body of BODIES) {
     // Coluna na superfície nessa direção, à meia altura.
     const cx = Math.round(body.center.x + nx * R * 0.5);
     const cz = Math.round(body.center.z + nz * R * 0.5);
-    generateColumn(dim, cx, cz);
+    paintColumn(dim, cx, cz);
     const ys = [...dim.blocks.keys()]
       .filter(k => { const [x,,z] = k.split(',').map(Number); return x === cx && z === cz; })
       .map(k => Number(k.split(',')[1])).sort((a,b) => a-b);
@@ -136,7 +168,7 @@ for (const body of BODIES) {
     const step = Math.max(1, Math.floor(R / 22));
     for (let dx = -R; dx <= R; dx += step)
       for (let dz = -R; dz <= R; dz += step)
-        generateColumn(dim, body.center.x + dx, body.center.z + dz);
+        paintColumn(dim, body.center.x + dx, body.center.z + dz);
     for (const v of dim.blocks.values()) used.add(v);
   }
   const bad = [...used].filter(b => !OWN_BLOCKS.has(b));
@@ -153,7 +185,7 @@ for (const body of BODIES) {
   const step = Math.max(1, Math.floor(R / 16));
   for (let dx = -R; dx <= R; dx += step)
     for (let dz = -R; dz <= R; dz += step)
-      generateColumn(dim, body.center.x + dx, body.center.z + dz);
+      paintColumn(dim, body.center.x + dx, body.center.z + dz);
   const distinct = new Set(dim.blocks.values());
   // O Sol tem um bloco por camada (coroa/plasma/nucleo), nao variacao dentro
   // da mesma casca; os planetas variam a superficie por ruido.
@@ -175,7 +207,7 @@ for (const body of BODIES) {
     for (let dx = -R; dx <= R; dx++)
       for (let dz = -R; dz <= R; dz++) {
         const dim = mockDim();
-        generateColumn(dim, body.center.x + dx, body.center.z + dz);
+        paintColumn(dim, body.center.x + dx, body.center.z + dz);
         for (const id of dim.blocks.values()) {
           counts.set(id, (counts.get(id) || 0) + 1);
           total++;

@@ -87,5 +87,44 @@ const at = (body, dx, dy, dz) => ({
   check('fora do alcance não há gravidade', gravityAt(at(earth, 0, longe, 0)) === null);
 }
 
+// --- Os planetas são sólidos sem ter bloco nenhum ---------------------------
+//
+// Eles viraram só modelo, e modelo não colide: a entidade de céu tem hitbox
+// zero, e dar hitbox a ela não ajudaria — ela fica a poucos blocos do jogador,
+// encolhida, então a caixa bateria no vazio ao lado dele. A solidez vem do
+// script.
+{
+  const { solidPushOut } = await import('./space_dim/bodies.js');
+  const { BODIES } = await import('./space_dim/config.js');
+
+  for (const body of BODIES.filter((b) => b.solid)) {
+    const c = body.center;
+    const R = body.radius;
+
+    check(`${body.id}: fora do corpo não empurra ninguém`,
+          solidPushOut({ x: c.x, y: c.y, z: c.z + R + 3 }) === null);
+
+    // Fundo no meio: sai pela face mais próxima, e a mais próxima de um ponto
+    // deslocado só em Z é a face de Z.
+    const dentro = solidPushOut({ x: c.x + 1, y: c.y + 2, z: c.z + R - 5 });
+    check(`${body.id}: dentro do corpo é empurrado pra fora`, dentro !== null);
+    check(`  pela face mais próxima (${'z'})`, dentro?.axis === 'z',
+          `(${dentro?.axis})`);
+    check('  e parar exatamente na superfície', dentro?.to === c.z + R,
+          `(${dentro?.to} vs ${c.z + R})`);
+
+    // Enfiado perto da face de cima: a saída é por cima, não pelo lado.
+    const porCima = solidPushOut({ x: c.x, y: c.y + R - 2, z: c.z });
+    check('  e quem entra por cima sai por cima', porCima?.axis === 'y',
+          `(${porCima?.axis})`);
+    check('    na superfície de cima', porCima?.to === c.y + R);
+  }
+
+  // O Sol NÃO é sólido: ele é atravessável de propósito, camada por camada.
+  const sol = BODIES.find((b) => b.id === 'sun');
+  check('o Sol continua atravessável',
+        solidPushOut({ x: sol.center.x, y: sol.center.y, z: sol.center.z + 80 }) === null);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

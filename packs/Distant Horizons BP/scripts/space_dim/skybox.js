@@ -118,13 +118,18 @@ export function sweepOrphans(dimension) {
   } catch { }
 }
 
-function ensureModel(player, body, star) {
+/**
+ * A entidade de um SLOT deste jogador, criando se preciso.
+ *
+ * Slot e não corpo porque um corpo pode ter mais de uma: a Terra tem o modelo
+ * dela e, por cima, a atmosfera. São entidades separadas porque o material é
+ * por entidade — o corpo é opaco e a atmosfera mistura.
+ */
+function ensureModel(player, slot, wanted) {
   let mine = models.get(player.id);
   if (!mine) models.set(player.id, (mine = new Map()));
 
-  const wanted = star ? STAR_ENTITY : SKY_PREFIX + body.id;
-
-  const entity = mine.get(body.id);
+  const entity = mine.get(slot);
   // O nível mudou (o corpo virou estrela, ou deixou de ser): troca a entidade.
   if (entity?.isValid && entity.typeId === wanted) return entity;
   if (entity) dropModel(entity);
@@ -133,13 +138,16 @@ function ensureModel(player, body, star) {
   try {
     created = player.dimension.spawnEntity(wanted, player.location);
   } catch (e) {
-    warnOnce("não deu pra criar o modelo de " + body.id, e);
-    mine.delete(body.id);
+    warnOnce("não deu pra criar " + wanted, e);
+    mine.delete(slot);
     return null;
   }
-  mine.set(body.id, created);
+  mine.set(slot, created);
   return created;
 }
+
+/** O slot da atmosfera de um corpo. */
+const atmoSlot = (bodyId) => "atmo:" + bodyId;
 
 // Um aviso por mensagem, não um por tick: isto roda a cada dois ticks por
 // jogador e por corpo, e um erro repetido encheria o console em segundos.
@@ -185,26 +193,26 @@ function stepFor(scale) {
   return best;
 }
 
-function applyScale(player, body, entity, scale) {
+function applyScale(player, slot, entity, scale) {
   const step = stepFor(scale);
-  const key = player.id + "|" + body.id;
+  const key = player.id + "|" + slot;
   if (appliedStep.get(key) === step) return;
   try {
     entity.triggerEvent("space_dim:set_size_" + step);
     appliedStep.set(key, step);
   } catch (e) {
-    warnOnce("não deu pra escalar " + body.id, e);
+    warnOnce("não deu pra escalar " + slot, e);
   }
 }
 
-function hideModel(player, bodyId) {
-  appliedStep.delete(player.id + "|" + bodyId);
+function hideModel(player, slot) {
+  appliedStep.delete(player.id + "|" + slot);
   const mine = models.get(player.id);
   if (!mine) return;
-  const entity = mine.get(bodyId);
+  const entity = mine.get(slot);
   if (!entity) return;
   dropModel(entity);
-  mine.delete(bodyId);
+  mine.delete(slot);
 }
 
 export function updateSky(player) {
@@ -250,11 +258,11 @@ export function updateSky(player) {
     const coroa = alwaysModel(dentro);
     clearModelsExcept(player.id, coroa ? dentro.id : null);
     if (!coroa) return;
-    const entity = ensureModel(player, dentro, false);
+    const entity = ensureModel(player, dentro.id, SKY_PREFIX + dentro.id);
     if (entity) {
       try {
         entity.teleport(eye);
-        applyScale(player, dentro, entity, 2 * dentro.radius);
+        applyScale(player, dentro.id, entity, 2 * dentro.radius);
       } catch { hideModel(player, dentro.id); }
     }
     return;
@@ -267,7 +275,11 @@ export function updateSky(player) {
     const dy = body.center.y - eye.y;
     const dz = body.center.z - eye.z;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (d < 0.001) { hideModel(player, body.id); continue; }
+    if (d < 0.001) {
+      hideModel(player, body.id);
+      hideModel(player, atmoSlot(body.id));
+      continue;
+    }
 
     // Distância até a casca CONSTRUÍDA, não até o raio nominal.
     //
@@ -282,6 +294,7 @@ export function updateSky(player) {
     // o modelo desse fica ligado em toda distância.
     if (gap <= SKY_MODEL_HIDE_BELOW && !alwaysModel(body)) {
       hideModel(player, body.id);
+      hideModel(player, atmoSlot(body.id));
       continue;
     }
     alvos.push({ body, dx, dy, dz, d });
@@ -308,7 +321,8 @@ export function updateSky(player) {
     // nasce como estrela — que é o que ele é, até se chegar lá.
     const star = d > SOLAR_SYSTEM_RADIUS;
 
-    const entity = ensureModel(player, body, star);
+    const entity = ensureModel(player, body.id,
+                               star ? STAR_ENTITY : SKY_PREFIX + body.id);
     if (!entity) continue;
     shown.add(body.id);
 
@@ -328,7 +342,24 @@ export function updateSky(player) {
     // Escala pelo ângulo — ver a conta no cabeçalho. A estrela tem tamanho
     // fixo, declarado na entidade.
     if (!star) {
-      applyScale(player, body, entity, (2 * at * body.radius) / d);
+      applyScale(player, body.id, entity, (2 * at * body.radius) / d);
+    }
+
+    // A atmosfera: mesma posição, um pouco maior.
+    //
+    // Como estrela o corpo é um pontinho — atmosfera ali não quer dizer nada,
+    // e ainda custaria uma entidade por corpo distante.
+    if (body.atmosphere && !star) {
+      const slot = atmoSlot(body.id);
+      const atmo = ensureModel(player, slot, SKY_PREFIX + "atmo_" + body.id);
+      if (atmo) {
+        try {
+          atmo.teleport({ x: eye.x + dx * k, y: eye.y + dy * k, z: eye.z + dz * k });
+          applyScale(player, slot, atmo,
+                     (2 * at * body.radius * body.atmosphere.reach) / d);
+          shown.add(slot);
+        } catch { hideModel(player, slot); }
+      }
     }
   }
 

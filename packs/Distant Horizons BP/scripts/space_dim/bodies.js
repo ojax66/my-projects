@@ -256,7 +256,55 @@ export const builtRadius = (body) => {
  * ele: quem chegasse perto veria a coroa desaparecer e sobrar só a bola de
  * plasma do raio 62. O modelo de um corpo assim fica ligado em toda distância.
  */
-export const alwaysModel = (body) => (body.layers ?? []).some((l) => l.modelOnly);
+export const alwaysModel = (body) =>
+  body.built === false || (body.layers ?? []).some((l) => l.modelOnly);
+
+// Corpos que são SÓLIDOS sem ter bloco nenhum.
+//
+// Os planetas viraram só modelo, e modelo não colide: entidade de céu tem
+// hitbox zero, e dar hitbox a ela não resolveria — ela fica a poucos blocos do
+// jogador, encolhida, então a caixa estaria no lugar errado (bateria no vazio
+// ao lado dele em vez de no planeta lá longe).
+//
+// Então a solidez vem do script: quem entra no cubo do corpo é devolvido pra
+// superfície mais próxima. O efeito é o de um bloco gigante — dá pra pousar,
+// andar por cima e não se atravessa.
+const SOLID_BODIES = BODIES.filter((b) => b.solid);
+
+/**
+ * Se este ponto está DENTRO de um corpo sólido, devolve pra onde empurrá-lo:
+ * a face mais próxima, que é a de menor penetração.
+ *
+ * @returns {{body:object, axis:'x'|'y'|'z', to:number}|null}
+ */
+export function solidPushOut(loc, margin = 0) {
+  for (let i = 0; i < SOLID_BODIES.length; i++) {
+    const body = SOLID_BODIES[i];
+    const R = body.radius + margin;
+    const dx = loc.x - body.center.x;
+    const dy = loc.y - body.center.y;
+    const dz = loc.z - body.center.z;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    const az = Math.abs(dz);
+    if (ax >= R || ay >= R || az >= R) continue;   // fora do cubo
+
+    // A face mais próxima é a do eixo em que ele está MAIS longe do centro:
+    // é dali que ele entrou, e é a saída mais curta.
+    let axis = "x";
+    let a = ax;
+    if (ay > a) { axis = "y"; a = ay; }
+    if (az > a) { axis = "z"; a = az; }
+
+    const sign = axis === "x" ? Math.sign(dx) || 1
+      : axis === "y" ? Math.sign(dy) || 1
+        : Math.sign(dz) || 1;
+    const centro = axis === "x" ? body.center.x
+      : axis === "y" ? body.center.y : body.center.z;
+    return { body, axis, to: centro + sign * R };
+  }
+  return null;
+}
 
 /** Distância euclidiana até o centro. Usada pela gravidade, que é radial. */
 export function distanceTo(loc, body) {
@@ -291,10 +339,20 @@ export function surfaceGap(loc, body) {
 //
 // Um corpo pode ter várias camadas concêntricas — o Sol tem coroa, plasma e
 // núcleo. Os planetas têm uma só.
-function layersOverColumn(x, z) {
+function layersOverColumn(x, z, includeUnbuilt) {
   let hits = null;
   for (let i = 0; i < BODIES.length; i++) {
     const b = BODIES[i];
+    // `built: false` — o corpo existe, mas não vira bloco nenhum no mundo.
+    //
+    // Os planetas passaram a ser só o modelo: a versão de blocos deles piscava
+    // na troca e não acrescentava nada que o modelo não mostre. As paletas e os
+    // blocos continuam todos no addon, intactos, pras dimensões de planeta que
+    // vêm depois — o que mudou é só que ninguém os COLOCA aqui.
+    //
+    // O gerador de textura do céu ainda precisa da forma pra amostrar as cores
+    // da superfície, e é pra isso que serve `includeUnbuilt`.
+    if (b.built === false && !includeUnbuilt) continue;
     const dx = Math.abs(x - b.center.x);
     const dz = Math.abs(z - b.center.z);
     // Pegada do cubo: o maior dos dois eixos decide.
@@ -344,8 +402,8 @@ function shellSpans(body, layer, dh) {
 // ---------------------------------------------------------------------------
 
 /** @returns {{y0:number, y1:number, id:string}[]} trechos, de baixo pra cima */
-export function columnRuns(x, z) {
-  const hits = layersOverColumn(x, z);
+export function columnRuns(x, z, includeUnbuilt = false) {
+  const hits = layersOverColumn(x, z, includeUnbuilt);
   if (!hits) return [];
 
   const runs = [];

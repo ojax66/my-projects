@@ -30,6 +30,7 @@ import {
 } from "./config.js";
 import { inArrivalGrace } from "./arrival.js";
 import { isSkyModel } from "./skybox.js";
+import { solidPushOut } from "./bodies.js";
 
 const system = mc.system;
 
@@ -138,12 +139,41 @@ export function gravityAt(location) {
  * Devolve o componente vertical (blocos por tick) pra o controlador de
  * gravidade zero arrastar o Y-alvo. A parte horizontal é aplicada aqui mesmo.
  */
+/**
+ * Impede que o jogador atravesse um corpo sólido.
+ *
+ * Os planetas são só modelo, e modelo não tem colisão — a entidade de céu fica
+ * a poucos blocos do jogador, encolhida, então uma hitbox nela bateria no vazio
+ * ao lado dele em vez de no planeta. A solidez tem que vir daqui.
+ *
+ * Quem entra no cubo é devolvido pra face mais próxima e tem a velocidade
+ * daquele eixo zerada — senão ele volta a afundar no tick seguinte e o pouso
+ * vira um tremor.
+ */
+function keepOutOfSolids(player) {
+  let hit;
+  try { hit = solidPushOut(player.location); } catch { return false; }
+  if (!hit) return false;
+
+  const loc = player.location;
+  const destino = { x: loc.x, y: loc.y, z: loc.z };
+  destino[hit.axis] = hit.to;
+  try {
+    player.teleport(destino, { keepVelocity: false });
+  } catch { return false; }
+  return true;
+}
+
 export function applyPlayerGravity(player) {
   if (!BODY_GRAVITY_ENABLED) return 0;
 
   // Acabou de chegar: está sem controle enquanto o veículo é recolocado e a
   // montaria refeita. Puxar agora é arrancá-lo de perto do OVNI.
   if (inArrivalGrace(player)) return 0;
+
+  // Primeiro tira de dentro do corpo, depois puxa. Na ordem inversa o puxão
+  // enfia de volta no mesmo tick.
+  keepOutOfSolids(player);
 
   const g = gravityAt(player.location);
   if (!g) return 0;

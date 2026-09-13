@@ -102,7 +102,10 @@ const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 1
 // mais próximo do ponto pedido.
 function blockAt(x, y, z) {
   let best = null, bestD = Infinity;
-  for (const r of columnRuns(x, z)) {
+  // `true`: amostra TAMBÉM os corpos `built: false`. Os planetas não viram
+  // bloco no mundo, mas a superfície deles é justamente o que esta textura
+  // desenha — sem isto a Lua e Marte saem pretos.
+  for (const r of columnRuns(x, z, true)) {
     for (const yy of [r.y0, r.y1, Math.round(y)]) {
       if (yy < r.y0 || yy > r.y1) continue;
       const d = Math.abs(yy - y);
@@ -289,6 +292,76 @@ function glowTexture(body) {
 
 const isVolumetric = (body) => !!body.volumetric;
 
+// --- Atmosfera: as mesmas cascas, fraquinhas ---------------------------------
+//
+// Mesmo mecanismo do Sol, outro propósito. Aqui as cascas ficam FORA da
+// superfície (de raio a raio*reach) e com alfa baixo: elas quase não tampam o
+// que está atrás, só somam um azul de leve.
+//
+// O contorno acende mais que o meio sem precisar de nada: um raio que passa
+// raspando o planeta atravessa as cascas dos dois lados, e um que vai pro meio
+// do disco bate na superfície opaca e para na metade do caminho.
+function atmoTexture(body) {
+  const a = body.atmosphere;
+  const W = a.shells * GLOW_CELL;
+  const H = GLOW_CELL;
+  const px = Buffer.alloc(W * H * 4);
+  const col = rgb(a.color);
+  for (let i = 0; i < a.shells; i++) {
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < GLOW_CELL; x++) {
+        const d = (y * W + i * GLOW_CELL + x) * 4;
+        px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2]; px[d + 3] = a.alpha;
+      }
+    }
+  }
+  const dir = path.join(RP, 'textures', NS, 'sky');
+  fs.mkdirSync(dir, { recursive: true });
+  writePng(path.join(dir, `atmo_${body.id}.png`), W, H, px);
+}
+
+/**
+ * A geometria da atmosfera de um corpo.
+ *
+ * A casca de FORA tem 16 unidades (um bloco), igual a todo modelo do céu, e as
+ * de dentro encolhem até 16/reach — que é exatamente a superfície. Escalando a
+ * entidade por raio*reach, a casca de dentro cai em cima da superfície e a de
+ * fora no topo da atmosfera.
+ */
+function atmoGeometry(body) {
+  const a = body.atmosphere;
+  return {
+    format_version: '1.16.0',
+    'minecraft:geometry': [{
+      description: {
+        identifier: `geometry.${NS}.atmo_${body.id}`,
+        texture_width: a.shells * GLOW_CELL, texture_height: GLOW_CELL,
+        visible_bounds_width: 64, visible_bounds_height: 64,
+        visible_bounds_offset: [0, 0, 0],
+      },
+      bones: [{
+        name: 'body',
+        pivot: [0, 0, 0],
+        cubes: Array.from({ length: a.shells }, (_, k) => {
+          const i = a.shells - 1 - k;           // de fora pra dentro
+          const t = a.shells === 1 ? 1 : i / (a.shells - 1);
+          const size = 16 / a.reach + (16 - 16 / a.reach) * t;
+          const cell = { uv: [i * GLOW_CELL, 0], uv_size: [GLOW_CELL, GLOW_CELL] };
+          return {
+            origin: [-size / 2, -size / 2, -size / 2],
+            size: [size, size, size],
+            uv: {
+              up: { ...cell }, down: { ...cell }, east: { ...cell },
+              north: { ...cell }, west: { ...cell }, south: { ...cell },
+            },
+          };
+        }),
+      }],
+    }],
+  };
+}
+
+
 function skyTexture(body) {
   const c = body.center, R = body.radius;
 
@@ -431,13 +504,13 @@ function sizeGroups() {
 // de muito longe. Essa continua presa ao jogador, pequena e fixa.
 const STAR_SCALE_FIXED = 0.35;
 
-function bpEntity(body) {
+function bpEntity(body, prefix = '') {
   const { groups, events } = sizeGroups();
   return {
     format_version: '1.21.80',
     'minecraft:entity': {
       description: {
-        identifier: `${NS}:sky_${body.id}`,
+        identifier: `${NS}:sky_${prefix}${body.id}`,
         is_spawnable: false,
         is_summonable: true,
       },
@@ -507,6 +580,29 @@ for (const body of SKY) {
   skyTexture(body);
   write(path.join(BP, 'entities', `sky_${body.id}.json`), bpEntity(body));
   write(path.join(RP, 'entity', `sky_${body.id}.entity.json`), rpEntity(body));
+
+  // A atmosfera é uma entidade à parte, e tem que ser: o material dela mistura
+  // e o do corpo é opaco, e material é por entidade, não por parte do modelo.
+  if (body.atmosphere) {
+    atmoTexture(body);
+    write(path.join(RP, 'models', 'entity', `atmo_${body.id}.geo.json`),
+          atmoGeometry(body));
+    write(path.join(BP, 'entities', `sky_atmo_${body.id}.json`),
+          bpEntity(body, 'atmo_'));
+    write(path.join(RP, 'entity', `sky_atmo_${body.id}.entity.json`), {
+      format_version: '1.10.0',
+      'minecraft:client_entity': {
+        description: {
+          identifier: `${NS}:sky_atmo_${body.id}`,
+          materials: { default: 'space_dim_glow' },
+          textures: { default: `textures/${NS}/sky/atmo_${body.id}` },
+          geometry: { default: `geometry.${NS}.atmo_${body.id}` },
+          scripts: { should_update_bones_and_effects_offscreen: true },
+          render_controllers: [`controller.render.${NS}.sky_body`],
+        },
+      },
+    });
+  }
 }
 
 // --- A estrela ---------------------------------------------------------------

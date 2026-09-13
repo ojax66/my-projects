@@ -758,6 +758,100 @@ for bid in body_ids:
         except Exception as e:  # noqa: BLE001
             warn(f"nao consegui conferir as cascas de {bid}: {e}")
 
+# --- Corpos sem bloco e a atmosfera -----------------------------------------
+#
+# Os planetas viraram `built: false`: existem, mas ninguem coloca bloco deles no
+# mundo. Duas coisas tem que valer junto, e cada uma quebra o corpo sozinha.
+# O trecho de config de CADA corpo, do `id:` dele ate o do proximo.
+#
+# Regex solto nao serve aqui: `id: "sun" ... atmosphere:` casa atravessando o
+# corpo inteiro e atribui ao Sol a atmosfera da Terra. Cada propriedade tem que
+# ser lida dentro do pedaco do seu dono.
+def body_blocks(src):
+    marcas = [(m.start(), m.group(1)) for m in re.finditer(r'id:\s*"(\w+)"', src)]
+    out = {}
+    for i, (pos, bid) in enumerate(marcas):
+        fim = marcas[i + 1][0] if i + 1 < len(marcas) else len(src)
+        out.setdefault(bid, src[pos:fim])
+    return out
+
+
+BODY_SRC = body_blocks(config_src)
+
+for bid, trecho in BODY_SRC.items():
+    if "built: false" not in trecho:
+        continue
+    # Sem bloco pra assumir o lugar, um corpo que nao for solido fica
+    # atravessavel — e foi o contrario disso que ele pediu.
+    if "solid: true" not in trecho:
+        err(f"{bid} e built:false mas nao e solid — um corpo sem bloco e sem "
+            f"barreira fica atravessavel, e ele pediu o contrario")
+
+# `solid` so tem efeito se alguem chamar solidPushOut. Sem isso a marca no
+# config e decorativa e o planeta continua atravessavel.
+grav_src = ""
+grav_path = os.path.join(BP, "scripts", "space_dim", "gravity.js")
+if os.path.isfile(grav_path):
+    with open(grav_path, encoding="utf-8") as f:
+        grav_src = f.read()
+if "solid: true" in config_src and "solidPushOut" not in grav_src:
+    err("ha corpo `solid` no config, mas a gravidade nao chama solidPushOut — "
+        "a marca nao faz nada e o planeta continua atravessavel")
+
+# A atmosfera: entidade propria, material que mistura, e alfa BAIXO.
+#
+# Alfa alto aqui nao e "atmosfera mais forte": e uma cupula de vidro fosco
+# tampando o planeta. O efeito depende de cada casca somar pouco.
+for bid, trecho in BODY_SRC.items():
+    m = re.search(r"atmosphere:\s*\{([^}]*)\}", trecho)
+    if not m:
+        continue
+    corpo = m.group(1)
+    alpha = re.search(r"alpha:\s*(\d+)", corpo)
+    reach = re.search(r"reach:\s*([\d.]+)", corpo)
+    shells = re.search(r"shells:\s*(\d+)", corpo)
+    if alpha and int(alpha.group(1)) > 40:
+        err(f"a atmosfera de {bid} tem alfa {alpha.group(1)} — acima de ~40 ela "
+            f"deixa de somar luz e vira uma cupula tampando o planeta")
+    if alpha and int(alpha.group(1)) == 0:
+        err(f"a atmosfera de {bid} tem alfa 0 — no material que mistura isso e "
+            f"transparente, e ela simplesmente nao aparece")
+    if reach and float(reach.group(1)) <= 1:
+        err(f"a atmosfera de {bid} tem reach {reach.group(1)} — precisa passar "
+            f"de 1, senao ela fica DENTRO da superficie e nao se ve nada")
+    for nome, caminho in (
+        ("BP", os.path.join(BP, "entities", f"sky_atmo_{bid}.json")),
+        ("RP", os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json")),
+        ("modelo", os.path.join(RP, "models", "entity", f"atmo_{bid}.geo.json")),
+        ("textura", os.path.join(RP, "textures", "space_dim", "sky", f"atmo_{bid}.png")),
+    ):
+        if not os.path.isfile(caminho):
+            err(f"a atmosfera de {bid} nao tem {nome} ({caminho})")
+
+    doc = docs.get(os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json"))
+    if isinstance(doc, dict):
+        d = doc.get("minecraft:client_entity", {}).get("description", {})
+        if d.get("materials", {}).get("default") != GLOW_MATERIAL:
+            err(f"a atmosfera de {bid} nao usa {GLOW_MATERIAL} — sem mistura a "
+                f"casca de fora vira uma parede opaca em volta do planeta")
+    gdoc = docs.get(os.path.join(RP, "models", "entity", f"atmo_{bid}.geo.json"))
+    if isinstance(gdoc, dict) and shells:
+        cubes = ((gdoc.get("minecraft:geometry") or [{}])[0]
+                 .get("bones") or [{}])[0].get("cubes") or []
+        if len(cubes) != int(shells.group(1)):
+            err(f"a atmosfera de {bid} tem {len(cubes)} casca(s) no modelo, mas "
+                f"o config pede {shells.group(1)}")
+        tam = [c.get("size", [0])[0] for c in cubes]
+        if tam and max(tam) != 16:
+            err(f"a casca de fora da atmosfera de {bid} tem {max(tam)} unidades, "
+                f"esperado 16 — a conta de escala do skybox supoe um bloco")
+        if reach and tam:
+            esperado = round(16 / float(reach.group(1)), 3)
+            if abs(min(tam) - esperado) > 0.01:
+                err(f"a casca de dentro da atmosfera de {bid} tem {min(tam)}, "
+                    f"esperado {esperado} (16/reach) — ela tem que cair em cima "
+                    f"da superficie, nem dentro nem solta no ar")
+
 # A escala do modelo e a PROJECAO do corpo, em degraus de component group.
 #
 # O modelo fica preso ao jogador a SKY_MODEL_DISTANCE e e escalado pra dar o
