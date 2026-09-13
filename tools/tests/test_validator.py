@@ -585,7 +585,7 @@ def atmosfera_opaca(tmp):
     grava_config(tmp, src)
 
 
-case("atmosfera com alfa de cupula", atmosfera_opaca, r"vira uma cupula")
+case("atmosfera com alfa de cupula", atmosfera_opaca, r"vira uma parede tampando")
 
 
 def atmosfera_por_dentro(tmp):
@@ -595,6 +595,43 @@ def atmosfera_por_dentro(tmp):
 
 case("atmosfera com reach menor que 1", atmosfera_por_dentro,
      r"precisa passar de 1")
+
+
+# --- o interior do Sol e a neblina de dentro --------------------------------
+def interior_com_muitas_cascas(tmp):
+    src = le_config(tmp).replace(
+        'interior: { color: "#3E1605", reach: 1, shells: 2, alpha: 46 }',
+        'interior: { color: "#3E1605", reach: 1, shells: 12, alpha: 46 }', 1)
+    grava_config(tmp, src)
+
+
+case("interior com cascas demais", interior_com_muitas_cascas,
+     r"a tela vira um chapado")
+
+
+def neblina_de_dentro_longa(tmp):
+    caminho = rp(tmp, "fogs", "inside_sun.fog.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["minecraft:fog_settings"]["distance"]["air"]["fog_end"] = 300.0
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("neblina de dentro longa demais", neblina_de_dentro_longa,
+     r"longa demais pra cortar o branco")
+
+
+def main_sem_neblina_de_dentro(tmp):
+    caminho = bp(tmp, "scripts", "space_dim", "main.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src.replace("FOG_INSIDE_ID", "FOG_ID"))
+
+
+case("main.js sem a neblina de dentro", main_sem_neblina_de_dentro,
+     r"nunca seria empilhada")
 
 scrambled_generators()
 

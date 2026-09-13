@@ -355,10 +355,17 @@ const mk = (id = 'p1') =>
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + 30 });
   __advance(2); updateSky(p);
   const restam = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
+  // Lá dentro o Sol troca de modelo: `sky_in_sun` em vez de `sky_sun`. O de fora
+  // é o empilhado de 16 cascas, e o jogador dentro dele fica atrás de todas de
+  // uma vez — a soma vira um branco chapado e não dá pra enxergar nada. O de
+  // dentro tem poucas cascas e deixa ver através; de fora nada muda.
   check('dentro do Sol os outros corpos somem',
-        restam.every((e) => e.typeId === 'space_dim:sky_sun'),
+        restam.every((e) => e.typeId.startsWith('space_dim:sky_')
+                            && e.typeId.includes('sun')),
         `(${restam.map((e) => e.typeId).join(', ') || 'nenhum'})`);
-  check('  mas a coroa do Sol continua', restam.length === 1);
+  check('  mas o Sol continua', restam.length === 1);
+  check('  e lá dentro ele usa o modelo de interior',
+        restam[0]?.typeId === 'space_dim:sky_in_sun', `(${restam[0]?.typeId})`);
 
   // E lá dentro ela vira um céu: cubo do tamanho do corpo, centrado no jogador.
   // Não há ângulo pra projetar quando se está dentro, e centrado no jogador o

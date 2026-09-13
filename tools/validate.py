@@ -803,54 +803,100 @@ if "solid: true" in config_src and "solidPushOut" not in grav_src:
 # Alfa alto aqui nao e "atmosfera mais forte": e uma cupula de vidro fosco
 # tampando o planeta. O efeito depende de cada casca somar pouco.
 for bid, trecho in BODY_SRC.items():
-    m = re.search(r"atmosphere:\s*\{([^}]*)\}", trecho)
+  for campo, prefixo in (("atmosphere", "atmo_"), ("interior", "in_")):
+    m = re.search(campo + r":\s*\{([^}]*)\}", trecho)
     if not m:
         continue
     corpo = m.group(1)
     alpha = re.search(r"alpha:\s*(\d+)", corpo)
     reach = re.search(r"reach:\s*([\d.]+)", corpo)
     shells = re.search(r"shells:\s*(\d+)", corpo)
-    if alpha and int(alpha.group(1)) > 40:
-        err(f"a atmosfera de {bid} tem alfa {alpha.group(1)} — acima de ~40 ela "
-            f"deixa de somar luz e vira uma cupula tampando o planeta")
+    limite = 40 if campo == "atmosphere" else 90
+    if alpha and int(alpha.group(1)) > limite:
+        err(f"o {campo} de {bid} tem alfa {alpha.group(1)} — acima de ~{limite} "
+            f"a casca deixa de somar luz e vira uma parede tampando tudo")
     if alpha and int(alpha.group(1)) == 0:
-        err(f"a atmosfera de {bid} tem alfa 0 — no material que mistura isso e "
-            f"transparente, e ela simplesmente nao aparece")
-    if reach and float(reach.group(1)) <= 1:
+        err(f"o {campo} de {bid} tem alfa 0 — no material que mistura isso e "
+            f"transparente, e ele simplesmente nao aparece")
+    if campo == "atmosphere" and reach and float(reach.group(1)) <= 1:
         err(f"a atmosfera de {bid} tem reach {reach.group(1)} — precisa passar "
             f"de 1, senao ela fica DENTRO da superficie e nao se ve nada")
+    # O interior envolve o jogador: com muitas cascas ele fica atras de TODAS de
+    # uma vez e a soma vira um branco chapado — que e exatamente o problema que
+    # o modelo de interior existe pra resolver.
+    if campo == "interior" and shells and int(shells.group(1)) > 4:
+        err(f"o interior de {bid} tem {shells.group(1)} cascas — com muitas, "
+            f"quem esta dentro fica atras de todas e a tela vira um chapado")
     for nome, caminho in (
-        ("BP", os.path.join(BP, "entities", f"sky_atmo_{bid}.json")),
-        ("RP", os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json")),
-        ("modelo", os.path.join(RP, "models", "entity", f"atmo_{bid}.geo.json")),
-        ("textura", os.path.join(RP, "textures", "space_dim", "sky", f"atmo_{bid}.png")),
+        ("BP", os.path.join(BP, "entities", f"sky_{prefixo}{bid}.json")),
+        ("RP", os.path.join(RP, "entity", f"sky_{prefixo}{bid}.entity.json")),
+        ("modelo", os.path.join(RP, "models", "entity", f"{prefixo}{bid}.geo.json")),
+        ("textura", os.path.join(RP, "textures", "space_dim", "sky", f"{prefixo}{bid}.png")),
     ):
         if not os.path.isfile(caminho):
-            err(f"a atmosfera de {bid} nao tem {nome} ({caminho})")
+            err(f"o {campo} de {bid} nao tem {nome} ({caminho})")
 
-    doc = docs.get(os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json"))
+    doc = docs.get(os.path.join(RP, "entity", f"sky_{prefixo}{bid}.entity.json"))
     if isinstance(doc, dict):
         d = doc.get("minecraft:client_entity", {}).get("description", {})
         if d.get("materials", {}).get("default") != GLOW_MATERIAL:
-            err(f"a atmosfera de {bid} nao usa {GLOW_MATERIAL} — sem mistura a "
-                f"casca de fora vira uma parede opaca em volta do planeta")
-    gdoc = docs.get(os.path.join(RP, "models", "entity", f"atmo_{bid}.geo.json"))
+            err(f"o {campo} de {bid} nao usa {GLOW_MATERIAL} — sem mistura a "
+                f"casca de fora vira uma parede opaca")
+    gdoc = docs.get(os.path.join(RP, "models", "entity", f"{prefixo}{bid}.geo.json"))
     if isinstance(gdoc, dict) and shells:
         cubes = ((gdoc.get("minecraft:geometry") or [{}])[0]
                  .get("bones") or [{}])[0].get("cubes") or []
         if len(cubes) != int(shells.group(1)):
-            err(f"a atmosfera de {bid} tem {len(cubes)} casca(s) no modelo, mas "
+            err(f"o {campo} de {bid} tem {len(cubes)} casca(s) no modelo, mas "
                 f"o config pede {shells.group(1)}")
         tam = [c.get("size", [0])[0] for c in cubes]
         if tam and max(tam) != 16:
-            err(f"a casca de fora da atmosfera de {bid} tem {max(tam)} unidades, "
+            err(f"a casca de fora do {campo} de {bid} tem {max(tam)} unidades, "
                 f"esperado 16 — a conta de escala do skybox supoe um bloco")
         if reach and tam:
             esperado = round(16 / float(reach.group(1)), 3)
             if abs(min(tam) - esperado) > 0.01:
-                err(f"a casca de dentro da atmosfera de {bid} tem {min(tam)}, "
+                err(f"a casca de dentro do {campo} de {bid} tem {min(tam)}, "
                     f"esperado {esperado} (16/reach) — ela tem que cair em cima "
                     f"da superficie, nem dentro nem solta no ar")
+
+# A neblina de DENTRO tem que existir e ser CURTA.
+#
+# La dentro do Sol e tudo bloco branco de emissao maxima a um palmo do rosto: a
+# tela vira um chapado e nao da pra enxergar nada. Uma neblina curta cor de
+# brasa e o que troca esse branco por algo legivel. Longa demais ela nao corta o
+# brilho e o problema volta.
+main_src = ""
+main_path = os.path.join(BP, "scripts", "space_dim", "main.js")
+if os.path.isfile(main_path):
+    with open(main_path, encoding="utf-8") as f:
+        main_src = f.read()
+
+fog_inside = None
+mfi = re.search(r'export const FOG_INSIDE_ID = "([^"]+)";', config_src)
+if mfi:
+    fog_inside = mfi.group(1)
+    achou = False
+    for caminho, doc in docs.items():
+        if not caminho.startswith(os.path.join(RP, "fogs")):
+            continue
+        if not isinstance(doc, dict):
+            continue
+        fs = doc.get("minecraft:fog_settings", {})
+        if fs.get("description", {}).get("identifier") != fog_inside:
+            continue
+        achou = True
+        ar = fs.get("distance", {}).get("air", {})
+        fim = ar.get("fog_end")
+        if not isinstance(fim, (int, float)) or fim > 32:
+            err(f"a neblina de dentro ({fog_inside}) tem fog_end {fim} — longa "
+                f"demais pra cortar o branco dos blocos do Sol")
+    if not achou:
+        err(f"{fog_inside} nao existe em RP/fogs — a neblina de dentro do Sol "
+            f"nao seria aplicada e a tela continuaria um branco chapado")
+    if "FOG_INSIDE_ID" not in main_src:
+        err("FOG_INSIDE_ID existe no config mas main.js nao usa — a neblina de "
+            "dentro nunca seria empilhada")
 
 # A escala do modelo e a PROJECAO do corpo, em degraus de component group.
 #

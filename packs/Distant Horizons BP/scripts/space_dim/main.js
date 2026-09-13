@@ -16,8 +16,10 @@ import {
   DIM_MIN_Y,
   DIM_MAX_Y,
   SPACE_ENTRY_Y,
+  FOG_ID,
+  FOG_INSIDE_ID,
 } from "./config.js";
-import { generateColumn, getHeight, isBudgetError } from "./bodies.js";
+import { generateColumn, getHeight, isBudgetError, insideBlocksOf } from "./bodies.js";
 import {
   checkSpaceEntry,
   checkBodyPortals,
@@ -32,7 +34,7 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
-import { updateSkyAll, clearModels, sweepOrphans, describeSky } from "./skybox.js";
+import { updateSkyAll, clearModels, sweepOrphans, describeSky, SWEEP_INTERVAL } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
 import { openTracker } from "./trackerUI.js";
@@ -108,7 +110,7 @@ system.runInterval(() => {
     }
     // Modelos de céu sem dono (o jogo fechou no meio de uma sessão) ficariam
     // parados no mundo pra sempre: ninguém mais vai movê-los.
-    if (system.currentTick % 600 === 0) {
+    if (system.currentTick % SWEEP_INTERVAL === 0) {
       try { sweepOrphans(world.getDimension(DIMENSION_ID)); }
       catch (e) { onError("varredura do céu", e); }
     }
@@ -142,7 +144,10 @@ system.runInterval(() => {
       }
 
       wasInSpace.add(player.id);
-      pushFog(player);
+      // Névoa curta cor de brasa quando se está no meio dos blocos de um corpo:
+      // lá dentro o Sol é bloco branco de emissão máxima a um palmo do rosto, e
+      // sem isso a tela vira um branco chapado.
+      pushFog(player, insideBlocksOf(player.location) ? FOG_INSIDE_ID : FOG_ID);
       spawnAmbience(player);
       // O céu é resolvido de uma vez pra todos, depois do laço: jogadores que
       // estão juntos dividem um conjunto de modelos só. Um conjunto por jogador

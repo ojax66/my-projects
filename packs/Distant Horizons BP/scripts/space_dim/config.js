@@ -78,6 +78,17 @@ export const BODIES = [
     // junto. O que produz aquilo é luz somada ao longo do caminho dentro do
     // corpo, e é isso que as cascas fazem.
     volumetric: true,
+    // Como o Sol se vê POR DENTRO.
+    //
+    // De fora ele é um empilhado de 16 cascas, e é isso que dá o miolo
+    // estourado da referência. Mas por dentro o jogador fica atrás de TODAS
+    // elas de uma vez, e a soma vira um branco chapado — dá pra ver a nave e
+    // mais nada.
+    //
+    // Então dentro é outro modelo: poucas cascas, cor de brasa e alfa que deixa
+    // enxergar através. A aparência de fora não muda em nada, que era a
+    // condição — isto só existe pra quando se está lá dentro.
+    interior: { color: "#3E1605", reach: 1, shells: 2, alpha: 46 },
     // O Sol é ATRAVESSÁVEL: coroa e plasma são cascas sem colisão, com vácuo
     // entre elas, e no meio o núcleo sólido. Quem furar o calor entra de
     // verdade, camada por camada, até ter onde pousar.
@@ -416,10 +427,21 @@ export const SKY_SHARE_RADIUS = 16;
 // do cubo encolhido fica mais perto de você do que o chão em que você está. Aqui
 // não precisa de truque nenhum — o corpo já está dentro da distância de
 // simulação, então o modelo vai pro lugar dele e no tamanho dele, e aí é exato.
-export const SKY_MODEL_REAL_BELOW = 48;
+export const SKY_MODEL_REAL_BELOW = 40;
 
-export const SKY_MODEL_NEAREST = 16;
-export const SKY_MODEL_DISTANCE = 40;
+// A faixa encolheu de 16..40 pra 12..28.
+//
+// O corpo do degrau mais longe era o que mais dava problema — no relato dele,
+// "Marte sempre buga", e Marte é justamente o mais distante de todos, logo o do
+// último degrau. A 40 blocos a entidade fica perto demais do limite em que o
+// jogo a descarrega, e entidade descarregada não pode ser removida: a gente põe
+// outra no lugar e a velha reaparece quando a chunk volta. Dois Martes.
+//
+// A 28 sobra folga de mais do dobro até os 64 blocos da distância de simulação
+// mais apertada. O preço é paralaxe um pouco maior entre jogadores do mesmo
+// grupo, que é o mal menor.
+export const SKY_MODEL_NEAREST = 12;
+export const SKY_MODEL_DISTANCE = 28;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
 //
@@ -476,6 +498,14 @@ export const HUD_CHANNEL_DEFAULT = "sidebar";
 export const HUD_OBJECTIVE = "space_dim_track";
 
 export const FOG_ID = "space_dim:fog_outer_space";
+
+// A névoa de DENTRO de um corpo, entre os blocos dele.
+//
+// No Sol, lá dentro é tudo bloco branco com emissão máxima a um palmo do rosto:
+// a tela vira um branco chapado e não dá pra enxergar nada — nem a própria nave.
+// Uma névoa curta cor de brasa troca esse branco por um laranja escuro, e aí dá
+// pra ver. Não mexe em nada visto de fora, que era a condição.
+export const FOG_INSIDE_ID = "space_dim:fog_inside_sun";
 
 // A luz do Sol.
 //

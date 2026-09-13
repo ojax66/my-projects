@@ -74,6 +74,8 @@ const SKY_PREFIX = "space_dim:sky_";
 // playerId → (bodyId → entidade)
 const models = new Map();
 
+export { SWEEP_INTERVAL };
+
 export function isSkyModel(entity) {
   return typeof entity?.typeId === "string" && entity.typeId.startsWith(SKY_PREFIX);
 }
@@ -81,6 +83,19 @@ export function isSkyModel(entity) {
 function dropModel(entity) {
   try { if (entity?.isValid) entity.remove(); } catch { }
 }
+
+// De quantos em quantos ticks as órfãs são varridas.
+//
+// Era 600 (meio minuto). Uma entidade de céu que sai da distância de simulação
+// fica INVÁLIDA; a gente troca ela por uma nova, mas a velha não pôde ser
+// removida — entidade inválida não aceita remove() — e volta ao mundo quando a
+// chunk recarrega. Daí os dois corpos: o novo, certo, e o velho parado com a
+// escala e a posição de antes.
+//
+// Quem mais sofria era o corpo do degrau mais longe, que é o que chega mais
+// perto do limite: no relato dele, sempre Marte. Meio minuto pra limpar é tempo
+// demais pra quem está olhando.
+const SWEEP_INTERVAL = 40;
 
 /** Tira todos os modelos de um jogador. */
 export function clearModels(playerId) {
@@ -108,16 +123,31 @@ function clearModelsExcept(playerId, keepId) {
  * sessão ficaram no mundo sem dono. Ninguém mais vai movê-los, então saem.
  */
 export function sweepOrphans(dimension) {
-  let known = null;
+  // O conjunto do que TEM dono é montado entidade por entidade, cada uma no seu
+  // try.
+  //
+  // Antes era um try só em volta de tudo: bastava uma entidade descarregada
+  // (ler `.id` de uma entidade inválida lança) pra abortar a varredura inteira,
+  // e aí nada era limpo. Como o aborto acontecia justamente quando havia órfã,
+  // a varredura falhava exatamente quando era necessária.
+  const known = new Set();
+  for (const mine of models.values()) {
+    for (const entity of mine.values()) {
+      try { known.add(entity.id); } catch { }
+    }
+  }
+
+  let todas;
   try {
-    known = new Set();
-    for (const mine of models.values()) {
-      for (const entity of mine.values()) known.add(entity.id);
-    }
-    for (const entity of dimension.getEntities({ families: ["space_dim_sky"] })) {
+    todas = dimension.getEntities({ families: ["space_dim_sky"] });
+  } catch {
+    return;
+  }
+  for (const entity of todas) {
+    try {
       if (!known.has(entity.id)) dropModel(entity);
-    }
-  } catch { }
+    } catch { }
+  }
 }
 
 /**
@@ -318,7 +348,17 @@ export function updateSky(player) {
     const coroa = alwaysModel(dentro);
     clearModelsExcept(player.id, coroa ? dentro.id : null);
     if (!coroa) return;
-    const entity = ensureModel(player, dentro.id, SKY_PREFIX + dentro.id);
+    // Por dentro, o modelo é OUTRO quando o corpo tem um.
+    //
+    // O Sol de fora é um empilhado de 16 cascas, e é isso que dá o miolo
+    // estourado. Mas lá dentro o jogador fica atrás de todas elas de uma vez e a
+    // soma vira um branco chapado — dava pra ver a nave e mais nada. O modelo de
+    // interior tem poucas cascas e deixa enxergar através; a aparência de fora
+    // não muda em nada.
+    const wanted = dentro.interior
+      ? SKY_PREFIX + "in_" + dentro.id
+      : SKY_PREFIX + dentro.id;
+    const entity = ensureModel(player, dentro.id, wanted);
     if (entity) {
       try {
         entity.teleport(eye);

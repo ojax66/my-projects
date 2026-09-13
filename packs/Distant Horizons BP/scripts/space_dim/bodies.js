@@ -306,6 +306,22 @@ export function solidPushOut(loc, margin = 0) {
   return null;
 }
 
+/**
+ * O corpo em cujos BLOCOS este ponto está, ou null.
+ *
+ * Casca construída, não raio nominal: entre a coroa do Sol (raio 100, só
+ * modelo) e o plasma (raio 62) é vácuo, e lá dentro ainda se enxerga longe. O
+ * branco chapado começa quando se entra no meio dos blocos.
+ */
+export function insideBlocksOf(loc) {
+  for (let i = 0; i < BODIES.length; i++) {
+    const body = BODIES[i];
+    if (body.built === false) continue;
+    if (chebyshevTo(loc, body) <= builtRadius(body)) return body;
+  }
+  return null;
+}
+
 /** Distância euclidiana até o centro. Usada pela gravidade, que é radial. */
 export function distanceTo(loc, body) {
   const dx = loc.x - body.center.x;

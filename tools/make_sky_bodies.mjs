@@ -301,8 +301,7 @@ const isVolumetric = (body) => !!body.volumetric;
 // O contorno acende mais que o meio sem precisar de nada: um raio que passa
 // raspando o planeta atravessa as cascas dos dois lados, e um que vai pro meio
 // do disco bate na superfície opaca e para na metade do caminho.
-function atmoTexture(body) {
-  const a = body.atmosphere;
+function shellTexture(body, a, prefix) {
   const W = a.shells * GLOW_CELL;
   const H = GLOW_CELL;
   const px = Buffer.alloc(W * H * 4);
@@ -317,7 +316,7 @@ function atmoTexture(body) {
   }
   const dir = path.join(RP, 'textures', NS, 'sky');
   fs.mkdirSync(dir, { recursive: true });
-  writePng(path.join(dir, `atmo_${body.id}.png`), W, H, px);
+  writePng(path.join(dir, `${prefix}${body.id}.png`), W, H, px);
 }
 
 /**
@@ -328,13 +327,12 @@ function atmoTexture(body) {
  * entidade por raio*reach, a casca de dentro cai em cima da superfície e a de
  * fora no topo da atmosfera.
  */
-function atmoGeometry(body) {
-  const a = body.atmosphere;
+function shellGeometry(body, a, prefix) {
   return {
     format_version: '1.16.0',
     'minecraft:geometry': [{
       description: {
-        identifier: `geometry.${NS}.atmo_${body.id}`,
+        identifier: `geometry.${NS}.${prefix}${body.id}`,
         texture_width: a.shells * GLOW_CELL, texture_height: GLOW_CELL,
         visible_bounds_width: 64, visible_bounds_height: 64,
         visible_bounds_offset: [0, 0, 0],
@@ -581,22 +579,28 @@ for (const body of SKY) {
   write(path.join(BP, 'entities', `sky_${body.id}.json`), bpEntity(body));
   write(path.join(RP, 'entity', `sky_${body.id}.entity.json`), rpEntity(body));
 
-  // A atmosfera é uma entidade à parte, e tem que ser: o material dela mistura
-  // e o do corpo é opaco, e material é por entidade, não por parte do modelo.
-  if (body.atmosphere) {
-    atmoTexture(body);
-    write(path.join(RP, 'models', 'entity', `atmo_${body.id}.geo.json`),
-          atmoGeometry(body));
-    write(path.join(BP, 'entities', `sky_atmo_${body.id}.json`),
-          bpEntity(body, 'atmo_'));
-    write(path.join(RP, 'entity', `sky_atmo_${body.id}.entity.json`), {
+  // Atmosfera e interior são entidades à parte, e têm que ser: o material delas
+  // mistura e o do corpo é opaco — e material é por entidade, não por parte do
+  // modelo.
+  //
+  // As duas são o mesmo mecanismo (cascas concêntricas translúcidas) com
+  // propósitos opostos: a atmosfera fica FORA da superfície e é vista de longe;
+  // o interior envolve o jogador e só existe pra quando ele está lá dentro.
+  for (const [spec, prefix] of [[body.atmosphere, 'atmo_'], [body.interior, 'in_']]) {
+    if (!spec) continue;
+    shellTexture(body, spec, prefix);
+    write(path.join(RP, 'models', 'entity', `${prefix}${body.id}.geo.json`),
+          shellGeometry(body, spec, prefix));
+    write(path.join(BP, 'entities', `sky_${prefix}${body.id}.json`),
+          bpEntity(body, prefix));
+    write(path.join(RP, 'entity', `sky_${prefix}${body.id}.entity.json`), {
       format_version: '1.10.0',
       'minecraft:client_entity': {
         description: {
-          identifier: `${NS}:sky_atmo_${body.id}`,
+          identifier: `${NS}:sky_${prefix}${body.id}`,
           materials: { default: 'space_dim_glow' },
-          textures: { default: `textures/${NS}/sky/atmo_${body.id}` },
-          geometry: { default: `geometry.${NS}.atmo_${body.id}` },
+          textures: { default: `textures/${NS}/sky/${prefix}${body.id}` },
+          geometry: { default: `geometry.${NS}.${prefix}${body.id}` },
           scripts: { should_update_bones_and_effects_offscreen: true },
           render_controllers: [`controller.render.${NS}.sky_body`],
         },

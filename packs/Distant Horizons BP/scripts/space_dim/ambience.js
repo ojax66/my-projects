@@ -71,12 +71,12 @@ export function spawnAmbience(player) {
 //
 // Empilha UMA vez por jogador — a armadilha que o Spacecraft documenta:
 // empilhar todo tick estoura o limite de identificadores de neblina.
-export function pushFog(player) {
-  if (fogged.get(player.id) === FOG_ID) return;
-  fogged.set(player.id, FOG_ID);
+export function pushFog(player, fogId = FOG_ID) {
+  if (fogged.get(player.id) === fogId) return;
+  fogged.set(player.id, fogId);
   try {
     player.runCommand(`fog @s remove ${FOG_LABEL}`);
-    player.runCommand(`fog @s push ${FOG_ID} ${FOG_LABEL}`);
+    player.runCommand(`fog @s push ${fogId} ${FOG_LABEL}`);
   } catch { }
 }
 
