@@ -592,6 +592,37 @@ case("atmosfera voltando a ser casca por fora", atmosfera_como_casca,
      r"TAPA o planeta")
 
 
+def superficie_voltando_pra_alfa_zero(tmp):
+    # A superficie do corpo com anel tem que ficar em 254: e o que poe ela na
+    # passada transparente, desenhada DEPOIS dos aneis.
+    import struct
+    import zlib
+    tex = rp(tmp, "textures", "space_dim", "sky", "earth.png")
+    with open(tex, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    linhas = bytearray()
+    for y in range(h):
+        linhas.append(0)
+        for x in range(w):
+            linhas += bytes((40, 90, 160, 0))
+
+    def chunk(typ, data):
+        body = typ + data
+        return struct.pack(">I", len(data)) + body + struct.pack(
+            ">I", zlib.crc32(body) & 0xffffffff)
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    with open(tex, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+                + chunk(b"IDAT", zlib.compress(bytes(linhas), 9))
+                + chunk(b"IEND", b""))
+
+
+case("superficie do corpo com anel voltando pra alfa 0",
+     superficie_voltando_pra_alfa_zero, r"esperado 254")
+
+
 def material_sem_disabledepthwrite(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:

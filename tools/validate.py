@@ -845,6 +845,33 @@ for bid, trecho in BODY_SRC.items():
         err(f"a atmosfera de {bid} tem reach {reach.group(1)} — precisa passar "
             f"de 1, senao o anel fica DENTRO do corpo e nao se ve nada")
 
+    # A SUPERFICIE do corpo com anel vai a alfa 254, os ANEIS ficam em 0.
+    #
+    # E dele, e resolve a ordem de desenho: 255 o jogo trata como opaco, 254
+    # manda o pixel pra passada TRANSPARENTE sem mudar nada a olho nu. Os aneis
+    # ficam na passada opaca e saem primeiro; o corpo, na transparente, vem
+    # depois e tapa o miolo deles. Se a superficie voltar pra 0 a ordem passa a
+    # depender so dos cubos, e o halo pode tapar o planeta de novo.
+    tex_a = sky_texture_path(bid)
+    if os.path.isfile(tex_a):
+        try:
+            aw, ah, apx = png_rgba(tex_a)
+            cel_a = aw // 4
+            def alfa(x, y):
+                return apx[(y * aw + x) * 4 + 3]
+            # meio da face do norte (coluna 1, linha 1) e meio da celula do anel
+            sup = alfa(cel_a + cel_a // 2, cel_a + cel_a // 2)
+            anel = alfa(cel_a // 2, cel_a // 2)
+            if sup != 254:
+                err(f"a superficie de {bid} esta com alfa {sup}, esperado 254 — "
+                    f"254 poe o corpo na passada transparente, que e o que faz "
+                    f"ele ser desenhado DEPOIS dos aneis e tapar o miolo deles")
+            if anel != 0:
+                err(f"os aneis de {bid} estao com alfa {anel}, esperado 0 — eles "
+                    f"tem que ficar na passada opaca, desenhados antes do corpo")
+        except Exception as e:  # noqa: BLE001
+            warn(f"nao consegui conferir os alfas de {bid}: {e}")
+
     # O material tem que ser o que NAO escreve profundidade.
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
     mat = None

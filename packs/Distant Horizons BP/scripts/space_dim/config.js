@@ -448,6 +448,19 @@ export const SKY_SHARE_RADIUS = 16;
 // do cubo encolhido fica mais perto de você do que o chão em que você está. Aqui
 // não precisa de truque nenhum — o corpo já está dentro da distância de
 // simulação, então o modelo vai pro lugar dele e no tamanho dele, e aí é exato.
+// Até esta distância DA SUPERFÍCIE o corpo é GLOBAL: uma entidade só no mundo
+// inteiro, no lugar de verdade e no tamanho de verdade.
+//
+// É o "um planeta por mundo". O modelo perto do jogador é um truque de ponto de
+// vista, e truque de ponto de vista é por jogador — daí os dois planetas que ele
+// fotografou. No lugar real não há truque: todo mundo olha a mesma coisa e cada
+// um vê do ângulo dele, com paralaxe de verdade.
+//
+// O limite existe porque o cliente só desenha entidade que está por perto. Os
+// corpos distantes continuam no truque: lá o modelo do outro jogador está a
+// centenas de blocos e ninguém vê duplicado de qualquer jeito.
+export const SKY_GLOBAL_BELOW = 64;
+
 export const SKY_MODEL_REAL_BELOW = 40;
 
 // A faixa encolheu de 16..40 pra 12..28.

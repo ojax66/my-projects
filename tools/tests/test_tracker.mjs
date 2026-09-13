@@ -578,5 +578,67 @@ const mk = (id = 'p1') =>
   clearModels(p.id);
 }
 
+// --- 15. Um planeta por mundo quando alguém está perto ----------------------
+//
+// O modelo perto do jogador é um truque de ponto de vista, e truque de ponto de
+// vista é por jogador: dois jogadores, dois planetas na tela — foi o que ele
+// fotografou. Perto não precisa de truque, então o corpo vira UMA entidade no
+// lugar de verdade e todo mundo olha a mesma.
+{
+  __reset();
+  const { updateSkyAll, clearGlobals } = await import('./space_dim/skybox.js');
+  const { BODIES, SKY_GLOBAL_BELOW } = await import('./space_dim/config.js');
+  const terra = BODIES.find((b) => b.id === 'earth');
+  const conta = (id) => world.getDimension(DIMENSION_ID).getEntities()
+    .filter((e) => e.typeId === `space_dim:sky_${id}`);
+
+  // Dois jogadores perto da Terra, LONGE um do outro (mais que o raio de grupo,
+  // senão o agrupamento resolveria sozinho e o teste não provaria nada).
+  const a = mk('g_a');
+  const b = mk('g_b');
+  const perto = terra.radius + SKY_GLOBAL_BELOW - 8;
+  a.teleport({ x: terra.center.x + perto, y: terra.center.y, z: terra.center.z });
+  b.teleport({ x: terra.center.x - perto, y: terra.center.y, z: terra.center.z });
+  __advance(2); updateSkyAll([a, b]);
+
+  const terras = conta('earth');
+  check('dois jogadores perto da Terra veem UMA Terra só', terras.length === 1,
+        `(${terras.length})`);
+  if (terras.length === 1) {
+    const d = Math.hypot(terras[0].location.x - terra.center.x,
+                         terras[0].location.y - terra.center.y,
+                         terras[0].location.z - terra.center.z);
+    check('  e ela está no lugar de verdade do corpo', d < 0.01, `(a ${d.toFixed(2)})`);
+
+    const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
+    const ev = (terras[0].__events ?? []).filter(
+      (e) => e.startsWith('space_dim:set_size_')).pop();
+    const escala = SKY_SIZE_STEPS[Number(ev?.slice('space_dim:set_size_'.length))];
+    check('  e no tamanho de verdade dele',
+          Math.abs(Math.log(escala / (2 * terra.radius))) < Math.log(1.25),
+          `(${escala} vs ${2 * terra.radius})`);
+  }
+
+  // Os dois estão longe do Sol: aquele continua no truque, um por jogador —
+  // e não tem problema, porque o modelo de cada um está do lado dele.
+  check('  e o Sol, longe, continua um por jogador', conta('sun').length === 2,
+        `(${conta('sun').length})`);
+
+  // Afastando os dois, a Terra global sai de cena.
+  const longe = terra.radius + SKY_GLOBAL_BELOW + 200;
+  a.teleport({ x: terra.center.x + longe, y: terra.center.y, z: terra.center.z });
+  b.teleport({ x: terra.center.x - longe, y: terra.center.y, z: terra.center.z });
+  __advance(2); updateSkyAll([a, b]);
+  const depois = conta('earth');
+  check('longe dela, a Terra volta a ser um modelo por jogador',
+        depois.length === 2, `(${depois.length})`);
+  check('  e nenhum deles está no lugar do corpo',
+        depois.every((e) => Math.hypot(e.location.x - terra.center.x,
+                                       e.location.y - terra.center.y,
+                                       e.location.z - terra.center.z) > 1));
+
+  clearGlobals();
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

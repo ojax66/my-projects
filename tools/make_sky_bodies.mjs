@@ -315,6 +315,14 @@ const isVolumetric = (body) => !!body.volumetric;
 // cubo usa seis; cada anel é uma célula chapada de uma cor.
 const ATMO_CELLS = [[0, 0], [3, 0], [0, 2], [1, 2], [2, 2], [3, 2]];
 
+// O alfa da SUPERFÍCIE de um corpo com atmosfera.
+//
+// 255 o jogo trata como opaco; 254 manda o pixel pra passada transparente sem
+// mudar nada a olho nu. Os anéis ficam em alfa 0 (passada opaca, desenhados
+// primeiro) e a superfície em 254 (transparente, desenhada depois): o corpo tapa
+// o miolo dos anéis por ordem de passada, não só por ordem de cubo.
+const SURFACE_ALPHA = 254;
+
 function atmoRings(body) {
   const a = body.atmosphere;
   if (!a) return [];
@@ -404,7 +412,15 @@ function skyTexture(body) {
       // Efeito colateral que confunde: aberta num visualizador de imagens, a
       // textura parece vazia — o visualizador lê o alfa como transparência,
       // que é o significado normal dele. No jogo, com este material, não é.
-      px[d + 3] = 0;
+      //
+      // SALVO no corpo com anel de atmosfera, onde a superfície vai a 254.
+      //
+      // Isto é dele: 255 o jogo trata como opaco, 254 já manda o pixel pra
+      // passada TRANSPARENTE, e a olho nu não muda nada. É o que resolve a
+      // ordem: os anéis ficam na passada opaca e são desenhados primeiro; o
+      // corpo, na transparente, vem depois e tapa o miolo deles. Deixa de
+      // depender só da ordem dos cubos dentro do modelo.
+      px[d + 3] = body.atmosphere ? SURFACE_ALPHA : 0;
     }
   };
   blit('up', RES, 0);

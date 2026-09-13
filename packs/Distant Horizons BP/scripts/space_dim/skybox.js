@@ -57,6 +57,7 @@ import {
   SKY_MODEL_HIDE_BELOW,
   SKY_MODEL_NEAREST,
   SKY_MODEL_REAL_BELOW,
+  SKY_GLOBAL_BELOW,
   SKY_MODEL_INTERVAL,
   SKY_SHARE_RADIUS,
   SOLAR_SYSTEM_RADIUS,
@@ -135,6 +136,9 @@ export function sweepOrphans(dimension) {
     for (const entity of mine.values()) {
       try { known.add(entity.id); } catch { }
     }
+  }
+  for (const entity of globals.values()) {
+    try { known.add(entity.id); } catch { }
   }
 
   let todas;
@@ -224,14 +228,17 @@ function stepFor(scale) {
 }
 
 function applyScale(player, slot, entity, scale) {
+  applyScaleKey(player.id + "|" + slot, entity, scale);
+}
+
+function applyScaleKey(key, entity, scale) {
   const step = stepFor(scale);
-  const key = player.id + "|" + slot;
   if (appliedStep.get(key) === step) return;
   try {
     entity.triggerEvent("space_dim:set_size_" + step);
     appliedStep.set(key, step);
   } catch (e) {
-    warnOnce("não deu pra escalar " + slot, e);
+    warnOnce("não deu pra escalar " + key, e);
   }
 }
 
@@ -259,6 +266,90 @@ function hideModel(player, slot) {
  * degrau de 24, menos de cinco graus. Quem está longe ganha o seu, e os
  * conjuntos ficam longe o bastante um do outro pra não se atrapalharem.
  */
+// ---------------------------------------------------------------------------
+// Corpos GLOBAIS: um por mundo
+// ---------------------------------------------------------------------------
+//
+// O modelo perto do jogador é um truque de ponto de vista, e truque de ponto de
+// vista é por jogador — foi daí que saíram os dois planetas na tela dele.
+//
+// Perto não precisa de truque nenhum: o corpo cabe na distância em que o cliente
+// desenha entidade, então dá pra pôr UMA entidade no lugar de verdade, no tamanho
+// de verdade. Todo mundo olha a mesma, cada um do ângulo dele, com paralaxe real.
+// É o "um planeta por mundo".
+//
+// Longe o truque continua, e não faz mal: o modelo do outro jogador está a
+// centenas de blocos e ninguém enxerga duplicado.
+
+/** bodyId → a entidade única daquele corpo no mundo. */
+const globals = new Map();
+/** Quais corpos estão globais neste tick — quem é global não ganha modelo por jogador. */
+const globalNow = new Set();
+
+function dropGlobal(bodyId) {
+  const entity = globals.get(bodyId);
+  if (entity) dropModel(entity);
+  globals.delete(bodyId);
+  appliedStep.delete("global|" + bodyId);
+}
+
+/** Tira todos os corpos globais — dimensão vazia, ou desligando o sistema. */
+export function clearGlobals() {
+  for (const bodyId of [...globals.keys()]) dropGlobal(bodyId);
+  globalNow.clear();
+}
+
+function updateGlobals(dimension, players) {
+  globalNow.clear();
+  if (!dimension) { clearGlobals(); return; }
+
+  // Quem tem alguém perto o bastante pra ser desenhado no lugar real.
+  const perto = new Map();
+  for (const player of players) {
+    let lista;
+    try { lista = trackedBodies(player); } catch { continue; }
+    let eye;
+    try { eye = player.getHeadLocation(); } catch { eye = player.location; }
+    for (const body of lista) {
+      // Dentro do corpo o céu é outra coisa (ver updateSky): lá o modelo é
+      // centrado no jogador, e centrado no jogador ele não pode ser global.
+      if (chebyshevTo(eye, body) < body.radius) continue;
+      if (chebyshevTo(eye, body) - body.radius <= SKY_GLOBAL_BELOW) {
+        perto.set(body.id, body);
+      }
+    }
+  }
+
+  for (const bodyId of [...globals.keys()]) {
+    if (!perto.has(bodyId)) dropGlobal(bodyId);
+  }
+
+  for (const [bodyId, body] of perto) {
+    let entity = globals.get(bodyId);
+    const wanted = SKY_PREFIX + bodyId;
+    if (!entity?.isValid || entity.typeId !== wanted) {
+      if (entity) dropModel(entity);
+      try {
+        entity = dimension.spawnEntity(wanted, body.center);
+      } catch (e) {
+        warnOnce("não deu pra criar o corpo global " + bodyId, e);
+        globals.delete(bodyId);
+        continue;
+      }
+      globals.set(bodyId, entity);
+    }
+    try {
+      entity.teleport(body.center);
+      // Tamanho de VERDADE: a aresta do corpo em blocos. Sem projeção nenhuma,
+      // porque não há truque pra compensar.
+      applyScaleKey("global|" + bodyId, entity, 2 * body.radius);
+      globalNow.add(bodyId);
+    } catch {
+      dropGlobal(bodyId);
+    }
+  }
+}
+
 export function updateSkyAll(players) {
   if (!SKY_MODELS_ENABLED) return;
   if (system.currentTick % SKY_MODEL_INTERVAL !== 0) return;
@@ -286,6 +377,11 @@ export function updateSkyAll(players) {
   for (const p of vivos) {
     if (donoDe.get(p.id) !== p.id) clearModels(p.id);
   }
+
+  // Os corpos perto o bastante viram um só no mundo, antes dos modelos por
+  // jogador: assim quem é global já entra desligado no laço de cada âncora.
+  try { updateGlobals(vivos[0]?.dimension, vivos); }
+  catch (e) { warnOnce("corpos globais", e); }
 
   for (const a of ancoras) updateSky(a);
 }
@@ -375,6 +471,13 @@ export function updateSky(player) {
     // a 94 blocos de distância — nem coroa nem blocos, o Sol simplesmente não
     // estava lá. builtRadius() devolve a casca que existe de verdade.
     const gap = chebyshevTo(eye, body) - builtRadius(body);
+
+    // Já é global: uma entidade só no mundo cuida dele, no lugar de verdade.
+    // Um modelo por jogador aqui seria justamente o planeta duplicado.
+    if (globalNow.has(body.id)) {
+      hideModel(player, body.id);
+      continue;
+    }
 
     // Perto o bastante pra os blocos estarem construídos: eles é que mandam.
     // Menos pra quem tem camada `modelOnly` — nenhum bloco vai desenhá-la, então

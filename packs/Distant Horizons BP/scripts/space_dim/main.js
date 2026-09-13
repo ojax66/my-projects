@@ -34,7 +34,7 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
-import { updateSkyAll, clearModels, sweepOrphans, describeSky, SWEEP_INTERVAL } from "./skybox.js";
+import { updateSkyAll, clearModels, clearGlobals, sweepOrphans, describeSky, SWEEP_INTERVAL } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
 import { openTracker } from "./trackerUI.js";
@@ -182,8 +182,12 @@ system.runInterval(() => {
 
   // Os corpos que o rastreador mostra, sempre visíveis por mais longe que
   // estejam de verdade — e um conjunto só pra cada grupo de jogadores juntos.
-  try { updateSkyAll(noEspaco); }
-  catch (e) { onError("céu", e); }
+  try {
+    if (noEspaco.length) updateSkyAll(noEspaco);
+    // Ninguém no espaço: os corpos globais saem, senão ficam parados no mundo
+    // pra sempre (a varredura de órfãs os reconhece como donos válidos).
+    else clearGlobals();
+  } catch (e) { onError("céu", e); }
 }, 1);
 
 // ---------------------------------------------------------------------------
