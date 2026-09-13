@@ -68,6 +68,44 @@ const SAVE_HALF = 1;
 // Spacecraft desce os passageiros dele pra `max - 30` pelo mesmo motivo.
 const CEILING_MARGIN = 30;
 
+// ---------------------------------------------------------------------------
+// Um veículo, vários passageiros
+// ---------------------------------------------------------------------------
+//
+// Isto era tudo por JOGADOR: cada um salvava a própria estrutura, removia o
+// veículo e recolocava um. Com uma nave de três lugares o resultado era três
+// naves no destino, e os três a pé do lado delas, tendo que clicar pra entrar.
+//
+// Agora a viagem é do VEÍCULO. O primeiro passageiro a pedir vira o portador:
+// ele desmonta todo mundo, salva uma vez e remove uma vez. Os outros entram na
+// carona — recebem a mesma cápsula e não recolocam nada. No destino, o portador
+// põe o veículo e monta todos de volta, na ordem em que estavam.
+//
+// A janela importa: ao serem desmontados os passageiros caem juntos, então cada
+// um dispara a própria entrada no espaço poucos ticks depois. Por isso os
+// passageiros são registrados JÁ na captura — quem chegar atrasado encontra o
+// grupo em vez de viajar sozinho e sem nave.
+
+/** vehicleId → estado da viagem daquele veículo. */
+const flights = new Map();
+/** playerId → vehicleId, pra quem foi desmontado achar o grupo depois. */
+const flightOf = new Map();
+
+function ridersOf(mount) {
+  try {
+    return (mount.getComponent("rideable")?.getRiders?.() ?? []).filter((r) => r?.isValid);
+  } catch {
+    return [];
+  }
+}
+
+function finishFlight(vid) {
+  const flight = flights.get(vid);
+  if (!flight) return;
+  for (const pid of flight.riders) flightOf.delete(pid);
+  flights.delete(vid);
+}
+
 export function getMount(player) {
   try {
     return player.getComponent("riding")?.entityRidingOn;
@@ -125,7 +163,43 @@ function keepAlive(entity) {
  *          ou null se não havia veículo pra levar.
  */
 export function capture(player, onReady) {
+  // Já desmontado pelo portador do grupo: entra na carona da mesma cápsula.
+  const grupo = flightOf.get(player.id);
+  if (grupo !== undefined) {
+    // Consumido agora: `flightOf` só serve da hora em que o portador desmontou
+    // até a viagem DESTE passageiro começar. Deixá-lo de pé faria a próxima
+    // viagem dele entrar na carona de um grupo que já pousou — e aí ele chega
+    // sem veículo nenhum.
+    flightOf.delete(player.id);
+    const flight = flights.get(grupo);
+    if (flight) {
+      if (flight.capsule !== undefined) {
+        const c = flight.capsule;
+        system.runTimeout(() => onReady(c && { ...c, primary: false }), 1);
+      } else {
+        flight.waiting.push((c) => onReady(c && { ...c, primary: false }));
+      }
+      return;
+    }
+  }
+
   const mount = getMount(player);
+
+  // Outro passageiro do MESMO veículo está capturando AGORA.
+  //
+  // `capsule === undefined` quer dizer captura em andamento. Sem essa condição
+  // um voo já resolvido continuaria aceitando carona, e quem montasse naquele
+  // veículo depois viajaria como caroneiro de um grupo que já pousou — ou seja,
+  // sem veículo nenhum no destino.
+  const emCurso = mount?.isValid ? flights.get(mount.id) : null;
+  if (emCurso && emCurso.capsule === undefined) {
+    const flight = emCurso;
+    flight.riders.push(player.id);
+    ejectFrom(mount, player);
+    flight.waiting.push((c) => onReady(c && { ...c, primary: false }));
+    return;
+  }
+
   if (!mountTravels(mount) || !mount?.isValid) {
     // Mesmo atraso do caminho com veículo: quem chama conta com um tempo fixo
     // até o teleporte pra o fade de tela cobrir a troca nos dois casos.
@@ -136,7 +210,30 @@ export function capture(player, onReady) {
   const typeId = mount.typeId;
   const name = structureNameFor(player);
   const dim = mount.dimension;
+  const vid = mount.id;
 
+  // O portador: registra o grupo ANTES de desmontar, com todos os passageiros
+  // que estão a bordo agora. Assim quem disparar a viagem depois — e vai
+  // disparar, porque foi desmontado e continua subindo — encontra o grupo em
+  // vez de viajar sozinho e sem nave.
+  const riders = [player.id];
+  for (const r of ridersOf(mount)) {
+    if (r.id !== player.id && typeof r.id === "string") riders.push(r.id);
+  }
+  const flight = { riders, waiting: [], capsule: undefined, vehicle: null };
+  flights.set(vid, flight);
+  for (const pid of riders) flightOf.set(pid, vid);
+  flightOf.delete(player.id);          // o portador já está viajando
+
+  const resolveGroup = (capsule) => {
+    flight.capsule = capsule;
+    const espera = flight.waiting.splice(0);
+    for (const fn of espera) fn(capsule);
+  };
+
+  // Desmonta TODO MUNDO: estrutura não guarda jogador, e um passageiro ainda
+  // montado some junto com a entidade quando ela é removida.
+  for (const r of ridersOf(mount)) ejectFrom(mount, r);
   ejectFrom(mount, player);
   keepAlive(mount);
 
@@ -150,6 +247,7 @@ export function capture(player, onReady) {
       hr.max - CEILING_MARGIN
     );
   } catch {
+    resolveGroup(null);
     system.runTimeout(() => onReady(null), CAPTURE_TICKS + REMOVE_TICKS);
     return;
   }
@@ -168,6 +266,7 @@ export function capture(player, onReady) {
   // entidade na caixa — sem isso ela ainda está na posição antiga e não entra.
   system.runTimeout(() => {
     if (!mount?.isValid) {
+      resolveGroup(null);
       onReady(null);
       return;
     }
@@ -192,6 +291,7 @@ export function capture(player, onReady) {
         z: Math.floor(l.z) + SAVE_HALF,
       };
     } catch {
+      resolveGroup(null);
       onReady(null);
       return;
     }
@@ -213,7 +313,9 @@ export function capture(player, onReady) {
     // que funciona no Spacecraft. Só então a viagem continua.
     system.runTimeout(() => {
       try { mount.remove(); } catch { }
-      onReady(saved ? { name, typeId } : { name: null, typeId });
+      const capsule = saved ? { name, typeId, vid } : { name: null, typeId, vid };
+      resolveGroup(capsule);
+      onReady({ ...capsule, primary: true });
     }, REMOVE_TICKS);
   }, CAPTURE_TICKS);
 }
@@ -226,6 +328,13 @@ export function capture(player, onReady) {
  */
 export function restore(player, dimension, loc, capsule) {
   if (!capsule) return;
+
+  // Passageiro de carona: não recoloca nada. Espera o portador pôr o veículo e
+  // monta nele. Recolocar um por passageiro era o que fazia três naves.
+  if (capsule.primary === false) {
+    rideWhenReady(player, capsule.vid);
+    return;
+  }
 
   const place = () => {
     if (!player?.isValid) return;
@@ -293,19 +402,11 @@ export function restore(player, dimension, loc, capsule) {
       if (d > 4) vehicle.teleport({ x: here.x, y: here.y, z: here.z });
     } catch { }
 
-    // Monta depois de a entidade assentar. Duas tentativas: a primeira pega
-    // quase sempre, a segunda cobre o cliente ainda trocando de dimensão.
-    const mount = () => {
-      try {
-        if (!vehicle?.isValid || !player?.isValid) return false;
-        return vehicle.getComponent("rideable")?.addRider?.(player) ?? false;
-      } catch {
-        return false;
-      }
-    };
-    system.runTimeout(() => {
-      if (!mount()) system.runTimeout(mount, 6);
-    }, 4);
+    // A partir daqui os caroneiros têm onde montar.
+    const flight = capsule.vid !== undefined ? flights.get(capsule.vid) : null;
+    if (flight) flight.vehicle = vehicle;
+
+    seat(player, vehicle);
   };
 
   // Alguns ticks depois do teleporte do jogador: aí a chunk do destino já
@@ -313,7 +414,73 @@ export function restore(player, dimension, loc, capsule) {
   system.runTimeout(place, 6);
 }
 
+/**
+ * Senta o jogador no veículo, insistindo um pouco.
+ *
+ * Uma tentativa só não basta: o cliente ainda está trocando de dimensão, a
+ * entidade acabou de nascer, e com três passageiros as três chamadas caem em
+ * ticks diferentes. Insistir é barato e é o que faz o jogador CHEGAR montado
+ * em vez de ter que clicar na nave.
+ */
+function seat(player, vehicle, tentativas = 6) {
+  const tentar = () => {
+    if (!player?.isValid) return;
+    if (!vehicle?.isValid) return;
+    try {
+      const riding = player.getComponent("riding")?.entityRidingOn;
+      if (riding?.id === vehicle.id) return;              // já sentou
+    } catch { }
+    let ok = false;
+    try {
+      ok = vehicle.getComponent("rideable")?.addRider?.(player) ?? false;
+    } catch { }
+    if (!ok && tentativas > 0) {
+      tentativas--;
+      system.runTimeout(tentar, 4);
+    }
+  };
+  system.runTimeout(tentar, 4);
+}
+
+/** Caroneiro: espera o portador pôr o veículo e senta nele. */
+function rideWhenReady(player, vid, tentativas = 20) {
+  const esperar = () => {
+    if (!player?.isValid) return;
+    const flight = vid !== undefined ? flights.get(vid) : null;
+    const vehicle = flight?.vehicle;
+    if (vehicle?.isValid) {
+      seat(player, vehicle);
+      return;
+    }
+    if (tentativas > 0) {
+      tentativas--;
+      system.runTimeout(esperar, 4);
+    }
+  };
+  system.runTimeout(esperar, 6);
+}
+
 /** Limpa a estrutura de um jogador que saiu no meio da viagem. */
 export function forgetPlayer(player) {
   dropStructure(structureNameFor(player));
+  const vid = flightOf.get(player.id);
+  flightOf.delete(player.id);
+  if (vid !== undefined) {
+    const flight = flights.get(vid);
+    if (flight) {
+      flight.riders = flight.riders.filter((p) => p !== player.id);
+      if (!flight.riders.length) finishFlight(vid);
+    }
+  }
+}
+
+/**
+ * Encerra a viagem de um grupo, algum tempo depois de todos terem chegado.
+ *
+ * Sem isto o registro do voo ficaria de pé pra sempre, e o próximo voo daquele
+ * veículo entraria na carona de um grupo que já pousou.
+ */
+export function endFlight(capsule) {
+  if (!capsule || capsule.vid === undefined) return;
+  system.runTimeout(() => finishFlight(capsule.vid), 200);
 }

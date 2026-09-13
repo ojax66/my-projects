@@ -144,7 +144,7 @@ export const BODIES = [
     // O contorno fica mais aceso que o meio de graça: um raio que passa
     // raspando atravessa as cascas de fora dos dois lados, um que vai pro meio
     // do disco bate no planeta e para na metade.
-    atmosphere: { color: "#060C1C", reach: 1.13, shells: 3, alpha: 6 },
+    atmosphere: { color: "#0A1430", reach: 1.13, shells: 3, alpha: 6 },
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     gravity: { reach: 46, strength: 0.03 },

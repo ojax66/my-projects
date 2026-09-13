@@ -549,5 +549,39 @@ const mk = (id = 'p1') =>
         faltando.length === 0, faltando.join(', '));
 }
 
+// --- 14. A atmosfera é MESMO criada junto com o corpo -----------------------
+//
+// Ela nunca chegou a aparecer no jogo, e não era o desenho: `atmosphere` não
+// vinha pelo catálogo, então a entidade simplesmente não nascia. Este bloco
+// olha a entidade no mundo, não o arquivo — é o que teria pego aquilo.
+{
+  __reset();
+  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { BODIES } = await import('./space_dim/config.js');
+  const dim = world.getDimension(DIMENSION_ID);
+  const p = mk('atmo');
+  __advance(2); updateSky(p);
+
+  for (const body of BODIES.filter((b) => b.atmosphere)) {
+    const corpo = dim.getEntities()
+      .filter((e) => e.typeId === `space_dim:sky_${body.id}`);
+    const atmo = dim.getEntities()
+      .filter((e) => e.typeId === `space_dim:sky_atmo_${body.id}`);
+    check(`${body.id}: a atmosfera nasce junto com o corpo`,
+          corpo.length === 1 && atmo.length === 1,
+          `(corpo ${corpo.length}, atmosfera ${atmo.length})`);
+
+    // No mesmo lugar do corpo: ela é uma casca em volta dele, não um objeto
+    // solto perto.
+    if (corpo.length && atmo.length) {
+      const d = Math.hypot(atmo[0].location.x - corpo[0].location.x,
+                           atmo[0].location.y - corpo[0].location.y,
+                           atmo[0].location.z - corpo[0].location.z);
+      check('  e no mesmo ponto que ele', d < 0.01, `(${d.toFixed(3)})`);
+    }
+  }
+  clearModels(p.id);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

@@ -124,7 +124,10 @@ class Entity {
       return {
         getRiders: () => [...this.__riders],
         addRider: (r) => {
-          if (this.__riders.length >= 1) return false;
+          // Vários assentos, como um veículo de verdade. O OVNI de 3 lugares do
+          // autor é justamente o caso em que o transporte quebrava.
+          if (this.__riders.length >= (this.__seats ?? 3)) return false;
+          if (this.__riders.includes(r)) return true;
           if (r.__ridingOn) r.__ridingOn.__riders = r.__ridingOn.__riders.filter((x) => x !== r);
           this.__riders.push(r);
           r.__ridingOn = this;

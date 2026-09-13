@@ -278,5 +278,60 @@ function makePlayer(dimensionId, loc) {
   check('chamadas repetidas não duplicam o veículo', ufos.length === 1, `(${ufos.length})`);
 }
 
+// --- Nave de três lugares: um veículo, três passageiros ---------------------
+//
+// Era tudo por JOGADOR: cada um salvava a própria estrutura, removia o veículo e
+// recolocava um. Com a nave de três lugares do autor, o resultado no destino era
+// três naves e os três a pé do lado delas, tendo que clicar pra entrar.
+//
+// A janela é o ponto delicado: ao serem desmontados os passageiros caem juntos,
+// então cada um dispara a própria entrada no espaço alguns ticks depois. Quem
+// chegar atrasado tem que encontrar o grupo, não viajar sozinho e sem nave.
+{
+  __reset();
+  const travel = await loadTravel();
+  const { forgetArrival } = await import('./space_dim/arrival.js');
+
+  const alto = { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 };
+  const nave = world.__spawn('minecraft:overworld', UFO, alto);
+  const tripulacao = ['p1', 'p2', 'p3'].map((id) => {
+    forgetArrival(id);
+    const p = world.__addPlayer({ id, dimensionId: 'minecraft:overworld', location: alto });
+    p.__mountOn(nave);
+    return p;
+  });
+  check('os três estão na mesma nave',
+        tripulacao.every((p) => p.getComponent('riding')?.entityRidingOn === nave));
+
+  // O piloto dispara primeiro; os outros dois alguns ticks depois, que é o que
+  // acontece de verdade — eles são desmontados e continuam subindo.
+  travel.checkSpaceEntry(tripulacao[0]);
+  __advance(3);
+  travel.checkSpaceEntry(tripulacao[1]);
+  __advance(4);
+  travel.checkSpaceEntry(tripulacao[2]);
+  __advance(120);
+
+  const space = world.getDimension(DIMENSION_ID);
+  const naves = space.getEntities({ type: UFO });
+  check('chega UMA nave no espaço, não uma por passageiro', naves.length === 1,
+        `(${naves.length})`);
+  check('  e nenhuma fica pra trás no mundo de origem',
+        world.getDimension('minecraft:overworld').getEntities({ type: UFO }).length === 0);
+
+  const montados = tripulacao.filter(
+    (p) => p.getComponent('riding')?.entityRidingOn?.typeId === UFO);
+  check('  e os três chegam JÁ montados nela', montados.length === 3,
+        `(${montados.length} de 3)`);
+  check('    todos na mesma nave',
+        new Set(montados.map((p) => p.getComponent('riding').entityRidingOn.id)).size === 1);
+  check('  e os três estão no espaço',
+        tripulacao.every((p) => p.dimension.id === DIMENSION_ID));
+
+  const sobraram = [...__state().structures.keys()].filter((k) => k.startsWith('space_dim:veh_'));
+  check('  sem estrutura de veículo sobrando', sobraram.length === 0,
+        `(${sobraram.join(', ') || 'nenhuma'})`);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

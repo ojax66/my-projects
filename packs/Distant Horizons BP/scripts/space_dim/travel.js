@@ -136,9 +136,15 @@ function travel(player, dimension, loc, onArrive) {
     }
 
     vehicle.restore(player, dimension, loc, capsule);
+    // Fecha o voo do grupo depois que todo mundo já sentou; senão o próximo voo
+    // daquele veículo entraria na carona de um grupo que já pousou.
+    if (capsule?.primary) vehicle.endFlight(capsule);
 
-    // Solta a trava depois de a recolocação e a remontagem terminarem.
-    system.runTimeout(() => travelling.delete(player.id), capsule ? 24 : 12);
+    // Solta a trava depois de a recolocação e a remontagem terminarem. Com
+    // carona é mais: o caroneiro espera o portador pôr o veículo antes de
+    // sentar.
+    system.runTimeout(() => travelling.delete(player.id),
+                      capsule ? (capsule.primary === false ? 48 : 40) : 12);
   });
 }
 
