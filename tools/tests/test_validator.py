@@ -592,22 +592,45 @@ case("atmosfera voltando a ser casca por fora", atmosfera_como_casca,
      r"TAPA o planeta")
 
 
-def atmosfera_sem_borda(tmp):
-    src = le_config(tmp).replace("edge: 0.62, strength: 0.85",
-                                 "edge: 0.62, strength: 0.0", 1)
-    grava_config(tmp, src)
+def material_sem_disabledepthwrite(tmp):
+    caminho = rp(tmp, "materials", "entity.material")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["materials"]["space_dim_halo:entity"]["+states"] = ["DisableCulling"]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
 
 
-case("atmosfera com strength zero", atmosfera_sem_borda, r"nao e uma mistura")
+case("material do halo sem DisableDepthWrite", material_sem_disabledepthwrite,
+     r"some atras do proprio halo")
 
 
-def atmosfera_borda_fora_da_faixa(tmp):
-    src = le_config(tmp).replace("edge: 0.62", "edge: 0.05", 1)
-    grava_config(tmp, src)
+def corpo_nao_e_o_ultimo_cubo(tmp):
+    caminho = rp(tmp, "models", "entity", "sky_earth.geo.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    bone = doc["minecraft:geometry"][0]["bones"][0]
+    bone["cubes"] = [bone["cubes"][-1]] + bone["cubes"][:-1]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
 
 
-case("atmosfera com edge fora da faixa", atmosfera_borda_fora_da_faixa,
-     r"cobre o planeta inteiro")
+case("corpo deixando de ser o último cubo", corpo_nao_e_o_ultimo_cubo,
+     r"tem que ser o ULTIMO")
+
+
+def anel_menor_que_o_corpo(tmp):
+    caminho = rp(tmp, "models", "entity", "sky_earth.geo.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    cubo = doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]
+    cubo["size"] = [12, 12, 12]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("anel de atmosfera menor que o corpo", anel_menor_que_o_corpo,
+     r"nasce escondido dentro dele")
 
 
 # --- a neblina de dentro do Sol --------------------------------------------

@@ -299,29 +299,51 @@ function glowTexture(body) {
 
 const isVolumetric = (body) => !!body.volumetric;
 
-// --- A atmosfera, dentro da textura da superfície ----------------------------
+// --- A atmosfera: anéis opacos em volta da silhueta --------------------------
 //
-// Não é um cubo por fora: o material é OPACO, e qualquer cubo maior que o
-// planeta taparia o planeta. Medi isso na foto dele — o quadrado azul que cobria
-// a Terra era (10,19,48), exatamente a cor da textura da atmosfera, prova de que
-// a casca saiu sólida em vez de misturada.
+// O material não mistura — está medido: a casca translúcida da primeira
+// tentativa saiu como um quadrado sólido da cor exata da textura dela. Mas
+// opaco funciona, e é como o Sol já faz: cubos concêntricos desenhados de fora
+// pra dentro, cada um tapando o miolo do anterior, de modo que o que sobra
+// visível de cada um é o ANEL da silhueta dele. Silhueta acompanha o ângulo da
+// câmera de graça — é por isso que o halo fica certo de qualquer lado.
 //
-// Aqui a atmosfera é uma borda: perto do contorno da face a cor do chão é puxada
-// pro azul. Visto de longe isso é o halo do limbo, e não pode tapar nada, porque
-// é a própria superfície.
+// Aqui os anéis ficam FORA do corpo e o cubo do corpo é o último: ele tapa o
+// miolo de todos, e sobra só a borda azul em volta.
 //
-// O custo honesto: numa vista de quina as arestas internas também ganham a
-// borda, que é a mesma limitação de toda textura por face (a silhueta muda com o
-// ângulo e a textura não). Num azul fraquinho num planeta isso passa como
-// atmosfera; foi por isso que o Sol precisou de geometria e este não precisa.
-function atmosphereTint(body, u, v, col) {
+// Os anéis moram nas células VAZIAS da planificação. A folha 4x3 tem doze e o
+// cubo usa seis; cada anel é uma célula chapada de uma cor.
+const ATMO_CELLS = [[0, 0], [3, 0], [0, 2], [1, 2], [2, 2], [3, 2]];
+
+function atmoRings(body) {
   const a = body.atmosphere;
-  if (!a || !col) return col;
-  const t = faceOffset(u, v);
-  if (t <= a.edge) return col;
-  const k = ((t - a.edge) / (1 - a.edge)) * a.strength;
-  const azul = rgb(a.color);
-  return [0, 1, 2].map((c) => Math.round(col[c] + (azul[c] - col[c]) * k));
+  if (!a) return [];
+  return a.rings.map((hex, i) => ({
+    // de dentro pra fora: o primeiro anel encosta no corpo.
+    size: 16 * (1 + ((a.reach - 1) * (i + 1)) / a.rings.length),
+    color: rgb(hex),
+    cell: ATMO_CELLS[i],
+  }));
+}
+
+/**
+ * O véu da atmosfera sobre a superfície do próprio corpo.
+ *
+ * Visto de longe não se olha o chão direto: olha-se através do ar. Na imagem
+ * que ele aprovou o oceano saía (33,166,255) e a terra (31,191,138), contra
+ * (5,117,156) e (3,144,1) da superfície crua — e a conta abaixo reproduz os
+ * dois valores exatos no pixel.
+ */
+function hazed(body, col) {
+  const h = body.atmosphere?.haze;
+  if (!h || !col) return col;
+  const a = h.alpha / 255;
+  const c = rgb(h.color);
+  let out = [col[0], col[1], col[2]];
+  for (let i = 0; i < h.passes; i++) {
+    out = [0, 1, 2].map((k) => Math.min(255, (1 - a) * (out[k] + c[k])));
+  }
+  return out.map((v) => Math.round(v));
 }
 
 function skyTexture(body) {
@@ -371,7 +393,7 @@ function skyTexture(body) {
   const painted = new Uint8Array(W * H);
   const blit = (face, ox, oy) => {
     for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
-      const col = atmosphereTint(body, u, v, faces[face][v * RES + u]);
+      const col = hazed(body, faces[face][v * RES + u]);
       if (!col) continue;
       const i = (oy + v) * W + ox + u, d = i * 4;
       painted[i] = 1;
@@ -391,6 +413,19 @@ function skyTexture(body) {
   blit('north', RES, RES);
   blit('west', RES * 2, RES);
   blit('south', RES * 3, RES);
+
+  // Os anéis da atmosfera, em células que o cubo do corpo não usa. Marcadas
+  // como pintadas pra o fillGaps não passar por cima delas.
+  for (const ring of atmoRings(body)) {
+    const [cx, cy] = ring.cell;
+    for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
+      const i = (cy * RES + v) * W + cx * RES + u, d = i * 4;
+      px[d] = ring.color[0]; px[d + 1] = ring.color[1]; px[d + 2] = ring.color[2];
+      px[d + 3] = 0;
+      painted[i] = 1;
+    }
+  }
+
   fillGaps(px, W, H, painted);
 
   const dir = path.join(RP, 'textures', NS, 'sky');
@@ -517,7 +552,15 @@ function rpEntity(body) {
         // translúcidas, então precisa de um material que MISTURE. Aí
         // `entity_emissive_alpha` é o certo, e o alfa volta a querer dizer
         // transparência — por isso a textura dele não é alfa 0, é alfa 128.
-        materials: { default: isVolumetric(body) ? 'space_dim_glow' : 'space_dim_sky' },
+        // O corpo com atmosfera precisa de `space_dim_halo`, que é o mesmo
+        // `space_dim_sky` mais DisableDepthWrite: os anéis são cubos MAIORES
+        // que o corpo e ficam na frente dele no buffer de profundidade. Sem
+        // isso o cubo do corpo é recusado pelo teste e o planeta some atrás do
+        // próprio halo.
+        materials: {
+          default: isVolumetric(body) ? 'space_dim_glow'
+            : body.atmosphere ? 'space_dim_halo' : 'space_dim_sky',
+        },
         textures: {
           default: isVolumetric(body)
             ? `textures/${NS}/sky/glow_${body.id}`
@@ -526,7 +569,9 @@ function rpEntity(body) {
         geometry: {
           default: isVolumetric(body)
             ? `geometry.${NS}.sky_glow`
-            : `geometry.${NS}.sky_body`,
+            : body.atmosphere
+              ? `geometry.${NS}.sky_${body.id}`
+              : `geometry.${NS}.sky_body`,
         },
         // Sem animação de escala: ela vem de `minecraft:scale`, no servidor.
         scripts: { should_update_bones_and_effects_offscreen: true },
@@ -636,6 +681,65 @@ write(path.join(RP, 'models', 'entity', 'sky_glow.geo.json'), {
   }],
 });
 
+
+// O corpo COM atmosfera tem geometria própria: os anéis do halo, de fora pra
+// dentro, e o cubo do corpo por último.
+//
+// A ordem é tudo. Desenhado por último, o cubo do corpo tapa o miolo de todos
+// os anéis, e o que sobra de cada um é a silhueta dele — o halo. Invertida, os
+// anéis tapariam o planeta.
+//
+// O cubo do corpo continua com 16 unidades: a conta de escala do skybox depende
+// disso, e o halo não pode mexer no tamanho aparente do planeta.
+const bodyCube = () => ({
+  origin: [-8, -8, -8],
+  size: [16, 16, 16],
+  // UV por face, não box UV.
+  //
+  // Box UV mapeia o TAMANHO do cubo direto em pixels: um cubo de 16 unidades
+  // usaria 16 px da textura, e com RES 64 sobrariam três quartos dela sem uso —
+  // o corpo de longe voltaria a ser uma mancha. Por face, cada uma aponta pra
+  // sua região inteira, e o cubo continua com 1 bloco de lado.
+  uv: {
+    up:    { uv: [RES,     0],   uv_size: [RES, RES] },
+    down:  { uv: [RES * 2, 0],   uv_size: [RES, RES] },
+    east:  { uv: [0,       RES], uv_size: [RES, RES] },
+    north: { uv: [RES,     RES], uv_size: [RES, RES] },
+    west:  { uv: [RES * 2, RES], uv_size: [RES, RES] },
+    south: { uv: [RES * 3, RES], uv_size: [RES, RES] },
+  },
+});
+
+for (const body of SKY.filter((b) => b.atmosphere)) {
+  const aneis = atmoRings(body);
+  const cubes = [];
+  for (let i = aneis.length - 1; i >= 0; i--) {          // de fora pra dentro
+    const { size, cell } = aneis[i];
+    const uv = { uv: [cell[0] * RES, cell[1] * RES], uv_size: [RES, RES] };
+    cubes.push({
+      origin: [-size / 2, -size / 2, -size / 2],
+      size: [size, size, size],
+      uv: {
+        up: { ...uv }, down: { ...uv }, east: { ...uv },
+        north: { ...uv }, west: { ...uv }, south: { ...uv },
+      },
+    });
+  }
+  cubes.push(bodyCube());                                 // o corpo por último
+
+  write(path.join(RP, 'models', 'entity', `sky_${body.id}.geo.json`), {
+    format_version: '1.16.0',
+    'minecraft:geometry': [{
+      description: {
+        identifier: `geometry.${NS}.sky_${body.id}`,
+        texture_width: RES * 4, texture_height: RES * 3,
+        visible_bounds_width: 64, visible_bounds_height: 64,
+        visible_bounds_offset: [0, 0, 0],
+      },
+      bones: [{ name: 'body', pivot: [0, 0, 0], cubes }],
+    }],
+  });
+}
 
 write(path.join(RP, 'models', 'entity', 'sky_body.geo.json'), {
   // 1.16.0 e não 1.12.0: UV por face só existe a partir daí. Em 1.12.0 o campo

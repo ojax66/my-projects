@@ -7,6 +7,11 @@
       "+states": [ "DisableCulling" ]
     },
 
+    "space_dim_halo:entity": {
+      "+defines": [ "USE_EMISSIVE" ],
+      "+states": [ "DisableCulling", "DisableDepthWrite" ]
+    },
+
     "space_dim_glow:entity_emissive_alpha": {
       "+states": [ "DisableCulling", "DisableDepthWrite" ]
     }

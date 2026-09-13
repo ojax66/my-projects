@@ -4,13 +4,13 @@
     "description": {
       "identifier": "space_dim:sky_earth",
       "materials": {
-        "default": "space_dim_sky"
+        "default": "space_dim_halo"
       },
       "textures": {
         "default": "textures/space_dim/sky/earth"
       },
       "geometry": {
-        "default": "geometry.space_dim.sky_body"
+        "default": "geometry.space_dim.sky_earth"
       },
       "scripts": {
         "should_update_bones_and_effects_offscreen": true

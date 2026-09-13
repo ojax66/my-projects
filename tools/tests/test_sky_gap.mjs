@@ -105,8 +105,15 @@ for (const body of BODIES) {
     // Corpo VOLUMÉTRICO (o Sol): `space_dim_glow`, que herda justamente de
     // `entity_emissive_alpha` — porque aqui a mistura é o ponto. São cascas
     // empilhadas: sem misturar, a de fora tapa todas as de dentro.
+    // Três famílias, cada uma com o seu material do addon.
+    //
+    // Corpo com ANEL de atmosfera: `space_dim_halo`, que é o sky mais
+    // DisableDepthWrite. Os anéis são cubos maiores que o corpo e ficam na
+    // frente dele no buffer de profundidade; sem isso o cubo do corpo é
+    // recusado pelo teste e o planeta some atrás do próprio halo.
     const volumetrico = desc.geometry.default.endsWith('sky_glow');
-    const esperado = volumetrico ? 'space_dim_glow' : 'space_dim_sky';
+    const esperado = volumetrico ? 'space_dim_glow'
+      : body.atmosphere ? 'space_dim_halo' : 'space_dim_sky';
     check(`${body.id}: o modelo distante usa o material certo do addon`,
           mat === esperado, `(${mat}, esperado ${esperado})`);
   }
@@ -138,6 +145,12 @@ for (const body of BODIES) {
   check('o material do céu existe no RP', !!key, `(${key})`);
   check('  herda de entity (opaco, sem teste de alfa)', key?.endsWith(':entity'));
   check('  e liga USE_EMISSIVE', (mats[key]?.['+defines'] ?? []).includes('USE_EMISSIVE'));
+
+  // O do halo: o mesmo do corpo opaco, mais DisableDepthWrite.
+  const hk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_halo');
+  check('o material do halo existe no RP', !!hk, `(${hk})`);
+  check('  e desliga a escrita de profundidade',
+        (mats[hk]?.['+states'] ?? []).includes('DisableDepthWrite'));
 
   // E o das cascas, que é o oposto: tem que misturar.
   const gk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_glow');

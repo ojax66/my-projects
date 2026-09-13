@@ -145,22 +145,38 @@ export const BODIES = [
     // quem entrar nele, como um bloco gigante — ver solidBodies() em bodies.js.
     built: false,
     solid: true,
-    // Atmosfera: uma BORDA azulada na própria textura do planeta.
+    // Atmosfera: dois anéis opacos em volta da silhueta, no modelo do corpo.
     //
-    // A primeira versão era um cubo de cascas por fora, como o Sol. Ela virou um
-    // quadrado azul-escuro tapando a Terra inteira, e a medição na foto dele
-    // explicou por quê: o pixel do quadrado era (10,19,48), exatamente a cor da
-    // textura da atmosfera. Ou seja, o material NÃO mistura — o alfa dele só
-    // controla o brilho, e a superfície sai opaca de qualquer jeito.
+    // Foram três tentativas até a medição resolver.
     //
-    // Com material opaco não existe casca transparente: qualquer cubo maior que
-    // o planeta tapa o planeta. Então a atmosfera passou pra dentro da textura
-    // da superfície, onde ela não pode tapar nada: perto da borda da face a cor
-    // do chão é puxada pro azul, o que dá o halo de limbo visto de longe.
+    // 1. Cascas translúcidas por fora: virou um quadrado azul tapando a Terra.
+    //    O pixel dele era (10,19,48) — exatamente a cor da textura da casca,
+    //    prova de que o material NÃO mistura.
+    // 2. Borda dentro da textura da superfície: não tapa nada, mas o halo fica
+    //    preso DENTRO da silhueta, e ele queria o azul passando pra fora.
+    // 3. Esta: anéis opacos, que é como o Sol já funciona. Cubos concêntricos
+    //    maiores que o corpo, desenhados ANTES dele no mesmo modelo. O cubo do
+    //    corpo, desenhado por último, tapa o miolo — e o que sobra visível de
+    //    cada anel é a silhueta dele, que acompanha o ângulo da câmera de graça.
     //
-    // `strength` é quanto a borda é puxada (0 a 1) e `edge` é onde ela começa,
-    // na mesma medida de superelipse do resto.
-    atmosphere: { color: "#6E9FE0", edge: 0.62, strength: 0.85 },
+    // As cores não são inventadas: são as que ele aprovou, medidas pixel a pixel
+    // na imagem que ele mandou, de dentro pra fora. E o Sol provou que a cor da
+    // textura sai inteira (casca branca de alfa 128 renderiza 255,255,255), então
+    // o que está escrito aqui é o que aparece.
+    //
+    // Isto exige `DisableDepthWrite` no material, senão o cubo do corpo — que
+    // está ATRÁS dos anéis — é recusado pelo teste de profundidade e some.
+    // `haze` é o véu que a atmosfera deixa sobre a própria superfície: na
+    // imagem que ele aprovou o oceano estava (33,166,255) e a terra
+    // (31,191,138), contra (5,117,156) e (3,144,1) da superfície crua. A conta
+    // que leva de um ao outro é somar a cor da atmosfera `passes` vezes, e ela
+    // reproduz os dois valores no pixel — por isso está aqui como conta, e não
+    // como uma cor chutada.
+    atmosphere: {
+      reach: 1.14,
+      rings: ["#305EE6", "#1E3A90"],
+      haze: { color: "#0A1430", alpha: 6, passes: 3 },
+    },
     layers: [{ radius: 26, shell: 4, palette: "earth" }],
     portal: { kind: "overworld" },
     gravity: { reach: 46, strength: 0.03 },

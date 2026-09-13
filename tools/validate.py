@@ -554,6 +554,22 @@ def config_number(name):
 # texturas do ceu sao todas alfa 0 (alfa e a mascara de brilho) — resultado,
 # todo corpo ficou invisivel e nada no jogo dizia por que. O material proprio
 # herda de `entity`, que e opaco e nao tem teste de alfa, e liga USE_EMISSIVE.
+# O trecho de config de CADA corpo, do `id:` dele ate o do proximo.
+#
+# Regex solto nao serve aqui: `id: "sun" ... atmosphere:` casa atravessando o
+# corpo inteiro e atribui ao Sol a atmosfera da Terra. Cada propriedade tem que
+# ser lida dentro do pedaco do seu dono.
+def body_blocks(src):
+    marcas = [(m.start(), m.group(1)) for m in re.finditer(r'id:\s*"(\w+)"', src)]
+    out = {}
+    for i, (pos, bid) in enumerate(marcas):
+        fim = marcas[i + 1][0] if i + 1 < len(marcas) else len(src)
+        out.setdefault(bid, src[pos:fim])
+    return out
+
+
+BODY_SRC = body_blocks(config_src)
+
 SKY_MATERIAL = "space_dim_sky"
 GLOW_MATERIAL = "space_dim_glow"
 
@@ -614,7 +630,13 @@ for bid in list(body_ids) + ["star"]:
         continue
     desc = doc.get("minecraft:client_entity", {}).get("description", {})
     mat = desc.get("materials", {}).get("default")
-    esperado = GLOW_MATERIAL if sky_is_glow(bid) else SKY_MATERIAL
+    # Tres famílias. O corpo opaco usa `space_dim_sky`; o volumetrico (o Sol)
+    # usa `space_dim_glow`; e o corpo com ANEL de atmosfera usa
+    # `space_dim_halo`, que e o sky mais DisableDepthWrite — sem isso o cubo do
+    # corpo, que esta atras dos aneis, e recusado pelo teste de profundidade.
+    tem_anel = "atmosphere:" in BODY_SRC.get(bid, "")
+    esperado = (GLOW_MATERIAL if sky_is_glow(bid)
+                else "space_dim_halo" if tem_anel else SKY_MATERIAL)
     if mat != esperado:
         err(f"sky_{bid} usa o material {mat}, esperado {esperado}")
     if not desc.get("scripts", {}).get("should_update_bones_and_effects_offscreen"):
@@ -762,21 +784,6 @@ for bid in body_ids:
 #
 # Os planetas viraram `built: false`: existem, mas ninguem coloca bloco deles no
 # mundo. Duas coisas tem que valer junto, e cada uma quebra o corpo sozinha.
-# O trecho de config de CADA corpo, do `id:` dele ate o do proximo.
-#
-# Regex solto nao serve aqui: `id: "sun" ... atmosphere:` casa atravessando o
-# corpo inteiro e atribui ao Sol a atmosfera da Terra. Cada propriedade tem que
-# ser lida dentro do pedaco do seu dono.
-def body_blocks(src):
-    marcas = [(m.start(), m.group(1)) for m in re.finditer(r'id:\s*"(\w+)"', src)]
-    out = {}
-    for i, (pos, bid) in enumerate(marcas):
-        fim = marcas[i + 1][0] if i + 1 < len(marcas) else len(src)
-        out.setdefault(bid, src[pos:fim])
-    return out
-
-
-BODY_SRC = body_blocks(config_src)
 
 for bid, trecho in BODY_SRC.items():
     if "built: false" not in trecho:
@@ -802,22 +809,22 @@ if "solid: true" in config_src and "solidPushOut" not in grav_src:
 #
 # Alfa alto aqui nao e "atmosfera mais forte": e uma cupula de vidro fosco
 # tampando o planeta. O efeito depende de cada casca somar pouco.
-# A atmosfera é uma BORDA na textura da superfície, não uma casca por fora.
+# A atmosfera: ANÉIS OPACOS no modelo do proprio corpo.
 #
-# A primeira versão era um cubo de cascas em volta do planeta, e ela virou um
-# quadrado azul-escuro tapando a Terra inteira. A medição na foto dele fechou o
-# caso: o pixel do quadrado era (10,19,48), exatamente a cor da textura da
-# atmosfera — ou seja, a casca saiu OPACA. O material nao mistura; o alfa dele so
-# controla brilho.
+# Tres tentativas ate acertar, e cada uma deixou uma regra aqui.
 #
-# Com material opaco nao existe casca transparente: qualquer cubo maior que o
-# planeta tapa o planeta. Entao a regra aqui e o contrario da de antes — atmosfera
-# com entidade propria e o bug, nao a solucao.
+# 1. Cascas transl0cidas por fora viraram um quadrado azul tapando a Terra. O
+#    pixel dele era (10,19,48) — a cor exata da textura da casca, prova de que o
+#    material NAO mistura. Entidade propria de atmosfera e o bug, nao a solucao.
+# 2. Borda dentro da textura da superficie nao tapa nada, mas prende o halo
+#    DENTRO da silhueta, e ele queria o azul passando pra fora.
+# 3. Aneis opacos, como o Sol ja faz. Exige tres coisas juntas, e faltar uma
+#    quebra tudo em silencio: os aneis no MESMO modelo do corpo, o cubo do corpo
+#    por ULTIMO, e DisableDepthWrite no material.
 for bid, trecho in BODY_SRC.items():
-    m = re.search(r"atmosphere:\s*\{([^}]*)\}", trecho)
+    m = re.search(r"atmosphere:\s*\{", trecho)
     if not m:
         continue
-    corpo = m.group(1)
     for proibido, oque in (
         (os.path.join(BP, "entities", f"sky_atmo_{bid}.json"), "entidade no BP"),
         (os.path.join(RP, "entity", f"sky_atmo_{bid}.entity.json"), "entidade no RP"),
@@ -825,43 +832,58 @@ for bid, trecho in BODY_SRC.items():
     ):
         if os.path.isfile(proibido):
             err(f"a atmosfera de {bid} voltou a ter {oque} — com material opaco "
-                f"uma casca por fora TAPA o planeta; ela tem que ser borda na "
-                f"textura da superficie")
+                f"uma casca por fora TAPA o planeta; ela tem que ser anel no "
+                f"modelo do proprio corpo")
 
-    edge = re.search(r"edge:\s*([\d.]+)", corpo)
-    strength = re.search(r"strength:\s*([\d.]+)", corpo)
-    if not edge or not strength:
-        err(f"a atmosfera de {bid} sem edge/strength — ela e uma borda na "
-            f"textura agora, e sao esses dois que a definem")
+    rings = re.search(r"rings:\s*\[([^\]]*)\]", trecho)
+    reach = re.search(r"reach:\s*([\d.]+)", trecho)
+    if not rings or not reach:
+        err(f"a atmosfera de {bid} sem rings/reach — sao eles que definem o halo")
         continue
-    if not 0.3 <= float(edge.group(1)) < 1:
-        err(f"a atmosfera de {bid} tem edge {edge.group(1)} — fora de 0,3..1 ela "
-            f"some (perto de 1) ou cobre o planeta inteiro (perto de 0)")
-    if not 0 < float(strength.group(1)) <= 1:
-        err(f"a atmosfera de {bid} tem strength {strength.group(1)} — fora de "
-            f"0..1 ela nao e uma mistura")
+    n_rings = len(re.findall(r'"#[0-9A-Fa-f]{6}"', rings.group(1)))
+    if float(reach.group(1)) <= 1:
+        err(f"a atmosfera de {bid} tem reach {reach.group(1)} — precisa passar "
+            f"de 1, senao o anel fica DENTRO do corpo e nao se ve nada")
 
-    # E a borda tem que estar MESMO na textura: a quina da face puxada pro azul.
-    tex = sky_texture_path(bid)
-    cor = re.search(r'color:\s*"(#[0-9A-Fa-f]{6})"', corpo)
-    if os.path.isfile(tex) and cor:
-        try:
-            tw, th, tpx = png_rgba(tex)
-            alvo = tuple(int(cor.group(1)[i:i + 2], 16) for i in (1, 3, 5))
-            cel = tw // 4                       # a face ocupa um quarto da folha
-            def le(x, y):
-                k = (y * tw + x) * 4
-                return (tpx[k], tpx[k + 1], tpx[k + 2])
-            # canto da face do norte (coluna 1, linha 1) contra o meio dela
-            quina = le(cel + 1, cel + 1)
-            meio = le(cel + cel // 2, cel + cel // 2)
-            perto = sum(abs(quina[i] - alvo[i]) for i in range(3))
-            longe = sum(abs(meio[i] - alvo[i]) for i in range(3))
-            if perto >= longe:
-                err(f"a textura de {bid} nao tem a borda de atmosfera: a quina "
-                    f"{quina} nao esta mais perto de {alvo} que o meio {meio}")
-        except Exception as e:  # noqa: BLE001
-            warn(f"nao consegui conferir a borda de atmosfera de {bid}: {e}")
+    # O material tem que ser o que NAO escreve profundidade.
+    doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))
+    mat = None
+    if isinstance(doc, dict):
+        d = doc.get("minecraft:client_entity", {}).get("description", {})
+        mat = d.get("materials", {}).get("default")
+        geo_ref = d.get("geometry", {}).get("default", "")
+        if not geo_ref.endswith(f"sky_{bid}"):
+            err(f"{bid} tem atmosfera mas usa a geometria {geo_ref} — os aneis "
+                f"moram numa geometria propria do corpo")
+    base_h, entry_h = material_base(mat) if mat else (None, None)
+    if entry_h is None:
+        err(f"o material {mat} de {bid} nao existe em entity.material")
+    elif "DisableDepthWrite" not in (entry_h.get("+states") or []):
+        err(f"o material {mat} de {bid} nao tem DisableDepthWrite — os aneis sao "
+            f"cubos MAIORES que o corpo e ficam na frente dele no buffer de "
+            f"profundidade; sem isso o planeta some atras do proprio halo")
+
+    # E na geometria: aneis primeiro, corpo por ultimo e com 16 unidades.
+    gdoc = docs.get(os.path.join(RP, "models", "entity", f"sky_{bid}.geo.json"))
+    if not isinstance(gdoc, dict):
+        err(f"{bid} tem atmosfera mas nao tem modelo sky_{bid}.geo.json")
+        continue
+    cubes = ((gdoc.get("minecraft:geometry") or [{}])[0]
+             .get("bones") or [{}])[0].get("cubes") or []
+    if len(cubes) != n_rings + 1:
+        err(f"o modelo de {bid} tem {len(cubes)} cubo(s) e o config pede "
+            f"{n_rings} anel(is) + o corpo")
+    tam = [c.get("size", [0])[0] for c in cubes]
+    if tam and tam[-1] != 16:
+        err(f"o ultimo cubo de sky_{bid} tem {tam[-1]} unidades, esperado 16 — "
+            f"o corpo tem que ser o ULTIMO (e o que tapa o miolo dos aneis) e a "
+            f"conta de escala do skybox depende do 16")
+    if tam and any(t <= 16 for t in tam[:-1]):
+        err(f"ha anel de {bid} com {min(tam[:-1])} unidades — anel tem que ser "
+            f"MAIOR que os 16 do corpo, senao ele nasce escondido dentro dele")
+    if tam[:-1] != sorted(tam[:-1], reverse=True):
+        err(f"os aneis de {bid} nao estao de fora pra dentro ({tam[:-1]}) — "
+            f"na ordem errada o de fora tapa os de dentro")
 
 # A neblina de DENTRO tem que existir e ser CURTA.
 #
