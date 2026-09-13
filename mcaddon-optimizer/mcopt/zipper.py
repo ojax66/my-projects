@@ -18,79 +18,84 @@ except ImportError:  # pragma: no cover
     HAVE_ZOPFLI = False
 
 
-class _ZopfliCompressor:
-    """Adaptador com a interface de zlib.compressobj usada pelo zipfile."""
+_PRECOMPUTED: bytes | None = None
 
-    def __init__(self, iterations: int = 15):
-        self._buf = bytearray()
-        self._iterations = iterations
+# Tipos que ja carregam entropia alta. Vale tentar deflate neles mesmo assim
+# (as vezes rende 1-2%, e 1% de 23 MB de audio ainda e 230 KB), mas com zlib
+# rapido em vez de zopfli: o ganho extra do zopfli aqui nao paga o tempo.
+FAST_TYPES = (".png", ".ogg", ".jpg", ".jpeg", ".zip", ".mp3", ".fsb", ".wav")
+
+
+class _PrecomputedCompressor:
+    """Devolve um payload deflate ja calculado, sem recomprimir."""
 
     def compress(self, data: bytes) -> bytes:
-        self._buf += data
         return b""
 
     def flush(self, mode: int = zlib.Z_FINISH) -> bytes:
-        data = bytes(self._buf)
-        self._buf.clear()
-        fallback = zlib.compress(data, 9)[2:-4]
-        try:
-            # [2:-4] descarta header zlib e adler32 -> deflate cru, que e o
-            # que uma entrada de ZIP armazena.
-            candidate = _zopfli.compress(data, numiterations=self._iterations)[2:-4]
-        except Exception:
-            return fallback
-        return candidate if len(candidate) < len(fallback) else fallback
+        global _PRECOMPUTED
+        out = _PRECOMPUTED or b""
+        _PRECOMPUTED = None
+        return out
 
 
-class zopfli_deflate:
-    """Context manager que faz o zipfile comprimir com zopfli."""
-
-    def __init__(self, enabled: bool = True, iterations: int = 15):
-        self.enabled = enabled and HAVE_ZOPFLI
-        self.iterations = iterations
-        self._original = None
+class _patch_compressor:
+    """Faz o zipfile usar o payload pre-calculado em vez do zlib."""
 
     def __enter__(self):
-        if not self.enabled:
-            return self
         self._original = zipfile._get_compressor
-        iterations = self.iterations
 
         def patched(compress_type, compresslevel=None):
-            if compress_type == zipfile.ZIP_DEFLATED:
-                return _ZopfliCompressor(iterations)
+            if compress_type == zipfile.ZIP_DEFLATED and _PRECOMPUTED is not None:
+                return _PrecomputedCompressor()
             return self._original(compress_type, compresslevel)
 
         zipfile._get_compressor = patched
         return self
 
     def __exit__(self, *exc):
-        if self._original is not None:
-            zipfile._get_compressor = self._original
+        zipfile._get_compressor = self._original
         return False
+
+
+def best_deflate(data: bytes, strong: bool, iterations: int = 15) -> bytes:
+    """Deflate cru, o menor que conseguirmos produzir."""
+    best = zlib.compress(data, 9)[2:-4]
+    if strong and HAVE_ZOPFLI:
+        try:
+            # [2:-4] tira header zlib e adler32 -> deflate cru, que e o que
+            # uma entrada de ZIP armazena.
+            candidate = _zopfli.compress(data, numiterations=iterations)[2:-4]
+            if len(candidate) < len(best):
+                best = candidate
+        except Exception:
+            pass
+    return best
 
 
 def write_archive(path, entries, use_zopfli: bool = True, iterations: int = 15) -> None:
     """Grava `entries` -- lista de (nome_no_zip, bytes) -- em `path`.
 
-    Arquivos que ja sao containers comprimidos (png/ogg/etc) entram como
-    STORED: recomprimi-los gasta CPU e normalmente aumenta o tamanho.
+    Para cada arquivo, comprime e so entao decide: se o deflate nao ficou
+    menor que o original, grava STORED. Decidir por extensao, sem medir,
+    custa caro -- arquivos como .fsb parecem comprimidos mas nao sao.
     """
-    precompressed = (".png", ".ogg", ".fsb", ".jpg", ".jpeg", ".zip", ".mp3", ".wav")
-    with zopfli_deflate(use_zopfli, iterations):
+    global _PRECOMPUTED
+    with _patch_compressor():
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
             for name, data in entries:
-                lowered = name.lower()
-                if lowered.endswith(precompressed):
-                    info = zipfile.ZipInfo(name)
+                strong = use_zopfli and not name.lower().endswith(FAST_TYPES)
+                payload = best_deflate(data, strong, iterations) if data else b""
+                info = zipfile.ZipInfo(name)
+                info.external_attr = 0o644 << 16
+                if not data or len(payload) >= len(data):
                     info.compress_type = zipfile.ZIP_STORED
-                    info.external_attr = 0o644 << 16
-                    zf.writestr(info, data)
+                    _PRECOMPUTED = None
                 else:
-                    info = zipfile.ZipInfo(name)
                     info.compress_type = zipfile.ZIP_DEFLATED
-                    info.external_attr = 0o644 << 16
-                    zf.writestr(info, data)
+                    _PRECOMPUTED = payload
+                zf.writestr(info, data)
+                _PRECOMPUTED = None
 
 
 def verify_archive(path, expected: dict[str, bytes]) -> list[str]:
@@ -102,11 +107,9 @@ def verify_archive(path, expected: dict[str, bytes]) -> list[str]:
             if bad:
                 problems.append(f"CRC invalido em {bad}")
             names = set(zf.namelist())
-            missing = set(expected) - names
-            extra = names - set(expected)
-            for name in sorted(missing):
+            for name in sorted(set(expected) - names):
                 problems.append(f"faltando no pacote: {name}")
-            for name in sorted(extra):
+            for name in sorted(names - set(expected)):
                 problems.append(f"sobrando no pacote: {name}")
             for name in sorted(names & set(expected)):
                 if zf.read(name) != expected[name]:

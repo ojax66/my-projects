@@ -95,6 +95,39 @@ Nada disso é alterado automaticamente — são decisões de design do addon, e
 mexer nelas mudaria o comportamento do jogo. O relatório lista para você
 decidir.
 
+## Onde está o peso de verdade
+
+Medido no Better on Bedrock (versão pública do repo do autor, 2910 arquivos,
+`.mcaddon` de 30,2 MB):
+
+| Tipo | Tamanho | Fatia |
+|---|---:|---:|
+| `.ogg` (áudio) | 23,0 MB | **76%** |
+| `.png` | 4,0 MB | 13% |
+| `.json` | 3,6 MB | 12% |
+| `.mcstructure` | 3,8 MB | — |
+| `.fsb` | 3,0 MB | — |
+
+Isso inverte a intuição: num addon assim, **compressão sem perda quase não tem
+o que fazer**, porque três quartos do arquivo já é Ogg Vorbis comprimido. O
+resultado sem perda foi 30,2 → 29,0 MB (−4,2%). Todo o resto do peso está no
+áudio, e só re-encodar mexe nele.
+
+Detalhando o áudio (253 arquivos, 23,0 MB):
+
+| Categoria | Arquivos | Tamanho | Com `--audio moderado` |
+|---|---:|---:|---:|
+| Música | 11 | 16,3 MB | 10,4 MB |
+| Ambiente | 39 | 2,9 MB | 1,2 MB |
+| Efeitos | 203 | 3,9 MB | 2,5 MB |
+| **Total** | **253** | **23,0 MB** | **14,1 MB (−39%)** |
+
+Onze arquivos de música são 54% do addon inteiro. E 36 dos 203 efeitos estão
+em estéreo — peso morto, porque o Minecraft espacializa som posicional a
+partir da posição da fonte, então o segundo canal de um som de mob é
+descartado na prática. Por isso o perfil de áudio converte efeitos para mono
+e deixa música e ambiente em estéreo.
+
 ## Resultado em um addon de teste
 
 Pacote sintético de 6,9 MB (1230 arquivos, dois `.mcpack` aninhados,
@@ -108,6 +141,14 @@ Pacote sintético de 6,9 MB (1230 arquivos, dois `.mcpack` aninhados,
 Os dois passaram na verificação independente. O número do modo com perda é
 otimista: as texturas do teste são ruído aleatório, que quantiza
 excepcionalmente bem. Em arte real, espere menos.
+
+## Ordem de ataque recomendada
+
+1. `--audio moderado` — quase sempre o maior ganho isolado, se o addon tiver
+   música. Reduz música e ambiente para 96 kbps e efeitos para 64 kbps mono.
+2. Modo padrão sem perda — de graça, sem risco.
+3. `--max-resolucao 64` — só se o relatório apontar texturas fora do orçamento.
+4. `--png-com-perda` — último recurso; é o que mais visivelmente altera a arte.
 
 ## Limitações
 

@@ -113,38 +113,102 @@ def process_leaf(task):
                     how = "quantizado"
             return index, out, "png", how, original
 
-        if ext == ".ogg" and opts["lossy_audio"]:
-            out = _reencode_ogg(blob, opts["audio_bitrate"])
+        if ext == ".ogg" and opts["audio_profile"]:
+            out, how = _reencode_ogg(blob, path, opts["audio_profile"])
             if out and len(out) < original:
-                return index, out, "audio", "reencode", original
-            return index, blob, "audio", "inalterado", original
+                return index, out, "audio", how, original
+            return index, blob, "audio", how or "inalterado", original
     except Exception as exc:  # nunca deixa um arquivo quebrar o lote
         return index, blob, "erro", f"{type(exc).__name__}: {exc}", original
 
     return index, blob, "outro", "inalterado", original
 
 
-def _reencode_ogg(blob: bytes, bitrate: int) -> bytes | None:
+PERFIS_AUDIO = {
+    # perfil: (kbps musica, kbps ambiente, kbps efeitos)
+    "moderado": (96, 96, 64),
+    "agressivo": (80, 80, 48),
+}
+
+
+def _probe_ogg(path_on_disk: str):
+    """Devolve (duracao_s, canais, bitrate_real) ou None."""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries",
+             "stream=channels:format=duration,bit_rate", "-of", "csv=p=0",
+             path_on_disk],
+            capture_output=True, timeout=60, text=True,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    values = [v for v in proc.stdout.replace("\n", ",").split(",") if v.strip()]
+    try:
+        channels = int(values[0])
+        duration = float(values[1])
+        bitrate = int(values[2]) if len(values) > 2 and values[2].isdigit() else 0
+    except (IndexError, ValueError):
+        return None
+    return duration, channels, bitrate
+
+
+def _audio_target(path: str, duration: float, channels: int, profile: str):
+    """Escolhe canais e bitrate alvo pelo papel do som no jogo.
+
+    Efeitos posicionais viram mono de proposito: o Minecraft espacializa som
+    posicional a partir da posicao da fonte, entao o segundo canal de um som
+    de mob e peso morto. Musica e ambiente ficam em estereo.
+    """
+    music_kbps, ambient_kbps, sfx_kbps = PERFIS_AUDIO[profile]
+    lowered = path.lower()
+    if "/music/" in lowered or "/records/" in lowered:
+        return channels, music_kbps, "musica"
+    if "/ambient/" in lowered or duration >= 25:
+        return channels, ambient_kbps, "ambiente"
+    return 1, sfx_kbps, "efeito"
+
+
+def _reencode_ogg(blob: bytes, path: str, profile: str):
     import subprocess
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
-        src = os.path.join(tmp, "in.ogg")
-        dst = os.path.join(tmp, "out.ogg")
-        with open(src, "wb") as handle:
+        src_path = os.path.join(tmp, "in.ogg")
+        dst_path = os.path.join(tmp, "out.ogg")
+        with open(src_path, "wb") as handle:
             handle.write(blob)
+
+        probed = _probe_ogg(src_path)
+        if not probed:
+            return None, "ilegivel"
+        duration, channels, bitrate = probed
+        target_channels, target_kbps, role = _audio_target(
+            path, duration, channels, profile
+        )
+
+        # ja esta no alvo ou abaixo: reencodar so perderia qualidade
+        if bitrate and target_channels == channels and bitrate <= target_kbps * 1100:
+            return None, f"{role} ja enxuto"
+
+        command = ["ffmpeg", "-v", "error", "-y", "-i", src_path,
+                   "-c:a", "libvorbis", "-b:a", f"{target_kbps}k"]
+        if target_channels != channels:
+            command += ["-ac", str(target_channels)]
+        command.append(dst_path)
         try:
-            proc = subprocess.run(
-                ["ffmpeg", "-v", "error", "-y", "-i", src, "-c:a", "libvorbis",
-                 "-b:a", f"{bitrate}k", dst],
-                capture_output=True, timeout=300,
-            )
+            proc = subprocess.run(command, capture_output=True, timeout=600)
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            return None
-        if proc.returncode != 0 or not os.path.exists(dst):
-            return None
-        with open(dst, "rb") as handle:
-            return handle.read()
+            return None, "ffmpeg indisponivel"
+        if proc.returncode != 0 or not os.path.exists(dst_path):
+            return None, "falha no ffmpeg"
+        with open(dst_path, "rb") as handle:
+            out = handle.read()
+        suffix = " mono" if target_channels == 1 != channels else ""
+        return out, f"{role} {target_kbps}k{suffix}"
 
 
 # --------------------------------------------------------------------------
@@ -286,9 +350,10 @@ def main(argv=None) -> int:
     parser.add_argument("--png-com-perda", action="store_true",
                         help="quantiza PNGs para 256 cores (reduz muito, altera a arte)")
     parser.add_argument("--qualidade-png", default="70-92")
-    parser.add_argument("--audio-com-perda", action="store_true",
-                        help="reencoda .ogg em bitrate menor")
-    parser.add_argument("--audio-bitrate", type=int, default=64)
+    parser.add_argument("--audio", choices=("moderado", "agressivo"),
+                        help="reencoda .ogg (com perda). moderado: musica e "
+                             "ambiente 96k, efeitos 64k mono. agressivo: "
+                             "80k/80k/48k mono")
     parser.add_argument("--max-resolucao", type=int, default=0, metavar="PX",
                         help="reduz texturas acima de PX no lado menor "
                              "(com perda: altera a arte; use 32 ou 64)")
@@ -325,8 +390,7 @@ def main(argv=None) -> int:
         "lossy_png": args.png_com_perda,
         "lossy_quality": args.qualidade_png,
         "lossy_min_bytes": 2048,
-        "lossy_audio": args.audio_com_perda,
-        "audio_bitrate": args.audio_bitrate,
+        "audio_profile": args.audio,
         "max_resolution": args.max_resolucao,
     }
 
