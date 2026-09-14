@@ -623,6 +623,23 @@ case("superficie do corpo com anel voltando pra alfa 0",
      superficie_voltando_pra_alfa_zero, r"esperado 254")
 
 
+def anel_encostando_na_face(tmp):
+    # Anel de volta pra uma celula vazia da planificacao, que faz fronteira com
+    # face: e o que deixou a face de cima e a virada pra Lua sem textura.
+    caminho = rp(tmp, "models", "entity", "sky_earth.geo.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    anel = doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]
+    for face in anel["uv"]:
+        anel["uv"][face]["uv"] = [0, 0]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("anel de atmosfera encostando numa face", anel_encostando_na_face,
+     r"vaza pra dentro da face")
+
+
 def material_sem_disabledepthwrite(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:

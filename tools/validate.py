@@ -700,6 +700,10 @@ if isinstance(geo, dict):
         for bid in list(body_ids) + ["star"]:
             if sky_is_glow(bid):
                 continue          # esse usa sky_glow, conferido logo abaixo
+            # Corpo com anel tem geometria e folha PRÓPRIAS (a folha ganha uma
+            # linha só pros aneis), entao nao se mede contra a compartilhada.
+            if "atmosphere:" in BODY_SRC.get(bid, ""):
+                continue
             tex = sky_texture_path(bid)
             if not os.path.isfile(tex):
                 continue
@@ -859,18 +863,54 @@ for bid, trecho in BODY_SRC.items():
             cel_a = aw // 4
             def alfa(x, y):
                 return apx[(y * aw + x) * 4 + 3]
-            # meio da face do norte (coluna 1, linha 1) e meio da celula do anel
+            # A face do norte fica sempre na coluna 1, linha 1. O anel, onde a
+            # geometria disser — ele mudou de lugar quando encostar numa face
+            # passou a vazar cor pra dentro dela.
             sup = alfa(cel_a + cel_a // 2, cel_a + cel_a // 2)
-            anel = alfa(cel_a // 2, cel_a // 2)
+            gdoc_a = docs.get(os.path.join(RP, "models", "entity", f"sky_{bid}.geo.json"))
+            cubos_a = ((gdoc_a or {}).get("minecraft:geometry") or [{}])[0]
+            cubos_a = (cubos_a.get("bones") or [{}])[0].get("cubes") or []
+            anel = None
+            if len(cubos_a) > 1:
+                uv_a = cubos_a[0].get("uv", {}).get("north", {}).get("uv", [0, 0])
+                anel = alfa(int(uv_a[0]), int(uv_a[1]))
             if sup != 254:
                 err(f"a superficie de {bid} esta com alfa {sup}, esperado 254 — "
                     f"254 poe o corpo na passada transparente, que e o que faz "
                     f"ele ser desenhado DEPOIS dos aneis e tapar o miolo deles")
-            if anel != 0:
+            if anel is not None and anel != 0:
                 err(f"os aneis de {bid} estao com alfa {anel}, esperado 0 — eles "
                     f"tem que ficar na passada opaca, desenhados antes do corpo")
         except Exception as e:  # noqa: BLE001
             warn(f"nao consegui conferir os alfas de {bid}: {e}")
+
+    # NENHUMA celula de anel pode encostar numa celula de FACE.
+    #
+    # Foi o bug que ele viu: a face de cima e a virada pra Lua "sem textura". Os
+    # aneis moravam nas celulas vazias da planificacao, e celula vazia da
+    # planificacao faz fronteira com face — cor chapada colada na borda vaza pra
+    # dentro dela. As duas faces que ele reportou sao exatamente as duas
+    # vizinhas de anel que dava pra ver de onde ele estava.
+    gdoc_v = docs.get(os.path.join(RP, "models", "entity", f"sky_{bid}.geo.json"))
+    if isinstance(gdoc_v, dict):
+        cubos_v = ((gdoc_v.get("minecraft:geometry") or [{}])[0]
+                   .get("bones") or [{}])[0].get("cubes") or []
+        # As faces do corpo (ultimo cubo) e as celulas de cada anel, em celulas.
+        corpo_v = cubos_v[-1] if cubos_v else {}
+        celulas_face = set()
+        for f, spec in (corpo_v.get("uv") or {}).items():
+            uv = spec.get("uv", [0, 0])
+            celulas_face.add((int(uv[0]) // 64, int(uv[1]) // 64))
+        for anel_cubo in cubos_v[:-1]:
+            uv = (anel_cubo.get("uv") or {}).get("north", {}).get("uv", [0, 0])
+            cel = (int(uv[0]) // 64, int(uv[1]) // 64)
+            vizinhas = {(cel[0] + 1, cel[1]), (cel[0] - 1, cel[1]),
+                        (cel[0], cel[1] + 1), (cel[0], cel[1] - 1)}
+            encosta = vizinhas & celulas_face
+            if encosta:
+                err(f"um anel de {bid} esta na celula {cel}, encostando na(s) "
+                    f"face(s) {sorted(encosta)} — cor chapada colada na borda "
+                    f"vaza pra dentro da face e ela fica sem textura")
 
     # O material tem que ser o que NAO escreve profundidade.
     doc = docs.get(os.path.join(RP, "entity", f"sky_{bid}.entity.json"))

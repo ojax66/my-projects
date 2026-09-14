@@ -320,7 +320,25 @@ const isVolumetric = (body) => !!body.volumetric;
 //
 // Os anéis moram nas células VAZIAS da planificação. A folha 4x3 tem doze e o
 // cubo usa seis; cada anel é uma célula chapada de uma cor.
-const ATMO_CELLS = [[0, 0], [3, 0], [0, 2], [1, 2], [2, 2], [3, 2]];
+// Os anéis moram numa LINHA SÓ DELES, embaixo da planificação.
+//
+// Antes eles ocupavam as células vazias da própria planificação — e as células
+// vazias da planificação fazem fronteira com FACES. Ele reportou a face de cima
+// e a virada pra Lua sem textura, e são exatamente duas das quatro que encostam
+// numa célula de anel: up e east tocam a primeira, down e south tocam a segunda.
+// Das quatro, as duas que dava pra ver da posição dele eram up e south.
+//
+// Cor chapada e alfa diferente colados na borda de uma face vazam pra dentro
+// dela. É o mesmo tipo de erro do atlas meio preto de muitas rodadas atrás: o
+// que está DO LADO na folha acaba aparecendo na face.
+//
+// Com uma linha só pra eles, nenhum anel toca face nenhuma: entre os dois fica a
+// linha de folga, que o fillGaps preenche com a cor das próprias faces.
+const ATMO_ROW = 3;
+const ATMO_CELLS = [[0, ATMO_ROW], [1, ATMO_ROW], [2, ATMO_ROW], [3, ATMO_ROW]];
+
+/** Altura da folha: quem tem anel ganha a linha extra. */
+const sheetRows = (body) => (body.atmosphere ? ATMO_ROW + 1 : 3);
 
 // O alfa da SUPERFÍCIE de um corpo com atmosfera.
 //
@@ -403,7 +421,7 @@ function skyTexture(body) {
     south: faceColors(body, (a, b) => ({ x: c.x - a, y: c.y + b, z: c.z + R })),
   };
 
-  const W = RES * 4, H = RES * 3;
+  const W = RES * 4, H = RES * sheetRows(body);
   const px = Buffer.alloc(W * H * 4);
   const painted = new Uint8Array(W * H);
   const blit = (face, ox, oy) => {
@@ -437,19 +455,22 @@ function skyTexture(body) {
   blit('west', RES * 2, RES);
   blit('south', RES * 3, RES);
 
-  // Os anéis da atmosfera, em células que o cubo do corpo não usa. Marcadas
-  // como pintadas pra o fillGaps não passar por cima delas.
+  fillGaps(px, W, H, painted);
+
+  // Os anéis entram DEPOIS do preenchimento, de propósito.
+  //
+  // Antes eles entravam antes e o preenchimento os tratava como origem: a cor
+  // chapada deles se espalhava pelas células vazias e voltava a encostar nas
+  // faces por baixo. Entrando depois, quem espalhou foram só as faces, e o que
+  // faz fronteira com cada anel é cor de superfície.
   for (const ring of atmoRings(body)) {
     const [cx, cy] = ring.cell;
     for (let v = 0; v < RES; v++) for (let u = 0; u < RES; u++) {
-      const i = (cy * RES + v) * W + cx * RES + u, d = i * 4;
+      const d = ((cy * RES + v) * W + cx * RES + u) * 4;
       px[d] = ring.color[0]; px[d + 1] = ring.color[1]; px[d + 2] = ring.color[2];
       px[d + 3] = 0;
-      painted[i] = 1;
     }
   }
-
-  fillGaps(px, W, H, painted);
 
   const dir = path.join(RP, 'textures', NS, 'sky');
   fs.mkdirSync(dir, { recursive: true });
@@ -763,7 +784,7 @@ for (const body of SKY.filter((b) => b.atmosphere)) {
     'minecraft:geometry': [{
       description: {
         identifier: `geometry.${NS}.sky_${body.id}`,
-        texture_width: RES * 4, texture_height: RES * 3,
+        texture_width: RES * 4, texture_height: RES * sheetRows(body),
         visible_bounds_width: 64, visible_bounds_height: 64,
         visible_bounds_offset: [0, 0, 0],
       },
