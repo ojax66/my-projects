@@ -314,7 +314,13 @@ function updateGlobals(dimension, players) {
       // Dentro do corpo o céu é outra coisa (ver updateSky): lá o modelo é
       // centrado no jogador, e centrado no jogador ele não pode ser global.
       if (chebyshevTo(eye, body) < body.radius) continue;
-      if (chebyshevTo(eye, body) - body.radius <= SKY_GLOBAL_BELOW) {
+      // Distância até o CENTRO, que é onde a entidade global fica. Medir da
+      // superfície punha a Terra global com a entidade a 86 blocos do jogador —
+      // longe demais pro cliente desenhar, e ela sumia de perto.
+      const dx = body.center.x - eye.x;
+      const dy = body.center.y - eye.y;
+      const dz = body.center.z - eye.z;
+      if (Math.sqrt(dx * dx + dy * dy + dz * dz) <= SKY_GLOBAL_BELOW) {
         perto.set(body.id, body);
       }
     }

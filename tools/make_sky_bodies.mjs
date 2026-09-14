@@ -232,7 +232,14 @@ function fillGaps(px, W, H, painted) {
         painted[j] = 1;
         const e = j * 4;
         px[e] = px[d]; px[e + 1] = px[d + 1]; px[e + 2] = px[d + 2];
-        px[e + 3] = 0;               // alfa 0 = brilho, igual ao resto
+        // O ALFA vem junto com a cor, não é forçado a 0.
+        //
+        // Numa folha com alfas diferentes (superfície em 254, anéis em 0) forçar
+        // o entorno a 0 deixa cada face cercada de vizinhos de alfa oposto. O
+        // mipmap mistura os dois na borda, o pixel cai num alfa que não é nem um
+        // nem outro, e a borda da face fica suja de longe. Herdando o alfa de
+        // quem preencheu, cada região fica cercada do MESMO alfa dela.
+        px[e + 3] = px[d + 3];
         next.push(j);
       }
     }
@@ -731,7 +738,15 @@ for (const body of SKY.filter((b) => b.atmosphere)) {
   const cubes = [];
   for (let i = aneis.length - 1; i >= 0; i--) {          // de fora pra dentro
     const { size, cell } = aneis[i];
-    const uv = { uv: [cell[0] * RES, cell[1] * RES], uv_size: [RES, RES] };
+    // Amostra só o MIOLO da célula, não a célula inteira.
+    //
+    // A célula é chapada, então qualquer pedaço dela serve — e ficando longe da
+    // borda o mipmap nunca mistura o anel com a célula vizinha, que tem outra
+    // cor e outro alfa. Sem isso o anel ganha franja suja de longe.
+    const uv = {
+      uv: [cell[0] * RES + RES / 4, cell[1] * RES + RES / 4],
+      uv_size: [RES / 2, RES / 2],
+    };
     cubes.push({
       origin: [-size / 2, -size / 2, -size / 2],
       size: [size, size, size],

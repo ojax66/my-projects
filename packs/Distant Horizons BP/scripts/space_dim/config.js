@@ -448,34 +448,43 @@ export const SKY_SHARE_RADIUS = 16;
 // do cubo encolhido fica mais perto de você do que o chão em que você está. Aqui
 // não precisa de truque nenhum — o corpo já está dentro da distância de
 // simulação, então o modelo vai pro lugar dele e no tamanho dele, e aí é exato.
-// Até esta distância DA SUPERFÍCIE o corpo é GLOBAL: uma entidade só no mundo
+// Até esta distância DO CENTRO o corpo é GLOBAL: uma entidade só no mundo
 // inteiro, no lugar de verdade e no tamanho de verdade.
 //
-// É o "um planeta por mundo". O modelo perto do jogador é um truque de ponto de
-// vista, e truque de ponto de vista é por jogador — daí os dois planetas que ele
-// fotografou. No lugar real não há truque: todo mundo olha a mesma coisa e cada
-// um vê do ângulo dele, com paralaxe de verdade.
+// DO CENTRO, e essa palavra custou uma rodada. Eu media da superfície, mas a
+// entidade fica no CENTRO — e pra Terra isso são 26 blocos de diferença. Com o
+// limite em 64 da superfície, chegar a 59 m dela punha a entidade a 86 blocos
+// do jogador, longe demais pro cliente desenhar. Era a Terra sumindo de perto.
 //
-// O limite existe porque o cliente só desenha entidade que está por perto. Os
-// corpos distantes continuam no truque: lá o modelo do outro jogador está a
-// centenas de blocos e ninguém vê duplicado de qualquer jeito.
-export const SKY_GLOBAL_BELOW = 64;
+// O teto vem do que está medido: modelo a 28 blocos aparece, entidade a 86 não.
+// 40 fica com folga dos dois lados.
+//
+// A consequência honesta: com esse teto, só vira global quem está bem do lado.
+// A Terra (raio 26) só a partir de uns 14 m da superfície; o Sol (raio 100),
+// nunca. Mais longe que isso continua um modelo por jogador, e dois jogadores
+// afastados voltam a ver dois planetas. Não é falta de vontade: entidade que o
+// cliente não desenha não adianta existir.
+export const SKY_GLOBAL_BELOW = 40;
 
 export const SKY_MODEL_REAL_BELOW = 40;
 
-// A faixa encolheu de 16..40 pra 12..28.
+// A faixa dos degraus: 20..40.
 //
-// O corpo do degrau mais longe era o que mais dava problema — no relato dele,
-// "Marte sempre buga", e Marte é justamente o mais distante de todos, logo o do
-// último degrau. A 40 blocos a entidade fica perto demais do limite em que o
-// jogo a descarrega, e entidade descarregada não pode ser removida: a gente põe
-// outra no lugar e a velha reaparece quando a chunk volta. Dois Martes.
+// Ela já foi 16..40, caiu pra 12..28 quando Marte duplicava, e agora sobe de
+// novo. O que mudou no meio: a varredura de órfãs, que era uma leitura só num
+// try (bastava uma entidade descarregada pra abortar tudo) e rodava a cada meio
+// minuto, virou robusta e roda a cada dois segundos. Era ela que deixava o
+// fantasma na tela, não a distância sozinha.
 //
-// A 28 sobra folga de mais do dobro até os 64 blocos da distância de simulação
-// mais apertada. O preço é paralaxe um pouco maior entre jogadores do mesmo
-// grupo, que é o mal menor.
-export const SKY_MODEL_NEAREST = 12;
-export const SKY_MODEL_DISTANCE = 28;
+// E perto demais tem o seu preço, que foi o que ele viu: "tudo parece pequeno e
+// perto". O tamanho na tela está certo — é o ângulo do corpo de verdade —, mas
+// um cubo a 12 blocos fica no meio da nave e o olho lê como objeto ali do lado.
+// Mais longe, ele volta a parecer o que é.
+//
+// O teto vem do medido: modelo a 28 blocos aparece, entidade a 86 não aparece.
+// 40 fica do lado seguro, e é o mesmo número do limite global.
+export const SKY_MODEL_NEAREST = 20;
+export const SKY_MODEL_DISTANCE = 40;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
 //

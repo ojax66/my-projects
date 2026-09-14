@@ -596,7 +596,10 @@ const mk = (id = 'p1') =>
   // senão o agrupamento resolveria sozinho e o teste não provaria nada).
   const a = mk('g_a');
   const b = mk('g_b');
-  const perto = terra.radius + SKY_GLOBAL_BELOW - 8;
+  // SKY_GLOBAL_BELOW é medido do CENTRO, que é onde a entidade global fica —
+  // medir da superfície foi o que pôs a Terra global com a entidade a 86 blocos
+  // do jogador, longe demais pro cliente desenhar.
+  const perto = SKY_GLOBAL_BELOW - 8;
   a.teleport({ x: terra.center.x + perto, y: terra.center.y, z: terra.center.z });
   b.teleport({ x: terra.center.x - perto, y: terra.center.y, z: terra.center.z });
   __advance(2); updateSkyAll([a, b]);
@@ -625,7 +628,7 @@ const mk = (id = 'p1') =>
         `(${conta('sun').length})`);
 
   // Afastando os dois, a Terra global sai de cena.
-  const longe = terra.radius + SKY_GLOBAL_BELOW + 200;
+  const longe = SKY_GLOBAL_BELOW + 200;
   a.teleport({ x: terra.center.x + longe, y: terra.center.y, z: terra.center.z });
   b.teleport({ x: terra.center.x - longe, y: terra.center.y, z: terra.center.z });
   __advance(2); updateSkyAll([a, b]);
