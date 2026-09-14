@@ -151,6 +151,14 @@ for (const body of BODIES) {
   check('o material do halo existe no RP', !!hk, `(${hk})`);
   check('  e desliga a escrita de profundidade',
         (mats[hk]?.['+states'] ?? []).includes('DisableDepthWrite'));
+  // Mas NAO desliga o culling. Sem escrita de profundidade quem manda e a
+  // ordem de desenho; com as faces de tras desenhadas tambem, a de tras ganha
+  // da da frente em dois dos tres eixos. Ela tem a normal invertida, nao pega
+  // luz, e a superficie da Terra e alfa 254 (quase sem brilho) — resultado:
+  // face preta, que no vacuo parece um buraco. Foi o bug da face de cima e da
+  // face virada pra Lua.
+  check('  e MANTEM o culling, senao a face de tras sai preta na frente',
+        !(mats[hk]?.['+states'] ?? []).includes('DisableCulling'));
 
   // E o das cascas, que é o oposto: tem que misturar.
   const gk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_glow');

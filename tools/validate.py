@@ -929,6 +929,18 @@ for bid, trecho in BODY_SRC.items():
         err(f"o material {mat} de {bid} nao tem DisableDepthWrite — os aneis sao "
             f"cubos MAIORES que o corpo e ficam na frente dele no buffer de "
             f"profundidade; sem isso o planeta some atras do proprio halo")
+    elif "DisableCulling" in (entry_h.get("+states") or []):
+        # As duas coisas juntas sao o bug das faces pretas. Sem escrita de
+        # profundidade, quem decide o pixel e a ORDEM de desenho; sem culling,
+        # a face de TRAS do cubo tambem e desenhada, e quando ela vem depois da
+        # da frente na ordem interna do cubo, ela ganha. A face de tras tem a
+        # normal invertida: nao recebe luz. Nos outros corpos isso nao aparece
+        # porque a textura deles e alfa 0 (brilho maximo, a luz nao importa);
+        # aqui a superficie e alfa 254, quase sem brilho, entao a face de tras
+        # sai PRETA — e preto no vacuo e indistinguivel de buraco.
+        err(f"o material {mat} de {bid} tem DisableCulling junto com "
+            f"DisableDepthWrite — a face de tras do cubo passa na frente da da "
+            f"frente e, sem luz, sai preta: a face parece invisivel")
 
     # E na geometria: aneis primeiro, corpo por ultimo e com 16 unidades.
     gdoc = docs.get(os.path.join(RP, "models", "entity", f"sky_{bid}.geo.json"))

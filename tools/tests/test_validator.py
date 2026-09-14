@@ -644,13 +644,32 @@ def material_sem_disabledepthwrite(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:
         doc = json.load(f)
-    doc["materials"]["space_dim_halo:entity"]["+states"] = ["DisableCulling"]
+    doc["materials"]["space_dim_halo:entity"]["+states"] = []
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
 
 
 case("material do halo sem DisableDepthWrite", material_sem_disabledepthwrite,
      r"some atras do proprio halo")
+
+
+def material_do_halo_sem_culling(tmp):
+    """Culling desligado + profundidade desligada = face de tras ganhando.
+
+    Ela nao recebe luz, e como a superficie do planeta e alfa 254 (quase sem
+    brilho), sai preta: a face parece um buraco pro espaco.
+    """
+    caminho = rp(tmp, "materials", "entity.material")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["materials"]["space_dim_halo:entity"]["+states"] = [
+        "DisableCulling", "DisableDepthWrite"]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("material do halo com DisableCulling", material_do_halo_sem_culling,
+     r"parece invisivel")
 
 
 def corpo_nao_e_o_ultimo_cubo(tmp):

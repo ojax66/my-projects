@@ -596,11 +596,18 @@ function rpEntity(body) {
         // translúcidas, então precisa de um material que MISTURE. Aí
         // `entity_emissive_alpha` é o certo, e o alfa volta a querer dizer
         // transparência — por isso a textura dele não é alfa 0, é alfa 128.
-        // O corpo com atmosfera precisa de `space_dim_halo`, que é o mesmo
-        // `space_dim_sky` mais DisableDepthWrite: os anéis são cubos MAIORES
-        // que o corpo e ficam na frente dele no buffer de profundidade. Sem
-        // isso o cubo do corpo é recusado pelo teste e o planeta some atrás do
-        // próprio halo.
+        // O corpo com atmosfera precisa de `space_dim_halo`: DisableDepthWrite
+        // e culling LIGADO. Sem a escrita de profundidade os anéis, que são
+        // cubos MAIORES que o corpo, deixam de recusar o cubo do corpo pelo
+        // teste de profundidade — é o que faz o planeta aparecer na frente do
+        // próprio halo, já que ele é o último cubo da lista. Mas o culling tem
+        // que ficar, ao contrário de `space_dim_sky`: sem profundidade quem
+        // decide o pixel é a ordem, e a face de TRÁS de cada cubo vem depois da
+        // da frente em dois dos três eixos. A de trás tem a normal invertida,
+        // não recebe luz, e aqui a superfície é alfa 254 (quase sem brilho) —
+        // então ela sai preta, e preto no vácuo parece buraco. Nos outros
+        // corpos não aparecia porque a textura deles é alfa 0: brilho máximo,
+        // a luz não entra na conta.
         materials: {
           default: isVolumetric(body) ? 'space_dim_glow'
             : body.atmosphere ? 'space_dim_halo' : 'space_dim_sky',
