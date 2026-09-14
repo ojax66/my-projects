@@ -128,6 +128,7 @@ PERFIS_AUDIO = {
     # perfil: (kbps musica, kbps ambiente, kbps efeitos)
     "moderado": (96, 96, 64),
     "agressivo": (80, 80, 48),
+    "extremo": (48, 48, 32),
 }
 
 
@@ -350,7 +351,7 @@ def main(argv=None) -> int:
     parser.add_argument("--png-com-perda", action="store_true",
                         help="quantiza PNGs para 256 cores (reduz muito, altera a arte)")
     parser.add_argument("--qualidade-png", default="70-92")
-    parser.add_argument("--audio", choices=("moderado", "agressivo"),
+    parser.add_argument("--audio", choices=("moderado", "agressivo", "extremo"),
                         help="reencoda .ogg (com perda). moderado: musica e "
                              "ambiente 96k, efeitos 64k mono. agressivo: "
                              "80k/80k/48k mono")
