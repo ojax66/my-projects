@@ -105,19 +105,19 @@ BLOCKS = {
     "earth_ice":     block("earth_ice", "#E8EFFA", "Calota Polar", "Polar Ice Cap", hardness=1.0),
 
     # --- Lua: os tons são BLOCOS separados, não buraco desenhado na textura ---
-    # A cor de mapa acompanha a textura que ele escolheu.
+    # A cor de mapa é a média da textura que ele desenhou.
     #
     # As três tonalidades são CAMADAS, não variações: a mais clara é a poeira da
     # superfície, a do meio é a pedra, a mais escura é a ardósia lá no fundo —
     # a mesma ordem de grama/terra/pedra/deepslate. A luminância média das
     # texturas confere: 216, 161 e 94.
-    "moon_regolith_light": block("moon_regolith_light", "#CAD4EB",
+    "moon_regolith_light": block("moon_regolith_light", "#AFB7CA",
                                  "Poeira de Regolito", "Regolith Dust",
                                  light=GROUND_LIGHT, hardness=1.0),
-    "moon_regolith":       block("moon_regolith", "#99A1B3",
+    "moon_regolith":       block("moon_regolith", "#808694",
                                  "Pedra de Regolito", "Regolith Stone",
                                  light=GROUND_LIGHT, hardness=1.4),
-    "moon_regolith_dark":  block("moon_regolith_dark", "#555B6E",
+    "moon_regolith_dark":  block("moon_regolith_dark", "#494D55",
                                  "Ardósia de Regolito", "Regolith Slate",
                                  light=GROUND_LIGHT, hardness=1.8),
 

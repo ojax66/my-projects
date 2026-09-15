@@ -344,43 +344,7 @@ TEXTURES = {
         [2, 3, 4, 3, 2], 40, 3, 0.42,
     ),
 
-    # --- Lua -----------------------------------------------------------------
-    # Os cinco tons daqui são a rampa do print COMPRIMIDA pra perto do tom do
-    # meio (fator 0,45; o tom central ficou exatamente onde estava, então a cor
-    # média do bloco não mudou). A razão está em MAX_LUMA_RANGE_GROUND, logo
-    # abaixo: num chão de um bloco só, contraste dentro da textura vira papel de
-    # parede.
-    # A rampa do print (#505666 #5F677A #747D93 #9097A5 #AFB8CC #D9E4FF) fatiada
-    # em três blocos. É exatamente o que ele pediu lá atrás: "não é pra fazer um
-    # bloco da lua que tenha buraquinhos escuros, vai ter o regolito claro,
-    # escuro e etc". Os mares são regiões de centenas de blocos escuros que o
-    # gerador desenha — não um buraco pintado dentro de cada bloco.
 
-    # --- Lua ------------------------------------------------------------------
-    # ELE ESCOLHEU ESTA. Depois de quatro versões — papel de parede, borrão,
-    # grão, grão escurecido — ele mandou um arquivo e disse "na verdade usa essa
-    # textura aqui". Os números abaixo reproduzem esse arquivo PIXEL A PIXEL, e
-    # tools/assets/ref_moon_regolith_light.png é ele, guardado; a conferência
-    # está no fim deste arquivo e falha se alguém mexer aqui.
-    #
-    # Então não é pra "melhorar": qualquer mudança nesta paleta, no seed, no
-    # clump ou no jitter quebra a igualdade com o arquivo dele.
-    "moon_regolith_light": (
-        ["#C7D0E5", "#CDD6EB", "#D2DBF1", "#D5DFF7", "#D9E3F7"],
-        [2, 3, 4, 3, 2], 495, 3, 0.44,
-    ),
-    # As outras duas camadas seguem a MESMA receita, só que nos tons de pedra e
-    # de ardósia: mesmo desenho, mesma faixa curta, mesma grade grossa. Ele
-    # mandou a de cima; estas duas são a mesma coisa mais escura, que é o que
-    # mantém a família parecendo uma família.
-    "moon_regolith": (
-        ["#9198A7", "#969CAB", "#9AA1B0", "#9FA6B5", "#A3ABBD"],
-        [2, 3, 4, 3, 2], 153, 3, 0.44,
-    ),
-    "moon_regolith_dark": (
-        ["#525768", "#545A6C", "#585E70", "#5B6274", "#60677A"],
-        [2, 3, 4, 3, 2], 730, 3, 0.44,
-    ),
 
     # --- Marte ---------------------------------------------------------------
 }
@@ -570,11 +534,56 @@ def is_chunky(rows):
     return True
 
 
+# ---------------------------------------------------------------------------
+# A LUA É DESENHADA POR ELE
+#
+# Depois de cinco versões minhas, ele pegou a última, escureceu a paleta,
+# reduziu pra 16x16 e mexeu à mão em 11% das células (conferido: 89% delas
+# mantêm o mesmo posto de tom que a minha). O arquivo dele é a FONTE — não é
+# gerado aqui, é copiado:
+#
+#   tools/assets/ref_moon_regolith_light.png   →   moon_regolith_light
+#
+# As outras duas camadas saem do MESMO desenho, com os tons multiplicados pros
+# patamares de pedra e de ardósia. Assim a família inteira tem o traço dele, e
+# não o meu misturado com o dele.
+#
+# Os fatores vêm da rampa original da Lua: pedra 0,733 e ardósia 0,419 do tom
+# claro (154/210 e 88/210 nos centros de antes).
+MOON_SOURCE = "ref_moon_regolith_light.png"
+MOON_LAYERS = {
+    "moon_regolith_light": 1.0,
+    "moon_regolith": 0.733,
+    "moon_regolith_dark": 0.419,
+}
+
+
+def moon_from_source(rows, fator):
+    """O desenho dele, com os tons multiplicados — e dobrado pra 32x32.
+
+    Dobrar é por segurança de atlas: todo o resto do pacote é 32x32, e misturar
+    resoluções no mesmo atlas de terreno é pedir pro motor reescalar alguma
+    coisa com filtro. Vizinho-mais-próximo em 2x é pixel a pixel idêntico ao
+    arquivo dele — cada pixel vira um quadrado 2x2, que é o mesmo "pixel grosso"
+    do resto do pacote.
+    """
+    n = len(rows)
+    out = []
+    for y in range(n):
+        linha = []
+        for x in range(n):
+            px = rows[y][x]
+            cor = tuple(max(0, min(255, round(c * fator))) for c in px[:3]) + (255,)
+            linha.extend([cor, cor])
+        out.append(linha)
+        out.append(list(linha))
+    return out
+
+
 # O arquivo que ele escolheu, guardado. A conferência abaixo é o que impede
 # esta textura de ser "melhorada" de novo: ela já passou por quatro versões e a
 # quinta foi ele que mandou.
 REF_DIR = os.path.join(ROOT, "tools", "assets")
-REFERENCIAS = {"moon_regolith_light": "ref_moon_regolith_light.png"}
 
 
 def read_png(path):
@@ -617,9 +626,15 @@ if __name__ == "__main__":
     failures = []
     built = {}
     print(f"  {'bloco':22s} {'cores':>5s} {'faixa':>6s} {'média':>8s} {'centro':>7s}")
-    todos = [(n, "corpo") for n in TEXTURES] + [(n, "chão") for n in GROUND]
+    fonte_lua = read_png(os.path.join(REF_DIR, MOON_SOURCE))
+
+    todos = ([(n, "corpo") for n in TEXTURES]
+             + [(n, "lua") for n in MOON_LAYERS]
+             + [(n, "chão") for n in GROUND])
     for name, tipo in todos:
-        if tipo == "chão":
+        if tipo == "lua":
+            rows = moon_from_source(fonte_lua, MOON_LAYERS[name])
+        elif tipo == "chão":
             centro, seed = GROUND[name]
             rows = build_sand(centro, seed)
         else:
@@ -659,25 +674,17 @@ if __name__ == "__main__":
         print(f"  {name:22s} {nc:5d} {rng:6.0f} {average_color(rows):>8s} {bias:7.1f}{extra}"
               + ("   <-- " + "; ".join(flags) if flags else ""))
 
-    # --- as texturas que ELE escolheu não podem ter mudado -------------------
-    for name, arquivo in REFERENCIAS.items():
-        caminho = os.path.join(REF_DIR, arquivo)
-        if not os.path.isfile(caminho):
-            failures.append(f"falta a referência {arquivo}")
-            continue
-        ref = read_png(caminho)
-        got = built.get(name)
-        if got is None:
-            failures.append(f"{name} não foi gerada")
-            continue
-        difs = sum(1 for y in range(len(ref)) for x in range(len(ref[0]))
-                   if tuple(got[y][x]) != ref[y][x])
-        if difs:
-            failures.append(
-                f"{name} não bate com {arquivo} ({difs} pixels diferentes) — "
-                f"essa textura foi ESCOLHIDA por ele; não é pra mexer")
-        else:
-            print(f"\n  {name} bate pixel a pixel com {arquivo}")
+    # --- a poeira da Lua é o desenho DELE, sem uma vírgula mudada ------------
+    ref = read_png(os.path.join(REF_DIR, MOON_SOURCE))
+    got = built["moon_regolith_light"]
+    difs = sum(1 for y in range(len(ref)) for x in range(len(ref[0]))
+               if tuple(got[y * 2][x * 2]) != ref[y][x])
+    if difs:
+        failures.append(
+            f"moon_regolith_light não bate com {MOON_SOURCE} ({difs} pixels) — "
+            f"esse desenho é dele; não é pra mexer")
+    else:
+        print(f"\n  a poeira da Lua bate pixel a pixel com {MOON_SOURCE}")
 
     # --- separação entre os blocos de cada corpo -----------------------------
     # É a troca de bloco que desenha o planeta. Dois blocos do mesmo corpo com

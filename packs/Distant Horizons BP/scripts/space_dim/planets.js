@@ -173,6 +173,22 @@ const MOON = {
   // das células da grade que têm cratera; `depth` e `rim` são frações do RAIO
   // da cratera (uma cratera real tem profundidade ~1/5 do diâmetro, ou seja
   // ~2/5 do raio — daí o 0.34 das grandes).
+  // O fundo das crateras GRANDES mostra a pedra.
+  //
+  // É o que acontece de verdade: o impacto arranca a poeira e expõe a rocha
+  // debaixo, e o manto de regolito leva centenas de milhões de anos pra se
+  // formar de novo. Cratera nova tem fundo escuro; cratera velha já encheu.
+  //
+  // `from`..`to` são profundidades de tigela em blocos. Medido no gerador:
+  // 8 blocos pega ~10% das colunas e 22 pega ~1,5% — ou seja, só as grandes,
+  // que é o que ele pediu. As pequenas e as médias não chegam perto de 8.
+  //
+  // A passagem é um DEGRADÊ pontilhado, não uma borda: a chance de ser pedra
+  // cresce com a profundidade, sorteada contra um ruído de comprimento curto.
+  // Com ruído em vez de sorteio puro as manchas ficam de 2 a 4 blocos, que lê
+  // como chão irregular; sorteio puro viraria chuvisco.
+  craterFloor: { from: 8, to: 22, blob: 2.7 },
+
   craters: [
     { cell: 240, chance: 0.55, rMin: 42, rMax: 92, depth: 0.34, rim: 0.055 },
     { cell: 74, chance: 0.70, rMin: 13, rMax: 30, depth: 0.32, rim: 0.070 },

@@ -334,6 +334,26 @@ export function terrainAt(planet, x, z) {
   dustT = clamp(Math.round(dustT), 1, planet.crust - 4);
   stoneT = clamp(Math.round(stoneT), 1, planet.crust - 2 - dustT);
 
+  // A profundidade de tigela desta coluna — quanto ela afundou por cratera,
+  // sem contar borda nem ejeção. Serve pra duas coisas: a pedra que aflora no
+  // fundo das crateras grandes, e o gelo do fundo das polares. Calculada uma
+  // vez porque não é barata: são 9 células por escala de cratera.
+  const precisaFundo = planet.craterFloor
+    || planet.biomes.some((b) => b.ice && b.ice.below !== undefined);
+  const fundo = precisaFundo
+    ? craterDepthOnly(x, z, planet.craters, craterScale)
+    : 0;
+
+  // A pedra aflorando no fundo das crateras grandes, com o degradê subindo
+  // pela parede. Ela SUBSTITUI a poeira; a ordem das camadas não muda, o que
+  // muda é qual bloco está por cima naquela coluna.
+  let topoDePedra = false;
+  if (planet.craterFloor && fundo > planet.craterFloor.from) {
+    const cf = planet.craterFloor;
+    const chance = sstep(cf.from, cf.to, fundo);
+    topoDePedra = valueNoise(x / cf.blob, z / cf.blob) < chance;
+  }
+
   // Gelo. Dois jeitos diferentes, e os dois são o que existe de verdade:
   //  - calota (Marte): uma capa por cima de tudo, na latitude polar;
   //  - fundo de cratera (Lua): só onde o Sol nunca bate.
@@ -344,18 +364,23 @@ export function terrainAt(planet, x, z) {
     if (ice.cap) {
       iceT = Math.round(thick * w[best]);
     } else if (ice.below !== undefined) {
-      const deep = craterDepthOnly(x, z, planet.craters, craterScale);
-      if (deep >= ice.below) iceT = thick;
+      if (fundo >= ice.below) iceT = thick;
     }
   }
   iceT = clamp(iceT, 0, planet.crust - 3 - dustT - stoneT < 0 ? 0 : 4);
 
   const layers = [];
   if (iceT > 0) layers.push({ id: planet.blocks.ice, t: iceT });
-  layers.push({ id: planet.blocks.dust, t: dustT });
-  layers.push({ id: planet.blocks.stone, t: stoneT });
+  if (topoDePedra) {
+    // A poeira vira pedra e se junta à camada de pedra: um trecho contínuo só,
+    // em vez de dois trechos do mesmo bloco colados.
+    layers.push({ id: planet.blocks.stone, t: dustT + stoneT });
+  } else {
+    layers.push({ id: planet.blocks.dust, t: dustT });
+    layers.push({ id: planet.blocks.stone, t: stoneT });
+  }
 
-  return { height: h, weights: w, biome, layers, craterScale };
+  return { height: h, weights: w, biome, layers, craterScale, fundo, topoDePedra };
 }
 
 /** Só a altura — é o que `findValidSpot` do gerador precisa. */

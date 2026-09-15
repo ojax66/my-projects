@@ -56,9 +56,10 @@ for (const planet of PLANETS) {
   // calota polar de Marte e no fundo das crateras polares da Lua.
   {
     const ordem = [planet.blocks.ice, planet.blocks.dust, planet.blocks.stone, planet.blocks.deep];
-    let fora = 0, semPoeira = 0, semFundo = 0, n = 0;
+    let fora = 0, semPoeira = 0, semPoeiraForaDaCratera = 0, semFundo = 0, n = 0;
     for (let x = -1500; x <= 1500; x += 41) {
       for (let z = -3000; z <= 3000; z += 47) {
+        const t = terrainAt(planet, x, z);
         const runs = columnRunsAt(planet, x, z);
         // de cima pra baixo, sem a bedrock
         const ids = runs.slice(1).reverse().map((r) => r.id);
@@ -68,15 +69,57 @@ for (const planet of PLANETS) {
           if (k < pos) { fora++; break; }
           pos = k;
         }
-        if (!ids.includes(planet.blocks.dust)) semPoeira++;
+        if (!ids.includes(planet.blocks.dust)) {
+          semPoeira++;
+          // A poeira só pode faltar onde o impacto a arrancou: no fundo de uma
+          // cratera grande. Em qualquer outro lugar é bug — seria a regra das
+          // camadas quebrada.
+          if (!t.topoDePedra) semPoeiraForaDaCratera++;
+        }
         if (runs[0].id !== planet.blocks.floor) semFundo++;
         n++;
       }
     }
     check(`  poeira → pedra → ardósia, nessa ordem, em toda coluna`, fora === 0,
           `(${fora} de ${n} fora de ordem)`);
-    check(`  e a poeira nunca falta`, semPoeira === 0, `(${semPoeira} colunas sem)`);
+    check(`  a poeira só falta no fundo de cratera grande`,
+          semPoeiraForaDaCratera === 0,
+          `(${semPoeira} colunas sem poeira, ${semPoeiraForaDaCratera} fora de cratera)`);
     check(`  com bedrock no fundo`, semFundo === 0, `(${semFundo})`);
+  }
+
+  // --- 2b. O degradê do fundo das crateras -----------------------------------
+  //
+  // Nas crateras GRANDES o impacto arrancou a poeira e a pedra aflora, com a
+  // passagem pontilhada subindo pela parede. O que este teste protege é que
+  // seja mesmo um DEGRADÊ e mesmo nas GRANDES: nada de pedra na superfície
+  // rasa, nada de borda dura.
+  if (planet.craterFloor) {
+    const faixa = new Map();
+    for (let x = -2000; x <= 2000; x += 11) {
+      for (let z = -2000; z <= 2000; z += 13) {
+        const t = terrainAt(planet, x, z);
+        const k = Math.min(30, Math.floor((t.fundo ?? 0) / 5) * 5);
+        const e = faixa.get(k) ?? [0, 0];
+        e[0] += t.topoDePedra ? 1 : 0;
+        e[1] += 1;
+        faixa.set(k, e);
+      }
+    }
+    const frac = (k) => {
+      const e = faixa.get(k);
+      return e && e[1] ? e[0] / e[1] : 0;
+    };
+    // A faixa 5-10 encosta no início do degradê (from = 8), então um fiapo de
+    // pedra ali é esperado. A faixa 0-5 não pode ter nenhum.
+    check(`  ${planet.id}: chão raso não tem pedra na superfície`,
+          frac(0) === 0 && frac(5) < 0.05,
+          `(${(100 * frac(0)).toFixed(2)}% e ${(100 * frac(5)).toFixed(2)}%)`);
+    check(`  o fundo das crateras grandes tem`, frac(20) > 0.9,
+          `(${(100 * frac(20)).toFixed(0)}%)`);
+    check(`  e a passagem é um degradê, não uma borda`,
+          frac(10) > 0.02 && frac(10) < frac(15) && frac(15) < frac(20),
+          `(${(100 * frac(10)).toFixed(0)}% → ${(100 * frac(15)).toFixed(0)}% → ${(100 * frac(20)).toFixed(0)}%)`);
   }
 
   // --- 3. Onde o terreno tem direito de ser íngreme --------------------------
