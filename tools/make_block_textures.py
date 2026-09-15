@@ -256,22 +256,8 @@ def build_sand(centro, seed, grain_frac=0.12, spark_frac=0.07):
 
 # O tom MÉDIO de cada bloco de chão — o mesmo de sempre, que é o que o bloco
 # parece de longe. Tudo o mais sai dele.
-# A LUA é a rampa do print ESCURECIDA por 0,871.
-#
-# O número saiu de medir a foto dele, não de gosto. Nela o topo iluminado está
-# em #CED7ED e a face de sombra do degrau em #B7BFD2, e a razão entre as duas é
-# 0,871 nos TRÊS canais — ou seja, é escurecimento puro, sem mudança de matiz.
-# Ele disse que a paleta da SOMBRA é que parece a Lua, e é essa a conta que faz
-# a face de cima sair na cor da sombra de antes.
-#
-# O matiz azulado fica: é o do print que ele aprovou, e a sombra que ele elogiou
-# tem o mesmo. O que estava errado era só o brilho.
-#
-# MARTE não muda — ele pediu pra não mexer.
+# Só MARTE. A Lua tem textura escolhida — ver LUA_ESCOLHIDA logo abaixo.
 GROUND = {
-    "moon_regolith_light": ("#B7BFD2", 495),
-    "moon_regolith": ("#868C99", 153),
-    "moon_regolith_dark": ("#4D5262", 730),
     "mars_dust": ("#BA4E2A", 318),
     "mars_rock": ("#923D22", 664),
     "mars_rock_dark": ("#501E10", 209),
@@ -369,6 +355,32 @@ TEXTURES = {
     # bloco da lua que tenha buraquinhos escuros, vai ter o regolito claro,
     # escuro e etc". Os mares são regiões de centenas de blocos escuros que o
     # gerador desenha — não um buraco pintado dentro de cada bloco.
+
+    # --- Lua ------------------------------------------------------------------
+    # ELE ESCOLHEU ESTA. Depois de quatro versões — papel de parede, borrão,
+    # grão, grão escurecido — ele mandou um arquivo e disse "na verdade usa essa
+    # textura aqui". Os números abaixo reproduzem esse arquivo PIXEL A PIXEL, e
+    # tools/assets/ref_moon_regolith_light.png é ele, guardado; a conferência
+    # está no fim deste arquivo e falha se alguém mexer aqui.
+    #
+    # Então não é pra "melhorar": qualquer mudança nesta paleta, no seed, no
+    # clump ou no jitter quebra a igualdade com o arquivo dele.
+    "moon_regolith_light": (
+        ["#C7D0E5", "#CDD6EB", "#D2DBF1", "#D5DFF7", "#D9E3F7"],
+        [2, 3, 4, 3, 2], 495, 3, 0.44,
+    ),
+    # As outras duas camadas seguem a MESMA receita, só que nos tons de pedra e
+    # de ardósia: mesmo desenho, mesma faixa curta, mesma grade grossa. Ele
+    # mandou a de cima; estas duas são a mesma coisa mais escura, que é o que
+    # mantém a família parecendo uma família.
+    "moon_regolith": (
+        ["#9198A7", "#969CAB", "#9AA1B0", "#9FA6B5", "#A3ABBD"],
+        [2, 3, 4, 3, 2], 153, 3, 0.44,
+    ),
+    "moon_regolith_dark": (
+        ["#525768", "#545A6C", "#585E70", "#5B6274", "#60677A"],
+        [2, 3, 4, 3, 2], 730, 3, 0.44,
+    ),
 
     # --- Marte ---------------------------------------------------------------
 }
@@ -558,6 +570,49 @@ def is_chunky(rows):
     return True
 
 
+# O arquivo que ele escolheu, guardado. A conferência abaixo é o que impede
+# esta textura de ser "melhorada" de novo: ela já passou por quatro versões e a
+# quinta foi ele que mandou.
+REF_DIR = os.path.join(ROOT, "tools", "assets")
+REFERENCIAS = {"moon_regolith_light": "ref_moon_regolith_light.png"}
+
+
+def read_png(path):
+    """Lê um PNG RGBA de 8 bits como lista de linhas de tuplas."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    w, h = struct.unpack(">II", raw[16:24])
+    idat = b""
+    i = 8
+    while i < len(raw):
+        ln = struct.unpack(">I", raw[i:i + 4])[0]
+        if raw[i + 4:i + 8] == b"IDAT":
+            idat += raw[i + 8:i + 8 + ln]
+        i += 12 + ln
+    data = zlib.decompress(idat)
+    stride = w * 4
+    out = []
+    prev = bytearray(stride)
+    pos = 0
+    for _ in range(h):
+        f_ = data[pos]; pos += 1
+        line = bytearray(data[pos:pos + stride]); pos += stride
+        for x in range(stride):
+            a = line[x - 4] if x >= 4 else 0
+            b = prev[x]
+            c = prev[x - 4] if x >= 4 else 0
+            if f_ == 1: line[x] = (line[x] + a) & 255
+            elif f_ == 2: line[x] = (line[x] + b) & 255
+            elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
+            elif f_ == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[x] = (line[x] + pr) & 255
+        out.append([tuple(line[x:x + 4]) for x in range(0, stride, 4)])
+        prev = line
+    return out
+
+
 if __name__ == "__main__":
     failures = []
     built = {}
@@ -603,6 +658,26 @@ if __name__ == "__main__":
                  if tipo == "chão" else "")
         print(f"  {name:22s} {nc:5d} {rng:6.0f} {average_color(rows):>8s} {bias:7.1f}{extra}"
               + ("   <-- " + "; ".join(flags) if flags else ""))
+
+    # --- as texturas que ELE escolheu não podem ter mudado -------------------
+    for name, arquivo in REFERENCIAS.items():
+        caminho = os.path.join(REF_DIR, arquivo)
+        if not os.path.isfile(caminho):
+            failures.append(f"falta a referência {arquivo}")
+            continue
+        ref = read_png(caminho)
+        got = built.get(name)
+        if got is None:
+            failures.append(f"{name} não foi gerada")
+            continue
+        difs = sum(1 for y in range(len(ref)) for x in range(len(ref[0]))
+                   if tuple(got[y][x]) != ref[y][x])
+        if difs:
+            failures.append(
+                f"{name} não bate com {arquivo} ({difs} pixels diferentes) — "
+                f"essa textura foi ESCOLHIDA por ele; não é pra mexer")
+        else:
+            print(f"\n  {name} bate pixel a pixel com {arquivo}")
 
     # --- separação entre os blocos de cada corpo -----------------------------
     # É a troca de bloco que desenha o planeta. Dois blocos do mesmo corpo com
