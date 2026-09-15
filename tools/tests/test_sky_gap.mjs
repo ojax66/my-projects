@@ -139,10 +139,32 @@ for (const body of BODIES) {
   // é justamente o que faz a Lua parecer a Lua. E eles não são mais colocados
   // no espaço (`built: false` nos dois), então a emissão antiga não servia
   // mais pra nada.
-  for (const name of ['moon_regolith_light', 'moon_regolith', 'moon_regolith_dark',
-                      'mars_dust', 'mars_rock', 'mars_rock_dark', 'mars_ice']) {
+  const CHAO = ['moon_regolith_light', 'moon_regolith', 'moon_regolith_dark',
+                'mars_dust', 'mars_rock', 'mars_rock_dark', 'mars_ice'];
+  for (const name of CHAO) {
     check(`${name}: não brilha sozinho`, blockLight(name) === 0, `(${blockLight(name)})`);
   }
+
+  // E o chão não recebe oclusão de ambiente.
+  //
+  // A oclusão escurece as JUNTAS entre blocos. Num corpo celeste visto de longe
+  // ela dá volume; num chão de um bloco só ela é o que denuncia cada bloco —
+  // uma sombrinha em cada quina, e a planície inteira vira um quadriculado.
+  // `face_dimming` continua nos dois: é ela que deixa o topo mais claro que a
+  // lateral, e sem isso o relevo some.
+  const mat = (name) => {
+    const doc = JSON.parse(fs.readFileSync(
+      path.join(BP_DIR, 'blocks', `${name}.json`), 'utf8'));
+    return doc['minecraft:block'].components['minecraft:material_instances']['*'];
+  };
+  for (const name of CHAO) {
+    check(`  ${name}: sem sombra nas juntas`, mat(name).ambient_occlusion === false);
+    check(`  ${name}: mas com face_dimming, senão o relevo some`,
+          mat(name).face_dimming === true);
+  }
+  check('os blocos dos corpos celestes MANTÊM a oclusão',
+        mat('sun_core').ambient_occlusion === true &&
+        mat('earth_land').ambient_occlusion === true);
 
   // A estrela: o corpo visto de fora do sistema. Sem ela, quem se afasta da
   // borda não veria nada — nem bloco, nem modelo, nem ponto.

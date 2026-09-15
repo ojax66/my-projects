@@ -155,6 +155,130 @@ def build(palette, weights, seed, clump=4, jitter=0.45):
     return rows
 
 
+
+# --- Chão: a estatística da areia --------------------------------------------
+#
+# Duas tentativas erradas antes desta, e as duas eram sobre o número errado.
+#
+#   1ª  cinco tons espalhados por 41 de luma, colocados por ruído de valor.
+#       O ruído faz MANCHAS, e a mancha é do tamanho do bloco: uma planície de
+#       um bloco só repete a mesma mancha lado a lado e o olho lê a grade.
+#       Virou papel de parede quadriculado.
+#   2ª  os mesmos cinco tons comprimidos pra 19 de luma. Sumiu a grade e sumiu
+#       tudo: um borrão liso, que ele chamou de "extremamente artificial".
+#
+# Os dois erros são o mesmo erro: mexer no CONTRASTE achando que o problema era
+# o contraste. Não era. O problema é a ESTRUTURA — o que a areia tem e o ruído
+# de valor não dá é grão SOLTO.
+#
+# Uma foto de areia, ou de regolito, é isto:
+#
+#   um corpo quase uniforme (três tons quase iguais, faixa curta)
+#   + grãos escuros SOLTOS, um aqui outro ali, nunca encostados
+#   + alguns brilhos claros, do mesmo jeito
+#
+# É por isso que a areia do jogo funciona e o ruído de valor não: o grão da
+# areia não forma desenho nenhum, então não há desenho pra se repetir de bloco
+# em bloco — mas há o que ver de perto. Contraste ALTO com estrutura SOLTA lê
+# como areia; contraste baixo com estrutura em mancha lê como plástico.
+#
+# A regra "nunca encostados" é o que garante isso, e ela vale ATRAVESSANDO a
+# borda do bloco (a vizinhança é calculada em módulo), senão dois grãos de
+# blocos vizinhos se juntariam numa manchinha na emenda.
+def mix(cor, fator):
+    """A mesma cor, mais clara ou mais escura por FATOR, não por soma.
+
+    Multiplicativo de propósito: somar -30 num tom claro é um grão discreto e no
+    tom mais escuro do addon (a ardósia de ferrita, luma 42) seria quase preto.
+    Multiplicar dá o mesmo contraste RELATIVO em todos, que é como o olho lê.
+    """
+    return "#%02X%02X%02X" % tuple(
+        max(0, min(255, round(c * fator))) for c in hex_rgb(cor))
+
+
+# Os fatores do chão. Curtos de propósito: o corpo quase não varia, e o que se
+# vê são os grãos.
+BODY_STEPS = (0.985, 1.0, 1.015)
+GRAIN_STEPS = (0.87, 0.81)
+SPARK_STEPS = (1.05, 1.09)
+
+
+def build_sand(centro, seed, grain_frac=0.12, spark_frac=0.07):
+    """Uma textura de CHÃO: corpo liso salpicado de grãos.
+
+    `centro` é o tom médio do bloco — o mesmo de antes, então a cor do bloco
+    visto de longe não muda. O resto sai dele por multiplicação.
+    """
+    cols = [hex_rgb(mix(centro, f)) + (255,) for f in BODY_STEPS]
+    graos = [hex_rgb(mix(centro, f)) + (255,) for f in GRAIN_STEPS]
+    brilhos = [hex_rgb(mix(centro, f)) + (255,) for f in SPARK_STEPS]
+
+    # O corpo: hash puro por célula, sem ruído de valor nenhum. É de propósito —
+    # o ruído de valor é justamente o que faz mancha do tamanho do bloco.
+    vals = sorted((_hash(cx, cy, 4096, seed), cx, cy)
+                  for cy in range(CELLS) for cx in range(CELLS))
+    cells = [[None] * CELLS for _ in range(CELLS)]
+    fatia = len(vals) // len(cols)
+    for i, (_, cx, cy) in enumerate(vals):
+        cells[cy][cx] = cols[min(i // fatia, len(cols) - 1)]
+
+    ocupadas = set()
+
+    def espalha(tons, fracao, chave):
+        alvo = round(CELLS * CELLS * fracao)
+        postas = 0
+        for _, cx, cy in sorted((_hash(cx, cy, 4096, seed + chave), cx, cy)
+                                for cy in range(CELLS) for cx in range(CELLS)):
+            if postas >= alvo:
+                break
+            if (cx, cy) in ocupadas:
+                continue
+            ocupadas.add((cx, cy))
+            k = int(_hash(cx, cy, 4096, seed + chave + 5) * len(tons)) % len(tons)
+            cells[cy][cx] = tons[k]
+            postas += 1
+
+    # Sorteio livre, sem regra de "não encostar". A regra deixava os grãos numa
+    # malha quase regular — dava pra ver a treliça. Deixando livre, de vez em
+    # quando dois se juntam, que é o que um grão um pouco maior parece.
+    espalha(graos, grain_frac, 7717)
+    espalha(brilhos, spark_frac, 3391)
+
+    rows = []
+    for cy in range(CELLS):
+        line = []
+        for cx in range(CELLS):
+            line.extend([cells[cy][cx]] * CELL_PX)
+        for _ in range(CELL_PX):
+            rows.append(list(line))
+    return rows
+
+
+# O tom MÉDIO de cada bloco de chão — o mesmo de sempre, que é o que o bloco
+# parece de longe. Tudo o mais sai dele.
+# A LUA é a rampa do print ESCURECIDA por 0,871.
+#
+# O número saiu de medir a foto dele, não de gosto. Nela o topo iluminado está
+# em #CED7ED e a face de sombra do degrau em #B7BFD2, e a razão entre as duas é
+# 0,871 nos TRÊS canais — ou seja, é escurecimento puro, sem mudança de matiz.
+# Ele disse que a paleta da SOMBRA é que parece a Lua, e é essa a conta que faz
+# a face de cima sair na cor da sombra de antes.
+#
+# O matiz azulado fica: é o do print que ele aprovou, e a sombra que ele elogiou
+# tem o mesmo. O que estava errado era só o brilho.
+#
+# MARTE não muda — ele pediu pra não mexer.
+GROUND = {
+    "moon_regolith_light": ("#B7BFD2", 495),
+    "moon_regolith": ("#868C99", 153),
+    "moon_regolith_dark": ("#4D5262", 730),
+    "mars_dust": ("#BA4E2A", 318),
+    "mars_rock": ("#923D22", 664),
+    "mars_rock_dark": ("#501E10", 209),
+    "mars_ice": ("#E2D7CF", 123),
+}
+
+
 # --- Paletas -----------------------------------------------------------------
 # Cada entrada: (paleta, proporções, seed, clump, jitter)
 #
@@ -245,36 +369,8 @@ TEXTURES = {
     # bloco da lua que tenha buraquinhos escuros, vai ter o regolito claro,
     # escuro e etc". Os mares são regiões de centenas de blocos escuros que o
     # gerador desenha — não um buraco pintado dentro de cada bloco.
-    "moon_regolith_light": (
-        ["#C7D0E5", "#CDD6EB", "#D2DBF1", "#D5DFF7", "#D9E3F7"],
-        [2, 3, 4, 3, 2], 495, 3, 0.44,
-    ),
-    "moon_regolith": (
-        ["#9198A7", "#969CAB", "#9AA1B0", "#9FA6B5", "#A3ABBD"],
-        [2, 3, 4, 3, 2], 153, 3, 0.44,
-    ),
-    "moon_regolith_dark": (
-        ["#525768", "#545A6C", "#585E70", "#5B6274", "#60677A"],
-        [2, 3, 4, 3, 2], 730, 3, 0.44,
-    ),
 
     # --- Marte ---------------------------------------------------------------
-    "mars_dust": (
-        ["#B24A27", "#B74C29", "#BA4E2A", "#BE522D", "#C15730"],
-        [2, 3, 4, 3, 2], 318, 3, 0.45,
-    ),
-    "mars_rock": (
-        ["#8B3A20", "#8F3C21", "#923D22", "#964024", "#9A4326"],
-        [2, 3, 4, 3, 2], 664, 3, 0.45,
-    ),
-    "mars_rock_dark": (
-        ["#4A1C0F", "#4D1D0F", "#501E10", "#542011", "#572213"],
-        [2, 3, 4, 3, 2], 664, 3, 0.45,
-    ),
-    "mars_ice": (
-        ["#DBCFC6", "#DFD4CC", "#E2D7CF", "#E5DBD3", "#E9DFD8"],
-        [2, 3, 4, 3, 2], 123, 3, 0.42,
-    ),
 }
 
 
@@ -330,24 +426,30 @@ MIN_COLORS = 5      # menos que isso não tem o que desenhar
 # gerador espalha, e a separação entre eles é conferida logo abaixo.
 MAX_LUMA_RANGE = 46
 
-# E o CHÃO tem um teto bem mais apertado que os outros.
+# E o CHÃO é medido por ESTRUTURA, não por contraste.
 #
-# Isto saiu de uma foto do jogo: a superfície da Lua virou papel de parede
-# quadriculado. A causa não é a textura estar errada sozinha — é a combinação.
-# Um planeta é uma planície enorme de UM bloco só, vista de raspão; aí qualquer
-# desenho dentro da textura se repete lado a lado centenas de vezes e o olho lê
-# a grade, não o chão. Os corpos celestes não têm esse problema porque ninguém
-# anda em cima deles: eles são vistos de longe, como modelo.
+# Duas tentativas erradas antes desta, e as duas mexeram no número errado:
 #
-# Com a faixa em torno de 20 o grão continua visível de perto (não é uma cor
-# chapada) e some de longe, que é exatamente o que se quer de poeira.
-MAX_LUMA_RANGE_GROUND = 22
+#   1ª  cinco tons por 41 de luma, colocados por ruído de valor. O ruído faz
+#       MANCHA do tamanho do bloco, e a mancha se repete lado a lado: papel de
+#       parede quadriculado.
+#   2ª  os mesmos tons comprimidos pra 19 de luma. Sumiu a grade e sumiu tudo:
+#       um borrão liso, "extremamente artificial".
+#
+# O contraste não era o problema nas duas vezes — a ESTRUTURA era. Areia tem
+# contraste ALTO e estrutura SOLTA: um corpo quase uniforme salpicado de grãos
+# que não formam desenho nenhum. Sem desenho, não há o que se repetir de bloco
+# em bloco, e ainda assim há o que ver de perto.
+#
+# Então o que é medido aqui é isso, e não a faixa total:
+#
+#   MAX_BODY_RANGE   o CORPO (os tons que cobrem a maior parte) tem que ser
+#                    quase uniforme — é ele que não pode desenhar nada;
+#   MAX_GRAIN_CLUMP  nenhum aglomerado de grãos pode virar mancha.
+MAX_BODY_RANGE = 12
+MAX_GRAIN_CLUMP = 6
+MAX_COLORS_GROUND = 8
 
-# Os blocos em que o jogador PISA: o terreno da Lua e de Marte.
-GROUND_BLOCKS = {
-    "moon_regolith_light", "moon_regolith", "moon_regolith_dark",
-    "mars_dust", "mars_rock", "mars_rock_dark", "mars_ice",
-}
 
 # E entre os blocos de um mesmo corpo a separação tem que existir, senão a troca
 # de bloco não desenha nada e o corpo vira uma cor só.
@@ -383,6 +485,67 @@ def luma_range(rows):
     return max(lums) - min(lums)
 
 
+def body_range(rows):
+    """Faixa de luma dos tons que formam o CORPO da textura.
+
+    Corpo = os tons mais comuns até cobrir 60% dos pixels. Os grãos ficam de
+    fora por serem poucos, que é exatamente a distinção que interessa.
+    """
+    conta = {}
+    for row in rows:
+        for px in row:
+            conta[px[:3]] = conta.get(px[:3], 0) + 1
+    total = sum(conta.values())
+    lums = []
+    acc = 0
+    for cor, n in sorted(conta.items(), key=lambda kv: -kv[1]):
+        lums.append((cor[0] + cor[1] + cor[2]) / 3)
+        acc += n
+        if acc >= total * 0.6:
+            break
+    return max(lums) - min(lums)
+
+
+def grain_clump(rows):
+    """Maior aglomerado contíguo de células mais escuras que o corpo.
+
+    Grão é grão: um, dois, no máximo um tropeço de três juntos. Um aglomerado
+    grande é uma mancha — e mancha é o que se repete em cada bloco.
+    """
+    n = len(rows)
+    lum = lambda p: (p[0] + p[1] + p[2]) / 3
+    todos = sorted({lum(px) for row in rows for px in row})
+    if len(todos) < 3:
+        return 0
+    # "escuro" = abaixo do tom mais escuro do corpo. O corpo são os 3 tons do
+    # meio da lista; os grãos são os de baixo.
+    corte = todos[1] + 1e-6
+    escuro = [[lum(rows[y][x]) <= corte for x in range(n)] for y in range(n)]
+
+    visto = [[False] * n for _ in range(n)]
+    maior = 0
+    for y0 in range(n):
+        for x0 in range(n):
+            if not escuro[y0][x0] or visto[y0][x0]:
+                continue
+            pilha = [(x0, y0)]
+            visto[y0][x0] = True
+            tam = 0
+            while pilha:
+                x, y = pilha.pop()
+                tam += 1
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    # Em módulo: o bloco encosta nele mesmo, então um grão na
+                    # borda direita é vizinho de um na borda esquerda.
+                    nx, ny = (x + dx) % n, (y + dy) % n
+                    if escuro[ny][nx] and not visto[ny][nx]:
+                        visto[ny][nx] = True
+                        pilha.append((nx, ny))
+            maior = max(maior, tam)
+    # em células, não em pixels
+    return maior / (CELL_PX * CELL_PX)
+
+
 def is_chunky(rows):
     """A textura foi desenhada em células grossas, não pixel a pixel?"""
     n = len(rows)
@@ -399,8 +562,14 @@ if __name__ == "__main__":
     failures = []
     built = {}
     print(f"  {'bloco':22s} {'cores':>5s} {'faixa':>6s} {'média':>8s} {'centro':>7s}")
-    for name, (pal, w, seed, clump, jitter) in TEXTURES.items():
-        rows = build(pal, w, seed, clump, jitter)
+    todos = [(n, "corpo") for n in TEXTURES] + [(n, "chão") for n in GROUND]
+    for name, tipo in todos:
+        if tipo == "chão":
+            centro, seed = GROUND[name]
+            rows = build_sand(centro, seed)
+        else:
+            pal, w, seed, clump, jitter = TEXTURES[name]
+            rows = build(pal, w, seed, clump, jitter)
         write_png(os.path.join(OUT, f"{name}.png"), rows)
 
         nc = distinct_colors(rows)
@@ -408,24 +577,31 @@ if __name__ == "__main__":
         rng = luma_range(rows)
         built[name] = rows
         flags = []
-        if nc > MAX_COLORS:
-            flags.append(f"cores demais (>{MAX_COLORS})")
+        if nc > (MAX_COLORS_GROUND if tipo == "chão" else MAX_COLORS):
+            flags.append("cores demais")
         if nc < MIN_COLORS:
             flags.append(f"cores de menos (<{MIN_COLORS})")
         if bias > MAX_BIAS:
             flags.append("efeito bolinha")
-        teto = MAX_LUMA_RANGE_GROUND if name in GROUND_BLOCKS else MAX_LUMA_RANGE
-        if rng > teto:
-            flags.append(f"contraste alto demais ({rng:.0f} > {teto}) — "
-                         + ("num chão de um bloco só, o desenho se repete lado a "
-                            "lado e vira papel de parede quadriculado"
-                            if name in GROUND_BLOCKS
-                            else "a mancha escura se repete no planeta inteiro"))
+        if tipo == "chão":
+            corpo = body_range(rows)
+            aglomerado = grain_clump(rows)
+            if corpo > MAX_BODY_RANGE:
+                flags.append(f"o corpo do chão desenha ({corpo:.0f} > {MAX_BODY_RANGE}) "
+                             f"— num chão de um bloco só, desenho vira papel de parede")
+            if aglomerado > MAX_GRAIN_CLUMP:
+                flags.append(f"aglomerado de {aglomerado:.0f} células (> {MAX_GRAIN_CLUMP}) "
+                             f"— isso é mancha, não grão, e se repete em cada bloco")
+        elif rng > MAX_LUMA_RANGE:
+            flags.append(f"contraste alto demais ({rng:.0f} > {MAX_LUMA_RANGE}) — "
+                         f"a mancha escura se repete no planeta inteiro")
         if not is_chunky(rows):
             flags.append(f"grão fino demais (não está na grade de {CELLS}x{CELLS})")
         if flags:
             failures.append(f"{name}: {', '.join(flags)}")
-        print(f"  {name:22s} {nc:5d} {rng:6.0f} {average_color(rows):>8s} {bias:7.1f}"
+        extra = (f" corpo {body_range(rows):4.0f} grão {grain_clump(rows):3.0f}"
+                 if tipo == "chão" else "")
+        print(f"  {name:22s} {nc:5d} {rng:6.0f} {average_color(rows):>8s} {bias:7.1f}{extra}"
               + ("   <-- " + "; ".join(flags) if flags else ""))
 
     # --- separação entre os blocos de cada corpo -----------------------------

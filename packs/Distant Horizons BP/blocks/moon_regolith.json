@@ -13,7 +13,7 @@
         "*": {
           "texture": "space_dim_moon_regolith",
           "render_method": "opaque",
-          "ambient_occlusion": true,
+          "ambient_occlusion": false,
           "face_dimming": true
         }
       },
@@ -23,7 +23,7 @@
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 15
       },
-      "minecraft:map_color": "#99A1B3",
+      "minecraft:map_color": "#858C9C",
       "minecraft:friction": 0.6
     }
   }

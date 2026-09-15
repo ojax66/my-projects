@@ -11,11 +11,11 @@
   "space_dim:earth_land": "#039001",
   "space_dim:earth_forest": "#026A02",
   "space_dim:earth_ice": "#EDF2FA",
-  "space_dim:moon_regolith_light": "#D0DAF0",
-  "space_dim:moon_regolith": "#9AA1B0",
-  "space_dim:moon_regolith_dark": "#585E70",
-  "space_dim:mars_dust": "#BA4F2A",
-  "space_dim:mars_rock": "#923D22",
-  "space_dim:mars_rock_dark": "#501E10",
-  "space_dim:mars_ice": "#E1D7CF"
+  "space_dim:moon_regolith_light": "#B4BCCE",
+  "space_dim:moon_regolith": "#848996",
+  "space_dim:moon_regolith_dark": "#4B5060",
+  "space_dim:mars_dust": "#B74C29",
+  "space_dim:mars_rock": "#8F3C21",
+  "space_dim:mars_rock_dark": "#4E1D0F",
+  "space_dim:mars_ice": "#DED3CB"
 }

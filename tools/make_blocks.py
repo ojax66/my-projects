@@ -51,6 +51,13 @@ BODY_LIGHT = 6
 # config.js dos dois), então a emissão antiga não estava mais servindo pra nada.
 GROUND_LIGHT = 0
 
+# Os blocos em que o jogador PISA — o terreno da Lua e de Marte. Eles são a
+# exceção em duas coisas: não emitem luz, e não recebem oclusão de ambiente.
+GROUND_BLOCKS = {
+    "moon_regolith_light", "moon_regolith", "moon_regolith_dark",
+    "mars_dust", "mars_rock", "mars_rock_dark", "mars_ice",
+}
+
 def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True, dampening=None):
     return {
         "texture": texture,
@@ -98,17 +105,20 @@ BLOCKS = {
     "earth_ice":     block("earth_ice", "#E8EFFA", "Calota Polar", "Polar Ice Cap", hardness=1.0),
 
     # --- Lua: os tons são BLOCOS separados, não buraco desenhado na textura ---
+    # A cor de mapa acompanha a textura: escurecida por 0,871, o mesmo fator
+    # medido entre o topo e a sombra na foto dele.
+    #
     # As três tonalidades são CAMADAS, não variações: a mais clara é a poeira da
     # superfície, a do meio é a pedra, a mais escura é a ardósia lá no fundo —
     # a mesma ordem de grama/terra/pedra/deepslate. A luminância média das
     # texturas confere: 216, 161 e 94.
-    "moon_regolith_light": block("moon_regolith_light", "#CAD4EB",
+    "moon_regolith_light": block("moon_regolith_light", "#B0B9CD",
                                  "Poeira de Regolito", "Regolith Dust",
                                  light=GROUND_LIGHT, hardness=1.0),
-    "moon_regolith":       block("moon_regolith", "#99A1B3",
+    "moon_regolith":       block("moon_regolith", "#858C9C",
                                  "Pedra de Regolito", "Regolith Stone",
                                  light=GROUND_LIGHT, hardness=1.4),
-    "moon_regolith_dark":  block("moon_regolith_dark", "#555B6E",
+    "moon_regolith_dark":  block("moon_regolith_dark", "#4A4F60",
                                  "Ardósia de Regolito", "Regolith Slate",
                                  light=GROUND_LIGHT, hardness=1.8),
 
@@ -150,7 +160,18 @@ def main():
                 "*": {
                     "texture": texture_key(short),
                     "render_method": "opaque",
-                    "ambient_occlusion": True,
+                    # A oclusão de ambiente é o que escurece as JUNTAS entre
+                    # blocos. Num chão de um bloco só, ela é o que denuncia cada
+                    # bloco: uma sombrinha em cada quina, e a planície inteira
+                    # vira um quadriculado — foi exatamente a reclamação dele.
+                    #
+                    # Ela fica LIGADA nos blocos dos corpos celestes, que são
+                    # vistos de longe e onde ela dá volume. E DESLIGADA no chão
+                    # da Lua e de Marte, que é onde se anda.
+                    #
+                    # `face_dimming` continua nos dois: é ela que deixa o topo
+                    # mais claro que a lateral, e sem isso o relevo some.
+                    "ambient_occlusion": short not in GROUND_BLOCKS,
                     "face_dimming": True,
                 }
             },

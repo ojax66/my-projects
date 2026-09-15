@@ -13,7 +13,7 @@
         "*": {
           "texture": "space_dim_mars_rock_dark",
           "render_method": "opaque",
-          "ambient_occlusion": true,
+          "ambient_occlusion": false,
           "face_dimming": true
         }
       },
