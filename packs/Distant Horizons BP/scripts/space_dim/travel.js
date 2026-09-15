@@ -1,17 +1,22 @@
 /* =========================================================================
  * Viagens de e pra dimensão do espaço.
  *
- *   Overworld, subindo até Y 800     →  espaço
- *   Lua / Marte, subindo até Y 300   →  espaço
- *   entrar na Terra                  →  Overworld
- *   entrar na Lua                    →  dimensão space_dim:moon
- *   entrar em Marte                  →  dimensão space_dim:mars
+ *   Overworld / Lua / Marte, subindo até Y 800  →  espaço
+ *   entrar na Terra                             →  Overworld
+ *   entrar na Lua                               →  dimensão space_dim:moon
+ *   entrar em Marte                             →  dimensão space_dim:mars
  *
  * A subida vale nos três mundos que têm corpo correspondente lá em cima, e o
- * jogador chega ao lado do corpo de onde saiu. A altitude NÃO é a mesma nos
- * três: o teto de uma dimensão custom é 320, então na Lua e em Marte subir a
- * 800 seria impossível e o jogador ficaria preso lá. Cada portal diz a sua, e
- * EXIT_Y_BY_DIM junta todas num mapa só — é o que o laço por tick consulta.
+ * jogador chega ao lado do corpo de onde saiu. A altitude é a mesma nos três.
+ *
+ * Ela já foi 300 na Lua e em Marte, por um motivo que deixou de existir: o teto
+ * de uma dimensão custom era 320, e 800 lá seria uma porta que nunca abre. O
+ * Minecraft passou a deixar o addon escolher os limites verticais, então os
+ * planetas ganharam teto de 1024 e a regra voltou a ser uma só.
+ *
+ * EXIT_Y_BY_DIM continua: ela responde "este mundo tem porta pro espaço?" com
+ * uma busca em Map, que é o que essa pergunta pode custar rodando pra todo
+ * jogador, todo tick.
  *
  * Levar o veículo junto é a parte frágil: teleportar a entidade pra outra
  * dimensão a perde. Quem cuida disso é vehicle.js, guardando o veículo numa
@@ -51,14 +56,15 @@ export function inSpace(player) {
 }
 
 // ---------------------------------------------------------------------------
-// A altitude que devolve pro espaço, por dimensão
+// Que mundos têm porta pro espaço, e a que altitude
 //
-// O Overworld usa SPACE_ENTRY_Y (800), a mesma altitude em que o foguete do
-// Spacecraft troca de dimensão. A Lua e Marte usam PLANET_EXIT_Y (300), porque
-// o teto de uma dimensão custom é 320 — 800 lá seria uma porta que não abre.
+// 800 nos três, que é a altitude em que o foguete do Spacecraft troca de
+// dimensão no lançamento. O mapa guarda a altitude em vez de um simples "tem
+// porta" porque ela é por dimensão no formato, mesmo estando igual nos três
+// hoje: a hora que um corpo novo entrar com outra altitude, nada aqui muda.
 //
-// O mapa é montado uma vez, na carga: o laço por tick consulta ele pra TODO
-// jogador, TODO tick, e uma busca em Map é o que isso pode custar.
+// Montado uma vez, na carga. O laço por tick consulta ele pra TODO jogador,
+// TODO tick, e uma busca em Map é o que isso pode custar.
 // ---------------------------------------------------------------------------
 const EXIT_Y_BY_DIM = new Map();
 for (let i = 0; i < BODIES.length; i++) {

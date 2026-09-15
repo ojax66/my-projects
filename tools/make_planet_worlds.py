@@ -58,6 +58,26 @@ def strip_colors(text):
     return re.sub(r"§.", "", text)
 
 
+def read_bounds(src):
+    """PLANET_BOUNDS: os limites verticais das duas dimensões.
+
+    Eles moram no script porque o gerador de terreno usa os mesmos números pra
+    limitar a altura — escrever o teto no JSON e no script separado é como o
+    relevo acaba passando do teto sem nada avisar.
+    """
+    m = re.search(r"PLANET_BOUNDS = \{ min: (-?\d+), max: (-?\d+) \};", src)
+    if not m:
+        raise SystemExit("planets.js sem PLANET_BOUNDS")
+    return {"min": int(m.group(1)), "max": int(m.group(2))}
+
+
+def read_exit_y(src):
+    m = re.search(r"^export const PLANET_EXIT_Y = (\d+);", src, re.M)
+    if not m:
+        raise SystemExit("planets.js sem PLANET_EXIT_Y")
+    return int(m.group(1))
+
+
 def read_planets():
     src = open(PLANETS_JS, encoding="utf-8").read()
     out = []
@@ -115,6 +135,14 @@ def write(path, doc):
 
 
 def main():
+    src = open(PLANETS_JS, encoding="utf-8").read()
+    bounds = read_bounds(src)
+    exit_y = read_exit_y(src)
+    if exit_y >= bounds["max"]:
+        raise SystemExit(
+            "PLANET_EXIT_Y (%d) nao cabe embaixo do teto (%d): a porta de volta "
+            "pro espaco nunca abriria" % (exit_y, bounds["max"]))
+
     planets = read_planets()
     written = 0
 
@@ -125,9 +153,10 @@ def main():
             "minecraft:dimension": {
                 "description": {"identifier": p["dimensionId"]},
                 "components": {
-                    # Mesmos limites do espaço: é o teto do motor, e a altitude
-                    # de saída (PLANET_EXIT_Y = 300) tem que caber embaixo dele.
-                    "minecraft:dimension_bounds": {"min": -64, "max": 320},
+                    # Os limites saem de PLANET_BOUNDS, no script. O teto tem
+                    # que ficar acima de PLANET_EXIT_Y, senão a porta de volta
+                    # pro espaço não abre — conferido lá em cima.
+                    "minecraft:dimension_bounds": bounds,
                     # O relevo é escrito por script (planetTerrain.js); o motor
                     # só precisa entregar a dimensão vazia.
                     "minecraft:generation": {"generator_type": "void"},
@@ -181,7 +210,8 @@ def main():
         if os.path.isfile(path):
             replace_section(path, MARK, lines)
 
-    print("%d arquivo(s) de mundo gerados:" % written)
+    print("%d arquivo(s) de mundo gerados (y %d..%d, saida a %d):"
+          % (written, bounds["min"], bounds["max"], exit_y))
     for p in planets:
         print("  %-5s %s  %d bioma(s): %s"
               % (p["id"], p["dimensionId"], len(p["biomes"]),

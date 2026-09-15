@@ -41,11 +41,33 @@
  * paredão de um bloco de largura.
  * ========================================================================= */
 
-// Altitude que devolve pro espaço. Não são os 800 do Overworld: o teto de uma
-// dimensão custom é 320, então 800 seria inalcançável e o jogador ficaria preso
-// no planeta. 300 fica logo abaixo do teto e bem acima do pico mais alto que o
-// gerador produz (o vulcão de Tharsis chega a ~190).
-export const PLANET_EXIT_Y = 300;
+// Altitude que devolve pro espaço — a MESMA do Overworld, de propósito.
+//
+// Ela já foi 300, e por um motivo que deixou de existir: o teto de uma dimensão
+// custom era 320, então 800 aqui seria uma porta que nunca abre e o jogador
+// ficaria preso no planeta. O Minecraft passou a deixar o addon escolher os
+// limites verticais, então o número volta a ser um só pro jogo inteiro: sobe a
+// 800, de onde for, e você está no espaço.
+//
+// `tools/tests/test_planets.mjs` confere que ele é igual a SPACE_ENTRY_Y — duas
+// constantes com o mesmo valor combinado é exatamente o tipo de coisa que
+// escorrega sozinha depois.
+export const PLANET_EXIT_Y = 800;
+
+// Limites verticais das duas dimensões, agora que o motor deixa escolher.
+//
+// O teto tem que ficar ACIMA de PLANET_EXIT_Y, senão a porta de volta não abre.
+// O piso é fundo porque o relevo usa: o cânion de Marte desce muito abaixo do
+// nível médio, e é ele que pede espaço — não a crosta, que tem sempre a mesma
+// espessura e desce junto com a superfície.
+//
+// Isso NÃO custa geração: uma coluna escreve `crust` blocos, onde quer que a
+// superfície esteja. Teto alto é espaço pra construir; piso fundo é espaço pro
+// relevo cair.
+// Medido no gerador: o ponto mais alto é um vulcão a 274 e o fundo do cânion
+// mais fundo é -70, com a bedrock dele a -100. O teto a 1024 é céu pra
+// construir; o piso a -128 é folga embaixo do mais fundo que o relevo alcança.
+export const PLANET_BOUNDS = { min: -128, max: 1024 };
 
 // Quanto a chegada se espalha, pra dois jogadores não pousarem no mesmo bloco.
 export const PLANET_LANDING_JITTER = 24;
@@ -255,11 +277,23 @@ const MARS = {
     { cell: 96, chance: 0.45, rMin: 12, rMax: 26, depth: 0.18, rim: 0.035 },
   ],
 
-  // Vulcões-escudo. A grade é enorme porque eles são raros e gigantes.
-  volcanoes: { cell: 620, chance: 0.5, rMin: 110, rMax: 190, hMin: 45, hMax: 85 },
+  // Vulcões-escudo. Raros e gigantes: a grade é enorme e o sorteio é baixo, o
+  // que dá um deles a cada ~1900 blocos em média — encontrar um é um evento.
+  //
+  // O tamanho é onde o teto antigo apertava. O Olympus Mons tem 22 km de altura
+  // e 600 km de base: a encosta média é de 5 graus. Na escala de um mundo de
+  // Minecraft não dá pra ter as duas coisas — alto E manso —, mas com o teto
+  // livre dá pra chegar perto: com raio 200-340 e altura 100-190, a encosta
+  // mais íngreme fica em torno de 36 graus, que é montanha de subir andando, e
+  // o pico passa dos 250 de altitude.
+  volcanoes: { cell: 900, chance: 0.22, rMin: 200, rMax: 340, hMin: 100, hMax: 190 },
 
   // O cânion: onde o ruído de rift passa perto de zero, o chão despenca.
-  canyon: { width: 0.048, depth: 62, floor: 6 },
+  //
+  // 120 blocos, contra os 62 de antes. O Valles Marineris tem 7 km de
+  // profundidade — o traço mais fundo do planeta — e ele estava raso porque o
+  // piso da dimensão era -64 e não havia pra onde descer. Agora há.
+  canyon: { width: 0.048, depth: 120, floor: 6 },
 
   // Dunas: cristas paralelas, como as de Nili Patera.
   dunes: { period: 26, amp: 4.5, angle: 0.55 },

@@ -1372,12 +1372,31 @@ if planets_src and len(PLANET_SRC) != 2:
     err(f"planets.js: li {len(PLANET_SRC)} planeta(s), esperado 2 (Lua e Marte)")
 
 # A altitude que devolve pro espaço tem que caber DENTRO da dimensão. Se ela
-# passar do teto, a porta de volta não abre nunca e o jogador fica preso lá —
-# foi por isso que ela não são os 800 do Overworld.
+# passar do teto, a porta de volta não abre nunca e o jogador fica preso lá.
 m = re.search(r"^export const PLANET_EXIT_Y = ([0-9]+);", planets_src, re.M)
 planet_exit_y = int(m.group(1)) if m else None
 if planets_src and planet_exit_y is None:
     err("planets.js sem PLANET_EXIT_Y — é a altitude que devolve pro espaço")
+
+# E ela é a MESMA do Overworld, de propósito: uma regra só pro jogo inteiro.
+# Duas constantes com o mesmo valor combinado escorregam sozinhas depois.
+space_entry_y = config_number("SPACE_ENTRY_Y")
+if planet_exit_y is not None and space_entry_y is not None:
+    if planet_exit_y != int(space_entry_y):
+        err(f"PLANET_EXIT_Y ({planet_exit_y}) diferente de SPACE_ENTRY_Y "
+            f"({int(space_entry_y)}) — a altitude de saida e uma so: subir a ela "
+            f"leva pro espaco de onde for")
+
+# Os limites verticais das duas dimensões moram no script (PLANET_BOUNDS),
+# porque o gerador de terreno usa os MESMOS números pra limitar a altura.
+# Escrever o teto no JSON e no script em separado é como o relevo acaba passando
+# do teto sem nada avisar.
+m = re.search(r"PLANET_BOUNDS = \{ min: (-?\d+), max: (-?\d+) \};", planets_src)
+planet_bounds = {"min": int(m.group(1)), "max": int(m.group(2))} if m else None
+if planets_src and planet_bounds is None:
+    err("planets.js sem PLANET_BOUNDS — são os limites verticais dos planetas")
+elif planet_bounds and planet_bounds["min"] >= planet_bounds["max"]:
+    err(f"PLANET_BOUNDS invertido: min {planet_bounds['min']} >= max {planet_bounds['max']}")
 
 # Os ids de bloco que o terreno usa têm que existir de verdade.
 def block_exists(bid):
@@ -1463,6 +1482,13 @@ for pid, src in PLANET_SRC.items():
             err(f"PLANET_EXIT_Y ({planet_exit_y}) nao cabe embaixo do teto de {pid} "
                 f"({top}) — a porta de volta pro espaco nunca abriria e o jogador "
                 f"ficaria preso la")
+        if planet_bounds and (bounds.get("min") != planet_bounds["min"]
+                              or bounds.get("max") != planet_bounds["max"]):
+            err(f"os limites de {pid} no JSON sao {bounds.get('min')}..{bounds.get('max')} "
+                f"e PLANET_BOUNDS pede {planet_bounds['min']}..{planet_bounds['max']} — "
+                f"rode tools/make_planet_worlds.py. O gerador de terreno corta a "
+                f"altura pelo PLANET_BOUNDS, entao um teto menor no JSON deixaria "
+                f"relevo do lado de fora da dimensao")
 
     # 2. Cada bioma tem os DOIS arquivos, e a névoa que ele pede existe.
     biomes = re.findall(

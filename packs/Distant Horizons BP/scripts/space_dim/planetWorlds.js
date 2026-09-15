@@ -27,14 +27,10 @@ import {
   PLANET_EFFECT_SECONDS,
   PLANET_LANDING_JITTER,
   PLANET_SPOT_SEARCH_CHUNKS,
+  PLANET_BOUNDS,
   planetOfDimension,
 } from "./planets.js";
-import {
-  GEN_RADIUS_CHUNKS,
-  CHUNKS_PER_TICK,
-  DIM_MIN_Y,
-  DIM_MAX_Y,
-} from "./config.js";
+import { GEN_RADIUS_CHUNKS, CHUNKS_PER_TICK } from "./config.js";
 import { makePlanetGenerator, terrainAt, heightAt } from "./planetTerrain.js";
 import { isBudgetError } from "./budget.js";
 import { applyLifeSupport } from "./lifeSupport.js";
@@ -92,7 +88,9 @@ function generatorFor(planet) {
     genRadiusChunks: GEN_RADIUS_CHUNKS,
     chunksPerTick: CHUNKS_PER_TICK,
     registerDimension: true,
-    heightRangeFallback: { min: DIM_MIN_Y, max: DIM_MAX_Y },
+    // Os limites DO PLANETA, não os do espaço: são dimensões diferentes, e o
+    // planeta tem teto e piso próprios (PLANET_BOUNDS).
+    heightRangeFallback: { min: PLANET_BOUNDS.min, max: PLANET_BOUNDS.max },
     onError: (ctx, err) => onError(planet.id + "/" + ctx, err),
   });
   generators.set(planet.dimensionId, gen);
@@ -152,7 +150,7 @@ export async function findPlanetSpot(player, planet) {
       target.x,
       target.z,
       // Qualquer coluna de superfície serve: o gerador nunca deixa buraco.
-      (_x, _z, h) => h > DIM_MIN_Y,
+      (_x, _z, h) => h > PLANET_BOUNDS.min,
       { searchRadiusChunks: PLANET_SPOT_SEARCH_CHUNKS },
     );
   } catch (e) {

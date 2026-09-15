@@ -32,13 +32,11 @@ e o OVNI só existe com o Vehicles ativo.
 
 ## Como chegar
 
-**Subindo — a Y 800 no Overworld, a Y 300 na Lua e em Marte.** No Overworld é a
-mesma altitude em que o Spacecraft troca o foguete de dimensão durante o
-lançamento (`launch.js`, `yPos > 800`). Na Lua e em Marte é 300, porque o teto
-de uma dimensão custom é 320 — 800 lá seria uma porta que nunca abre, e o
-jogador ficaria preso no planeta. Quem sobe do Overworld chega ao lado da Terra,
-quem sobe da Lua chega ao lado da Lua, quem sobe de Marte chega ao lado de
-Marte. Vale de OVNI, de elytra ou voando no criativo.
+**Subindo até Y 800 — no Overworld, na Lua ou em Marte.** É a mesma altitude em
+que o Spacecraft troca o foguete de dimensão durante o lançamento (`launch.js`,
+`yPos > 800`), e vale igual nos três mundos. Quem sobe do Overworld chega ao
+lado da Terra, quem sobe da Lua chega ao lado da Lua, quem sobe de Marte chega
+ao lado de Marte. Vale de OVNI, de elytra ou voando no criativo.
 
 **De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
@@ -73,6 +71,12 @@ paredão nenhum em fronteira de bioma — o que muda de um pro outro é a espess
 das camadas, a força das crateras, o gelo e a névoa, tudo por média ponderada de
 pesos que variam suavemente.
 
+Limites verticais: **−128 a 1024**. O Minecraft passou a deixar o addon
+escolher, então o teto está bem acima da altitude de saída (800) e o piso bem
+abaixo do fundo do cânion mais fundo (−70, com a bedrock dele em −100). Piso
+fundo não custa geração nenhuma: uma coluna escreve sempre os mesmos 30 blocos
+de crosta, onde quer que a superfície esteja.
+
 ### As camadas
 
 Em todo lugar, de cima pra baixo, na mesma ordem:
@@ -106,8 +110,8 @@ anos.
 |---|---|
 | **Planície Boreal** | as terras baixas do norte (Vastitas Borealis), lisas e empoeiradas |
 | **Terras Altas do Sul** | o planalto antigo e cratejado do outro lado da dicotomia |
-| **Valles Marineris** | cânions de parede íngreme e fundo chato, até 62 blocos abaixo do terreno |
-| **Planalto de Tharsis** | vulcões-escudo: altos e de encosta mansa, com caldeira no cume |
+| **Valles Marineris** | cânions de parede íngreme e fundo chato, 120 blocos abaixo do terreno — o fundo chega a y −70 |
+| **Planalto de Tharsis** | vulcões-escudo de 400 a 680 blocos de base e até 190 de altura, com caldeira no cume. O pico mais alto medido: y 274 |
 | **Campo de Dunas** | cristas paralelas de areia, como as de Nili Patera |
 | **Calota Polar** | capa de gelo por cima de tudo, na latitude polar |
 

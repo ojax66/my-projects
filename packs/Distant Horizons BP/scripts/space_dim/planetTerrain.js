@@ -17,8 +17,7 @@
  * ========================================================================= */
 
 import { fbm, valueNoise, hash2 } from "./world_generator_API.js";
-import { DIM_MIN_Y, DIM_MAX_Y } from "./config.js";
-import { NOISE, POLE_Z, POLE_FADE } from "./planets.js";
+import { NOISE, POLE_Z, POLE_FADE, PLANET_BOUNDS } from "./planets.js";
 import { takeBudget, BudgetExhausted, makeChunkCursor, writeRun } from "./budget.js";
 
 // ---------------------------------------------------------------------------
@@ -149,8 +148,15 @@ function craterDepthOnly(x, z, specs, scale) {
 // Vulcões-escudo (Marte)
 //
 // O Olympus Mons tem 22 km de altura e 600 km de base: a encosta média é de 5
-// graus, uma rampa que dá pra subir andando. Um cone comum (potência 1) fica
-// íngreme demais; potência 1,7 dá a barriga larga e o topo achatado do escudo.
+// graus, uma rampa que dá pra subir andando.
+//
+// O perfil é (1 - t²)^1.7, e não (1 - t)^1.7 como era antes. A diferença está
+// nas duas pontas, e ela é o que separa um escudo de um cone: com (1 - t) a
+// encosta é MAIS ÍNGREME no cume, que é o contrário de um vulcão-escudo. Com
+// (1 - t²) a derivada é zero no centro (cume achatado, como o Olympus) e zero
+// na borda (a base funde com a planície em vez de terminar num degrau), e o
+// máximo fica no meio da encosta — que é onde ele fica de verdade.
+//
 // E no alto, a caldeira: um buraco no cume, que é o que faz um vulcão parecer
 // um vulcão e não um morro.
 // ---------------------------------------------------------------------------
@@ -178,7 +184,8 @@ function volcanoField(x, z, spec) {
       const d = Math.sqrt((x - px) * (x - px) + (z - pz) * (z - pz));
       if (d >= R) continue;
 
-      up += H * Math.pow(1 - d / R, 1.7);
+      const t = d / R;
+      up += H * Math.pow(1 - t * t, 1.7);
       if (d < R * CALDERA_R) {
         up -= H * CALDERA_DEPTH * (1 - d / (R * CALDERA_R));
       }
@@ -211,11 +218,19 @@ function moonWeights(f) {
   ];
 }
 
-function marsWeights(f, canyon) {
+function marsWeights(f, canyon, volcW) {
   let rest = 1;
   const wPolar = f.polar; rest -= wPolar;
   const wValles = canyon * rest; rest -= wValles;
-  const wTharsis = sstep(0.64, 0.78, f.rough) * rest; rest -= wTharsis;
+  // Tharsis é o ruído de vulcanismo OU um vulcão de verdade embaixo dos pés.
+  //
+  // O `ou` importa: o vulcão passou a ter raio de até 340, mais do que meio
+  // comprimento de onda do campo de aspereza. Cortá-lo por esse campo deixaria
+  // metade do vulcão rotulada como outro bioma — e, pior, se a altura também
+  // fosse cortada por ele, o vulcão sairia torto. Agora o vulcão é desenhado
+  // inteiro e o bioma vem atrás dele. `max` de duas funções contínuas continua
+  // contínua, então a soma dos pesos não escorrega.
+  const wTharsis = Math.max(sstep(0.64, 0.78, f.rough), volcW) * rest; rest -= wTharsis;
   const wDunes = sstep(0.56, 0.68, f.region) * rest; rest -= wDunes;
   // Dicotomia: o norte é a planície boreal, o sul são as terras altas.
   const north = 1 - sstep(-1400, -200, f.z);
@@ -235,7 +250,12 @@ export function terrainAt(planet, x, z) {
   f.z = z;
 
   const canyon = planet.canyon ? riftMask(x, z, 1400, planet.canyon.width) : 0;
-  const w = planet.id === "moon" ? moonWeights(f) : marsWeights(f, canyon);
+
+  // O vulcão é calculado ANTES dos pesos, porque é ele que decide Tharsis.
+  const volc = planet.volcanoes ? volcanoField(x, z, planet.volcanoes) : 0;
+  const volcW = volc > 0 ? sstep(0, 12, volc) : 0;
+
+  const w = planet.id === "moon" ? moonWeights(f) : marsWeights(f, canyon, volcW);
 
   // --- a altura ------------------------------------------------------------
   let h = planet.baseY
@@ -261,12 +281,9 @@ export function terrainAt(planet, x, z) {
   }
   h += crater * craterScale;
 
-  // Vulcões: só onde o campo de vulcanismo está ligado, e proporcional a ele —
-  // um vulcão cortado no meio por uma fronteira seria um degrau.
-  if (planet.volcanoes) {
-    const thar = sstep(0.64, 0.78, f.rough);
-    if (thar > 0) h += volcanoField(x, z, planet.volcanoes) * thar;
-  }
+  // O vulcão inteiro, sem gate nenhum: quem o corta é que teria que virar
+  // degrau. Ele não segue Tharsis — ele DEFINE Tharsis (ver marsWeights).
+  h += volc;
 
   // O cânion: parede íngreme, fundo chato. A potência 0.35 é o que faz a parede
   // — a queda quase toda acontece nos primeiros metros a partir da borda.
@@ -293,7 +310,9 @@ export function terrainAt(planet, x, z) {
     }
   }
 
-  h = Math.round(clamp(h, DIM_MIN_Y + planet.crust + 2, DIM_MAX_Y - 8));
+  // Os limites da dimensão, com folga pra a crosta caber embaixo da superfície
+  // e pra sobrar céu em cima.
+  h = Math.round(clamp(h, PLANET_BOUNDS.min + planet.crust + 2, PLANET_BOUNDS.max - 8));
 
   // --- o bioma dominante ---------------------------------------------------
   let best = 0;
@@ -388,7 +407,7 @@ export function makePlanetGenerator(planet) {
 
   function generateColumn(dim, x, z) {
     const state = cursor.stateOf(x, z);
-    if (state === "done") return DIM_MIN_Y;
+    if (state === "done") return PLANET_BOUNDS.min;
     // Alguma coluna ANTES desta falhou nesta passada: o cursor só anda em
     // ordem, senão a chunk nunca terminaria de verdade.
     if (state === "ahead") throw BudgetExhausted;
@@ -399,7 +418,7 @@ export function makePlanetGenerator(planet) {
     for (let i = 0; i < runs.length; i++) blocks += runs[i].y1 - runs[i].y0 + 1;
     if (!takeBudget(blocks)) throw BudgetExhausted;
 
-    let top = DIM_MIN_Y;
+    let top = PLANET_BOUNDS.min;
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
       writeRun(dim, x, z, r.y0, r.y1, r.id);

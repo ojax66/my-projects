@@ -8,9 +8,10 @@
  *   - um bioma que o ruído nunca escolhe, e que portanto não existe;
  *   - uma chunk cara demais, que trava o celular na hora de gerar.
  */
-import { PLANETS, planetOfDimension, planetOfBody } from './space_dim/planets.js';
+import { PLANETS, planetOfDimension, planetOfBody, PLANET_BOUNDS, PLANET_EXIT_Y }
+  from './space_dim/planets.js';
 import { terrainAt, columnRunsAt, heightAt, biomeAt } from './space_dim/planetTerrain.js';
-import { BODIES, BLOCK_BUDGET_PER_TICK, GEN_RADIUS_CHUNKS, DIM_MIN_Y, DIM_MAX_Y }
+import { BODIES, BLOCK_BUDGET_PER_TICK, GEN_RADIUS_CHUNKS, SPACE_ENTRY_Y }
   from './space_dim/config.js';
 
 let failures = 0;
@@ -38,7 +39,7 @@ for (const planet of PLANETS) {
           if (runs[i].y0 <= runs[i - 1].y1) sobrepostos++;
         }
         if (runs[runs.length - 1].y1 !== h) topoErrado++;
-        if (runs[0].y0 < DIM_MIN_Y || h > DIM_MAX_Y) foraDosLimites++;
+        if (runs[0].y0 < PLANET_BOUNDS.min || h > PLANET_BOUNDS.max) foraDosLimites++;
         n++;
       }
     }
@@ -78,32 +79,53 @@ for (const planet of PLANETS) {
     check(`  com bedrock no fundo`, semFundo === 0, `(${semFundo})`);
   }
 
-  // --- 3. Sem paredão nas fronteiras de bioma --------------------------------
+  // --- 3. Onde o terreno tem direito de ser íngreme --------------------------
   //
-  // É por isso que o relevo é uma função contínua e o bioma é só um rótulo
-  // dela. Se alguém voltar a escolher o bioma primeiro e dar a cada um a sua
-  // conta de altura, este teste cai na hora.
+  // O relevo é uma função contínua e o bioma é só um rótulo dela — é isso que
+  // impede o paredão de um bloco de largura em toda fronteira. Mas "contínuo"
+  // não quer dizer "manso": a parede do Valles Marineris é um penhasco, e tem
+  // que ser. Então o teste separa as duas coisas:
+  //
+  //   1. fora do cânion, nada passa de SUAVE;
+  //   2. no cânion pode, mas ainda dentro de um teto — um degrau de 40 blocos
+  //      seria a geometria tendo explodido, não um penhasco;
+  //   3. atravessar fronteira de BIOMA não é diferente do resto, que é o que
+  //      cai na hora se alguém voltar a dar a cada bioma a sua conta de altura.
   {
-    const LIMITE = 8;   // blocos de degrau entre colunas vizinhas
+    const SUAVE = 6;
+    const TETO = 20;
+    const vallesIdx = planet.biomes.findIndex((b) => b.id === 'valles');
+
     let pior = 0, ondePior = null, trocas = 0, piorNaTroca = 0;
-    for (let x = -2500; x <= 2500; x += 1) {
-      const a = terrainAt(planet, x, 0);
-      const b = terrainAt(planet, x + 1, 0);
+    let abruptosForaDoCanion = 0, piorFora = 0, ondeFora = null;
+
+    const olha = (ax, az, bx, bz, onde) => {
+      const a = terrainAt(planet, ax, az);
+      const b = terrainAt(planet, bx, bz);
       const d = Math.abs(a.height - b.height);
-      if (d > pior) { pior = d; ondePior = `x=${x}`; }
+      if (d > pior) { pior = d; ondePior = onde; }
       if (a.biome.id !== b.biome.id) { trocas++; if (d > piorNaTroca) piorNaTroca = d; }
-    }
-    for (let z = -3200; z <= 3200; z += 1) {
-      const a = terrainAt(planet, 0, z);
-      const b = terrainAt(planet, 0, z + 1);
-      const d = Math.abs(a.height - b.height);
-      if (d > pior) { pior = d; ondePior = `z=${z}`; }
-      if (a.biome.id !== b.biome.id) { trocas++; if (d > piorNaTroca) piorNaTroca = d; }
-    }
-    check(`  nenhum degrau maior que ${LIMITE} blocos entre colunas vizinhas`,
-          pior <= LIMITE, `(pior: ${pior} em ${ondePior})`);
-    check(`  e atravessar fronteira de bioma não é diferente do resto`,
-          trocas > 0 && piorNaTroca <= LIMITE,
+      if (d > SUAVE) {
+        const noCanion = vallesIdx >= 0
+          && (a.weights[vallesIdx] > 0 || b.weights[vallesIdx] > 0);
+        if (!noCanion) {
+          abruptosForaDoCanion++;
+          if (d > piorFora) { piorFora = d; ondeFora = onde; }
+        }
+      }
+    };
+
+    for (let x = -4000; x <= 4000; x += 1) olha(x, 0, x + 1, 0, `x=${x}`);
+    for (let z = -4000; z <= 4000; z += 1) olha(0, z, 0, z + 1, `z=${z}`);
+    for (let x = -2000; x <= 2000; x += 3) olha(x, 777, x + 1, 777, `x=${x},z=777`);
+
+    check(`  fora do cânion, nenhum degrau passa de ${SUAVE} blocos`,
+          abruptosForaDoCanion === 0,
+          `(${abruptosForaDoCanion} casos, pior ${piorFora} em ${ondeFora})`);
+    check(`  e nem o cânion passa de ${TETO}`, pior <= TETO,
+          `(pior: ${pior} em ${ondePior})`);
+    check(`  atravessar fronteira de bioma não é diferente do resto`,
+          trocas > 0 && piorNaTroca <= SUAVE,
           `(${trocas} fronteiras, pior degrau nelas: ${piorNaTroca})`);
   }
 
@@ -194,6 +216,33 @@ for (const planet of PLANETS) {
     check(`  planetOfBody também`, planetOfBody(planet.bodyId) === planet);
   }
   check('dimensão desconhecida não vira planeta', planetOfDimension('minecraft:overworld') === null);
+
+  // A altitude de saída é UMA só pro jogo inteiro. Ela já foi 300 aqui, porque
+  // o teto de uma dimensão custom era 320 e 800 seria uma porta que nunca abre;
+  // o Minecraft passou a deixar o addon escolher os limites, e o número voltou
+  // a ser o mesmo. Duas constantes com o mesmo valor combinado escorregam
+  // sozinhas depois — por isso está escrito aqui.
+  check('a altitude de saída dos planetas é a mesma do Overworld',
+        PLANET_EXIT_Y === SPACE_ENTRY_Y, `(${PLANET_EXIT_Y} vs ${SPACE_ENTRY_Y})`);
+  check('  e ela cabe embaixo do teto dos planetas',
+        PLANET_EXIT_Y < PLANET_BOUNDS.max,
+        `(saída ${PLANET_EXIT_Y}, teto ${PLANET_BOUNDS.max})`);
+
+  // O relevo tem que CABER nos limites, e com folga — senão um vulcão sorteado
+  // num canto que ninguém testou sai decapitado pelo teto.
+  for (const planet of PLANETS) {
+    let alto = -Infinity, baixo = Infinity;
+    for (let x = -4000; x <= 4000; x += 23) {
+      for (let z = -4000; z <= 4000; z += 29) {
+        const runs = columnRunsAt(planet, x, z);
+        alto = Math.max(alto, runs[runs.length - 1].y1);
+        baixo = Math.min(baixo, runs[0].y0);
+      }
+    }
+    check(`  o relevo de ${planet.id} cabe nos limites da dimensão`,
+          baixo > PLANET_BOUNDS.min && alto < PLANET_BOUNDS.max,
+          `(${baixo}..${alto} dentro de ${PLANET_BOUNDS.min}..${PLANET_BOUNDS.max})`);
+  }
 
   // A dica da bússola tem que reconhecer o portal novo. Ela decidia por
   // `kind === "spacecraft"`, que não existe mais: sem isto o jogador chegaria

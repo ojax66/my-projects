@@ -783,14 +783,45 @@ def saida_acima_do_teto(tmp):
     caminho = scripts(tmp, "planets.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace("export const PLANET_EXIT_Y = 300;",
-                      "export const PLANET_EXIT_Y = 800;")
+    src = src.replace("export const PLANET_EXIT_Y = 800;",
+                      "export const PLANET_EXIT_Y = 2000;")
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 
 
 case("altitude de saida acima do teto do planeta", saida_acima_do_teto,
      r"ficaria preso la")
+
+
+def teto_do_json_diferente_do_script(tmp):
+    """O gerador de terreno corta a altura pelo PLANET_BOUNDS. Um teto menor no
+    JSON deixaria relevo do lado de fora da dimensao, e nada avisaria."""
+    caminho = bp(tmp, "dimensions", "mars_surface.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["minecraft:dimension"]["components"]["minecraft:dimension_bounds"]["max"] = 320
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("teto do JSON diferente do PLANET_BOUNDS", teto_do_json_diferente_do_script,
+     r"deixaria relevo do lado de fora")
+
+
+def altitude_de_saida_fora_de_sincronia(tmp):
+    """Duas constantes com o mesmo valor combinado: a hora que uma muda e a
+    outra nao, subir na Lua para de levar pro espaco e ninguem sabe por que."""
+    caminho = scripts(tmp, "planets.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace("export const PLANET_EXIT_Y = 800;",
+                      "export const PLANET_EXIT_Y = 500;")
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("altitude de saida diferente da do Overworld", altitude_de_saida_fora_de_sincronia,
+     r"a altitude de saida e uma so")
 
 
 def camadas_fora_de_ordem(tmp):

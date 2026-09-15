@@ -47,9 +47,9 @@ function makePlayer(dimensionId, loc) {
 
 // --- 1. Subir leva pro espaço, de cada mundo que tem corpo lá em cima -------
 //
-// A altitude NÃO é a mesma nos três. O Overworld usa 800; a Lua e Marte usam
-// 300, porque o teto de uma dimensão custom é 320 e 800 lá seria uma porta que
-// nunca abre — o jogador ficaria preso no planeta.
+// A mesma altitude nos três. Ela já foi 300 na Lua e em Marte, porque o teto de
+// uma dimensão custom era 320; o Minecraft passou a deixar o addon escolher os
+// limites verticais, e a regra voltou a ser uma só.
 {
   const cases = [
     ['minecraft:overworld', 'earth', SPACE_ENTRY_Y],
@@ -72,8 +72,8 @@ function makePlayer(dimensionId, loc) {
           `(${Math.round(p.location.x)}, ${Math.round(p.location.z)} vs alvo ${body.arrival.x}, ${body.arrival.z})`);
   }
 
-  // E o contrário: 800 na Lua não existe (o teto é 320), mas 299 também não
-  // pode abrir a porta — senão construir uma torre alta viraria viagem.
+  // E o contrário: um bloco abaixo da altitude não pode abrir a porta — senão
+  // construir uma torre alta viraria viagem.
   __reset();
   const travel = await loadTravel();
   const p = makePlayer('space_dim:moon', { x: 0, y: PLANET_EXIT_Y - 1, z: 0 });
