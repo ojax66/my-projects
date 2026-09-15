@@ -177,8 +177,13 @@ def main():
             "minecraft:destructible_by_mining": {"seconds_to_destroy": spec["hardness"]},
             "minecraft:destructible_by_explosion": {"explosion_resistance": 15},
             "minecraft:map_color": spec["map_color"],
-            "minecraft:friction": 0.6,
         }
+        # SEM `minecraft:friction`.
+        #
+        # Estava em 0.6 em todos os blocos. Tirar não quer dizer "sem atrito":
+        # quer dizer devolver o valor pro padrão do motor, que é o que ele mediu
+        # como andar mais rápido. Foi ele quem testou em jogo, e é o tipo de
+        # coisa que só se mede andando.
         if spec["light"]:
             components["minecraft:light_emission"] = spec["light"]
         if spec["dampening"] is not None:
