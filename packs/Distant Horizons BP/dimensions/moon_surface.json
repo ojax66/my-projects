@@ -1,0 +1,20 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:dimension": {
+    "description": {
+      "identifier": "space_dim:moon"
+    },
+    "components": {
+      "minecraft:dimension_bounds": {
+        "min": -64,
+        "max": 320
+      },
+      "minecraft:generation": {
+        "generator_type": "void"
+      },
+      "minecraft:default_biome": {
+        "biome": "space_dim:lua_terras_altas"
+      }
+    }
+  }
+}

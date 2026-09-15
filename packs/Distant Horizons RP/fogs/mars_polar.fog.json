@@ -1,0 +1,16 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "space_dim:fog_mars_polar"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 50.0,
+        "fog_end": 180.0,
+        "fog_color": "#D9C3AE",
+        "render_distance_type": "fixed"
+      }
+    }
+  }
+}

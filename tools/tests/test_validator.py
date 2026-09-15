@@ -412,8 +412,9 @@ def scrambled_generators():
                             ignore=shutil.ignore_patterns("__pycache__", "tests"))
         os.makedirs(os.path.join(tmp, "tools", "tests"), exist_ok=True)
         # ordem de proposito trocada, e cada um rodado sozinho
-        for gen in ("make_tracker.py", "make_spacesuit.py",
-                    "make_blocks.py", "make_star_gear.py", "make_tracker.py"):
+        for gen in ("make_tracker.py", "make_planet_worlds.py", "make_spacesuit.py",
+                    "make_blocks.py", "make_star_gear.py", "make_planet_worlds.py",
+                    "make_tracker.py"):
             r = subprocess.run([sys.executable, os.path.join(tmp, "tools", gen)],
                                capture_output=True, text=True)
             if r.returncode != 0:
@@ -727,6 +728,117 @@ case("main.js sem a neblina de dentro", main_sem_neblina_de_dentro,
 
 scrambled_generators()
 
+
+
+# --- as dimensoes de superficie ----------------------------------------------
+def scripts(tmp, name):
+    return bp(tmp, "scripts", "space_dim", name)
+
+
+def bioma_sem_arquivo(tmp):
+    """Um bioma citado no script e sem arquivo no pacote: o jogo nao reclama,
+    so entrega um pedaco de mundo sem nevoa e sem nome."""
+    os.remove(bp(tmp, "biomes", "lua_mar_de_basalto.json"))
+
+
+case("bioma do planeta sem arquivo no BP", bioma_sem_arquivo,
+     r"nao tem BP/biomes")
+
+
+def bioma_sem_cliente(tmp):
+    os.remove(rp(tmp, "biomes", "marte_valles.client_biome.json"))
+
+
+case("bioma do planeta sem bioma de cliente", bioma_sem_cliente,
+     r"sem ceu e sem nevoa")
+
+
+def dois_biomas_de_cliente_iguais(tmp):
+    """O bug de verdade: o ceu do espaco tinha duas cores declaradas em dois
+    arquivos com o mesmo identificador, e qual valia dependia da ordem da
+    pasta."""
+    caminho = rp(tmp, "biomes", "espaco_sideral.client_biome.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    with open(rp(tmp, "biomes", "espaco_sideral_copia.client_biome.json"),
+              "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("dois biomas de cliente com o mesmo id", dois_biomas_de_cliente_iguais,
+     r"o jogo carrega um dos dois")
+
+
+def nevoa_inexistente(tmp):
+    os.remove(rp(tmp, "fogs", "mars_dust.fog.json"))
+
+
+case("bioma pedindo nevoa que nao existe", nevoa_inexistente,
+     r"nao existe em RP/fogs")
+
+
+def saida_acima_do_teto(tmp):
+    """PLANET_EXIT_Y acima do teto da dimensao = porta que nunca abre, e o
+    jogador preso no planeta pra sempre."""
+    caminho = scripts(tmp, "planets.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace("export const PLANET_EXIT_Y = 300;",
+                      "export const PLANET_EXIT_Y = 800;")
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("altitude de saida acima do teto do planeta", saida_acima_do_teto,
+     r"ficaria preso la")
+
+
+def camadas_fora_de_ordem(tmp):
+    """A regra das camadas: a mais clara em cima, a mais escura embaixo. Trocar
+    poeira por ardosia inverte a estratigrafia — e da pra medir na textura."""
+    caminho = scripts(tmp, "planets.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace('dust: "space_dim:moon_regolith_light"',
+                      'dust: "space_dim:moon_regolith_dark"')
+    src = src.replace('deep: "space_dim:moon_regolith_dark"',
+                      'deep: "space_dim:moon_regolith_light"')
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("camadas do planeta fora de ordem de tom", camadas_fora_de_ordem,
+     r"a mais clara vai em cima")
+
+
+def dimensao_com_gerador_do_motor(tmp):
+    """Um gerador do motor por baixo brigaria com planetTerrain.js pela mesma
+    coluna."""
+    caminho = bp(tmp, "dimensions", "moon_surface.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["minecraft:dimension"]["components"]["minecraft:generation"] = {
+        "generator_type": "overworld"
+    }
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("dimensao de planeta com gerador do motor", dimensao_com_gerador_do_motor,
+     r"esperado void")
+
+
+def portal_pra_planeta_inexistente(tmp):
+    caminho = scripts(tmp, "config.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace('dimension: "space_dim:moon"', 'dimension: "space_dim:pluto"')
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("portal apontando pra planeta que nao existe", portal_pra_planeta_inexistente,
+     r"nao e um planeta de planets.js")
 
 print(f"\n{passes} PASS, {fails} FALHOU")
 sys.exit(1 if fails else 0)

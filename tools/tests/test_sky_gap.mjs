@@ -118,18 +118,31 @@ for (const body of BODIES) {
           mat === esperado, `(${mat}, esperado ${esperado})`);
   }
 
-  // Os blocos: emissão baixa, pra a superfície ser visível de perto. Não é pra
-  // serem lâmpadas — o Sol é o único no máximo.
+  // Os blocos: emissão baixa, pra a superfície ser visível de perto no vácuo,
+  // onde não há luz de céu nenhuma. Não é pra serem lâmpadas — o Sol é o único
+  // no máximo.
   const blockLight = (name) => {
     const doc = JSON.parse(fs.readFileSync(
       path.join(BP_DIR, 'blocks', `${name}.json`), 'utf8'));
     return doc['minecraft:block'].components['minecraft:light_emission'] ?? 0;
   };
-  for (const name of ['earth_land', 'moon_regolith', 'mars_dust']) {
+  for (const name of ['earth_land']) {
     const l = blockLight(name);
     check(`${name}: emite luz, mas não é lâmpada`, l > 0 && l < 15, `(${l})`);
   }
   check('o Sol é o único no máximo', blockLight('sun_core') === 15);
+
+  // O CHÃO da Lua e de Marte é a exceção: emissão ZERO.
+  //
+  // Eles agora são o terreno de duas dimensões com céu, dia e noite. Chão que
+  // brilha sozinho tira a sombra dura das crateras e o breu da noite lunar, que
+  // é justamente o que faz a Lua parecer a Lua. E eles não são mais colocados
+  // no espaço (`built: false` nos dois), então a emissão antiga não servia
+  // mais pra nada.
+  for (const name of ['moon_regolith_light', 'moon_regolith', 'moon_regolith_dark',
+                      'mars_dust', 'mars_rock', 'mars_rock_dark', 'mars_ice']) {
+    check(`${name}: não brilha sozinho`, blockLight(name) === 0, `(${blockLight(name)})`);
+  }
 
   // A estrela: o corpo visto de fora do sistema. Sem ela, quem se afasta da
   // borda não veria nada — nem bloco, nem modelo, nem ponto.

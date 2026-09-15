@@ -207,7 +207,7 @@ export function showCompass(player, warning) {
   // Encostando em algum corpo: a dica do que ele faz vale mais que a bússola.
   const touching = entries[0];
   if (touching && touching.dist <= touching.body.radius + PORTAL_MARGIN + 6) {
-    const hint = hintFor(touching.body);
+    const hint = compassHintFor(touching.body);
     if (hint) {
       write(player, channel, [hint]);
       return;
@@ -244,13 +244,19 @@ function soloInSpace(player) {
   }
 }
 
-function hintFor(body) {
+/**
+ * A dica que a bússola dá quando o corpo está ao alcance. Exportada pros
+ * testes: ela decidia por um `kind` de portal que deixou de existir quando a
+ * Lua e Marte viraram dimensões nossas, e nada denunciava — a bússola só
+ * ficava calada na hora de pousar.
+ */
+export function compassHintFor(body) {
   // O corpo do rastreador é uma vista simplificada; o portal está no BODIES.
   const full = BODIES.find((b) => b.id === body.id);
   // O Sol tem aviso próprio, vindo do campo de calor — não sobrescreve aqui.
   if (!full?.portal) return null;
   body = full;
   if (body.portal.kind === "overworld") return `${body.name} §7— encoste pra voltar ao Overworld`;
-  if (body.portal.kind === "spacecraft") return `${body.name} §7— encoste pra pousar`;
+  if (body.portal.kind === "planet") return `${body.name} §7— encoste pra pousar`;
   return null;
 }

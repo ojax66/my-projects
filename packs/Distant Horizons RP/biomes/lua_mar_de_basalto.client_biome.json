@@ -1,0 +1,16 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "space_dim:lua_mar_de_basalto"
+    },
+    "components": {
+      "minecraft:fog_appearance": {
+        "fog_identifier": "space_dim:fog_moon"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#000000"
+      }
+    }
+  }
+}

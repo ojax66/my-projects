@@ -2,9 +2,13 @@
 
 Addon de Minecraft Bedrock que adiciona a dimensão do **espaço sideral**: escura,
 cheia de estrelas, sem gravidade, com o Sol, a Terra, a Lua e Marte construídos
-como esferas gigantes. Serve de ponte entre o **Spacecraft (Venzenulon-7)** e o
-**Vehicles 3.0** — entrar na Lua e em Marte leva pros planetas do Spacecraft, e
-dá pra chegar lá de OVNI.
+como esferas gigantes — e, a partir dela, as dimensões de **superfície da Lua e
+de Marte**, com terreno procedural e biomas próprios.
+
+Ele nasceu como ponte entre o **Spacecraft (Venzenulon-7)** e o **Vehicles 3.0**.
+Hoje o chão é dele: entrar na Lua ou em Marte leva pras dimensões deste addon,
+não mais pras do Spacecraft. O que continua do Spacecraft é o equipamento — o
+traje, a mochila de oxigênio e as receitas do traje reforçado.
 
 ```
 tools/build.sh          →  dist/Distant_Horizons.mcaddon
@@ -22,40 +26,106 @@ packs/Distant Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
 4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
    `@minecraft/server` 2.8.0, igual ao Spacecraft.
 
-O addon funciona sozinho, mas a Lua e Marte só têm pra onde levar com o
-Spacecraft ativo, e o OVNI só existe com o Vehicles ativo.
+O addon gera a Lua e Marte por conta própria. O Spacecraft continua valendo a
+pena pelo traje e pela mochila de oxigênio (sem ar não se sobrevive lá em cima),
+e o OVNI só existe com o Vehicles ativo.
 
 ## Como chegar
 
-**Subindo até Y 800 — no Overworld, na Lua ou em Marte.** É a mesma altitude em
-que o Spacecraft troca o foguete de dimensão durante o lançamento (`launch.js`,
-`yPos > 800`, o ponto em que aparece o overview e o jogador vai pra Lua), e ela
-vale igual nos três mundos. Quem sobe do Overworld chega ao lado da Terra, quem
-sobe da Lua chega ao lado da Lua, quem sobe de Marte chega ao lado de Marte.
-Vale de OVNI, de elytra ou voando no criativo.
+**Subindo — a Y 800 no Overworld, a Y 300 na Lua e em Marte.** No Overworld é a
+mesma altitude em que o Spacecraft troca o foguete de dimensão durante o
+lançamento (`launch.js`, `yPos > 800`). Na Lua e em Marte é 300, porque o teto
+de uma dimensão custom é 320 — 800 lá seria uma porta que nunca abre, e o
+jogador ficaria preso no planeta. Quem sobe do Overworld chega ao lado da Terra,
+quem sobe da Lua chega ao lado da Lua, quem sobe de Marte chega ao lado de
+Marte. Vale de OVNI, de elytra ou voando no criativo.
 
 **De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
 dele tem coreografia própria e interromper no meio quebra a viagem.
 
-Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída) e
-`/scriptevent space_dim:info` (mostra o estado da dimensão e da respiração).
+Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída),
+`/scriptevent space_dim:info` (estado da dimensão e da respiração) e
+`/scriptevent space_dim:planeta` (bioma, altura e camadas debaixo dos pés, na
+Lua ou em Marte).
 
 ## O que tem lá
 
 Quatro esferas ocas, geradas conforme o jogador se aproxima. O jogador chega
 entre a Terra e a Lua, com as duas à vista.
 
-| Corpo | Raio | Centro | Entrar nele leva pra | Subir a Y 800 de lá |
+| Corpo | Raio | Centro | Entrar nele leva pra | Subir de lá |
 |---|---|---|---|---|
 | **Sol** | 100 | −520, 128, 120 | atravessável — queima, não teleporta | — |
 | **Terra** | 26 | 0, 128, 0 | Overworld | volta pro espaço |
-| **Lua** | 12 | 0, 128, 190 | `nv_sc:moon` (Lua do Spacecraft) | volta pro espaço |
-| **Marte** | 20 | 520, 128, −120 | `nv_sc:mars` (Marte do Spacecraft) | volta pro espaço |
+| **Lua** | 12 | 0, 128, 190 | `space_dim:moon` (superfície da Lua) | volta pro espaço |
+| **Marte** | 20 | 520, 128, −120 | `space_dim:mars` (superfície de Marte) | volta pro espaço |
 
 O Sol é ~4× a Terra em raio. Na escala real seriam 109×, o que faria a Terra
 sumir; a proporção aqui segue as representações de livro didático, com a Terra
 um pouco maior do que nelas.
+
+## A Lua e Marte: as dimensões de superfície
+
+Cada um tem a sua dimensão, gerada por este addon. O relevo é uma **função
+contínua** de (x, z); o bioma é só um **rótulo** dela. É por isso que não há
+paredão nenhum em fronteira de bioma — o que muda de um pro outro é a espessura
+das camadas, a força das crateras, o gelo e a névoa, tudo por média ponderada de
+pesos que variam suavemente.
+
+### As camadas
+
+Em todo lugar, de cima pra baixo, na mesma ordem:
+
+| | Lua | Marte |
+|---|---|---|
+| em cima, a mais clara | **Poeira de Regolito** | **Poeira de Ferrita** |
+| no meio | **Pedra de Regolito** | **Pedra de Ferrita** |
+| embaixo, a mais escura | **Ardósia de Regolito** | **Ardósia de Ferrita** |
+| no fundo | bedrock, a 30 blocos da superfície | idem |
+
+O validador mede a luminância média das texturas e recusa a ordem invertida.
+
+### Os biomas
+
+**Lua** — sem atmosfera, nenhuma erosão: cratera de 3 bilhões de anos continua
+com a borda afiada, e elas se empilham em três escalas.
+
+| Bioma | O que é |
+|---|---|
+| **Mar de Basalto** | planície de lava que encheu uma bacia: lisa, baixa, poeira fina e a ardósia quase aflorando. Tem rilles — canais de lava colapsada |
+| **Terras Altas** | a crosta antiga: alta, saturada de cratera, poeira funda |
+| **Bacia de Impacto** | o manto de ejeção, com as crateras mais fundas e a poeira mais grossa |
+| **Polo Sombrio** | crateras cujo fundo nunca vê o Sol — e é lá que há gelo, como o que a LCROSS achou |
+
+**Marte** — há atmosfera, fina e cheia de poeira: céu ocre e névoa, que a Lua
+não tem. As crateras são mais rasas, porque lá o vento as enche há bilhões de
+anos.
+
+| Bioma | O que é |
+|---|---|
+| **Planície Boreal** | as terras baixas do norte (Vastitas Borealis), lisas e empoeiradas |
+| **Terras Altas do Sul** | o planalto antigo e cratejado do outro lado da dicotomia |
+| **Valles Marineris** | cânions de parede íngreme e fundo chato, até 62 blocos abaixo do terreno |
+| **Planalto de Tharsis** | vulcões-escudo: altos e de encosta mansa, com caldeira no cume |
+| **Campo de Dunas** | cristas paralelas de areia, como as de Nili Patera |
+| **Calota Polar** | capa de gelo por cima de tudo, na latitude polar |
+
+A **dicotomia** de Marte — o degrau de 3 km entre o norte baixo e o sul alto — é
+a latitude: z negativo é norte e baixo, z positivo é sul e alto.
+
+### O céu
+
+A Lua tem o **mesmo preto do espaço** e nenhuma névoa: sem atmosfera, a
+visibilidade é infinita. Marte tem o céu **ocre** (`#C7A180`, a cor que a
+Curiosity mede) e névoa de poeira, mais fechada nas dunas e na planície boreal,
+mais pálida na calota polar.
+
+### Lá em cima
+
+Vácuo nos dois: **traje completo + mochila de oxigênio**, ou dentro do OVNI.
+Gravidade baixa — na Lua pula alto e cai manso (1/6 g); em Marte pula mais alto
+que na Terra, mas a queda ainda machuca (0,38 g).
 
 ### Os blocos
 

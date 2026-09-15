@@ -16,12 +16,12 @@ tile.space_dim:earth_shallow.name=Shallow Water
 tile.space_dim:earth_land.name=Continent
 tile.space_dim:earth_forest.name=Forest
 tile.space_dim:earth_ice.name=Polar Ice Cap
-tile.space_dim:moon_regolith_light.name=Light Regolith
-tile.space_dim:moon_regolith.name=Lunar Regolith
-tile.space_dim:moon_regolith_dark.name=Dark Regolith
-tile.space_dim:mars_dust.name=Martian Dust
-tile.space_dim:mars_rock.name=Martian Rock
-tile.space_dim:mars_rock_dark.name=Martian Basalt
+tile.space_dim:moon_regolith_light.name=Regolith Dust
+tile.space_dim:moon_regolith.name=Regolith Stone
+tile.space_dim:moon_regolith_dark.name=Regolith Slate
+tile.space_dim:mars_dust.name=Ferrite Dust
+tile.space_dim:mars_rock.name=Ferrite Stone
+tile.space_dim:mars_rock_dark.name=Ferrite Slate
 tile.space_dim:mars_ice.name=Martian Ice
 
 ## rastreador estelar (gerado por tools/make_tracker.py)
@@ -42,3 +42,15 @@ item.space_dim:reinforced_spacesuit_helmet=Reinforced Spacesuit Helmet
 item.space_dim:reinforced_spacesuit_chestplate=Reinforced Spacesuit Chestplate
 item.space_dim:reinforced_spacesuit_leggings=Reinforced Spacesuit Leggings
 item.space_dim:reinforced_spacesuit_boots=Reinforced Spacesuit Boots
+
+## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)
+biome.space_dim.lua_mar_de_basalto.name=Basalt Sea
+biome.space_dim.lua_terras_altas.name=Highlands
+biome.space_dim.lua_bacia_de_impacto.name=Impact Basin
+biome.space_dim.lua_polo_sombrio.name=Shadowed Pole
+biome.space_dim.marte_planicie_boreal.name=Boreal Plain
+biome.space_dim.marte_terras_altas_do_sul.name=Southern Highlands
+biome.space_dim.marte_valles.name=Valles Marineris
+biome.space_dim.marte_tharsis.name=Tharsis Plateau
+biome.space_dim.marte_campo_de_dunas.name=Dune Field
+biome.space_dim.marte_calota_polar.name=Polar Cap

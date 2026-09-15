@@ -34,10 +34,13 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
+import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet } from "./planetWorlds.js";
 import { updateSkyAll, clearModels, clearGlobals, sweepOrphans, describeSky, SWEEP_INTERVAL } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
 import { openTracker } from "./trackerUI.js";
+import { planetOfDimension } from "./planets.js";
+import { terrainAt } from "./planetTerrain.js";
 import {
   spawnAmbience,
   pushFog,
@@ -86,6 +89,11 @@ const generator = createTerrainGenerator({
 
 generator.start();
 
+// E as duas dimensões de superfície: a Lua e Marte, cada uma com o seu gerador
+// de terreno. O orçamento de blocos por tick é o mesmo pros três (budget.js) —
+// o Bedrock roda tudo na mesma thread.
+startPlanetWorlds();
+
 // ---------------------------------------------------------------------------
 // Loop por jogador
 // ---------------------------------------------------------------------------
@@ -130,13 +138,21 @@ system.runInterval(() => {
           releaseZeroGravity(player);
           clearModels(player.id);
         }
+        // Pisando na Lua ou em Marte: névoa do bioma, nome do bioma, vácuo e
+        // gravidade baixa. Devolve false em qualquer outro mundo.
+        if (applyPlanetTick(player)) {
+          // A porta de volta pro espaço existe lá também, só que a 300.
+          checkSpaceEntry(player);
+          continue;
+        }
+
         // Traje reforçado nas dimensões do Spacecraft: sem isto, quem troca o
-        // traje deles pelo melhorado sufoca na Lua (eles procuram as peças
-        // deles pra decidir se o jogador respira).
+        // traje deles pelo melhorado sufoca na Lua deles (eles procuram as
+        // peças deles pra decidir se o jogador respira).
         sustainInSpacecraftWorlds(player);
 
-        // A porta pro espaço existe no Overworld, na Lua e em Marte —
-        // checkSpaceEntry decide, e sai barato onde não existe.
+        // A porta pro espaço existe no Overworld — checkSpaceEntry decide, e
+        // sai barato onde não existe.
         checkSpaceEntry(player);
         // Queda rara de destroços de OVNI, onde o molde é achado.
         maybeDropWreck(player);
@@ -209,6 +225,7 @@ world.beforeEvents.playerLeave.subscribe((event) => {
   wasInSpace.delete(id);
   forgetPhysics(id);
   forgetAmbience(id);
+  forgetPlanet(id);
   clearModels(id);
   // Saiu no meio de uma viagem: apaga a estrutura do veículo, senão ela fica
   // guardada no mundo pra sempre.
@@ -244,6 +261,29 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
   if (data.id === "space_dim:sky") {
     if (player?.typeId !== "minecraft:player") return;
     try { player.sendMessage("§7céu:\n§f" + describeSky(player)); } catch { }
+    return;
+  }
+
+  // /scriptevent space_dim:planeta — bioma e altura debaixo dos pés.
+  // Sem isto, conferir se o terreno da Lua saiu como devia dependeria de andar
+  // até achar alguma coisa estranha.
+  if (data.id === "space_dim:planeta") {
+    if (player?.typeId !== "minecraft:player") return;
+    try {
+      const planet = planetOfDimension(player.dimension.id);
+      if (!planet) {
+        player.sendMessage("§7Você não está na Lua nem em Marte.");
+        return;
+      }
+      const loc = player.location;
+      const t = terrainAt(planet, Math.floor(loc.x), Math.floor(loc.z));
+      player.sendMessage(
+        `§7planeta: §f${planet.name}\n` +
+        `§7bioma: §f${t.biome.name}\n` +
+        `§7superfície: §fy ${t.height}\n` +
+        `§7camadas: §f${t.layers.map((l) => l.id.split(":")[1] + " x" + l.t).join(", ")}`
+      );
+    } catch { }
     return;
   }
 

@@ -193,7 +193,8 @@ export const BODIES = [
     built: false,
     solid: true,
     layers: [{ radius: 12, shell: 4, palette: "moon" }],
-    portal: { kind: "spacecraft", planet: "nv_sc:moon" },
+    // A Lua agora é NOSSA dimensão, não a do Spacecraft. Ver planets.js.
+    portal: { kind: "planet", dimension: "space_dim:moon" },
     // Lua puxa pouco, como na vida real.
     gravity: { reach: 26, strength: 0.012 },
     // Chegada vinda da Lua do Spacecraft: 56 do centro, com a borda do campo
@@ -208,7 +209,7 @@ export const BODIES = [
     built: false,
     solid: true,
     layers: [{ radius: 20, shell: 4, palette: "mars" }],
-    portal: { kind: "spacecraft", planet: "nv_sc:mars" },
+    portal: { kind: "planet", dimension: "space_dim:mars" },
     gravity: { reach: 38, strength: 0.022 },
     // Chegada vinda de Marte do Spacecraft: 76 do centro, com a borda do campo
     // dele em 20 + 38 = 58.
@@ -578,6 +579,10 @@ export const HUD_INTERVAL_TICKS = 10;
 // O Spacecraft roteia cada planeta pra uma dimensão custom (mundos novos) ou
 // pro the_end em coordenadas distantes (mundos antigos, de antes da v2). Estas
 // são as duas rotas; qual usar é decidido em runtime (travel.js).
+// Mantidas por compatibilidade: mundos criados antes da v2 do Spacecraft põem
+// os planetas DELES em cantos distantes do the_end, e gear.js ainda precisa
+// reconhecer esses mundos pra o traje reforçado valer lá. As rotas de viagem
+// deste addon não usam mais nada disso — a Lua e Marte são dimensões nossas.
 export const SPACECRAFT_LEGACY_ORIGINS = {
   "nv_sc:moon": { x: -200000, z: -200000 },
   "nv_sc:mars": { x: 200000, z: 200000 },

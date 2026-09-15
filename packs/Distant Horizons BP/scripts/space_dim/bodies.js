@@ -19,9 +19,13 @@
  * portal dispararia no ar em frente às faces e não dispararia nas quinas.
  * ========================================================================= */
 
-import { system, BlockVolume } from "@minecraft/server";
+import { system } from "@minecraft/server";
 import { valueNoise3D } from "./world_generator_API.js";
-import { BODIES, DIM_MIN_Y, DIM_MAX_Y, BLOCK_BUDGET_PER_TICK } from "./config.js";
+import { BODIES, DIM_MIN_Y, DIM_MAX_Y } from "./config.js";
+import { takeBudget, BudgetExhausted, isBudgetError, makeChunkCursor, writeRun } from "./budget.js";
+
+// Reexportado pra quem já importava daqui (main.js, os testes).
+export { isBudgetError };
 
 const AIR = "minecraft:air";
 
@@ -463,81 +467,12 @@ export function getHeight(x, z) {
 // ---------------------------------------------------------------------------
 // Orçamento por tick e retomada de chunk
 //
-// O gerador do world_generator_API trabalha em chunks inteiras, mas perto do
-// Sol uma chunk sozinha passa de 8 mil blocos — escrever isso num frame trava
-// o jogo. Então o custo é limitado por BLOCO, não por chunk: estourou o teto
-// do tick, a coluna atual joga BudgetExhausted, o gerador não marca a chunk
-// como pronta e tenta de novo depois.
-//
-// Pra a retentativa não recomeçar do zero (e nunca terminar), cada chunk
-// guarda um cursor: o índice da próxima coluna a processar. O gerador percorre
-// as colunas sempre na mesma ordem (x por fora, z por dentro), então o índice
-// é reprodutível e a chunk retoma exatamente de onde parou.
+// Os dois moram em budget.js: o teto de blocos é um só pro jogo inteiro (o
+// Bedrock roda tudo na mesma thread), e cada dimensão tem o seu cursor de
+// chunk, porque a chunk (0,0) daqui não é a mesma chunk (0,0) da Lua.
 // ---------------------------------------------------------------------------
+const cursor = makeChunkCursor();
 
-// Erro de verdade, não Symbol: o gerador entrega o erro pro onError, que o
-// concatena numa string — e interpolar um Symbol lança TypeError. Uma
-// instância só, reaproveitada, porque isso é fluxo normal e acontece dezenas
-// de vezes por tick.
-class BudgetExhaustedError extends Error {
-  constructor() {
-    super("orçamento de blocos do tick esgotado");
-    this.name = "BudgetExhausted";
-    this.isBudgetExhausted = true;
-  }
-}
-const BudgetExhausted = new BudgetExhaustedError();
-
-/** true se o erro veio do teto de blocos por tick (não é falha de verdade). */
-export function isBudgetError(err) {
-  return err?.isBudgetExhausted === true;
-}
-
-let budgetTick = -1;
-let budgetLeft = 0;
-
-function takeBudget(n) {
-  if (system.currentTick !== budgetTick) {
-    budgetTick = system.currentTick;
-    budgetLeft = BLOCK_BUDGET_PER_TICK;
-  }
-  if (budgetLeft <= 0) return false;
-  budgetLeft -= n;
-  return true;
-}
-
-// chunkKey → índice da próxima coluna pendente
-const chunkCursor = new Map();
-const COLUMNS_PER_CHUNK = 256;
-
-function columnIndex(x, z) {
-  // Mesmo laço do gerador: for x { for z { ... } }
-  const lx = ((x % 16) + 16) % 16;
-  const lz = ((z % 16) + 16) % 16;
-  return lx * 16 + lz;
-}
-
-function chunkKeyOf(x, z) {
-  return Math.floor(x / 16) + "," + Math.floor(z / 16);
-}
-
-/**
- * Escreve um trecho contínuo de blocos iguais. Um fillBlocks vale por vários
- * setBlockType: as paletas são de ruído suave, então blocos vizinhos na
- * vertical repetem bastante e os trechos costumam ter vários blocos.
- */
-function writeRun(dim, x, z, y0, y1, id) {
-  if (y1 === y0) {
-    dim.setBlockType({ x, y: y0, z }, id);
-    return;
-  }
-  try {
-    dim.fillBlocks(new BlockVolume({ x, y: y0, z }, { x, y: y1, z }), id);
-  } catch (e) {
-    // fillBlocks indisponível ou recusado: cai no caminho bloco a bloco.
-    for (let y = y0; y <= y1; y++) dim.setBlockType({ x, y, z }, id);
-  }
-}
 
 /**
  * Gera uma coluna. Assinatura exigida pelo world_generator_API: recebe a
@@ -545,25 +480,18 @@ function writeRun(dim, x, z, y0, y1, id) {
  * se a coluna ficou vazia, que é o caso do vácuo).
  */
 export function generateColumn(dim, x, z) {
-  const ckey = chunkKeyOf(x, z);
-  const index = columnIndex(x, z);
-  const cursor = chunkCursor.get(ckey) ?? 0;
+  const state = cursor.stateOf(x, z);
 
   // Coluna já resolvida numa passada anterior desta mesma chunk.
-  if (index < cursor) return DIM_MIN_Y;
+  if (state === "done") return DIM_MIN_Y;
 
   // Coluna adiante do cursor: alguma coluna ANTES desta falhou nesta mesma
   // passada (o orçamento acabou). O cursor só pode andar em ordem, senão uma
   // coluna vazia lá na frente o empurraria por cima das que ficaram pendentes
   // — e a chunk nunca terminaria de verdade.
-  if (index > cursor) throw BudgetExhausted;
+  if (state === "ahead") throw BudgetExhausted;
 
-  // Chegar na última coluna com o cursor em dia significa que as 255
-  // anteriores terminaram: a chunk acabou e o cursor pode sair da memória.
-  const advance = () => {
-    if (index + 1 >= COLUMNS_PER_CHUNK) chunkCursor.delete(ckey);
-    else chunkCursor.set(ckey, index + 1);
-  };
+  const advance = () => cursor.advance(x, z);
 
   const runs = columnRuns(x, z);
 

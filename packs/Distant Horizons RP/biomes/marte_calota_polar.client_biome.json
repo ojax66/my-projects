@@ -1,0 +1,16 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "space_dim:marte_calota_polar"
+    },
+    "components": {
+      "minecraft:fog_appearance": {
+        "fog_identifier": "space_dim:fog_mars_polar"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#C7A180"
+      }
+    }
+  }
+}

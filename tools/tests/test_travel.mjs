@@ -6,7 +6,14 @@
  * cena e não voltava, e que só o Overworld tinha porta pro espaço.
  */
 import { world, system, __reset, __advance, __state } from '@minecraft/server';
-import { BODIES, SPACE_ENTRY_Y, DIMENSION_ID, SPACECRAFT_LEGACY_ORIGINS } from './space_dim/config.js';
+import { BODIES, SPACE_ENTRY_Y, DIMENSION_ID } from './space_dim/config.js';
+import { PLANET_EXIT_Y } from './space_dim/planets.js';
+
+// O pouso num planeta nosso passa por findValidSpot, que é assíncrono: ele
+// gera as chunks em volta do alvo antes de dizer onde dá pra pisar. __advance
+// roda a fila de runTimeout, mas não as microtarefas de uma Promise — então a
+// espera tem que ser de verdade, senão o teste mede o estado de antes.
+const settle = () => new Promise((r) => setTimeout(r, 0));
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -24,6 +31,11 @@ const check = (name, ok, extra = '') => {
 async function loadTravel() {
   const { forgetArrival } = await import('./space_dim/arrival.js');
   forgetArrival('p1');
+  // O orçamento de blocos é um só pro jogo inteiro e não é recarregado aqui.
+  // __reset volta o relógio pra zero, então sem isto o tick 0 deste caso seria
+  // o mesmo tick 0 do anterior — com o orçamento já gasto.
+  const { resetBudget } = await import('./space_dim/budget.js');
+  resetBudget();
   return import(`./space_dim/travel.js?v=${Math.random()}`);
 }
 
@@ -33,17 +45,21 @@ function makePlayer(dimensionId, loc) {
   return world.__addPlayer({ id: 'p1', dimensionId, location: loc });
 }
 
-// --- 1. Subir a Y 800 leva pro espaço, de cada mundo que tem corpo lá -------
+// --- 1. Subir leva pro espaço, de cada mundo que tem corpo lá em cima -------
+//
+// A altitude NÃO é a mesma nos três. O Overworld usa 800; a Lua e Marte usam
+// 300, porque o teto de uma dimensão custom é 320 e 800 lá seria uma porta que
+// nunca abre — o jogador ficaria preso no planeta.
 {
   const cases = [
-    ['minecraft:overworld', 'earth'],
-    ['nv_sc:moon', 'moon'],
-    ['nv_sc:mars', 'mars'],
+    ['minecraft:overworld', 'earth', SPACE_ENTRY_Y],
+    ['space_dim:moon', 'moon', PLANET_EXIT_Y],
+    ['space_dim:mars', 'mars', PLANET_EXIT_Y],
   ];
-  for (const [fromDim, bodyId] of cases) {
+  for (const [fromDim, bodyId, altura] of cases) {
     __reset();
     const travel = await loadTravel();
-    const p = makePlayer(fromDim, { x: 10, y: SPACE_ENTRY_Y + 1, z: 10 });
+    const p = makePlayer(fromDim, { x: 10, y: altura + 1, z: 10 });
     travel.checkSpaceEntry(p);
     __advance(40);
 
@@ -51,10 +67,19 @@ function makePlayer(dimensionId, loc) {
     const arrived = p.dimension.id === DIMENSION_ID;
     const near = arrived &&
       Math.hypot(p.location.x - body.arrival.x, p.location.z - body.arrival.z) <= 8;
-    check(`${fromDim} a Y ${SPACE_ENTRY_Y} leva pro espaço`, arrived, `(foi pra ${p.dimension.id})`);
+    check(`${fromDim} a Y ${altura} leva pro espaço`, arrived, `(foi pra ${p.dimension.id})`);
     check(`  chega ao lado de ${bodyId}`, near,
           `(${Math.round(p.location.x)}, ${Math.round(p.location.z)} vs alvo ${body.arrival.x}, ${body.arrival.z})`);
   }
+
+  // E o contrário: 800 na Lua não existe (o teto é 320), mas 299 também não
+  // pode abrir a porta — senão construir uma torre alta viraria viagem.
+  __reset();
+  const travel = await loadTravel();
+  const p = makePlayer('space_dim:moon', { x: 0, y: PLANET_EXIT_Y - 1, z: 0 });
+  travel.checkSpaceEntry(p);
+  __advance(40);
+  check(`abaixo de ${PLANET_EXIT_Y} na Lua não viaja`, p.dimension.id === 'space_dim:moon');
 }
 
 // --- 2. Abaixo da altitude, nada acontece -----------------------------------
@@ -77,22 +102,21 @@ function makePlayer(dimensionId, loc) {
   check('Nether não tem porta pro espaço', p.dimension.id === 'minecraft:nether');
 }
 
-// --- 4. the_end legado: só sobre a área do planeta --------------------------
+// --- 4. As dimensões do Spacecraft não são mais porta -----------------------
+//
+// A Lua e Marte viraram dimensões NOSSAS. Subir na Lua deles, ou no canto do
+// the_end onde os mundos legados deles põem os planetas, não leva mais a lugar
+// nenhum — e não pode levar, senão o addon continuaria dependendo do outro.
 {
-  __reset();
-  let travel = await loadTravel();
-  const o = SPACECRAFT_LEGACY_ORIGINS['nv_sc:moon'];
-  const onMoon = makePlayer('minecraft:the_end', { x: o.x, y: SPACE_ENTRY_Y + 1, z: o.z });
-  travel.checkSpaceEntry(onMoon);
-  __advance(40);
-  check('the_end sobre a área da Lua leva pro espaço', onMoon.dimension.id === DIMENSION_ID);
-
-  __reset();
-  travel = await loadTravel();
-  const elsewhere = makePlayer('minecraft:the_end', { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
-  travel.checkSpaceEntry(elsewhere);
-  __advance(40);
-  check('the_end longe dos planetas não leva', elsewhere.dimension.id === 'minecraft:the_end');
+  for (const dim of ['nv_sc:moon', 'nv_sc:mars', 'minecraft:the_end']) {
+    __reset();
+    const travel = await loadTravel();
+    const p = makePlayer(dim, { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 });
+    travel.checkSpaceEntry(p);
+    __advance(40);
+    check(`${dim} não tem porta pro espaço`, p.dimension.id === dim,
+          `(foi pra ${p.dimension.id})`);
+  }
 }
 
 // --- 5. O OVNI vai junto — o bug relatado -----------------------------------
@@ -187,8 +211,8 @@ function makePlayer(dimensionId, loc) {
 {
   const routes = [
     ['earth', 'minecraft:overworld'],
-    ['moon', 'nv_sc:moon'],
-    ['mars', 'nv_sc:mars'],
+    ['moon', 'space_dim:moon'],
+    ['mars', 'space_dim:mars'],
   ];
   for (const [bodyId, expectDim] of routes) {
     __reset();
@@ -202,6 +226,8 @@ function makePlayer(dimensionId, loc) {
     p.__mountOn(ufo);
 
     travel.checkBodyPortals(p);
+    // O pouso num planeta espera findValidSpot; a volta pra Terra, não.
+    await settle();
     __advance(60);
 
     const dest = world.getDimension(expectDim);

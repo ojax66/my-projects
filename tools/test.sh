@@ -85,6 +85,10 @@ echo "--- gravidade: forma do corpo e superfície ---"
 node test_gravity_shape.mjs
 
 echo
+echo "--- terreno da Lua e de Marte ---"
+node test_planets.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

@@ -1342,6 +1342,194 @@ for p, d in docs.items():
     if not any(os.path.isfile(os.path.join(RP, tex + ext)) for ext in (".png", ".tga", ".jpg")):
         err(f"partícula {os.path.basename(p)} usa textura inexistente: {tex}")
 
+# --- 5c. As dimensões de superfície: Lua e Marte -------------------------------
+#
+# A fonte da verdade é planets.js, e tudo aqui é conferência de que o PACOTE
+# concorda com ele. Um bioma citado no script e sem arquivo no pacote não dá
+# erro nenhum no jogo: vira um pedaço de mundo sem névoa e sem nome, e ninguém
+# descobre por quê.
+planets_src = ""
+planets_path = os.path.join(BP, "scripts", "space_dim", "planets.js")
+if os.path.isfile(planets_path):
+    with open(planets_path, encoding="utf-8") as f:
+        planets_src = f.read()
+
+
+def planet_blocks(src):
+    """O trecho de cada planeta, do `const MOON = {` até o `};` dele."""
+    out = {}
+    for m in re.finditer(r"\nconst (MOON|MARS) = \{(.*?)\n\};", src, re.S):
+        body = m.group(2)
+        pid = re.search(r'\n  id: "(\w+)"', body)
+        if pid:
+            out[pid.group(1)] = body
+    return out
+
+
+PLANET_SRC = planet_blocks(planets_src)
+
+if planets_src and len(PLANET_SRC) != 2:
+    err(f"planets.js: li {len(PLANET_SRC)} planeta(s), esperado 2 (Lua e Marte)")
+
+# A altitude que devolve pro espaço tem que caber DENTRO da dimensão. Se ela
+# passar do teto, a porta de volta não abre nunca e o jogador fica preso lá —
+# foi por isso que ela não são os 800 do Overworld.
+m = re.search(r"^export const PLANET_EXIT_Y = ([0-9]+);", planets_src, re.M)
+planet_exit_y = int(m.group(1)) if m else None
+if planets_src and planet_exit_y is None:
+    err("planets.js sem PLANET_EXIT_Y — é a altitude que devolve pro espaço")
+
+# Os ids de bloco que o terreno usa têm que existir de verdade.
+def block_exists(bid):
+    if bid.startswith("minecraft:"):
+        return True
+    ns, _, name = bid.partition(":")
+    return os.path.isfile(os.path.join(BP, "blocks", f"{name}.json"))
+
+
+# Luminância média de uma textura de bloco — é assim que a regra das CAMADAS
+# deixa de ser opinião: a mais clara em cima, a mais escura embaixo.
+def block_luma(bid):
+    name = bid.partition(":")[2]
+    path = os.path.join(RP, "textures", "space_dim", "blocks", f"{name}.png")
+    if not os.path.isfile(path):
+        return None
+    w, h, px = png_rgba(path)
+    total = 0.0
+    for i in range(w * h):
+        total += 0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]
+    return total / (w * h)
+
+
+client_biomes = {}
+for path, doc in docs.items():
+    if not isinstance(doc, dict) or "minecraft:client_biome" not in doc:
+        continue
+    ident = doc["minecraft:client_biome"].get("description", {}).get("identifier")
+    if not ident:
+        continue
+    # Dois arquivos com o MESMO identificador é um bug silencioso: o jogo carrega
+    # um dos dois e não diz qual. Já aconteceu aqui — o céu do espaço tinha duas
+    # cores diferentes declaradas, e qual valia dependia da ordem da pasta.
+    if ident in client_biomes:
+        err(f"dois biomas de cliente com o mesmo identificador {ident}: "
+            f"{os.path.basename(client_biomes[ident])} e {os.path.basename(path)} — "
+            f"o jogo carrega um dos dois e não diz qual")
+    client_biomes[ident] = path
+
+# As névoas existentes, pra cruzar com o que os biomas pedem.
+fog_ids = set()
+for path, doc in docs.items():
+    if isinstance(doc, dict) and "minecraft:fog_settings" in doc:
+        fid = doc["minecraft:fog_settings"].get("description", {}).get("identifier")
+        if fid:
+            fog_ids.add(fid)
+
+for pid, src in PLANET_SRC.items():
+    dim_id = re.search(r'dimensionId: "([^"]+)"', src)
+    dim_id = dim_id.group(1) if dim_id else None
+    default_biome = re.search(r'defaultBiome: "([^"]+)"', src)
+    default_biome = default_biome.group(1) if default_biome else None
+    planet_fog = re.search(r'\n  fog: "([^"]+)"', src)
+    planet_fog = planet_fog.group(1) if planet_fog else None
+
+    if not dim_id:
+        err(f"planeta {pid} sem dimensionId")
+        continue
+
+    # 1. A dimensão existe, é vazia (o script é que escreve o terreno) e o teto
+    #    dela deixa a porta de volta caber.
+    short = dim_id.partition(":")[2]
+    dim_doc = docs.get(os.path.join(BP, "dimensions", f"{short}_surface.json"))
+    if not isinstance(dim_doc, dict):
+        err(f"planeta {pid}: falta BP/dimensions/{short}_surface.json")
+    else:
+        comp = dim_doc.get("minecraft:dimension", {}).get("components", {})
+        ident = dim_doc.get("minecraft:dimension", {}).get("description", {}).get("identifier")
+        if ident != dim_id:
+            err(f"{short}_surface.json declara {ident}, e planets.js pede {dim_id}")
+        gen = comp.get("minecraft:generation", {}).get("generator_type")
+        if gen != "void":
+            err(f"a dimensão de {pid} usa generator_type {gen}, esperado void — "
+                f"quem escreve o terreno é planetTerrain.js, e um gerador do "
+                f"motor por baixo faria os dois brigarem pela mesma coluna")
+        got_biome = comp.get("minecraft:default_biome", {}).get("biome")
+        if got_biome != default_biome:
+            err(f"a dimensão de {pid} tem default_biome {got_biome}, e planets.js "
+                f"pede {default_biome}")
+        bounds = comp.get("minecraft:dimension_bounds", {})
+        top = bounds.get("max")
+        if planet_exit_y is not None and isinstance(top, (int, float)) and planet_exit_y >= top:
+            err(f"PLANET_EXIT_Y ({planet_exit_y}) nao cabe embaixo do teto de {pid} "
+                f"({top}) — a porta de volta pro espaco nunca abriria e o jogador "
+                f"ficaria preso la")
+
+    # 2. Cada bioma tem os DOIS arquivos, e a névoa que ele pede existe.
+    biomes = re.findall(
+        r'\{\s*\n\s*id: "(\w+)",\s*\n\s*biomeId: "([^"]+)",\s*\n\s*name: "([^"]+)",',
+        src)
+    if not biomes:
+        err(f"planeta {pid} sem bioma nenhum em planets.js")
+    ids = [b[1] for b in biomes]
+    if default_biome and default_biome not in ids:
+        err(f"o default_biome de {pid} ({default_biome}) nao esta entre os biomas dele")
+
+    for _bid, biome_id, _name in biomes:
+        name = biome_id.partition(":")[2]
+        if not os.path.isfile(os.path.join(BP, "biomes", f"{name}.json")):
+            err(f"o bioma {biome_id} de {pid} nao tem BP/biomes/{name}.json — "
+                f"rode tools/make_planet_worlds.py")
+        if biome_id not in client_biomes:
+            err(f"o bioma {biome_id} de {pid} nao tem bioma de cliente no RP — "
+                f"ficaria sem ceu e sem nevoa")
+        else:
+            cdoc = docs[client_biomes[biome_id]]
+            fog = (cdoc["minecraft:client_biome"].get("components", {})
+                   .get("minecraft:fog_appearance", {}).get("fog_identifier"))
+            if fog and fog_ids and fog not in fog_ids:
+                err(f"o bioma {biome_id} pede a nevoa {fog}, que nao existe em RP/fogs")
+
+    # Toda névoa citada no script também tem que existir.
+    for fog in set(re.findall(r'fog: "([^"]+)"', src)):
+        if fog_ids and fog not in fog_ids:
+            err(f"planets.js cita a nevoa {fog} em {pid}, que nao existe em RP/fogs")
+
+    # 3. Os blocos do terreno existem...
+    blocos = dict(re.findall(r'\n    (\w+): "([^"]+)",', src))
+    for papel in ("dust", "stone", "deep", "ice", "floor"):
+        bid = blocos.get(papel)
+        if not bid:
+            err(f"planeta {pid} sem o bloco de '{papel}'")
+        elif not block_exists(bid):
+            err(f"planeta {pid}: o bloco de '{papel}' ({bid}) nao existe no BP")
+
+    # ...e obedecem a regra das CAMADAS: a mais clara em cima (poeira), a do
+    # meio no meio (pedra), a mais escura embaixo (ardosia). Nao e gosto — e a
+    # regra que ele deu, e da pra medir na textura.
+    lumas = {}
+    for papel in ("dust", "stone", "deep"):
+        bid = blocos.get(papel)
+        if bid and not bid.startswith("minecraft:"):
+            lumas[papel] = block_luma(bid)
+    if all(lumas.get(k) is not None for k in ("dust", "stone", "deep")):
+        if not (lumas["dust"] > lumas["stone"] > lumas["deep"]):
+            err(f"as camadas de {pid} estao fora de ordem de tom: poeira "
+                f"{lumas['dust']:.0f}, pedra {lumas['stone']:.0f}, ardosia "
+                f"{lumas['deep']:.0f} — a mais clara vai em cima e a mais escura "
+                f"embaixo")
+
+# 4. E o caminho de ida: todo corpo com portal `planet` aponta pra um planeta
+#    que existe. Um id trocado aqui viraria um portal que nao abre.
+for bid, src in BODY_SRC.items():
+    m = re.search(r'portal:\s*\{\s*kind:\s*"planet",\s*dimension:\s*"([^"]+)"', src)
+    if not m:
+        continue
+    alvo = m.group(1)
+    if alvo not in {re.search(r'dimensionId: "([^"]+)"', s2).group(1)
+                    for s2 in PLANET_SRC.values()
+                    if re.search(r'dimensionId: "([^"]+)"', s2)}:
+        err(f"o corpo {bid} tem portal pra {alvo}, que nao e um planeta de planets.js")
+
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):
     if not os.path.isfile(os.path.join(base, "pack_icon.png")):

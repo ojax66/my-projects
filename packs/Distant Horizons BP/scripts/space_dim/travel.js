@@ -1,13 +1,17 @@
 /* =========================================================================
  * Viagens de e pra dimensão do espaço.
  *
- *   Overworld / Lua / Marte, subindo até Y 800  →  espaço
- *   entrar na Terra                             →  Overworld
- *   entrar na Lua                               →  Lua do Spacecraft
- *   entrar em Marte                             →  Marte do Spacecraft
+ *   Overworld, subindo até Y 800     →  espaço
+ *   Lua / Marte, subindo até Y 300   →  espaço
+ *   entrar na Terra                  →  Overworld
+ *   entrar na Lua                    →  dimensão space_dim:moon
+ *   entrar em Marte                  →  dimensão space_dim:mars
  *
- * A subida a Y 800 vale nos três mundos que têm corpo correspondente lá em
- * cima, e o jogador chega ao lado do corpo de onde saiu.
+ * A subida vale nos três mundos que têm corpo correspondente lá em cima, e o
+ * jogador chega ao lado do corpo de onde saiu. A altitude NÃO é a mesma nos
+ * três: o teto de uma dimensão custom é 320, então na Lua e em Marte subir a
+ * 800 seria impossível e o jogador ficaria preso lá. Cada portal diz a sua, e
+ * EXIT_Y_BY_DIM junta todas num mapa só — é o que o laço por tick consulta.
  *
  * Levar o veículo junto é a parte frágil: teleportar a entidade pra outra
  * dimensão a perde. Quem cuida disso é vehicle.js, guardando o veículo numa
@@ -22,11 +26,9 @@ import {
   ARRIVAL_JITTER,
   SPACE_ENTRY_Y,
   OVERWORLD_REENTRY_Y,
-  SPACECRAFT_LEGACY_ORIGINS,
-  SPACECRAFT_LEGACY_RADIUS,
-  SPACECRAFT_LANDING_Y,
-  LANDING_JITTER,
 } from "./config.js";
+import { PLANET_EXIT_Y, planetOfDimension } from "./planets.js";
+import { findPlanetSpot } from "./planetWorlds.js";
 import { chebyshevTo } from "./bodies.js";
 import { anchorAt } from "./physics.js";
 import * as vehicle from "./vehicle.js";
@@ -49,36 +51,25 @@ export function inSpace(player) {
 }
 
 // ---------------------------------------------------------------------------
-// Destino da Lua e de Marte no Spacecraft
+// A altitude que devolve pro espaço, por dimensão
 //
-// O Spacecraft manda cada planeta pra uma dimensão custom (`nv_sc:moon`) em
-// mundos novos, ou pro the_end em coordenadas distantes em mundos criados
-// antes da v2. A escolha dele está em planetDimensions.js; aqui a gente lê as
-// mesmas properties e, na dúvida, cai no mesmo default que ele usa ("new").
+// O Overworld usa SPACE_ENTRY_Y (800), a mesma altitude em que o foguete do
+// Spacecraft troca de dimensão. A Lua e Marte usam PLANET_EXIT_Y (300), porque
+// o teto de uma dimensão custom é 320 — 800 lá seria uma porta que não abre.
+//
+// O mapa é montado uma vez, na carga: o laço por tick consulta ele pra TODO
+// jogador, TODO tick, e uma busca em Map é o que isso pode custar.
 // ---------------------------------------------------------------------------
-function spacecraftTarget(planetId) {
-  let legacy = false;
-  try {
-    const enabled = world.getDynamicProperty("nv_sg:custom_dims_enabled") !== false;
-    const kind = world.getDynamicProperty("nv_sg:world_kind");
-    legacy = !enabled || kind === "legacy";
-  } catch { }
+const EXIT_Y_BY_DIM = new Map();
+for (let i = 0; i < BODIES.length; i++) {
+  const portal = BODIES[i].portal;
+  if (!portal) continue;
+  if (portal.kind === "overworld") EXIT_Y_BY_DIM.set("minecraft:overworld", SPACE_ENTRY_Y);
+  else if (portal.kind === "planet") EXIT_Y_BY_DIM.set(portal.dimension, PLANET_EXIT_Y);
+}
 
-  const jitter = () => Math.floor((Math.random() * 2 - 1) * LANDING_JITTER);
-
-  if (legacy) {
-    const o = SPACECRAFT_LEGACY_ORIGINS[planetId];
-    if (!o) return null;
-    return {
-      dimensionId: "minecraft:the_end",
-      loc: { x: o.x + jitter(), y: SPACECRAFT_LANDING_Y, z: o.z + jitter() },
-    };
-  }
-
-  return {
-    dimensionId: planetId,
-    loc: { x: jitter(), y: SPACECRAFT_LANDING_Y, z: jitter() },
-  };
+export function exitAltitudeOf(dimensionId) {
+  return EXIT_Y_BY_DIM.get(dimensionId);
 }
 
 function resolveDimension(dimensionId) {
@@ -151,16 +142,13 @@ function travel(player, dimension, loc, onArrive) {
 // ---------------------------------------------------------------------------
 // Mundo de um corpo → espaço
 //
-// Subir até SPACE_ENTRY_Y leva pro espaço a partir de QUALQUER mundo que tenha
-// um corpo correspondente lá em cima: o Overworld (Terra), a Lua e Marte do
-// Spacecraft. É a mesma altitude nos três — a mesma que o foguete do
-// Spacecraft usa pra trocar de dimensão no lançamento, de onde quer que ele
-// decole. E o jogador chega no espaço ao lado do corpo de onde saiu.
+// Subir até a altitude de saída leva pro espaço a partir de QUALQUER mundo que
+// tenha um corpo correspondente lá em cima: o Overworld (Terra), a Lua e Marte.
+// O jogador chega no espaço ao lado do corpo de onde saiu.
 // ---------------------------------------------------------------------------
 
 /** O corpo celeste cujo mundo o jogador está pisando agora, ou null. */
-function bodyOfCurrentWorld(player) {
-  const dimId = player.dimension?.id;
+function bodyOfCurrentWorld(dimId) {
   if (!dimId) return null;
 
   for (let i = 0; i < BODIES.length; i++) {
@@ -170,39 +158,23 @@ function bodyOfCurrentWorld(player) {
 
     if (portal.kind === "overworld") {
       if (dimId === "minecraft:overworld") return body;
-      continue;
-    }
-
-    if (portal.kind === "spacecraft") {
-      // Mundo novo: o planeta tem dimensão própria.
-      if (dimId === portal.planet) return body;
-
-      // Mundo legado: os planetas vivem em áreas distantes do the_end. Só
-      // conta se o jogador estiver dentro da área daquele planeta, senão
-      // subir a 800 em qualquer canto do End viraria portal.
-      if (dimId === "minecraft:the_end") {
-        const o = SPACECRAFT_LEGACY_ORIGINS[portal.planet];
-        if (!o) continue;
-        const loc = player.location;
-        if (
-          Math.abs(loc.x - o.x) <= SPACECRAFT_LEGACY_RADIUS &&
-          Math.abs(loc.z - o.z) <= SPACECRAFT_LEGACY_RADIUS
-        ) {
-          return body;
-        }
-      }
+    } else if (portal.kind === "planet") {
+      if (dimId === portal.dimension) return body;
     }
   }
   return null;
 }
 
 export function checkSpaceEntry(player) {
-  // Checagem mais barata primeiro: isso roda pra todo jogador, todo tick.
-  if (player.location.y < SPACE_ENTRY_Y) return;
+  // Checagem mais barata primeiro: isso roda pra todo jogador, todo tick, e a
+  // esmagadora maioria dos jogadores está no Overworld a 70 de altura.
+  const dimId = player.dimension?.id;
+  const exitY = EXIT_Y_BY_DIM.get(dimId);
+  if (exitY === undefined) return;          // mundo sem porta pro espaço
+  if (player.location.y < exitY) return;
   if (travelling.has(player.id)) return;
-  if (player.dimension?.id === DIMENSION_ID) return;
 
-  const body = bodyOfCurrentWorld(player);
+  const body = bodyOfCurrentWorld(dimId);
   if (!body) return;
 
   // Foguete do Spacecraft em pleno lançamento: é a viagem dele, não a nossa.
@@ -295,47 +267,65 @@ function enterOverworld(player) {
   });
 }
 
-function enterSpacecraftPlanet(player, planetId, label) {
-  const target = spacecraftTarget(planetId);
-  if (!target) return;
+// ---------------------------------------------------------------------------
+// Espaço → a superfície da Lua ou de Marte
+//
+// Aqui há um passo a mais que na volta pro Overworld: o mundo do planeta não
+// existe ainda. `findPlanetSpot` gera as chunks em volta do alvo e devolve o
+// topo de uma coluna de verdade — sem isso o jogador cairia dentro de um mundo
+// que ainda não foi escrito, e o chão apareceria por baixo dele enquanto cai.
+//
+// Isso é assíncrono, e `checkBodyPortals` roda TODO tick: sem a trava abaixo,
+// um jogador encostado no planeta dispararia uma busca por tick — dezenas de
+// áreas de ticking e dezenas de viagens empilhadas.
+// ---------------------------------------------------------------------------
+const landing = new Set();
 
-  const dim = resolveDimension(target.dimensionId);
+function enterPlanet(player, body, label) {
+  const planet = planetOfDimension(body.portal.dimension);
+  if (!planet) return;
+  if (landing.has(player.id)) return;
+
+  const dim = resolveDimension(planet.dimensionId);
   if (!dim) {
     try {
-      player.sendMessage(
-        "§cNão deu pra chegar em " + label + "§c: o addon Spacecraft não está ativo neste mundo."
-      );
+      player.sendMessage("§cNão deu pra chegar em " + label + "§c: a dimensão não abriu.");
     } catch { }
-    // Sem destino, a carência evita ficar repetindo a mensagem a cada tick.
+    // Sem destino, a carência evita repetir a mensagem a cada tick.
     markArrival(player);
     return;
   }
 
-  travel(player, dim, target.loc, (p) => {
-    try {
-      // Compatibilidade com o Spacecraft: é por esta property que o addon
-      // sabe em que planeta o jogador está fora da detecção por posição.
-      p.setDynamicProperty("nv:is_in_planet", planetId);
-    } catch { }
-    try {
-      // Descida suave até a superfície, que o gerador do Spacecraft constrói
-      // embaixo do jogador conforme ele cai. `cant_hurt` é a tag que o próprio
-      // addon usa pra suspender o dano de oxigênio durante o pouso; ela se
-      // remove sozinha lá quando o jogador toca o chão, e aqui também.
-      p.addEffect("slow_falling", 30 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
-      p.addTag("nv_sc:cant_hurt");
-      system.runTimeout(() => {
-        try { p.removeTag("nv_sc:cant_hurt"); } catch { }
-      }, 8 * mc.TicksPerSecond);
-
-      p.onScreenDisplay.setTitle(label, {
-        subtitle: "§7Entrando na atmosfera",
-        fadeInDuration: 10,
-        stayDuration: 50,
-        fadeOutDuration: 20,
+  landing.add(player.id);
+  findPlanetSpot(player, planet)
+    .then((spot) => {
+      landing.delete(player.id);
+      if (!player?.isValid) return;
+      if (!spot) {
+        // A busca não achou coluna pronta (orçamento de blocos do tick).
+        // Tentar de novo no próximo toque é melhor que pousar no vazio.
+        markArrival(player);
+        return;
+      }
+      travel(player, dim, spot, (p) => {
+        try {
+          // Pouso macio: mesmo com o chão já escrito, o teleporte deixa o
+          // jogador um bloco acima dele.
+          p.addEffect("slow_falling", 10 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
+          p.onScreenDisplay.setTitle(label, {
+            subtitle: "§7Superfície — sem ar, traje obrigatório",
+            fadeInDuration: 10,
+            stayDuration: 50,
+            fadeOutDuration: 20,
+          });
+        } catch { }
       });
-    } catch { }
-  });
+    })
+    .catch((e) => {
+      landing.delete(player.id);
+      console.warn("[space_dim] falha ao procurar pouso em " + planet.id + ": " + e);
+      markArrival(player);
+    });
 }
 
 /** Corpo celeste em que o jogador está encostando, se houver. */
@@ -364,8 +354,8 @@ export function checkBodyPortals(player) {
     return;
   }
 
-  if (body.portal.kind === "spacecraft") {
-    enterSpacecraftPlanet(player, body.portal.planet, body.name);
+  if (body.portal.kind === "planet") {
+    enterPlanet(player, body, body.name);
   }
 }
 
@@ -381,5 +371,6 @@ world.afterEvents.playerDimensionChange.subscribe((event) => {
 
 world.beforeEvents.playerLeave.subscribe((event) => {
   travelling.delete(event.player.id);
+  landing.delete(event.player.id);
   forgetArrival(event.player.id);
 });

@@ -39,6 +39,18 @@ FORMAT_VERSION = "1.21.80"
 # iluminado, porque luz de bloco não tem direção.
 BODY_LIGHT = 6
 
+# O CHÃO da Lua e de Marte é a exceção, e agora emite ZERO.
+#
+# Eles nasceram pra serem vistos de longe, na dimensão do espaço, onde não há
+# luz de céu — daí a emissão 6. Mas agora eles são o terreno de duas dimensões
+# de verdade, que têm céu e têm dia e noite. Chão que brilha sozinho lá tira as
+# duas coisas que fazem a Lua parecer a Lua: a sombra dura das crateras e o
+# breu da noite lunar. E some com o escuro das cavernas de Marte junto.
+#
+# Nenhum deles é mais colocado na dimensão do espaço (`built: false` no
+# config.js dos dois), então a emissão antiga não estava mais servindo pra nada.
+GROUND_LIGHT = 0
+
 def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True, dampening=None):
     return {
         "texture": texture,
@@ -86,18 +98,32 @@ BLOCKS = {
     "earth_ice":     block("earth_ice", "#E8EFFA", "Calota Polar", "Polar Ice Cap", hardness=1.0),
 
     # --- Lua: os tons são BLOCOS separados, não buraco desenhado na textura ---
+    # As três tonalidades são CAMADAS, não variações: a mais clara é a poeira da
+    # superfície, a do meio é a pedra, a mais escura é a ardósia lá no fundo —
+    # a mesma ordem de grama/terra/pedra/deepslate. A luminância média das
+    # texturas confere: 216, 161 e 94.
     "moon_regolith_light": block("moon_regolith_light", "#CAD4EB",
-                                 "Regolito Claro", "Light Regolith", hardness=1.4),
+                                 "Poeira de Regolito", "Regolith Dust",
+                                 light=GROUND_LIGHT, hardness=1.0),
     "moon_regolith":       block("moon_regolith", "#99A1B3",
-                                 "Regolito Lunar", "Lunar Regolith", hardness=1.4),
+                                 "Pedra de Regolito", "Regolith Stone",
+                                 light=GROUND_LIGHT, hardness=1.4),
     "moon_regolith_dark":  block("moon_regolith_dark", "#555B6E",
-                                 "Regolito Escuro", "Dark Regolith", hardness=1.8),
+                                 "Ardósia de Regolito", "Regolith Slate",
+                                 light=GROUND_LIGHT, hardness=1.8),
 
     # --- Marte ---------------------------------------------------------------
-    "mars_dust":      block("mars_dust", "#BA4E2A", "Poeira Marciana", "Martian Dust"),
-    "mars_rock":      block("mars_rock", "#923D22", "Rocha Marciana", "Martian Rock", hardness=1.8),
-    "mars_rock_dark": block("mars_rock_dark", "#501E10", "Basalto Marciano", "Martian Basalt", hardness=1.8),
-    "mars_ice":       block("mars_ice", "#E2D7CF", "Gelo Marciano", "Martian Ice", hardness=1.0),
+    # Mesma regra da Lua, e o mesmo nome de camada: poeira, pedra, ardósia — só
+    # que de ferrita, que é o óxido de ferro que dá a Marte a cor dele.
+    # Luminância medida: 100, 78 e 40.
+    "mars_dust":      block("mars_dust", "#BA4E2A", "Poeira de Ferrita", "Ferrite Dust",
+                            light=GROUND_LIGHT, hardness=1.0),
+    "mars_rock":      block("mars_rock", "#923D22", "Pedra de Ferrita", "Ferrite Stone",
+                            light=GROUND_LIGHT, hardness=1.4),
+    "mars_rock_dark": block("mars_rock_dark", "#501E10", "Ardósia de Ferrita", "Ferrite Slate",
+                            light=GROUND_LIGHT, hardness=1.8),
+    "mars_ice":       block("mars_ice", "#E2D7CF", "Gelo Marciano", "Martian Ice",
+                            light=GROUND_LIGHT, hardness=1.0),
 }
 
 NS = "space_dim"
