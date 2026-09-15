@@ -120,10 +120,27 @@ a latitude: z negativo é norte e baixo, z positivo é sul e alto.
 
 ### O céu
 
-A Lua tem o **mesmo preto do espaço** e nenhuma névoa: sem atmosfera, a
-visibilidade é infinita. Marte tem o céu **ocre** (`#C7A180`, a cor que a
-Curiosity mede) e névoa de poeira, mais fechada nas dunas e na planície boreal,
-mais pálida na calota polar.
+A Lua usa **a mesma névoa e a mesma cor do espaço** — o mesmo arquivo, não uma
+cópia parecida. Faz sentido físico: não há atmosfera nenhuma entre a superfície
+dela e o vácuo, então o céu da Lua *é* o vácuo. O validador recusa se as duas
+divergirem.
+
+Marte tem o céu **ocre** (`#C7A180`, a cor que a Curiosity mede) e névoa de
+poeira, mais fechada nas dunas e na planície boreal, mais pálida na calota
+polar.
+
+### Como o mundo aparece
+
+O gerador escreve **uma chunk de cada vez**, terminando cada uma antes de
+começar a próxima, na ordem em que o jogador vai vê-las: as do campo de visão
+primeiro, e dentro disso as mais perto. Virar o rosto reordena a fila. O raio é
+de 7 chunks (112 blocos).
+
+Uma chunk que não couber no orçamento de blocos daquele tick **continua na
+frente da fila** e retoma no tick seguinte de onde parou — ela não é
+descartada. Isso é `tools/tests/test_worldgen_queue.mjs`, e não é teoria: a
+versão anterior descartava, três de cada quatro chunks sumiam, e o mundo
+aparecia esburacado.
 
 ### Lá em cima
 

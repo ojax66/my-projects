@@ -235,39 +235,44 @@ TEXTURES = {
     ),
 
     # --- Lua -----------------------------------------------------------------
+    # Os cinco tons daqui são a rampa do print COMPRIMIDA pra perto do tom do
+    # meio (fator 0,45; o tom central ficou exatamente onde estava, então a cor
+    # média do bloco não mudou). A razão está em MAX_LUMA_RANGE_GROUND, logo
+    # abaixo: num chão de um bloco só, contraste dentro da textura vira papel de
+    # parede.
     # A rampa do print (#505666 #5F677A #747D93 #9097A5 #AFB8CC #D9E4FF) fatiada
     # em três blocos. É exatamente o que ele pediu lá atrás: "não é pra fazer um
     # bloco da lua que tenha buraquinhos escuros, vai ter o regolito claro,
     # escuro e etc". Os mares são regiões de centenas de blocos escuros que o
     # gerador desenha — não um buraco pintado dentro de cada bloco.
     "moon_regolith_light": (
-        ["#B9C2D6", "#C6CFE4", "#D2DBF1", "#D9E4FF", "#E2ECFF"],
+        ["#C7D0E5", "#CDD6EB", "#D2DBF1", "#D5DFF7", "#D9E3F7"],
         [2, 3, 4, 3, 2], 495, 3, 0.44,
     ),
     "moon_regolith": (
-        ["#868D9C", "#9097A5", "#9AA1B0", "#A5ACBB", "#AFB8CC"],
+        ["#9198A7", "#969CAB", "#9AA1B0", "#9FA6B5", "#A3ABBD"],
         [2, 3, 4, 3, 2], 153, 3, 0.44,
     ),
     "moon_regolith_dark": (
-        ["#4A4F5E", "#505666", "#585E70", "#5F677A", "#6A7286"],
+        ["#525768", "#545A6C", "#585E70", "#5B6274", "#60677A"],
         [2, 3, 4, 3, 2], 730, 3, 0.44,
     ),
 
     # --- Marte ---------------------------------------------------------------
     "mars_dust": (
-        ["#A94523", "#B44A28", "#BA4E2A", "#C25730", "#CA6238"],
+        ["#B24A27", "#B74C29", "#BA4E2A", "#BE522D", "#C15730"],
         [2, 3, 4, 3, 2], 318, 3, 0.45,
     ),
     "mars_rock": (
-        ["#82361E", "#8B3A20", "#923D22", "#9A4326", "#A34B2C"],
+        ["#8B3A20", "#8F3C21", "#923D22", "#964024", "#9A4326"],
         [2, 3, 4, 3, 2], 664, 3, 0.45,
     ),
     "mars_rock_dark": (
-        ["#43190D", "#4A1B0E", "#501E10", "#582213", "#602716"],
+        ["#4A1C0F", "#4D1D0F", "#501E10", "#542011", "#572213"],
         [2, 3, 4, 3, 2], 664, 3, 0.45,
     ),
     "mars_ice": (
-        ["#D2C6BC", "#DCD1C8", "#E2D7CF", "#E9E0D8", "#F1E9E3"],
+        ["#DBCFC6", "#DFD4CC", "#E2D7CF", "#E5DBD3", "#E9DFD8"],
         [2, 3, 4, 3, 2], 123, 3, 0.42,
     ),
 }
@@ -324,6 +329,25 @@ MIN_COLORS = 5      # menos que isso não tem o que desenhar
 # verdade — os mares da Lua, o basalto de Marte — são BLOCOS DIFERENTES que o
 # gerador espalha, e a separação entre eles é conferida logo abaixo.
 MAX_LUMA_RANGE = 46
+
+# E o CHÃO tem um teto bem mais apertado que os outros.
+#
+# Isto saiu de uma foto do jogo: a superfície da Lua virou papel de parede
+# quadriculado. A causa não é a textura estar errada sozinha — é a combinação.
+# Um planeta é uma planície enorme de UM bloco só, vista de raspão; aí qualquer
+# desenho dentro da textura se repete lado a lado centenas de vezes e o olho lê
+# a grade, não o chão. Os corpos celestes não têm esse problema porque ninguém
+# anda em cima deles: eles são vistos de longe, como modelo.
+#
+# Com a faixa em torno de 20 o grão continua visível de perto (não é uma cor
+# chapada) e some de longe, que é exatamente o que se quer de poeira.
+MAX_LUMA_RANGE_GROUND = 22
+
+# Os blocos em que o jogador PISA: o terreno da Lua e de Marte.
+GROUND_BLOCKS = {
+    "moon_regolith_light", "moon_regolith", "moon_regolith_dark",
+    "mars_dust", "mars_rock", "mars_rock_dark", "mars_ice",
+}
 
 # E entre os blocos de um mesmo corpo a separação tem que existir, senão a troca
 # de bloco não desenha nada e o corpo vira uma cor só.
@@ -390,9 +414,13 @@ if __name__ == "__main__":
             flags.append(f"cores de menos (<{MIN_COLORS})")
         if bias > MAX_BIAS:
             flags.append("efeito bolinha")
-        if rng > MAX_LUMA_RANGE:
-            flags.append(f"contraste alto demais ({rng:.0f} > {MAX_LUMA_RANGE}) — "
-                         f"a mancha escura se repete no planeta inteiro")
+        teto = MAX_LUMA_RANGE_GROUND if name in GROUND_BLOCKS else MAX_LUMA_RANGE
+        if rng > teto:
+            flags.append(f"contraste alto demais ({rng:.0f} > {teto}) — "
+                         + ("num chão de um bloco só, o desenho se repete lado a "
+                            "lado e vira papel de parede quadriculado"
+                            if name in GROUND_BLOCKS
+                            else "a mancha escura se repete no planeta inteiro"))
         if not is_chunky(rows):
             flags.append(f"grão fino demais (não está na grade de {CELLS}x{CELLS})")
         if flags:

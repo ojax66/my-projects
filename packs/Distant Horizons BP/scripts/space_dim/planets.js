@@ -139,7 +139,12 @@ const MOON = {
   dimensionId: "space_dim:moon",
   name: "§7Lua",
   defaultBiome: "space_dim:lua_terras_altas",
-  fog: "space_dim:fog_moon",
+  // A MESMA névoa do espaço, o mesmo arquivo. Não uma cópia parecida: o céu da
+  // Lua tem que ser igual ao do espaço, e duas definições separadas com a
+  // mesma intenção é como elas acabam diferentes. Faz sentido físico também —
+  // não há atmosfera nenhuma entre a superfície da Lua e o vácuo, então o céu
+  // dela É o vácuo.
+  fog: "space_dim:fog_outer_space",
   skyColor: "#000000",
 
   baseY: 72,

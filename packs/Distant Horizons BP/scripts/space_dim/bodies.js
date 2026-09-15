@@ -21,7 +21,7 @@
 
 import { system } from "@minecraft/server";
 import { valueNoise3D } from "./world_generator_API.js";
-import { BODIES, DIM_MIN_Y, DIM_MAX_Y } from "./config.js";
+import { BODIES, DIM_MIN_Y, DIM_MAX_Y, DIMENSION_ID } from "./config.js";
 import { takeBudget, BudgetExhausted, isBudgetError, makeChunkCursor, writeRun } from "./budget.js";
 
 // Reexportado pra quem já importava daqui (main.js, os testes).
@@ -503,7 +503,7 @@ export function generateColumn(dim, x, z) {
 
   let blocks = 0;
   for (let i = 0; i < runs.length; i++) blocks += runs[i].y1 - runs[i].y0 + 1;
-  if (!takeBudget(blocks)) throw BudgetExhausted;
+  if (!takeBudget(blocks, DIMENSION_ID)) throw BudgetExhausted;
 
   let top = DIM_MIN_Y;
   for (let i = 0; i < runs.length; i++) {

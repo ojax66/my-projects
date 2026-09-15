@@ -235,7 +235,14 @@ export const FIRE_RESISTANCE_PROTECTS = true;
 // tick), com um empurrãozinho: aqui a esmagadora maioria das colunas é vácuo
 // e sai de graça. Se em celular pesar, baixe os dois.
 // ---------------------------------------------------------------------------
-export const GEN_RADIUS_CHUNKS = 5;
+// 7 chunks = 112 blocos em volta do jogador.
+//
+// Subiu de 5 (80 blocos) junto com o conserto da fila: com a fila descartando
+// chunk que não coubesse no orçamento, aumentar o raio só aumentaria o número
+// de buracos. Agora que ela termina uma chunk antes de começar a próxima, e na
+// ordem do campo de visão, o raio maior vira o que ele devia ser desde sempre:
+// mais mundo pronto na frente de quem olha.
+export const GEN_RADIUS_CHUNKS = 7;
 export const CHUNKS_PER_TICK = 4;
 
 // Teto de blocos escritos por tick. É ELE que segura o custo, não o número de

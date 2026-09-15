@@ -6,7 +6,7 @@
     },
     "components": {
       "minecraft:fog_appearance": {
-        "fog_identifier": "space_dim:fog_moon"
+        "fog_identifier": "space_dim:fog_outer_space"
       },
       "minecraft:sky_color": {
         "sky_color": "#000000"

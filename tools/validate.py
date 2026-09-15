@@ -1520,6 +1520,30 @@ for pid, src in PLANET_SRC.items():
         if fog_ids and fog not in fog_ids:
             err(f"planets.js cita a nevoa {fog} em {pid}, que nao existe em RP/fogs")
 
+    # 2b. O ceu da LUA e o mesmo do espaco — o mesmo arquivo de nevoa e a mesma
+    #     cor, nao uma copia parecida. Ela nao tem atmosfera nenhuma: o ceu dela
+    #     E o vacuo. Duas definicoes separadas com a mesma intencao e como elas
+    #     acabam diferentes.
+    if pid == "moon":
+        espaco = client_biomes.get("space_dim:espaco_sideral")
+        if espaco:
+            ec = docs[espaco]["minecraft:client_biome"].get("components", {})
+            alvo_fog = ec.get("minecraft:fog_appearance", {}).get("fog_identifier")
+            alvo_ceu = ec.get("minecraft:sky_color", {}).get("sky_color")
+            for _bid, biome_id, _name in re.findall(
+                    r'\{\s*\n\s*id: "(\w+)",\s*\n\s*biomeId: "([^"]+)",\s*\n\s*name: "([^"]+)",',
+                    src):
+                path_cb = client_biomes.get(biome_id)
+                if not path_cb:
+                    continue
+                cc = docs[path_cb]["minecraft:client_biome"].get("components", {})
+                fog = cc.get("minecraft:fog_appearance", {}).get("fog_identifier")
+                ceu = cc.get("minecraft:sky_color", {}).get("sky_color")
+                if fog != alvo_fog or ceu != alvo_ceu:
+                    err(f"o ceu de {biome_id} e {fog}/{ceu} e o do espaco e "
+                        f"{alvo_fog}/{alvo_ceu} — a Lua nao tem atmosfera, entao "
+                        f"o ceu dela tem que ser o MESMO do espaco")
+
     # 3. Os blocos do terreno existem...
     blocos = dict(re.findall(r'\n    (\w+): "([^"]+)",', src))
     for papel in ("dust", "stone", "deep", "ice", "floor"):

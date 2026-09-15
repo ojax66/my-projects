@@ -416,7 +416,7 @@ export function makePlanetGenerator(planet) {
 
     let blocks = 0;
     for (let i = 0; i < runs.length; i++) blocks += runs[i].y1 - runs[i].y0 + 1;
-    if (!takeBudget(blocks)) throw BudgetExhausted;
+    if (!takeBudget(blocks, planet.dimensionId)) throw BudgetExhausted;
 
     let top = PLANET_BOUNDS.min;
     for (let i = 0; i < runs.length; i++) {

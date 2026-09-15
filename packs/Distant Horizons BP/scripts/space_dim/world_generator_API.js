@@ -154,14 +154,54 @@ export function createTerrainGenerator(config) {
   const done = new Set();
   const queues = new Map();
   const lastChunk = new Map();
+  const lastView = new Map();
+  const attempts = new Map();
   const key = (cx, cz) => cx + "," + cz;
 
-  function refillQueue(dim, player) {
+  // Quantas vezes uma chunk pode voltar pra frente da fila antes de a gente
+  // desistir dela. Uma chunk cara leva 2 ou 3 tentativas; este número só existe
+  // pra uma chunk que falhe por um motivo QUE NÃO É o orçamento (um id de bloco
+  // que não existe, por exemplo) não travar a geração do mundo inteiro.
+  const maxChunkAttempts = config.maxChunkAttempts ?? 600;
+
+  // Quanto uma chunk ATRÁS do jogador é penalizada na fila. 2 = uma chunk nas
+  // costas vale como se estivesse a 3x a distância que ela tem.
+  const backPenalty = config.backPenalty ?? 2;
+  // Virar mais que isso (cosseno) refaz a fila na hora.
+  const VIEW_TURN_COS = 0.77;   // ~40 graus
+
+  function viewOf(player) {
+    try {
+      const v = player.getViewDirection();
+      const len = Math.sqrt(v.x * v.x + v.z * v.z);
+      if (!(len > 1e-6)) return null;
+      return { x: v.x / len, z: v.z / len };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Monta a fila de chunks que faltam ao redor do jogador, NA ORDEM EM QUE ELE
+   * VAI VÊ-LAS: as da frente primeiro, e dentro disso as mais perto primeiro.
+   *
+   * A fila é refeita quando o jogador muda de chunk, quando ele vira o rosto, e
+   * quando ela esvazia. Esta última é a que faltava: sem ela, um jogador parado
+   * nunca mais pedia chunk nenhuma, e o que tivesse ficado pra trás ficava pra
+   * trás pra sempre.
+   */
+  function refillQueue(dim, player, force) {
     const cx = Math.floor(player.location.x / chunkSize);
     const cz = Math.floor(player.location.z / chunkSize);
     const k = key(cx, cz);
-    if (lastChunk.get(player.id) === k) return;
+
+    const view = viewOf(player);
+    const prev = lastView.get(player.id);
+    const virou = !!(view && prev && view.x * prev.x + view.z * prev.z < VIEW_TURN_COS);
+    if (!force && !virou && lastChunk.get(player.id) === k) return;
+
     lastChunk.set(player.id, k);
+    if (view) lastView.set(player.id, view);
 
     const hr = getHeightRangeOf(dim);
     const needed = [];
@@ -170,23 +210,77 @@ export function createTerrainGenerator(config) {
         const ccx = cx + dx, ccz = cz + dz, kk = key(ccx, ccz);
         if (done.has(kk)) continue;
         if (hasMarker(dim, ccx, ccz, hr)) { done.add(kk); continue; }
-        needed.push({ cx: ccx, cz: ccz, d: dx * dx + dz * dz });
+
+        // Distância ao quadrado, esticada conforme a chunk esteja atrás.
+        // `atras` vai de 0 (bem na frente) a 1 (bem nas costas), suavemente —
+        // um corte duro frente/trás faria a fila inteira se reordenar a cada
+        // grau que o jogador virasse.
+        let score = dx * dx + dz * dz;
+        if (view) {
+          const len = Math.sqrt(score);
+          const cos = len > 0 ? (dx * view.x + dz * view.z) / len : 1;
+          score *= 1 + backPenalty * ((1 - cos) / 2);
+        }
+        needed.push({ cx: ccx, cz: ccz, d: score });
       }
     }
     needed.sort((a, b) => a.d - b.d);
     queues.set(player.id, needed);
   }
 
+  /**
+   * Gera as chunks da fila, UMA DE CADA VEZ e terminando cada uma antes de
+   * começar a próxima.
+   *
+   * Aqui morava o bug que fazia o mundo aparecer em pedaços salteados. A versão
+   * anterior tirava a chunk da fila com `shift()` ANTES de tentar gerá-la, e
+   * quando `generateColumn` parava no meio por falta de orçamento de blocos a
+   * chunk simplesmente sumia — não era marcada como pronta nem voltava pra
+   * fila. Com chunksPerTick 4 e uma chunk de terreno custando mais de um tick
+   * de orçamento, TRÊS de cada quatro chunks eram descartadas assim. O mundo
+   * ficava esburacado, e os buracos só eram tentados de novo quando o jogador
+   * atravessava a fronteira de outra chunk — que é exatamente a aparência de
+   * "gerar chunks aleatórias".
+   *
+   * Agora a chunk só sai da fila quando TERMINA. Se o orçamento acabou no meio
+   * dela, ela continua na frente e retoma no próximo tick de onde parou (o
+   * cursor de coluna vive no gerador de terreno).
+   */
   function drainQueue(dim, player) {
-    const q = queues.get(player.id);
+    let q = queues.get(player.id);
+    if (!q || !q.length) {
+      refillQueue(dim, player, true);
+      q = queues.get(player.id);
+    }
     if (!q || !q.length) return;
+
     for (let i = 0; i < chunksPerTick; i++) {
-      const next = q.shift();
+      const next = q[0];
       if (!next) return;
       const k = key(next.cx, next.cz);
-      if (done.has(k)) continue;
+      if (done.has(k)) { q.shift(); continue; }
+
       const r = genChunk(dim, next.cx, next.cz);
-      if (!r.hadError) done.add(k);
+      if (!r.hadError) {
+        done.add(k);
+        attempts.delete(k);
+        q.shift();
+        continue;
+      }
+
+      const n = (attempts.get(k) ?? 0) + 1;
+      attempts.set(k, n);
+      if (n >= maxChunkAttempts) {
+        // Não é falta de orçamento: alguma coluna desta chunk falha sempre.
+        // Desistir dela é melhor que travar a geração do mundo atrás dela.
+        onError("chunk " + k, "desisti depois de " + n + " tentativas");
+        done.add(k);
+        attempts.delete(k);
+        q.shift();
+        continue;
+      }
+      // Orçamento do tick esgotado: as próximas desta rodada falhariam igual.
+      return;
     }
   }
 
@@ -232,6 +326,7 @@ export function createTerrainGenerator(config) {
     }
     queues.delete(player.id);
     lastChunk.delete(player.id);
+    lastView.delete(player.id);
     pendingSync.delete(player.id);
   }
 

@@ -29,6 +29,8 @@ export function __reset() {
   state = {
     tick: 0,
     timers: [],          // { at, fn }
+    intervals: [],       // { fn, ticks, next } — só rodam com __tickIntervals
+
     dimensions: new Map(),
     players: [],
     structures: new Map(),
@@ -42,6 +44,23 @@ export function __reset() {
 }
 
 /** Avança N ticks, disparando os runTimeout que vencerem. */
+/** Como __advance, mas rodando também os system.runInterval registrados. */
+export function __tickIntervals(ticks) {
+  for (let i = 0; i < ticks; i++) {
+    state.tick++;
+    system.currentTick = state.tick;
+    const due = state.timers.filter((t) => t.at <= state.tick);
+    state.timers = state.timers.filter((t) => t.at > state.tick);
+    for (const t of due) t.fn();
+    for (const iv of state.intervals) {
+      if (state.tick >= iv.next) {
+        iv.next = state.tick + iv.ticks;
+        iv.fn();
+      }
+    }
+  }
+}
+
 export function __advance(ticks) {
   for (let i = 0; i < ticks; i++) {
     state.tick++;
@@ -167,6 +186,14 @@ class Player extends Entity {
     this.isOnGround = false;
     this.selectedSlotIndex = 0;
   }
+  /** Pra onde ele está olhando. Normalizado, como no jogo. */
+  getViewDirection() { return this.__view ?? { x: 0, y: 0, z: 1 }; }
+  /** Atalho de teste: vira o rosto. */
+  __lookAt(x, z) {
+    const len = Math.sqrt(x * x + z * z) || 1;
+    this.__view = { x: x / len, y: 0, z: z / len };
+  }
+
   /** Atalho de teste: veste uma peça. */
   __wear(slot, typeId) {
     (this.__equipment ??= {})[slot] = new ItemStack(typeId, 1);
@@ -398,7 +425,14 @@ export const world = {
 
 export const system = {
   currentTick: 0,
-  runInterval() { return 0; },
+  // Os intervalos ficam guardados mas NÃO rodam no __advance: quase todo teste
+  // quer só a fila de runTimeout, e deixar o laço principal do addon rodando
+  // por baixo mudaria o que cada teste está medindo. Quem quer o laço chama
+  // __tickIntervals.
+  runInterval(fn, ticks = 1) {
+    state.intervals.push({ fn, ticks: Math.max(1, ticks | 0), next: state.tick + Math.max(1, ticks | 0) });
+    return state.intervals.length;
+  },
   runTimeout(fn, ticks) {
     state.timers.push({ at: state.tick + Math.max(1, ticks | 0), fn });
     return state.timers.length;

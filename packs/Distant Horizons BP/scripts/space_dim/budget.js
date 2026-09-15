@@ -45,15 +45,49 @@ export function isBudgetError(err) {
 }
 
 let budgetTick = -1;
-let budgetLeft = 0;
 
-export function takeBudget(n) {
-  if (system.currentTick !== budgetTick) {
-    budgetTick = system.currentTick;
-    budgetLeft = BLOCK_BUDGET_PER_TICK;
+// dimensão → quanto ela já gastou NESTE tick
+const spent = new Map();
+// dimensão → último tick em que ela pediu orçamento
+const lastSeen = new Map();
+
+// Por quanto tempo uma dimensão continua contando como "ativa" depois do último
+// pedido. 2 s: tempo de uma chunk cara terminar sem a dimensão sumir da conta
+// entre uma coluna e outra.
+const ACTIVE_WINDOW = 40;
+
+/**
+ * Pede `n` blocos do orçamento deste tick, em nome de uma dimensão.
+ *
+ * O teto total é um só pro jogo inteiro, mas ele é REPARTIDO entre as dimensões
+ * que estão gerando agora. Sem isso a primeira a pedir levava tudo: os três
+ * geradores rodam no mesmo tick, na ordem em que foram criados, e o do espaço
+ * sempre pedia primeiro. Em multijogador, um jogador no espaço fazia a Lua
+ * parar de gerar pra quem estivesse nela — e nada no jogo diria por quê.
+ *
+ * Repartir custa velocidade a cada uma (metade, com duas ativas), e é o preço
+ * certo: duas dimensões gerando devagar é melhor que uma gerando e a outra
+ * parada.
+ */
+export function takeBudget(n, owner = "default") {
+  const now = system.currentTick;
+  if (now !== budgetTick) {
+    budgetTick = now;
+    spent.clear();
   }
-  if (budgetLeft <= 0) return false;
-  budgetLeft -= n;
+
+  lastSeen.set(owner, now);
+
+  let active = 0;
+  for (const [k, t] of lastSeen) {
+    if (now - t <= ACTIVE_WINDOW) active++;
+    else lastSeen.delete(k);
+  }
+
+  const cap = BLOCK_BUDGET_PER_TICK / (active || 1);
+  const used = spent.get(owner) ?? 0;
+  if (used >= cap) return false;
+  spent.set(owner, used + n);
   return true;
 }
 
@@ -64,7 +98,8 @@ export function takeBudget(n) {
  */
 export function resetBudget() {
   budgetTick = -1;
-  budgetLeft = 0;
+  spent.clear();
+  lastSeen.clear();
 }
 
 // ---------------------------------------------------------------------------

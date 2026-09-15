@@ -871,5 +871,20 @@ def portal_pra_planeta_inexistente(tmp):
 case("portal apontando pra planeta que nao existe", portal_pra_planeta_inexistente,
      r"nao e um planeta de planets.js")
 
+
+def ceu_da_lua_diferente_do_espaco(tmp):
+    """A Lua nao tem atmosfera: o ceu dela E o vacuo, e tem que ser o mesmo
+    arquivo de nevoa do espaco."""
+    caminho = rp(tmp, "biomes", "lua_terras_altas.client_biome.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["minecraft:client_biome"]["components"]["minecraft:sky_color"]["sky_color"] = "#101820"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("ceu da Lua diferente do ceu do espaco", ceu_da_lua_diferente_do_espaco,
+     r"o ceu dela tem que ser o MESMO do espaco")
+
 print(f"\n{passes} PASS, {fails} FALHOU")
 sys.exit(1 if fails else 0)
