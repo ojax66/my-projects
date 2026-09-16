@@ -295,6 +295,9 @@ const MARS = {
   defaultBiome: "space_dim:marte_terras_altas_do_sul",
   fog: "space_dim:fog_mars",
   skyColor: "#C7A180",
+  // Marte tem tempestade de areia; a Lua não tem atmosfera pra levantar poeira
+  // nenhuma. Ver marsStorm.js.
+  storms: true,
 
   baseY: 76,
   crust: 30,

@@ -93,6 +93,10 @@ echo "--- a fila de chunks do gerador ---"
 node test_worldgen_queue.mjs
 
 echo
+echo "--- gravidade dos planetas, frio e tempestade ---"
+node test_gravity_cold_storm.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

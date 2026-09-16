@@ -34,6 +34,13 @@ import { applyLifeSupport } from "./lifeSupport.js";
 import { pushFog, popFog } from "./ambience.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { applyPlanetGravity, forgetPlayer as forgetGravity } from "./planetGravity.js";
+import {
+  worldTime,
+  stormIntensity,
+  stormFog,
+  spawnStormDust,
+  stormNotice,
+} from "./marsStorm.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -181,12 +188,28 @@ export function applyPlanetTick(player) {
   guardSpawnTick(player);
 
   const now = system.currentTick;
+
+  // A tempestade de areia, se este planeta tiver. Ela é calculada todo tick
+  // porque a poeira é emitida por tick; a névoa e o nome do bioma, não.
+  let tempestade = 0;
+  if (planet.storms) {
+    try {
+      const loc = player.location;
+      tempestade = stormIntensity(worldTime(), loc.x, loc.z);
+      spawnStormDust(player, tempestade);
+    } catch (e) {
+      onError("tempestade", e);
+    }
+  }
+
   if (now % BIOME_INTERVAL === 0) {
     rememberWhere(player, planet);
     try {
       const loc = player.location;
       const t = terrainAt(planet, Math.floor(loc.x), Math.floor(loc.z));
-      pushFog(player, t.biome.fog ?? planet.fog);
+      // A névoa da tempestade passa por cima da do bioma: quando ela fecha, o
+      // que o jogador vê é a tempestade, não o lugar onde ele está.
+      pushFog(player, stormFog(tempestade) ?? t.biome.fog ?? planet.fog);
       if (lastBiome.get(player.id) !== t.biome.id) {
         lastBiome.set(player.id, t.biome.id);
         actionBar(player, planet.name + " §8· §r" + t.biome.name);
@@ -204,7 +227,14 @@ export function applyPlanetTick(player) {
     const breathing = applyLifeSupport(player);
     if (!breathing && now % 20 === 0) {
       actionBar(player, "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI");
+      return true;
     }
+  }
+
+  // O aviso da tempestade só aparece quando não há nada mais urgente na tela.
+  if (now % 20 === 0) {
+    const aviso = stormNotice(tempestade);
+    if (aviso) actionBar(player, aviso);
   }
 
   return true;

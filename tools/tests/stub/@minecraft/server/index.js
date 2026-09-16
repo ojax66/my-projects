@@ -123,7 +123,10 @@ class Entity {
   removeTag(t) { return this.__tags.delete(t); }
   addEffect() { }
   removeEffect() { }
-  applyDamage() { }
+  applyDamage(n) {
+    this.__health = Math.max(0, (this.__health ?? 20) - (n ?? 0));
+    return true;
+  }
   playSound() { }
   sendMessage() { }
   runCommand() { return { successCount: 1 }; }

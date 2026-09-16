@@ -1,0 +1,54 @@
+{
+  "format_version": "1.10.0",
+  "particle_effect": {
+    "description": {
+      "identifier": "space_dim:mars_sand",
+      "basic_render_parameters": {
+        "material": "particles_alpha",
+        "texture": "textures/space_dim/star"
+      }
+    },
+    "components": {
+      "minecraft:emitter_rate_instant": {
+        "num_particles": 14
+      },
+      "minecraft:emitter_lifetime_once": {
+        "active_time": 0.2
+      },
+      "minecraft:emitter_shape_box": {
+        "offset": [0, 0, 0],
+        "half_dimensions": [3, 2, 3],
+        "direction": [1, 0.15, 0.4]
+      },
+      "minecraft:particle_lifetime_expression": {
+        "max_lifetime": 1.6
+      },
+      "minecraft:particle_initial_speed": 9,
+      "minecraft:particle_initialization": {
+        "per_init_expression": "v.grao = math.random(0, 1); v.tam = math.random(0.05, 0.16);"
+      },
+      "minecraft:particle_motion_dynamic": {
+        "linear_acceleration": [0, -0.6, 0],
+        "linear_drag_coefficient": 1.4
+      },
+      "minecraft:particle_appearance_billboard": {
+        "size": ["v.tam", "v.tam"],
+        "facing_camera_mode": "lookat_xyz",
+        "uv": {
+          "texture_width": 16,
+          "texture_height": 16,
+          "uv": [0, 0],
+          "uv_size": [16, 16]
+        }
+      },
+      "minecraft:particle_appearance_tinting": {
+        "color": [
+          "0.698 + 0.059 * v.grao",
+          "0.290 + 0.051 * v.grao",
+          "0.153 + 0.035 * v.grao",
+          "0.85 * math.clamp(math.sin((v.particle_age / v.particle_lifetime) * 180), 0, 1)"
+        ]
+      }
+    }
+  }
+}

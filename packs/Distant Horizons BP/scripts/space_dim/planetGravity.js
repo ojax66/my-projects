@@ -50,10 +50,17 @@ const world = mc.world;
 // motor aplica por tick a uma entidade em queda livre.
 export const EARTH_G = 0.08;
 
-// Quantos "pontos de knockback" valem um bloco por tick. É a mesma calibragem
-// que gravity.js já usa no puxão horizontal dos corpos celestes — e, por ser
-// malha fechada, errar aqui só muda a velocidade de convergência.
-const GANHO = 2.2;
+// Quantos "pontos de knockback" valem um bloco por tick.
+//
+// 1 — ou seja, nenhum ganho: o empurrão pedido é exatamente a diferença de
+// velocidade que falta. Eu tinha posto 2,2 aqui, copiando a calibragem do puxão
+// HORIZONTAL de gravity.js, e o teste pegou o estrago: com ganho 2,2 o
+// controlador devolvia 0,147 por tick contra 0,08 que o motor tirava, e o saldo
+// de +0,067 por tick não era gravidade baixa, era um foguete.
+//
+// O que torna 1 seguro mesmo sem eu saber a conversão de verdade do Bedrock
+// está logo abaixo, em como `st.vy` é guardado.
+const GANHO = 1;
 
 // Teto do empurrão por tick. Sem ele, um pico de `dv` (um knockback de mob, um
 // teleporte) viraria um lançamento.
@@ -62,7 +69,11 @@ const CORRECAO_MAX = 0.35;
 // Abaixo disto não vale a pena mexer: é ruído de ponto flutuante.
 const EPS = 0.002;
 
-// playerId → { vy, planeta }
+// Subir mais que isto acima do alvo é um PULO (ou um empurrão de fora), não
+// erro de controle. Um pulo do Minecraft começa em 0,42 — bem acima.
+const SALTO = 0.05;
+
+// playerId → { alvo } — a velocidade vertical que o jogador deveria ter
 const estado = new Map();
 
 export function forgetPlayer(playerId) {
@@ -86,7 +97,7 @@ export function applyPlanetGravity(player, planet) {
 
   let st = estado.get(player.id);
   if (!st) {
-    st = { vy: 0 };
+    st = { alvo: 0 };
     estado.set(player.id, st);
   }
 
@@ -95,7 +106,7 @@ export function applyPlanetGravity(player, planet) {
   let montaria;
   try { montaria = player.getComponent("riding")?.entityRidingOn; } catch { }
   if (montaria?.isValid) {
-    st.vy = 0;
+    st.alvo = 0;
     return 0;
   }
 
@@ -106,23 +117,41 @@ export function applyPlanetGravity(player, planet) {
   let noChao = false;
   try { noChao = player.isOnGround; } catch { }
   if (noChao) {
-    st.vy = 0;
+    st.alvo = 0;
     return 0;
   }
 
-  const dv = vy - st.vy;
-  st.vy = vy;
+  // O alvo é uma velocidade INTEGRADA por nós, não uma aceleração medida.
+  //
+  // Medir a aceleração entre dois ticks foi a primeira tentativa e não funciona:
+  // o `dv` de um tick mistura o que o MOTOR fez com o que EU empurrei no tick
+  // anterior, e não há como separar os dois olhando só pra velocidade. O
+  // resultado, medido no teste, foi uma oscilação — empurra, não empurra,
+  // empurra — com a aceleração média saindo no meio do caminho entre o g da
+  // Terra e o do planeta.
+  //
+  // Aqui o controlador guarda qual velocidade o jogador DEVERIA ter e persegue
+  // ela. Isso é auto-corretivo sem precisar saber a conversão do Bedrock entre
+  // "força de knockback" e "blocos por tick": se o empurrão chegou fraco, a
+  // velocidade fica abaixo do alvo e o erro do tick seguinte é maior; se chegou
+  // forte, ela fica acima e ele não empurra até o alvo alcançá-la.
+  st.alvo -= g;
 
-  const alvo = -g;
-  if (dv >= alvo - EPS) return 0;   // já está caindo devagar o bastante
+  // Subiu MUITO mais que o alvo: isso é um pulo, ou um empurrão de outra coisa.
+  // Não é papel da gravidade frear um pulo além do g do planeta — o alvo passa
+  // a acompanhar o jogador, e a partir daí ele desacelera pelo g daqui. É isso
+  // que faz o pulo alto existir sem jump_boost nenhum.
+  if (vy > st.alvo + SALTO) st.alvo = vy;
 
-  const correcao = Math.min(CORRECAO_MAX, (alvo - dv)) * GANHO;
+  const erro = st.alvo - vy;
+  if (erro <= EPS) return 0;
+
+  const correcao = Math.min(CORRECAO_MAX, erro) * GANHO;
   try {
     // Só vertical: o horizontal é do jogador, e mexer nele tiraria o controle
     // dele de andar.
     player.applyKnockback({ x: 0, z: 0 }, correcao);
   } catch { }
-  st.vy = vy + correcao;
   return correcao;
 }
 

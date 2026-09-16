@@ -18,6 +18,8 @@ import {
   SPACE_ENTRY_Y,
   FOG_ID,
   FOG_INSIDE_ID,
+  FOG_COLD_ID,
+  COLD_FOG_AT,
 } from "./config.js";
 import { generateColumn, getHeight, isBudgetError, insideBlocksOf } from "./bodies.js";
 import {
@@ -29,6 +31,7 @@ import {
 import { applyZeroGravity, releaseZeroGravity, forgetPlayer as forgetPhysics } from "./physics.js";
 import { applyLifeSupport, canBreathe } from "./lifeSupport.js";
 import { applySunHeat, applySunPressure } from "./hazards.js";
+import { applyCold, heatReserveOf, forgetPlayer as forgetCold } from "./cold.js";
 import { forgetPlayer as forgetVehicle } from "./vehicle.js";
 import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
@@ -134,6 +137,7 @@ system.runInterval(() => {
       if (!here) {
         if (wasInSpace.delete(player.id)) {
           popFog(player);
+          forgetCold(player.id);
           if (!wasInSpace.size) clearSidebar();
           releaseZeroGravity(player);
           clearModels(player.id);
@@ -163,7 +167,16 @@ system.runInterval(() => {
       // Névoa curta cor de brasa quando se está no meio dos blocos de um corpo:
       // lá dentro o Sol é bloco branco de emissão máxima a um palmo do rosto, e
       // sem isso a tela vira um branco chapado.
-      pushFog(player, insideBlocksOf(player.location) ? FOG_INSIDE_ID : FOG_ID);
+      // Três névoas possíveis, nesta ordem de prioridade: dentro dos blocos de
+      // um corpo (o Sol por dentro), congelando, e o vácuo comum. A do frio é a
+      // única que conta uma coisa sobre o JOGADOR e não sobre o lugar — e é por
+      // isso que ela vem antes: quando ela aparece, é o que importa.
+      pushFog(
+        player,
+        insideBlocksOf(player.location) ? FOG_INSIDE_ID
+          : heatReserveOf(player.id) < COLD_FOG_AT ? FOG_COLD_ID
+            : FOG_ID
+      );
       spawnAmbience(player);
       // O céu é resolvido de uma vez pra todos, depois do laço: jogadores que
       // estão juntos dividem um conjunto de modelos só. Um conjunto por jogador
@@ -179,17 +192,23 @@ system.runInterval(() => {
       const breathing = applyLifeSupport(player);
       const heatWarning = applySunHeat(player);
       const pressureWarning = applySunPressure(player);
+      const coldWarning = applyCold(player);
       checkBodyPortals(player);
 
       // Prioridade dos avisos: pegar fogo mata mais rápido que ficar sem ar,
       // e sem ar mata mais rápido que se perder — a bússola é a última.
       // Prioridade dos avisos: a pressão esmaga mais rápido que o fogo, o fogo
       // mais rápido que a falta de ar, e a bússola é a última da fila.
+      // A ordem é a de quem mata mais rápido: a pressão esmaga em segundos, o
+      // fogo queima em dezenas de segundos, ficar sem ar mata em menos de um
+      // minuto, e o frio é uma reserva de mais de um minuto e meio. A bússola
+      // é a última da fila.
       showCompass(
         player,
         pressureWarning ??
         heatWarning ??
-        (breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI")
+        (breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI") ??
+        coldWarning
       );
     } catch (e) {
       onError("loop do jogador", e);
@@ -226,6 +245,7 @@ world.beforeEvents.playerLeave.subscribe((event) => {
   forgetPhysics(id);
   forgetAmbience(id);
   forgetPlanet(id);
+  forgetCold(id);
   clearModels(id);
   // Saiu no meio de uma viagem: apaga a estrutura do veículo, senão ela fica
   // guardada no mundo pra sempre.

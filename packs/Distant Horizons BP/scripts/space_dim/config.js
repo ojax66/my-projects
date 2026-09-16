@@ -602,3 +602,56 @@ export const SPACECRAFT_LEGACY_RADIUS = 30000;
 export const SPACECRAFT_LANDING_Y = 254;
 // Espalha o pouso pra dois jogadores não caírem no mesmo bloco.
 export const LANDING_JITTER = 8;
+
+// ---------------------------------------------------------------------------
+// Frio do espaço
+// ---------------------------------------------------------------------------
+// O vácuo não "gela" por contato — não há o que conduzir calor. O que ele faz é
+// não devolver NADA: o corpo irradia calor pro nada e não recebe de volta,
+// menos o que o Sol manda. Por isso o frio aqui não é instantâneo, é uma
+// reserva que escorre: o jogador aguenta um bom tempo e depois começa a perder
+// vida, e se voltar pro quente ela enche de novo.
+//
+// É um eixo SEPARADO do oxigênio, de propósito. O traje comum do Spacecraft
+// resolve o ar mas não isola: ele deixa explorar, não morar. Quem quiser ficar
+// precisa do traje reforçado ou da armadura de estrela — e é isso que dá ao
+// traje reforçado um trabalho que antes ele não tinha.
+export const COLD_ENABLED = true;
+// Quantos segundos de exposição até a reserva acabar e o dano começar.
+export const COLD_SECONDS = 100;
+// Dano por segundo com a reserva zerada.
+export const COLD_DAMAGE = 1;
+// Quantas vezes mais rápido ele se reaquece do que esfria. Voltar pra nave tem
+// que ser um alívio rápido, senão vira espera.
+export const COLD_RECOVER_FACTOR = 5;
+// Abaixo desta fração da reserva começa o aviso na barra de ação.
+export const COLD_WARN_AT = 0.45;
+// Abaixo desta, a tela ganha a névoa fria.
+export const COLD_FOG_AT = 0.25;
+export const FOG_COLD_ID = "space_dim:fog_cold";
+
+// ---------------------------------------------------------------------------
+// Tempestades de areia de Marte
+// ---------------------------------------------------------------------------
+// Marte tem tempestades de poeira que chegam a cobrir o planeta inteiro e durar
+// semanas. Aqui elas são por DIA do mundo, e a conta é determinística: todo
+// jogador no mesmo dia e na mesma região vê a mesma tempestade, sem nada
+// precisar ser sincronizado entre eles.
+//
+// Elas NÃO cegam e não dão efeito nenhum — ele foi explícito. O que elas fazem
+// é atrapalhar a vista, com partículas de poeira de ferrita e uma névoa curta.
+export const MARS_STORM_ENABLED = true;
+// Fração dos dias marcianos que têm tempestade.
+export const MARS_STORM_CHANCE = 0.28;
+// Quantas partículas por emissão, no auge. Baixo de propósito: quem atrapalha a
+// vista de verdade é a névoa; a partícula é o que faz parecer areia voando.
+export const MARS_STORM_PARTICLES = 3;
+// De quantos em quantos ticks a poeira é reemitida.
+export const MARS_STORM_INTERVAL = 6;
+export const MARS_STORM_PARTICLE = "space_dim:mars_sand";
+// Duas forças de névoa: a tempestade começa fraca, aperta e afrouxa.
+export const FOG_MARS_STORM_ID = "space_dim:fog_mars_storm";
+export const FOG_MARS_STORM_HEAVY_ID = "space_dim:fog_mars_storm_heavy";
+// Acima destas intensidades entra cada uma.
+export const MARS_STORM_FOG_AT = 0.20;
+export const MARS_STORM_HEAVY_AT = 0.60;

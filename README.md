@@ -144,9 +144,57 @@ aparecia esburacado.
 
 ### Lá em cima
 
-Vácuo nos dois: **traje completo + mochila de oxigênio**, ou dentro do OVNI.
-Gravidade baixa — na Lua pula alto e cai manso (1/6 g); em Marte pula mais alto
-que na Terra, mas a queda ainda machuca (0,38 g).
+**Vácuo nos dois**: traje completo + mochila de oxigênio, ou dentro do OVNI.
+
+**A nave não desce.** Ela fica boiando no espaço, marcada pra não sumir, e o
+jogador desce a pé. O corpo celeste é atravessável pelo modelo, então a nave
+recolocada na superfície ou aparecia dentro do planeta, ou a recolocação
+falhava.
+
+**Gravidade baixa, por controlador próprio** (`planetGravity.js`) — sem efeito
+de poção nenhum. Lua 0,165 g, Marte 0,38 g, os valores de verdade. O
+controlador guarda a velocidade que o jogador *deveria* ter e persegue ela, o
+que o torna auto-corretivo: ele não precisa saber a conversão do Bedrock entre
+"força de knockback" e "blocos por tick", que não está documentada. O dano de
+queda cai na mesma proporção — não é anulado: cair 20 blocos na Lua machuca o
+mesmo que cair 3,3 na Terra.
+
+**Cavernas e minérios.** A crosta tem cavernas de ruído 3D que nunca furam a
+casca de cima nem encostam na bedrock (8,3% dela), e quatro minérios por
+planeta. A textura de cada minério é a **pedra do próprio planeta** com grãos
+de metal — minério do jogo base tem textura de pedra do Overworld e denunciaria
+de onde veio. Eles largam o item cru do jogo base, então servem no minuto em
+que são minerados.
+
+| | Lua | Marte |
+|---|---|---|
+| comum e raso | ferro (meteórico) 1,8% | ferro 1,9%, cobre 1,1% |
+| fundo | redstone 0,29%, ouro 0,28% | ouro 0,34% |
+| bem fundo | diamante 0,08% | diamante 0,09% |
+
+### Tempestades de areia (Marte)
+
+Por **dia do mundo**, e determinísticas: a intensidade sai de (dia, posição) por
+hash, então todo jogador no mesmo lugar no mesmo dia vê a mesma tempestade, sem
+nada precisar ser sincronizado. Elas nascem fracas, apertam no meio do dia e
+passam.
+
+Não cegam e não dão efeito nenhum — só atrapalham a vista, com poeira de ferrita
+voando e uma névoa curta. A névoa é a parte que funciona; a partícula é o que
+faz ela parecer areia voando em vez de neblina parada.
+
+### O frio do espaço
+
+O vácuo não gela por contato: não há matéria pra conduzir calor. O que ele faz é
+não devolver nada — o corpo irradia pro escuro. Por isso o frio é uma **reserva
+que escorre** (100 s), não um dano imediato, e voltar pro quente a enche cinco
+vezes mais rápido.
+
+É um eixo **separado do oxigênio**. O traje comum do Spacecraft resolve o ar mas
+não isola: ele deixa explorar, não morar. O que aquece é o traje reforçado, a
+armadura de estrela, estar dentro do OVNI, ou estar perto do Sol — onde o
+problema é o oposto. É isso que dá ao traje reforçado um trabalho que ele não
+tinha.
 
 ### Os blocos
 

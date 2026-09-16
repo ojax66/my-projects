@@ -1,0 +1,16 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "space_dim:fog_mars_storm_heavy"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 4.0,
+        "fog_end": 26.0,
+        "fog_color": "#B0612F",
+        "render_distance_type": "fixed"
+      }
+    }
+  }
+}

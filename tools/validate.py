@@ -1626,6 +1626,31 @@ for bid, src in BODY_SRC.items():
                     if re.search(r'dimensionId: "([^"]+)"', s2)}:
         err(f"o corpo {bid} tem portal pra {alvo}, que nao e um planeta de planets.js")
 
+# --- 5d. Névoas e partículas citadas no config existem ------------------------
+#
+# Uma névoa que não existe não dá erro no jogo: o comando `fog push` falha
+# calado e a tela fica sem névoa nenhuma. Uma partícula idem. Os dois são o
+# tipo de coisa que só se descobre estando lá dentro na hora certa — no meio de
+# uma tempestade de areia, ou congelando.
+particle_ids = set()
+for path, doc in docs.items():
+    if isinstance(doc, dict) and "particle_effect" in doc:
+        pid_ = doc["particle_effect"].get("description", {}).get("identifier")
+        if pid_:
+            particle_ids.add(pid_)
+
+for nome, valor in re.findall(
+        r'^export const (\w*(?:FOG|PARTICLE)\w*) = "([^"]+)";', config_src, re.M):
+    # FOG_LABEL nao e uma nevoa: e o rotulo da PILHA de nevoas do comando
+    # `fog push`, que nao aponta pra arquivo nenhum.
+    if nome.endswith("_LABEL"):
+        continue
+    if "fog" in valor:
+        if fog_ids and valor not in fog_ids:
+            err(f"{nome} aponta pra nevoa {valor}, que nao existe em RP/fogs")
+    elif particle_ids and valor not in particle_ids:
+        err(f"{nome} aponta pra particula {valor}, que nao existe em RP/particles")
+
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):
     if not os.path.isfile(os.path.join(base, "pack_icon.png")):
