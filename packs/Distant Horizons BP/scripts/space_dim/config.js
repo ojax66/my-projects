@@ -221,6 +221,22 @@ export const BODIES = [
 // A casca é sólida, então o jogador encosta nela antes de chegar ao centro.
 export const PORTAL_MARGIN = 2.5;
 
+// A que distância da superfície o corpo PARA DE PUXAR.
+//
+// Três blocos, que foi o número que ele pediu. E ele tem que ser MAIOR OU IGUAL
+// ao PORTAL_MARGIN, nunca menor — esta é a regra que importa, e eu a tinha
+// escrito errada antes ("tem que ser igual"):
+//
+//   gravidade desliga ANTES do portal disparar   →  seguro. Sobra uma casca
+//     fina onde não há puxão e ainda não há viagem, e não há nada de errado
+//     nisso: o jogador só flutua.
+//   gravidade desliga DEPOIS                     →  o bug. Existe uma casca em
+//     que a viagem já começou e o puxão continua, e é nela que a nave é
+//     arrancada no meio do teleporte.
+//
+// tools/tests/test_gravity_cold_storm.mjs confere a desigualdade.
+export const GRAVITY_OFF_MARGIN = 3;
+
 // O calor do Sol pode ser desligado inteiro aqui (o campo `heat` do Sol em
 // BODIES é que diz o alcance e a intensidade).
 export const SUN_HEAT_ENABLED = true;

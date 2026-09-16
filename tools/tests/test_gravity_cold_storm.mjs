@@ -249,8 +249,8 @@ function jogadorNoVacuo(id = 'c1') {
 // ===========================================================================
 console.log('\n--- tempestade de areia de Marte ---');
 
-import { gravityAt, inPortalZone } from './space_dim/gravity.js';
-import { MARS_STORM_EPOCH, PORTAL_MARGIN } from './space_dim/config.js';
+import { gravityAt, inNoPullZone } from './space_dim/gravity.js';
+import { MARS_STORM_EPOCH, PORTAL_MARGIN, GRAVITY_OFF_MARGIN } from './space_dim/config.js';
 
 // --- 10. Determinística -----------------------------------------------------
 {
@@ -372,34 +372,48 @@ import { MARS_STORM_EPOCH, PORTAL_MARGIN } from './space_dim/config.js';
 // ===========================================================================
 // O PUXÃO PARA QUANDO SE ENCOSTA NUM PLANETA
 // ===========================================================================
-console.log('\n--- gravidade dos corpos: o portal desliga o puxão ---');
+console.log('\n--- gravidade dos corpos: perto do planeta o puxão para ---');
 
-// Encostar num planeta é o gatilho da viagem. Continuar puxando nessa janela
-// arranca a nave (ou o jogador dela) no meio do teleporte — foi o que ele viu.
+// A DESIGUALDADE é a regra, não a igualdade.
+//
+// Desligar o puxão cedo demais não machuca ninguém: sobra uma casca fina sem
+// puxão e sem viagem, e o jogador só flutua nela. Desligar tarde é o bug —
+// existiria uma casca em que a viagem já começou e o puxão continua, e é nela
+// que a nave é arrancada no meio do teleporte.
+check(`o puxão desliga ANTES de o portal disparar (${GRAVITY_OFF_MARGIN} >= ${PORTAL_MARGIN})`,
+      GRAVITY_OFF_MARGIN >= PORTAL_MARGIN);
+
 {
   for (const id of ['earth', 'moon', 'mars']) {
     const body = BODIES.find((b) => b.id === id);
-    const naSuperficie = {
-      x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
-    };
-    check(`encostando em ${id}, o puxão para`,
-          inPortalZone(naSuperficie) && gravityAt(naSuperficie) === null);
+    const emCima = (fora) => ({
+      x: body.center.x, y: body.center.y + body.radius + fora, z: body.center.z,
+    });
 
-    // E logo depois da margem ele volta, senão a gravidade do corpo sumiria.
-    const foraDaMargem = {
-      x: body.center.x,
-      y: body.center.y + body.radius + PORTAL_MARGIN + 3,
-      z: body.center.z,
-    };
-    check(`  e volta assim que sai da margem do portal`,
-          !inPortalZone(foraDaMargem) && gravityAt(foraDaMargem) !== null);
+    // Exatamente na distância que ele pediu.
+    const aTres = emCima(GRAVITY_OFF_MARGIN);
+    check(`a ${GRAVITY_OFF_MARGIN} blocos de ${id}, o puxão já parou`,
+          inNoPullZone(aTres) && gravityAt(aTres) === null);
+
+    // E em toda a faixa até a superfície, inclusive onde o portal dispara.
+    let puxouEmAlgum = false;
+    for (let fora = 0; fora <= GRAVITY_OFF_MARGIN; fora += 0.25) {
+      if (gravityAt(emCima(fora)) !== null) puxouEmAlgum = true;
+    }
+    check(`  e em nenhum ponto dos ${GRAVITY_OFF_MARGIN} blocos até a superfície`,
+          !puxouEmAlgum);
+
+    // Logo depois ele volta, senão a gravidade do corpo sumiria.
+    const foraDaMargem = emCima(GRAVITY_OFF_MARGIN + 2);
+    check(`  volta assim que passa da margem`,
+          !inNoPullZone(foraDaMargem) && gravityAt(foraDaMargem) !== null);
   }
 
   // O Sol não tem portal: lá o puxão é o que faz cair dentro dele ter graça.
   const sol2 = BODIES.find((b) => b.id === 'sun');
   const naCoroa = { x: sol2.center.x, y: sol2.center.y + sol2.radius - 2, z: sol2.center.z };
   check('o Sol continua puxando: ele não tem portal',
-        !inPortalZone(naCoroa) && gravityAt(naCoroa) !== null);
+        !inNoPullZone(naCoroa) && gravityAt(naCoroa) !== null);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

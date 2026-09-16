@@ -38,12 +38,15 @@ que o Spacecraft troca o foguete de dimensão durante o lançamento (`launch.js`
 lado da Terra, quem sobe da Lua chega ao lado da Lua, quem sobe de Marte chega
 ao lado de Marte. Vale de OVNI, de elytra ou voando no criativo.
 
-**Encostar num planeta desliga a gravidade dele.** Encostar é o gatilho da
-viagem, e continuar puxando nessa janela arranca a nave no meio do teleporte. A
-margem que desliga o puxão é a mesma que dispara o portal — se fossem
-diferentes, sobraria uma casca fina onde as duas coisas acontecem juntas. O Sol
-é a exceção: ele não tem portal, e lá o puxão é o que faz cair dentro dele ter
-graça.
+**A 3 blocos de um planeta ele para de puxar.** Chegar perto é o gatilho da
+viagem, e continuar puxando nessa janela arranca a nave no meio do teleporte.
+
+A margem do puxão (3) é **maior** que a do portal (2,5), e é a desigualdade que
+importa: desligar cedo demais não machuca ninguém — sobra uma casca fina sem
+puxão e sem viagem, e o jogador só flutua nela. Desligar tarde é o bug.
+
+O Sol é a exceção: ele não tem portal, e lá o puxão é o que faz cair dentro dele
+ter graça.
 
 **De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento

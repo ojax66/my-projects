@@ -27,7 +27,7 @@ import {
   ENTITY_GRAVITY_INTERVAL,
   ENTITY_GRAVITY_SCAN,
   DIMENSION_ID,
-  PORTAL_MARGIN,
+  GRAVITY_OFF_MARGIN,
 } from "./config.js";
 import { inArrivalGrace } from "./arrival.js";
 import { isSkyModel } from "./skybox.js";
@@ -77,33 +77,36 @@ function landingRadius(body, d) {
  * pra FORA, até a superfície, em vez de ser prensado mais fundo.
  */
 /**
- * Está encostando num corpo que tem portal? Aí a gravidade dele PARA.
+ * Está a menos de GRAVITY_OFF_MARGIN da superfície de um corpo com portal?
+ * Aí a gravidade dele PARA.
  *
- * Encostar num planeta é o gatilho da viagem: o jogador vai ser teleportado nos
- * próximos ticks. Continuar puxando nessa janela foi o que ele viu — o puxão
- * arranca a nave (ou o jogador dela) enquanto a viagem acontece, e ele chega
- * desmontado ou não chega.
+ * Chegar perto de um planeta é o gatilho da viagem: o jogador vai ser
+ * teleportado nos próximos ticks. Continuar puxando nessa janela foi o que ele
+ * viu — o puxão arranca a nave (ou o jogador dela) enquanto a viagem acontece,
+ * e ele chega desmontado ou não chega.
  *
- * A margem é a MESMA que dispara o portal (PORTAL_MARGIN), de propósito: o
- * ponto em que a viagem começa e o ponto em que o puxão para têm que ser o
- * mesmo, senão sobra uma casca fina onde as duas coisas acontecem juntas — que
- * é exatamente o bug.
+ * A margem daqui é MAIOR que a do portal, e é ela que tem que ser a maior. Eu
+ * tinha escrito antes que as duas deviam ser iguais, e estava errado: o que
+ * precisa valer é a desigualdade. Desligar o puxão CEDO DEMAIS não machuca
+ * ninguém — sobra uma casca fina sem puxão e sem viagem, e o jogador só flutua
+ * nela. Desligar TARDE é o bug: existiria uma casca em que a viagem já começou
+ * e o puxão continua.
  *
  * O Sol não entra: ele não tem portal, é atravessável, e lá o puxão é o que faz
  * cair dentro dele ter graça.
  */
-export function inPortalZone(location) {
+export function inNoPullZone(location) {
   for (let i = 0; i < BODIES.length; i++) {
     const body = BODIES[i];
     if (!body.portal) continue;
-    if (chebyshevTo(location, body) <= body.radius + PORTAL_MARGIN) return true;
+    if (chebyshevTo(location, body) <= body.radius + GRAVITY_OFF_MARGIN) return true;
   }
   return false;
 }
 
 export function gravityAt(location) {
-  // Encostou num planeta: ele para de puxar. Ver inPortalZone.
-  if (inPortalZone(location)) return null;
+  // Perto de um planeta: ele para de puxar. Ver inNoPullZone.
+  if (inNoPullZone(location)) return null;
 
   let gx = 0;
   let gy = 0;
