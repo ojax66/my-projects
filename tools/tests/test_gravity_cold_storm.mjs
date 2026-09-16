@@ -249,7 +249,8 @@ function jogadorNoVacuo(id = 'c1') {
 // ===========================================================================
 console.log('\n--- tempestade de areia de Marte ---');
 
-const DIA = 24000;
+import { gravityAt, inPortalZone } from './space_dim/gravity.js';
+import { MARS_STORM_EPOCH, PORTAL_MARGIN } from './space_dim/config.js';
 
 // --- 10. Determinística -----------------------------------------------------
 {
@@ -261,27 +262,84 @@ const DIA = 24000;
   check('a mesma hora e o mesmo lugar dão sempre a mesma tempestade', iguais);
 }
 
-// --- 11. Nem todo dia tem, e os que têm crescem e passam --------------------
+// --- 11. É uma MANCHA, não o planeta inteiro --------------------------------
+//
+// Foi a reclamação dele sobre a primeira versão: "não é na dimensão inteira,
+// apenas em um pedaço". Este teste é o que impede a tempestade global de
+// voltar.
 {
-  let diasComTempestade = 0;
-  const DIAS = 400;
-  for (let d = 0; d < DIAS; d++) {
-    if (stormIntensity(d * DIA + DIA / 2, 0, 0) > 0) diasComTempestade++;
+  const t = MARS_STORM_EPOCH * 7 + 3000;
+  let comNevoa = 0, n = 0, pico = 0;
+  for (let x = -2500; x <= 2500; x += 25) {
+    for (let z = -2500; z <= 2500; z += 25) {
+      const i = stormIntensity(t, x, z);
+      n++;
+      if (i >= MARS_STORM_FOG_AT) comNevoa++;
+      if (i > pico) pico = i;
+    }
   }
-  const frac = diasComTempestade / DIAS;
-  check('uma parte dos dias tem tempestade, não todos nem nenhum',
-        frac > 0.1 && frac < 0.5, `(${(100 * frac).toFixed(0)}% dos dias)`);
+  const cobertura = comNevoa / n;
+  check('num instante, a tempestade cobre um PEDAÇO do planeta',
+        cobertura > 0.01 && cobertura < 0.40,
+        `(${(100 * cobertura).toFixed(1)}% da área)`);
+  check('  e em algum lugar ela está forte', pico > MARS_STORM_HEAVY_AT,
+        `(pico ${pico.toFixed(2)})`);
+}
 
-  // um dia de tempestade, hora a hora
-  let dia = -1;
-  for (let d = 0; d < DIAS; d++) if (stormIntensity(d * DIA + DIA / 2, 0, 0) > 0) { dia = d; break; }
-  const curva = [];
-  for (let f = 0; f <= 20; f++) curva.push(stormIntensity(dia * DIA + f * DIA / 20, 0, 0));
-  const meio = curva[10], inicio = curva[0], fim = curva[20];
-  check('  ela nasce fraca, aperta no meio e passa',
-        meio > inicio && meio > fim && inicio < 0.05 && fim < 0.05,
-        `(início ${inicio.toFixed(2)}, meio ${meio.toFixed(2)}, fim ${fim.toFixed(2)})`);
-  check('  e nunca passa de 1', Math.max(...curva) <= 1);
+// --- 11b. E ela ANDA --------------------------------------------------------
+//
+// A outra metade do pedido. Uma mancha parada seria uma região do mapa, não
+// uma tempestade.
+{
+  const t0 = MARS_STORM_EPOCH * 7 + 2000;
+  const centro = (t) => {
+    let melhorX = null, melhor = 0;
+    for (let x = -3000; x <= 3000; x += 10) {
+      const i = stormIntensity(t, x, 0);
+      if (i > melhor) { melhor = i; melhorX = x; }
+    }
+    return { x: melhorX, i: melhor };
+  };
+  // acompanha UMA tempestade: mede o deslocamento do pico perto dele mesmo
+  const a = centro(t0);
+  let andou = 0;
+  if (a.x !== null) {
+    let melhorX = a.x, melhor = 0;
+    for (let x = a.x - 400; x <= a.x + 400; x += 5) {
+      const i = stormIntensity(t0 + 3000, x, 0);
+      if (i > melhor) { melhor = i; melhorX = x; }
+    }
+    andou = Math.abs(melhorX - a.x);
+  }
+  check('a mancha se desloca com o tempo', andou > 20,
+        `(o pico andou ${andou} blocos em 3000 ticks)`);
+}
+
+// --- 11c. Um jogador parado às vezes pega, às vezes não ---------------------
+{
+  for (const [nome, x, z] of [['no spawn', 0, 0], ['longe', 5200, -3100]]) {
+    let dentro = 0, n = 0;
+    for (let t = 0; t < MARS_STORM_EPOCH * 40; t += 60) {
+      if (stormIntensity(t, x, z) >= MARS_STORM_FOG_AT) dentro++;
+      n++;
+    }
+    const frac = dentro / n;
+    check(`  ${nome}: pega tempestade às vezes, não sempre nem nunca`,
+          frac > 0.02 && frac < 0.45, `(${(100 * frac).toFixed(1)}% do tempo)`);
+  }
+}
+
+// --- 11d. A travessia tem uma FRENTE, não uma parede ------------------------
+{
+  const t = MARS_STORM_EPOCH * 7 + 3000;
+  let maiorSalto = 0;
+  for (let x = -3000; x < 3000; x += 1) {
+    const a = stormIntensity(t, x, 0);
+    const b = stormIntensity(t, x + 1, 0);
+    maiorSalto = Math.max(maiorSalto, Math.abs(a - b));
+  }
+  check('atravessar a borda é gradual, não um interruptor',
+        maiorSalto < 0.05, `(maior salto entre blocos vizinhos: ${maiorSalto.toFixed(3)})`);
 }
 
 // --- 12. A névoa acompanha a força ------------------------------------------
@@ -309,6 +367,39 @@ const DIA = 24000;
   check('a poeira é emitida de tempos em tempos, não todo tick',
         emissoes > 0 && emissoes < 30, `(${emissoes} emissões em 60 ticks)`);
   check('  e sem tempestade não sai nada', spawnStormDust(p, 0) === 0);
+}
+
+// ===========================================================================
+// O PUXÃO PARA QUANDO SE ENCOSTA NUM PLANETA
+// ===========================================================================
+console.log('\n--- gravidade dos corpos: o portal desliga o puxão ---');
+
+// Encostar num planeta é o gatilho da viagem. Continuar puxando nessa janela
+// arranca a nave (ou o jogador dela) no meio do teleporte — foi o que ele viu.
+{
+  for (const id of ['earth', 'moon', 'mars']) {
+    const body = BODIES.find((b) => b.id === id);
+    const naSuperficie = {
+      x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+    };
+    check(`encostando em ${id}, o puxão para`,
+          inPortalZone(naSuperficie) && gravityAt(naSuperficie) === null);
+
+    // E logo depois da margem ele volta, senão a gravidade do corpo sumiria.
+    const foraDaMargem = {
+      x: body.center.x,
+      y: body.center.y + body.radius + PORTAL_MARGIN + 3,
+      z: body.center.z,
+    };
+    check(`  e volta assim que sai da margem do portal`,
+          !inPortalZone(foraDaMargem) && gravityAt(foraDaMargem) !== null);
+  }
+
+  // O Sol não tem portal: lá o puxão é o que faz cair dentro dele ter graça.
+  const sol2 = BODIES.find((b) => b.id === 'sun');
+  const naCoroa = { x: sol2.center.x, y: sol2.center.y + sol2.radius - 2, z: sol2.center.z };
+  check('o Sol continua puxando: ele não tem portal',
+        !inPortalZone(naCoroa) && gravityAt(naCoroa) !== null);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

@@ -18,18 +18,37 @@
  * neblina parada.
  *
  * ---------------------------------------------------------------------------
+ * Uma MANCHA que caminha, não um interruptor
+ * ---------------------------------------------------------------------------
+ * A primeira versão ligava a tempestade no planeta inteiro durante um dia. Está
+ * errado por dois motivos, e ele apontou os dois: uma tempestade de areia ocupa
+ * um PEDAÇO do planeta, e ela ANDA.
+ *
+ * Agora cada tempestade é um disco: nasce numa célula da grade, tem um raio
+ * próprio, anda em linha reta e morre. Quem está no miolo quase não enxerga;
+ * quem está na borda vê a poeira passando; quem está fora vê o céu limpo. E dá
+ * pra sair dela a pé — ela anda a 0,02 bloco por tick e o jogador anda vinte
+ * vezes mais rápido.
+ *
+ * ---------------------------------------------------------------------------
  * Por que a conta é determinística
  * ---------------------------------------------------------------------------
- * A intensidade sai de (dia do mundo, posição) por hash — não há estado
- * guardado, não há sorteio por jogador, não há nada pra sincronizar. Dois
- * jogadores no mesmo lugar no mesmo dia veem exatamente a mesma tempestade, e
- * quem sair e voltar pro mundo pega ela no mesmo ponto.
+ * Tudo sai de (época, célula) por hash — não há estado guardado, não há sorteio
+ * por jogador, não há nada pra sincronizar. Dois jogadores no mesmo lugar veem
+ * a mesma mancha, no mesmo lugar e do mesmo tamanho, e quem sair e voltar pro
+ * mundo pega ela onde ela estava.
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
 import {
   MARS_STORM_ENABLED,
+  MARS_STORM_EPOCH,
+  MARS_STORM_CELL,
   MARS_STORM_CHANCE,
+  MARS_STORM_RADIUS_MIN,
+  MARS_STORM_RADIUS_MAX,
+  MARS_STORM_DRIFT,
+  MARS_STORM_CORE,
   MARS_STORM_PARTICLES,
   MARS_STORM_INTERVAL,
   MARS_STORM_PARTICLE,
@@ -38,12 +57,10 @@ import {
   MARS_STORM_FOG_AT,
   MARS_STORM_HEAVY_AT,
 } from "./config.js";
-import { hash2, fbm } from "./world_generator_API.js";
+import { hash2 } from "./world_generator_API.js";
 
 const world = mc.world;
 const system = mc.system;
-
-const DIA = 24000;   // ticks de um dia do Minecraft
 
 /** O relógio do mundo, em ticks. Cai no tick do sistema se o mundo não disser. */
 export function worldTime() {
@@ -54,32 +71,77 @@ export function worldTime() {
   return system.currentTick;
 }
 
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Degrau suave — a borda da mancha, e o nascer e morrer dela. */
+function sstep(e0, e1, t) {
+  const u = clamp01((t - e0) / (e1 - e0));
+  return u * u * (3 - 2 * u);
+}
+
+/**
+ * A tempestade daquela célula naquela época, vista de (x, z). 0 se não há.
+ *
+ * Tudo sobre ela — se existe, onde nasce, que raio tem, pra onde anda — sai de
+ * hashes de (célula, época). Nada é guardado.
+ */
+function stormOfCell(ep, ci, cj, tempo, x, z) {
+  if (hash2(ci * 7919 + ep * 13, cj * 6047 - ep * 29) > MARS_STORM_CHANCE) return 0;
+
+  const dt = tempo - ep * MARS_STORM_EPOCH;
+  if (dt < 0 || dt > MARS_STORM_EPOCH) return 0;
+
+  // Onde ela nasceu, dentro da célula.
+  const ox = hash2(ci * 131 + ep * 7, cj * 977 + 3);
+  const oz = hash2(ci * 313 - ep * 11, cj * 523 + 91);
+  // Pra onde ela anda, e o quanto já andou.
+  const ang = hash2(ci * 61 + ep * 5, cj * 89 + 17) * Math.PI * 2;
+  const cx = (ci + ox) * MARS_STORM_CELL + Math.cos(ang) * MARS_STORM_DRIFT * dt;
+  const cz = (cj + oz) * MARS_STORM_CELL + Math.sin(ang) * MARS_STORM_DRIFT * dt;
+
+  const raio = MARS_STORM_RADIUS_MIN
+    + (MARS_STORM_RADIUS_MAX - MARS_STORM_RADIUS_MIN)
+    * hash2(ci * 151 + ep * 3, cj * 199 + 61);
+
+  const d = Math.sqrt((x - cx) * (x - cx) + (z - cz) * (z - cz));
+  if (d >= raio) return 0;
+
+  // Miolo cheio, borda desbotando: é isso que dá uma FRENTE a ela, em vez de
+  // uma parede que liga de um bloco pro outro.
+  const perfil = 1 - sstep(raio * MARS_STORM_CORE, raio, d);
+  // E ela nasce e morre em vez de aparecer pronta.
+  const envelope = Math.sin(Math.PI * (dt / MARS_STORM_EPOCH));
+
+  return clamp01(perfil * envelope);
+}
+
 /**
  * A força da tempestade em (x, z) naquele instante, de 0 a 1.
  *
- * Três fatores multiplicados:
- *   1. o DIA tem tempestade? (sorteio por dia)
- *   2. a curva do dia — ela nasce, aperta e passa, em vez de ligar e desligar
- *   3. a REGIÃO — no auge ela cobre tudo, mas nas pontas só alguns lugares
+ * Varre as células vizinhas em duas épocas — a atual e a anterior, porque uma
+ * tempestade que nasceu na época passada ainda pode estar por cima daqui. Duas
+ * manchas sobrepostas não somam: vale a mais forte, senão o encontro de duas
+ * viraria uma intensidade impossível.
  *
  * Pura: os testes chamam direto, sem jogo nenhum.
  */
 export function stormIntensity(tempo, x, z) {
   if (!MARS_STORM_ENABLED) return 0;
 
-  const dia = Math.floor(tempo / DIA);
-  if (hash2(dia * 7919 + 13, 4242) > MARS_STORM_CHANCE) return 0;
+  const ci0 = Math.floor(x / MARS_STORM_CELL);
+  const cj0 = Math.floor(z / MARS_STORM_CELL);
+  const ep0 = Math.floor(tempo / MARS_STORM_EPOCH);
 
-  // A curva do dia: zero nas pontas, cheia no meio.
-  const fase = (tempo % DIA) / DIA;
-  const envelope = Math.sin(Math.PI * fase);
-  if (envelope <= 0) return 0;
-
-  // A região: o mesmo dia é mais pesado num canto do planeta que no outro.
-  const regiao = 0.55 + 0.45 * fbm(x + dia * 977, z - dia * 613, 2, 0.5, 1 / 1400);
-
-  const i = envelope * regiao;
-  return i < 0 ? 0 : i > 1 ? 1 : i;
+  let melhor = 0;
+  for (let e = ep0 - 1; e <= ep0; e++) {
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        const v = stormOfCell(e, ci0 + i, cj0 + j, tempo, x, z);
+        if (v > melhor) melhor = v;
+      }
+    }
+  }
+  return melhor;
 }
 
 /** Qual névoa essa intensidade pede, ou null se não há tempestade. */

@@ -38,6 +38,13 @@ que o Spacecraft troca o foguete de dimensão durante o lançamento (`launch.js`
 lado da Terra, quem sobe da Lua chega ao lado da Lua, quem sobe de Marte chega
 ao lado de Marte. Vale de OVNI, de elytra ou voando no criativo.
 
+**Encostar num planeta desliga a gravidade dele.** Encostar é o gatilho da
+viagem, e continuar puxando nessa janela arranca a nave no meio do teleporte. A
+margem que desliga o puxão é a mesma que dispara o portal — se fossem
+diferentes, sobraria uma casca fina onde as duas coisas acontecem juntas. O Sol
+é a exceção: ele não tem portal, e lá o puxão é o que faz cair dentro dele ter
+graça.
+
 **De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
 dele tem coreografia própria e interromper no meio quebra a viagem.
@@ -174,14 +181,22 @@ que são minerados.
 
 ### Tempestades de areia (Marte)
 
-Por **dia do mundo**, e determinísticas: a intensidade sai de (dia, posição) por
-hash, então todo jogador no mesmo lugar no mesmo dia vê a mesma tempestade, sem
-nada precisar ser sincronizado. Elas nascem fracas, apertam no meio do dia e
-passam.
+Cada tempestade é uma **mancha que caminha**, não um interruptor que liga o
+planeta inteiro: nasce numa célula da grade, tem raio de 200 a 380 blocos, anda
+em linha reta a 0,02 bloco por tick e morre em 7,5 min. Dá pra sair dela a pé —
+o jogador anda vinte vezes mais rápido que ela.
 
-Não cegam e não dão efeito nenhum — só atrapalham a vista, com poeira de ferrita
-voando e uma névoa curta. A névoa é a parte que funciona; a partícula é o que
-faz ela parecer areia voando em vez de neblina parada.
+Num instante qualquer ela cobre ~13% da área, e um jogador parado pega uma em
+~10% do tempo. Atravessar a borda é gradual (o maior salto entre colunas
+vizinhas é 0,007), então ela tem uma frente em vez de uma parede.
+
+Determinística: tudo sai de (época, célula) por hash — não há estado guardado,
+não há sorteio por jogador, nada pra sincronizar. Dois jogadores no mesmo lugar
+veem a mesma mancha, no mesmo lugar e do mesmo tamanho.
+
+Não cega e não dá efeito nenhum. No miolo a névoa fecha em **9 blocos**; na
+borda, em 45. A névoa é o que de fato limita a vista; a poeira de ferrita
+voando é o que a faz parecer areia em vez de neblina parada.
 
 ### O frio do espaço
 

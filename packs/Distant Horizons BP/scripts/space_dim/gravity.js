@@ -27,10 +27,11 @@ import {
   ENTITY_GRAVITY_INTERVAL,
   ENTITY_GRAVITY_SCAN,
   DIMENSION_ID,
+  PORTAL_MARGIN,
 } from "./config.js";
 import { inArrivalGrace } from "./arrival.js";
 import { isSkyModel } from "./skybox.js";
-import { solidPushOut } from "./bodies.js";
+import { solidPushOut, chebyshevTo } from "./bodies.js";
 
 const system = mc.system;
 
@@ -75,7 +76,35 @@ function landingRadius(body, d) {
  * puxão para na casca; e quem já estiver enfiado dentro do maciço é empurrado
  * pra FORA, até a superfície, em vez de ser prensado mais fundo.
  */
+/**
+ * Está encostando num corpo que tem portal? Aí a gravidade dele PARA.
+ *
+ * Encostar num planeta é o gatilho da viagem: o jogador vai ser teleportado nos
+ * próximos ticks. Continuar puxando nessa janela foi o que ele viu — o puxão
+ * arranca a nave (ou o jogador dela) enquanto a viagem acontece, e ele chega
+ * desmontado ou não chega.
+ *
+ * A margem é a MESMA que dispara o portal (PORTAL_MARGIN), de propósito: o
+ * ponto em que a viagem começa e o ponto em que o puxão para têm que ser o
+ * mesmo, senão sobra uma casca fina onde as duas coisas acontecem juntas — que
+ * é exatamente o bug.
+ *
+ * O Sol não entra: ele não tem portal, é atravessável, e lá o puxão é o que faz
+ * cair dentro dele ter graça.
+ */
+export function inPortalZone(location) {
+  for (let i = 0; i < BODIES.length; i++) {
+    const body = BODIES[i];
+    if (!body.portal) continue;
+    if (chebyshevTo(location, body) <= body.radius + PORTAL_MARGIN) return true;
+  }
+  return false;
+}
+
 export function gravityAt(location) {
+  // Encostou num planeta: ele para de puxar. Ver inPortalZone.
+  if (inPortalZone(location)) return null;
+
   let gx = 0;
   let gy = 0;
   let gz = 0;

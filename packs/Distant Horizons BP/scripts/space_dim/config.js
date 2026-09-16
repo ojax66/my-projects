@@ -633,25 +633,41 @@ export const FOG_COLD_ID = "space_dim:fog_cold";
 // ---------------------------------------------------------------------------
 // Tempestades de areia de Marte
 // ---------------------------------------------------------------------------
-// Marte tem tempestades de poeira que chegam a cobrir o planeta inteiro e durar
-// semanas. Aqui elas são por DIA do mundo, e a conta é determinística: todo
-// jogador no mesmo dia e na mesma região vê a mesma tempestade, sem nada
-// precisar ser sincronizado entre eles.
+// Uma tempestade de areia é uma MANCHA que caminha pelo planeta — não um
+// interruptor que liga o dia inteiro em todo lugar. Foi o que ele pediu depois
+// de ver a primeira versão: "não é na dimensão inteira, apenas em um pedaço e
+// ela vai andando".
 //
-// Elas NÃO cegam e não dão efeito nenhum — ele foi explícito. O que elas fazem
-// é atrapalhar a vista, com partículas de poeira de ferrita e uma névoa curta.
+// Cada tempestade nasce numa célula da grade, tem um raio próprio, anda em
+// linha reta e morre. A conta é determinística — sai de (época, célula) por
+// hash —, então não há estado guardado, não há sorteio por jogador e não há
+// nada pra sincronizar: dois jogadores no mesmo lugar veem a mesma mancha, no
+// mesmo lugar, do mesmo tamanho.
 export const MARS_STORM_ENABLED = true;
-// Fração dos dias marcianos que têm tempestade.
-export const MARS_STORM_CHANCE = 0.28;
-// Quantas partículas por emissão, no auge. Baixo de propósito: quem atrapalha a
-// vista de verdade é a névoa; a partícula é o que faz parecer areia voando.
-export const MARS_STORM_PARTICLES = 3;
-// De quantos em quantos ticks a poeira é reemitida.
-export const MARS_STORM_INTERVAL = 6;
+// Quanto tempo uma tempestade dura, em ticks. 9000 = 7,5 min de jogo.
+export const MARS_STORM_EPOCH = 9000;
+// O tamanho da célula da grade. Uma tempestade por célula por época.
+export const MARS_STORM_CELL = 700;
+// Chance de uma célula ter tempestade naquela época.
+export const MARS_STORM_CHANCE = 0.35;
+// O raio da mancha, em blocos. 200 a 380 = 400 a 760 de ponta a ponta: um
+// pedaço do planeta, não o planeta.
+export const MARS_STORM_RADIUS_MIN = 200;
+export const MARS_STORM_RADIUS_MAX = 380;
+// Quanto o centro anda por tick. 0,02 = 180 blocos ao longo da vida dela, e uma
+// velocidade que o jogador ganha andando — dá pra sair de dentro dela a pé.
+export const MARS_STORM_DRIFT = 0.02;
+// Fração do raio que é MIOLO (intensidade cheia). Fora disso ela desbota até a
+// borda, pra a tempestade ter uma frente em vez de uma parede.
+export const MARS_STORM_CORE = 0.45;
+
+// Quantas partículas por emissão no auge, e de quantos em quantos ticks.
+export const MARS_STORM_PARTICLES = 9;
+export const MARS_STORM_INTERVAL = 3;
 export const MARS_STORM_PARTICLE = "space_dim:mars_sand";
-// Duas forças de névoa: a tempestade começa fraca, aperta e afrouxa.
+
+// Duas forças de névoa: a borda fecha um pouco, o miolo fecha quase tudo.
 export const FOG_MARS_STORM_ID = "space_dim:fog_mars_storm";
 export const FOG_MARS_STORM_HEAVY_ID = "space_dim:fog_mars_storm_heavy";
-// Acima destas intensidades entra cada uma.
-export const MARS_STORM_FOG_AT = 0.20;
-export const MARS_STORM_HEAVY_AT = 0.60;
+export const MARS_STORM_FOG_AT = 0.12;
+export const MARS_STORM_HEAVY_AT = 0.45;
