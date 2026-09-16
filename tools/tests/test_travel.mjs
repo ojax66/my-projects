@@ -207,36 +207,63 @@ function makePlayer(dimensionId, loc) {
         `(pior distância: ${pior.toFixed(1)} blocos)`);
 }
 
-// --- 6. O OVNI vai junto na volta pra Terra e no pouso na Lua/Marte ---------
+// --- 6. A nave vai pra Terra, mas NÃO desce pra Lua nem pra Marte ----------
+//
+// Ela fica boiando no espaço, marcada pra não sumir. O motivo é o corpo ser
+// atravessável pelo modelo: a nave recolocada lá ou aparecia DENTRO do planeta,
+// ou a recolocação falhava.
 {
-  const routes = [
-    ['earth', 'minecraft:overworld'],
-    ['moon', 'space_dim:moon'],
-    ['mars', 'space_dim:mars'],
-  ];
-  for (const [bodyId, expectDim] of routes) {
-    __reset();
-    const travel = await loadTravel();
-    const body = BODIES.find(b => b.id === bodyId);
-    // Encostando na superfície do corpo, dentro do espaço.
-    const p = makePlayer(DIMENSION_ID, {
-      x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
-    });
-    const ufo = world.__spawn(DIMENSION_ID, UFO, p.location);
-    p.__mountOn(ufo);
+  // A volta pra Terra: a nave vai junto, como sempre.
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === 'earth');
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const ufo = world.__spawn(DIMENSION_ID, UFO, p.location);
+  p.__mountOn(ufo);
 
-    travel.checkBodyPortals(p);
-    // O pouso num planeta espera findValidSpot; a volta pra Terra, não.
-    await settle();
-    __advance(60);
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(60);
 
-    const dest = world.getDimension(expectDim);
-    check(`entrar em ${bodyId} leva pra ${expectDim}`, p.dimension.id === expectDim,
-          `(foi pra ${p.dimension.id})`);
-    check(`  o OVNI vai junto`, dest.getEntities({ type: UFO }).length === 1,
-          `(${dest.getEntities({ type: UFO }).length} no destino)`);
-    check(`  e o jogador segue montado`, p.__ridingOn?.typeId === UFO);
-  }
+  const dest = world.getDimension('minecraft:overworld');
+  check('entrar na Terra leva pro Overworld', p.dimension.id === 'minecraft:overworld',
+        `(foi pra ${p.dimension.id})`);
+  check('  o OVNI vai junto', dest.getEntities({ type: UFO }).length === 1,
+        `(${dest.getEntities({ type: UFO }).length} no destino)`);
+  check('  e o jogador segue montado', p.__ridingOn?.typeId === UFO);
+}
+
+for (const [bodyId, expectDim] of [['moon', 'space_dim:moon'], ['mars', 'space_dim:mars']]) {
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === bodyId);
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const ufo = world.__spawn(DIMENSION_ID, UFO, p.location);
+  p.__mountOn(ufo);
+
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(60);
+
+  const espaco = world.getDimension(DIMENSION_ID);
+  const destino = world.getDimension(expectDim);
+  check(`entrar em ${bodyId} leva pra ${expectDim}`, p.dimension.id === expectDim,
+        `(foi pra ${p.dimension.id})`);
+  check(`  a nave FICA no espaço`, espaco.getEntities({ type: UFO }).length === 1,
+        `(${espaco.getEntities({ type: UFO }).length} no espaço)`);
+  check(`  e não aparece no planeta`, destino.getEntities({ type: UFO }).length === 0,
+        `(${destino.getEntities({ type: UFO }).length} no planeta)`);
+  check(`  o jogador desce a pé`, !p.__ridingOn,
+        `(montado em ${p.__ridingOn?.typeId ?? 'nada'})`);
+  check(`  e a nave fica marcada pra não sumir`,
+        espaco.getEntities({ type: UFO })[0]?.hasTag('dlb_van_ufo_captured') === true);
+  check(`  nenhuma estrutura de veículo ficou guardada`,
+        __state().structures.size === 0,
+        `(sobraram: ${[...__state().structures.keys()].join(', ') || 'nenhuma'})`);
 }
 
 // --- 7. O foguete do Spacecraft NÃO é sequestrado --------------------------

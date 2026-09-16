@@ -23,6 +23,14 @@ tile.space_dim:mars_dust.name=Poeira de Ferrita
 tile.space_dim:mars_rock.name=Pedra de Ferrita
 tile.space_dim:mars_rock_dark.name=Ardósia de Ferrita
 tile.space_dim:mars_ice.name=Gelo Marciano
+tile.space_dim:moon_iron_ore.name=Minério de Ferro Lunar
+tile.space_dim:moon_gold_ore.name=Minério de Ouro Lunar
+tile.space_dim:moon_redstone_ore.name=Minério de Redstone Lunar
+tile.space_dim:moon_diamond_ore.name=Minério de Diamante Lunar
+tile.space_dim:mars_iron_ore.name=Minério de Ferro Marciano
+tile.space_dim:mars_copper_ore.name=Minério de Cobre Marciano
+tile.space_dim:mars_gold_ore.name=Minério de Ouro Marciano
+tile.space_dim:mars_diamond_ore.name=Minério de Diamante Marciano
 
 ## rastreador estelar (gerado por tools/make_tracker.py)
 item.space_dim:tracker=Rastreador Estelar

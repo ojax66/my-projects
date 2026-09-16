@@ -56,6 +56,11 @@ GROUND_LIGHT = 0
 GROUND_BLOCKS = {
     "moon_regolith_light", "moon_regolith", "moon_regolith_dark",
     "mars_dust", "mars_rock", "mars_rock_dark", "mars_ice",
+    # Os minérios entram aqui também: eles ficam encostados na pedra do
+    # planeta, e ter oclusão num e não no outro deixaria a junta entre os dois
+    # marcada.
+    "moon_iron_ore", "moon_gold_ore", "moon_redstone_ore", "moon_diamond_ore",
+    "mars_iron_ore", "mars_copper_ore", "mars_gold_ore", "mars_diamond_ore",
 }
 
 def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True, dampening=None):
@@ -68,6 +73,8 @@ def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True
         "dampening": dampening,
         "pt": pt,
         "en": en,
+        # Minério: o que ele larga. None = larga ele mesmo.
+        "loot": None,
     }
 
 
@@ -135,6 +142,42 @@ BLOCKS = {
                             light=GROUND_LIGHT, hardness=1.0),
 }
 
+# --- Minérios ----------------------------------------------------------------
+#
+# A textura de cada um é a PEDRA DO PRÓPRIO PLANETA com grãos de metal por cima
+# (ver ORES em make_block_textures.py). Eles largam o item CRU do jogo base — e
+# isso não é preguiça, é o que os torna úteis no minuto em que são minerados:
+# vai tudo pra fornalha e pras bancadas que o jogador já conhece, sem uma árvore
+# de receitas nova pra decorar.
+#
+# Onde cada um aparece (faixa de profundidade, raridade, tamanho do veio) está
+# em planets.js, junto do resto da geração.
+#
+# (nome curto, cor de mapa, pt, en, item largado, min, max)
+ORES = [
+    ("moon_iron_ore",     "#8A8E9C", "Minério de Ferro Lunar",     "Lunar Iron Ore",
+     "minecraft:raw_iron", 1, 1),
+    ("moon_gold_ore",     "#8C9088", "Minério de Ouro Lunar",      "Lunar Gold Ore",
+     "minecraft:raw_gold", 1, 1),
+    ("moon_redstone_ore", "#4F4B52", "Minério de Redstone Lunar",  "Lunar Redstone Ore",
+     "minecraft:redstone", 4, 5),
+    ("moon_diamond_ore",  "#4A555B", "Minério de Diamante Lunar",  "Lunar Diamond Ore",
+     "minecraft:diamond", 1, 1),
+    ("mars_iron_ore",     "#95432A", "Minério de Ferro Marciano",  "Martian Iron Ore",
+     "minecraft:raw_iron", 1, 1),
+    ("mars_copper_ore",   "#964024", "Minério de Cobre Marciano",  "Martian Copper Ore",
+     "minecraft:raw_copper", 2, 3),
+    ("mars_gold_ore",     "#592913", "Minério de Ouro Marciano",   "Martian Gold Ore",
+     "minecraft:raw_gold", 1, 1),
+    ("mars_diamond_ore",  "#50281A", "Minério de Diamante Marciano", "Martian Diamond Ore",
+     "minecraft:diamond", 1, 1),
+]
+
+for _short, _cor, _pt, _en, _item, _min, _max in ORES:
+    BLOCKS[_short] = block(_short, _cor, _pt, _en,
+                           light=GROUND_LIGHT, hardness=3.0)
+    BLOCKS[_short]["loot"] = {"item": _item, "min": _min, "max": _max}
+
 NS = "space_dim"
 
 
@@ -188,6 +231,8 @@ def main():
             components["minecraft:light_emission"] = spec["light"]
         if spec["dampening"] is not None:
             components["minecraft:light_dampening"] = spec["dampening"]
+        if spec.get("loot"):
+            components["minecraft:loot"] = f"loot_tables/{NS}/blocks/{short}.json"
         if not spec["solid"]:
             # Sem caixa de colisão o jogador atravessa. A caixa de SELEÇÃO fica,
             # senão o bloco não dá pra mirar nem quebrar.
@@ -206,6 +251,27 @@ def main():
                 },
             },
         )
+
+    # --- 1b. BP: as tabelas de loot dos minérios ------------------------------
+    loot_dir = os.path.join(BP, "loot_tables", NS, "blocks")
+    for short, spec in BLOCKS.items():
+        loot = spec.get("loot")
+        if not loot:
+            continue
+        write_json(os.path.join(loot_dir, f"{short}.json"), {
+            "pools": [{
+                "rolls": 1,
+                "entries": [{
+                    "type": "item",
+                    "name": loot["item"],
+                    "weight": 1,
+                    "functions": [{
+                        "function": "set_count",
+                        "count": {"min": loot["min"], "max": loot["max"]},
+                    }],
+                }],
+            }],
+        })
 
     # --- 2. RP: blocks.json ---------------------------------------------------
     blocks_json = {"format_version": [1, 1, 0]}

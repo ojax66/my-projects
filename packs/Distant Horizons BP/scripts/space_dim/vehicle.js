@@ -156,6 +156,27 @@ function keepAlive(entity) {
 }
 
 /**
+ * Desce o jogador do veículo e DEIXA o veículo onde está, vivo.
+ *
+ * É o caminho de quem desce pra Lua ou pra Marte: a nave não vai junto. Ela
+ * fica boiando no espaço, marcada pra não sumir, esperando o jogador voltar.
+ *
+ * O motivo é o corpo celeste ser atravessável pelo modelo: a nave recolocada no
+ * destino ou aparecia DENTRO do planeta, ou a recolocação falhava. Nenhum dos
+ * dois é aceitável, e nenhum dos dois é consertável sem dar colisão de verdade
+ * ao modelo — que é justamente o que faz o planeta ser um cubo gigante.
+ *
+ * @returns o veículo que ficou pra trás, ou null se não havia nenhum
+ */
+export function leaveBehind(player) {
+  const mount = getMount(player);
+  if (!mount) return null;
+  ejectFrom(mount, player);
+  keepAlive(mount);
+  return mount;
+}
+
+/**
  * Tira o jogador do veículo, guarda o veículo numa estrutura e remove o
  * original do mundo.
  *

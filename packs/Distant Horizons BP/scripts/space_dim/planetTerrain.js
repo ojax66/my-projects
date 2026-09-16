@@ -16,7 +16,7 @@
  * vizinhas ao longo de milhares de blocos, inclusive em cima das fronteiras.
  * ========================================================================= */
 
-import { fbm, valueNoise, hash2 } from "./world_generator_API.js";
+import { fbm, valueNoise, valueNoise3D, hash2, hash3 } from "./world_generator_API.js";
 import { NOISE, POLE_Z, POLE_FADE, PLANET_BOUNDS } from "./planets.js";
 import { takeBudget, BudgetExhausted, makeChunkCursor, writeRun } from "./budget.js";
 
@@ -393,29 +393,137 @@ export function biomeAt(planet, x, z) {
   return terrainAt(planet, x, z).biome;
 }
 
+// ---------------------------------------------------------------------------
+// O que tem DENTRO da crosta: cavernas e minérios
+// ---------------------------------------------------------------------------
+/**
+ * Este bloco é vazio de caverna?
+ *
+ * Ruído 3D com um corte: acima do limiar, é ar. A casca de cima nunca é furada
+ * (`fromSurface`) — sem ela a caverna abriria buraco no chão e o jogador cairia
+ * num vão andando na planície. E a bedrock também ganha uma folga por baixo,
+ * senão dá pra ver o fundo do mundo de dentro da caverna.
+ *
+ * As duas bordas são SUAVIZADAS em vez de cortadas: perto da superfície o
+ * limiar sobe, então a caverna afina até sumir em vez de terminar num teto reto.
+ */
+function isCave(planet, x, y, z, prof, acimaDoFundo) {
+  const c = planet.caves;
+  if (!c) return false;
+  if (prof <= c.fromSurface) return false;
+  if (acimaDoFundo <= c.aboveFloor) return false;
+
+  // Quanto mais perto do teto ou do fundo, mais difícil abrir.
+  const folgaTopo = sstep(c.fromSurface, c.fromSurface + 5, prof);
+  const folgaFundo = sstep(c.aboveFloor, c.aboveFloor + 3, acimaDoFundo);
+  const limiar = c.threshold + (1 - Math.min(folgaTopo, folgaFundo)) * 0.25;
+
+  return valueNoise3D(x / c.scale, y / (c.scale * 0.6), z / c.scale) > limiar;
+}
+
+/**
+ * Qual minério tem neste bloco, ou null.
+ *
+ * São três decisões separadas, e separá-las é o que torna isto ajustável:
+ *
+ *   `rarity`     — QUANTOS veios existem. Um sorteio por célula da grade.
+ *   `threshold`  — QUE FORMATO cada veio tem. O ruído 3D dentro da célula.
+ *   `weight`     — QUAL minério é. Um hash da célula, pra o veio inteiro sair
+ *                  do mesmo metal em vez de salpicado.
+ *
+ * Misturar as duas primeiras num número só foi a primeira tentativa, e ela não
+ * dava pra ajustar: subir o limiar pra ter menos minério também deixava cada
+ * veio menor e mais picado, até virar pedrinha solta. Agora a quantidade e o
+ * tamanho andam separados.
+ *
+ * A profundidade filtra a lista: ferro raso, diamante fundo.
+ */
+function oreAt(planet, x, y, z, prof) {
+  const o = planet.ores;
+  if (!o) return null;
+
+  const cx = Math.floor(x / o.vein);
+  const cy = Math.floor(y / o.vein);
+  const cz = Math.floor(z / o.vein);
+
+  // Esta célula da grade tem veio?
+  if (hash3(cx * 7919 + 5, cy * 6047 + 19, cz * 4231 - 7) > o.rarity) return null;
+
+  // Tem: o ruído dá o formato dele dentro da célula.
+  if (valueNoise3D(x / o.vein + 71, y / o.vein - 71, z / o.vein + 137) <= o.threshold) {
+    return null;
+  }
+
+  let total = 0;
+  for (let i = 0; i < o.list.length; i++) {
+    const m = o.list[i];
+    if (prof >= m.from && prof <= m.to) total += m.weight;
+  }
+  if (total <= 0) return null;
+
+  let r = hash3(cx * 13 + 1, cy * 29 + 7, cz * 41 + 3) * total;
+  for (let i = 0; i < o.list.length; i++) {
+    const m = o.list[i];
+    if (prof < m.from || prof > m.to) continue;
+    r -= m.weight;
+    if (r <= 0) return m.block;
+  }
+  return null;
+}
+
 /**
  * A coluna como trechos contínuos, de baixo pra cima. Mesmo formato que
  * bodies.js usa: { y0, y1, id }.
+ *
+ * A coluna é montada bloco a bloco e só depois comprimida em trechos, porque
+ * caverna e minério trocam blocos no meio de uma camada — com as camadas
+ * montadas direto como trechos não havia onde encaixá-los.
  */
 export function columnRunsAt(planet, x, z) {
   const t = terrainAt(planet, x, z);
   const bedrockY = t.height - planet.crust;
-  const runs = [{ y0: bedrockY, y1: bedrockY, id: planet.blocks.floor }];
 
-  // As camadas de cima pra baixo; o que sobrar até a bedrock é ardósia.
-  let top = t.height;
-  const stack = [];
+  // A camada de cada profundidade. Profundidade 1 é o bloco da superfície.
+  const ate = [];
+  let acc = 0;
   for (let i = 0; i < t.layers.length; i++) {
     const l = t.layers[i];
     if (l.t <= 0) continue;
-    const y0 = top - l.t + 1;
-    if (y0 <= bedrockY + 1) break;
-    stack.push({ y0, y1: top, id: l.id });
-    top = y0 - 1;
+    acc += l.t;
+    ate.push({ prof: acc, id: l.id });
+  }
+  const camadaEm = (prof) => {
+    for (let i = 0; i < ate.length; i++) if (prof <= ate[i].prof) return ate[i].id;
+    return planet.blocks.deep;
+  };
+
+  const runs = [];
+  let atual = null;
+
+  const empurra = (y, id) => {
+    if (id === null) { atual = null; return; }
+    if (atual && atual.id === id && atual.y1 === y - 1) { atual.y1 = y; return; }
+    atual = { y0: y, y1: y, id };
+    runs.push(atual);
+  };
+
+  empurra(bedrockY, planet.blocks.floor);
+
+  for (let i = 1; i <= planet.crust; i++) {
+    const y = bedrockY + i;
+    const prof = t.height - y + 1;
+
+    if (isCave(planet, x, y, z, prof, i)) { empurra(y, null); continue; }
+
+    const base = camadaEm(prof);
+    // Minério só na rocha: não aflora na poeira nem substitui gelo.
+    let id = base;
+    if (base === planet.blocks.stone || base === planet.blocks.deep) {
+      id = oreAt(planet, x, y, z, prof) ?? base;
+    }
+    empurra(y, id);
   }
 
-  if (top > bedrockY) runs.push({ y0: bedrockY + 1, y1: top, id: planet.blocks.deep });
-  for (let i = stack.length - 1; i >= 0; i--) runs.push(stack[i]);
   return runs;
 }
 

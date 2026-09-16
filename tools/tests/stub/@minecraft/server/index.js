@@ -107,7 +107,14 @@ class Entity {
   applyKnockback(dir, strength) {
     this.__knockbacks ??= [];
     this.__knockbacks.push({ ...dir, strength });
+    // O empurrão entra na velocidade vertical, que é o que o controlador de
+    // gravidade mede no tick seguinte.
+    this.__velocity = { ...(this.__velocity ?? { x: 0, y: 0, z: 0 }) };
+    this.__velocity.y += strength;
   }
+  getVelocity() { return this.__velocity ?? { x: 0, y: 0, z: 0 }; }
+  /** Atalho de teste: põe a velocidade na mão. */
+  __setVelocity(v) { this.__velocity = { x: 0, y: 0, z: 0, ...v }; }
   getEffect(id) { return this.__effects?.[id]; }
   __giveEffect(id, amp = 0) { (this.__effects ??= {})[id] = { amplifier: amp }; }
 
@@ -136,6 +143,15 @@ class Entity {
   }
 
   getComponent(name) {
+    if (name === "health" || name === "minecraft:health") {
+      const e = this;
+      e.__health ??= 20;
+      return {
+        get currentValue() { return e.__health; },
+        get effectiveMax() { return 20; },
+        setCurrentValue(v) { e.__health = Math.min(20, Math.max(0, v)); return true; },
+      };
+    }
     if (name === "riding" || name === "minecraft:riding") {
       return this.__ridingOn ? { entityRidingOn: this.__ridingOn } : undefined;
     }
@@ -351,6 +367,16 @@ function noopEvent() {
   return { subscribe() { }, unsubscribe() { } };
 }
 
+/** Evento de verdade: guarda os inscritos e dá um __fire pros testes. */
+function realEvent() {
+  const subs = [];
+  return {
+    subscribe(fn) { subs.push(fn); return fn; },
+    unsubscribe(fn) { const i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); },
+    __fire(ev) { for (const fn of [...subs]) fn(ev); },
+  };
+}
+
 // --- placar ------------------------------------------------------------------
 // O canal do rastreador que sobrevive a `hud @s hide all`.
 class Objective {
@@ -398,7 +424,7 @@ export const world = {
   afterEvents: {
     playerDimensionChange: noopEvent(),
     playerSpawn: noopEvent(),
-    entityHurt: noopEvent(),
+    entityHurt: realEvent(),
     itemUse: noopEvent(),
   },
   beforeEvents: {

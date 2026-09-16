@@ -11,11 +11,19 @@
   "space_dim:earth_land": "#039001",
   "space_dim:earth_forest": "#026A02",
   "space_dim:earth_ice": "#EDF2FA",
+  "space_dim:mars_dust": "#BA4F2A",
+  "space_dim:mars_rock": "#923D22",
+  "space_dim:mars_rock_dark": "#501E10",
+  "space_dim:mars_ice": "#E1D7CF",
   "space_dim:moon_regolith_light": "#AFB7CA",
   "space_dim:moon_regolith": "#808694",
   "space_dim:moon_regolith_dark": "#494D55",
-  "space_dim:mars_dust": "#B74C29",
-  "space_dim:mars_rock": "#8F3C21",
-  "space_dim:mars_rock_dark": "#4E1D0F",
-  "space_dim:mars_ice": "#DED3CB"
+  "space_dim:moon_iron_ore": "#858894",
+  "space_dim:moon_gold_ore": "#868B90",
+  "space_dim:moon_redstone_ore": "#504B52",
+  "space_dim:moon_diamond_ore": "#49555B",
+  "space_dim:mars_iron_ore": "#954328",
+  "space_dim:mars_copper_ore": "#964024",
+  "space_dim:mars_gold_ore": "#592913",
+  "space_dim:mars_diamond_ore": "#50281A"
 }

@@ -249,6 +249,16 @@ for bid in sorted(used_blocks):
     if rp_tex and rp_tex != tex_key:
         err(f"{bid}: blocks.json usa {rp_tex} mas o BP usa {tex_key}")
 
+# "Usado" não é só pelas paletas dos corpos celestes: o terreno da Lua e de
+# Marte (planets.js) tem os blocos de camada, o gelo, a bedrock e os minérios,
+# e nenhum deles aparece em paleta nenhuma.
+_planets_src = ""
+_planets_path = os.path.join(BP, "scripts", "space_dim", "planets.js")
+if os.path.isfile(_planets_path):
+    with open(_planets_path, encoding="utf-8") as f:
+        _planets_src = f.read()
+used_blocks |= set(re.findall(r'"(space_dim:[a-z0-9_]+)"', _planets_src))
+
 # Blocos declarados que ninguém usa: não quebra nada, mas é peso morto.
 for bid in sorted(set(declared_blocks) - used_blocks):
     warn(f"{bid} está definido mas nenhuma paleta usa")
@@ -1543,6 +1553,42 @@ for pid, src in PLANET_SRC.items():
                     err(f"o ceu de {biome_id} e {fog}/{ceu} e o do espaco e "
                         f"{alvo_fog}/{alvo_ceu} — a Lua nao tem atmosfera, entao "
                         f"o ceu dela tem que ser o MESMO do espaco")
+
+    # 2c. Os MINÉRIOS: existem, têm tabela de loot, e a faixa de profundidade
+    #     cabe dentro da crosta. Um minério com `from` maior que a crosta nunca
+    #     apareceria, e nada no jogo diria por quê.
+    crosta = re.search(r"\n  crust: (\d+)", src)
+    crosta = int(crosta.group(1)) if crosta else None
+    for m in re.finditer(
+            r'\{ block: "([^"]+)", from: (\d+), to: (\d+), weight: (\d+) \}', src):
+        bloco, de, ate, peso = m.group(1), int(m.group(2)), int(m.group(3)), int(m.group(4))
+        nome = bloco.partition(":")[2]
+        if not os.path.isfile(os.path.join(BP, "blocks", f"{nome}.json")):
+            err(f"o minerio {bloco} de {pid} nao tem BP/blocks/{nome}.json")
+        elif not os.path.isfile(os.path.join(BP, "loot_tables", "space_dim",
+                                             "blocks", f"{nome}.json")):
+            err(f"o minerio {bloco} nao tem tabela de loot — ele largaria ele "
+                f"mesmo, e um bloco de minerio no inventario nao serve pra nada")
+        if de >= ate:
+            err(f"a faixa do minerio {bloco} esta invertida ({de}..{ate})")
+        if crosta and ate >= crosta:
+            err(f"o minerio {bloco} vai ate a profundidade {ate} e a crosta de "
+                f"{pid} tem {crosta} — o fundo dela e bedrock")
+        if peso <= 0:
+            err(f"o minerio {bloco} tem peso {peso}: nunca seria sorteado")
+
+    # As CAVERNAS não podem furar a superfície nem encostar na bedrock.
+    cav = re.search(r"caves: \{ scale: ([\d.]+), threshold: ([\d.]+), "
+                    r"fromSurface: (\d+), aboveFloor: (\d+) \}", src)
+    if cav:
+        desde, acima = int(cav.group(3)), int(cav.group(4))
+        if desde < 4:
+            err(f"as cavernas de {pid} comecam a {desde} blocos da superficie — "
+                f"perto demais: elas abririam buraco no chao e o jogador cairia "
+                f"num vao andando na planicie")
+        if acima < 1:
+            err(f"as cavernas de {pid} encostam na bedrock (aboveFloor {acima}) — "
+                f"daria pra ver o fundo do mundo de dentro delas")
 
     # 3. Os blocos do terreno existem...
     blocos = dict(re.findall(r'\n    (\w+): "([^"]+)",', src))

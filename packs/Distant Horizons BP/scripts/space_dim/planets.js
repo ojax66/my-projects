@@ -81,14 +81,15 @@ export const PLANET_SPOT_SEARCH_CHUNKS = 2;
 // ou estar dentro de um veículo pressurizado.
 export const PLANET_VACUUM = true;
 
-// Gravidade baixa. O Bedrock não deixa mudar a gravidade da dimensão, então o
-// que dá pra fazer é o efeito dela: pular mais alto e cair mais devagar.
-// `jump` é o amplificador de jump_boost (0 = +1 nível).
+// Gravidade baixa, por controlador próprio — ver planetGravity.js.
+//
+// Já foi jump_boost mais slow_falling, e os dois tinham o mesmo defeito: são
+// efeitos de poção. Apareciam na lista do jogador, brigavam com poções de
+// verdade, sumiam com leite, e davam sempre o MESMO valor — não dava pra Marte
+// puxar mais que a Lua com a mesma poção. Agora cada planeta tem a fração de
+// gravidade dele, e o controlador devolve por tick o que faltou pra chegar
+// nela.
 export const PLANET_LOW_GRAVITY = true;
-// De quantos em quantos ticks os efeitos são renovados. Eles são aplicados com
-// duração folgada e sem partícula; renovar a cada 2 s evita piscar.
-export const PLANET_EFFECT_INTERVAL = 40;
-export const PLANET_EFFECT_SECONDS = 6;
 
 // ---------------------------------------------------------------------------
 // Ruído: os comprimentos de onda, em blocos
@@ -153,9 +154,9 @@ const MOON = {
   // uma chunk do Sol já tinha, e o teto de blocos por tick segura o resto.
   crust: 30,
 
-  // 1/6 da gravidade da Terra: pulo alto e queda mansa. O Bedrock não deixa
-  // mudar a gravidade da dimensão, então o que dá pra fazer é o efeito dela.
-  gravity: { jump: 2, slowFall: true },
+  // 0,165 da gravidade da Terra — o valor de verdade. Pulo de uns 7 blocos e
+  // queda mansa, e o dano de queda cai na mesma proporção.
+  gravity: { factor: 0.165 },
 
   elevAmp: 34,     // quanto a elevação regional sobe e desce, de ponta a ponta
   detailAmp: 6,    // o relevo pequeno por cima dela
@@ -167,6 +168,33 @@ const MOON = {
     deep: "space_dim:moon_regolith_dark",
     ice: "minecraft:packed_ice",
     floor: "minecraft:bedrock",
+  },
+
+  // --- Cavernas ------------------------------------------------------------
+  // Tubos de lava e vazios de impacto. Na Lua eles existem de verdade e são
+  // ENORMES — sem atmosfera e com 1/6 de gravidade, um tubo de lava aguenta
+  // quilômetros de vão sem desabar. Aqui são mais modestos, mas são amplos.
+  //
+  // `fromSurface` é a casca que nunca é furada: sem ela a caverna abriria
+  // buraco no chão e o jogador cairia num vão andando na planície.
+  caves: { scale: 26, threshold: 0.575, fromSurface: 6, aboveFloor: 2 },
+
+  // --- Minérios ------------------------------------------------------------
+  // `from`/`to` são profundidades abaixo da superfície; `weight` é o peso no
+  // sorteio de QUAL minério, quando o ruído já decidiu que ali tem veio.
+  //
+  // O ferro é o comum e raso — na Lua ele é meteórico, e meteorito é o que mais
+  // cai num mundo sem atmosfera pra queimar nada. O resto fica fundo.
+  ores: {
+    vein: 6.5,          // tamanho do veio, em blocos
+    rarity: 0.10,       // fração das células da grade que têm veio
+    threshold: 0.60,    // o formato do veio dentro da célula
+    list: [
+      { block: "space_dim:moon_iron_ore", from: 3, to: 28, weight: 40 },
+      { block: "space_dim:moon_redstone_ore", from: 14, to: 28, weight: 18 },
+      { block: "space_dim:moon_gold_ore", from: 12, to: 28, weight: 14 },
+      { block: "space_dim:moon_diamond_ore", from: 20, to: 28, weight: 8 },
+    ],
   },
 
   // Três escalas de cratera, das bacias aos pedregulhos. `chance` é a fração
@@ -271,9 +299,9 @@ const MARS = {
   baseY: 76,
   crust: 30,
 
-  // 0,38 da gravidade da Terra: pula mais alto, mas cai de verdade. Sem
-  // slow_falling — em Marte uma queda ainda machuca.
-  gravity: { jump: 0, slowFall: false },
+  // 0,38 da gravidade da Terra — o valor de verdade. Pula mais alto que na
+  // Terra, mas cai de verdade: uma queda em Marte ainda machuca.
+  gravity: { factor: 0.38 },
 
   elevAmp: 30,
   detailAmp: 8,
@@ -289,6 +317,27 @@ const MARS = {
     deep: "space_dim:mars_rock_dark",
     ice: "space_dim:mars_ice",
     floor: "minecraft:bedrock",
+  },
+
+  // --- Cavernas ------------------------------------------------------------
+  // Marte também tem tubos de lava — os buracos do Arsia Mons são os candidatos
+  // mais conhecidos. Um pouco mais estreitos que os da Lua, porque lá a
+  // gravidade é o dobro e o teto não vence vãos tão largos.
+  caves: { scale: 22, threshold: 0.600, fromSurface: 6, aboveFloor: 2 },
+
+  // --- Minérios ------------------------------------------------------------
+  // Ferro em todo lugar e quase na superfície: Marte é vermelho porque é óxido
+  // de ferro do chão ao céu. Cobre acompanha, e o resto fica fundo.
+  ores: {
+    vein: 6.5,
+    rarity: 0.12,
+    threshold: 0.58,
+    list: [
+      { block: "space_dim:mars_iron_ore", from: 2, to: 28, weight: 50 },
+      { block: "space_dim:mars_copper_ore", from: 4, to: 28, weight: 22 },
+      { block: "space_dim:mars_gold_ore", from: 12, to: 28, weight: 12 },
+      { block: "space_dim:mars_diamond_ore", from: 20, to: 28, weight: 7 },
+    ],
   },
 
   // Menos e mais rasas que as da Lua: aqui há vento e poeira há bilhões de

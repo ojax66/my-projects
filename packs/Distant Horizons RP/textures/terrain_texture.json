@@ -60,6 +60,30 @@
     },
     "space_dim_mars_ice": {
       "textures": "textures/space_dim/blocks/mars_ice"
+    },
+    "space_dim_moon_iron_ore": {
+      "textures": "textures/space_dim/blocks/moon_iron_ore"
+    },
+    "space_dim_moon_gold_ore": {
+      "textures": "textures/space_dim/blocks/moon_gold_ore"
+    },
+    "space_dim_moon_redstone_ore": {
+      "textures": "textures/space_dim/blocks/moon_redstone_ore"
+    },
+    "space_dim_moon_diamond_ore": {
+      "textures": "textures/space_dim/blocks/moon_diamond_ore"
+    },
+    "space_dim_mars_iron_ore": {
+      "textures": "textures/space_dim/blocks/mars_iron_ore"
+    },
+    "space_dim_mars_copper_ore": {
+      "textures": "textures/space_dim/blocks/mars_copper_ore"
+    },
+    "space_dim_mars_gold_ore": {
+      "textures": "textures/space_dim/blocks/mars_gold_ore"
+    },
+    "space_dim_mars_diamond_ore": {
+      "textures": "textures/space_dim/blocks/mars_diamond_ore"
     }
   }
 }

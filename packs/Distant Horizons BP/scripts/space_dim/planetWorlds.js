@@ -22,9 +22,6 @@ import { createTerrainGenerator } from "./world_generator_API.js";
 import {
   PLANETS,
   PLANET_VACUUM,
-  PLANET_LOW_GRAVITY,
-  PLANET_EFFECT_INTERVAL,
-  PLANET_EFFECT_SECONDS,
   PLANET_LANDING_JITTER,
   PLANET_SPOT_SEARCH_CHUNKS,
   PLANET_BOUNDS,
@@ -36,6 +33,7 @@ import { isBudgetError } from "./budget.js";
 import { applyLifeSupport } from "./lifeSupport.js";
 import { pushFog, popFog } from "./ambience.js";
 import { guardSpawnTick } from "./spawnGuard.js";
+import { applyPlanetGravity, forgetPlayer as forgetGravity } from "./planetGravity.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -165,31 +163,9 @@ export async function findPlanetSpot(player, planet) {
 // O laço por jogador
 // ---------------------------------------------------------------------------
 const lastBiome = new Map();    // playerId → id do bioma
-const lastEffects = new Map();  // playerId → tick da última renovação
 
 function actionBar(player, text) {
   try { player.onScreenDisplay.setActionBar(text); } catch { }
-}
-
-function lowGravity(player, planet) {
-  if (!PLANET_LOW_GRAVITY || !planet.gravity) return;
-  const now = system.currentTick;
-  const prev = lastEffects.get(player.id);
-  if (prev !== undefined && now - prev < PLANET_EFFECT_INTERVAL) return;
-  lastEffects.set(player.id, now);
-
-  const ticks = PLANET_EFFECT_SECONDS * mc.TicksPerSecond;
-  try {
-    player.addEffect("jump_boost", ticks, {
-      amplifier: planet.gravity.jump,
-      showParticles: false,
-    });
-  } catch { }
-  if (planet.gravity.slowFall) {
-    try {
-      player.addEffect("slow_falling", ticks, { amplifier: 0, showParticles: false });
-    } catch { }
-  }
 }
 
 /**
@@ -220,7 +196,9 @@ export function applyPlanetTick(player) {
     }
   }
 
-  lowGravity(player, planet);
+  // Gravidade do planeta, por controlador próprio — todo tick, porque ela é
+  // uma correção de aceleração e não um efeito com duração.
+  applyPlanetGravity(player, planet);
 
   if (PLANET_VACUUM) {
     const breathing = applyLifeSupport(player);
@@ -234,7 +212,7 @@ export function applyPlanetTick(player) {
 
 export function forgetPlayer(playerId) {
   lastBiome.delete(playerId);
-  lastEffects.delete(playerId);
+  forgetGravity(playerId);
 }
 
 world.beforeEvents.playerLeave.subscribe((event) => {

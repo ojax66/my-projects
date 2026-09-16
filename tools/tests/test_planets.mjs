@@ -23,69 +23,85 @@ const check = (name, ok, extra = '') => {
 for (const planet of PLANETS) {
   console.log(`\n--- ${planet.id} ---`);
 
-  // --- 1. A coluna é inteira: sem buraco, sem sobreposição -------------------
+  // --- 1. A coluna é inteira, e os buracos dela são CAVERNAS ----------------
   //
   // O gerador escreve TRECHOS (y0..y1). Um trecho começando dois acima de onde
-  // o anterior terminou deixa uma fatia de ar dentro da rocha — invisível da
-  // superfície, e um buraco pro void quando alguém cava.
+  // o anterior terminou é uma fatia de ar dentro da rocha. Desde que há
+  // cavernas, isso é esperado — mas só dentro das regras delas: nunca na casca
+  // de cima (senão o jogador cai num vão andando na planície) e nunca encostada
+  // na bedrock (senão dá pra ver o fundo do mundo lá de dentro).
   {
-    let buracos = 0, sobrepostos = 0, topoErrado = 0, foraDosLimites = 0, n = 0;
+    let sobrepostos = 0, topoErrado = 0, foraDosLimites = 0, n = 0;
+    let vaos = 0, vaoRasoDemais = 0, vaoNaBedrock = 0, colunasComCaverna = 0;
+    const c = planet.caves;
     for (let x = -1200; x <= 1200; x += 37) {
       for (let z = -3000; z <= 3000; z += 53) {
         const runs = columnRunsAt(planet, x, z);
         const h = heightAt(planet, x, z);
+        const bedrockY = h - planet.crust;
+        let temCaverna = false;
         for (let i = 1; i < runs.length; i++) {
-          if (runs[i].y0 > runs[i - 1].y1 + 1) buracos++;
           if (runs[i].y0 <= runs[i - 1].y1) sobrepostos++;
+          if (runs[i].y0 > runs[i - 1].y1 + 1) {
+            vaos++;
+            temCaverna = true;
+            // o vão vai de runs[i-1].y1+1 até runs[i].y0-1
+            const topoDoVao = runs[i].y0 - 1;
+            const baseDoVao = runs[i - 1].y1 + 1;
+            if (h - topoDoVao < c.fromSurface) vaoRasoDemais++;
+            if (baseDoVao - bedrockY <= c.aboveFloor) vaoNaBedrock++;
+          }
         }
+        if (temCaverna) colunasComCaverna++;
         if (runs[runs.length - 1].y1 !== h) topoErrado++;
         if (runs[0].y0 < PLANET_BOUNDS.min || h > PLANET_BOUNDS.max) foraDosLimites++;
         n++;
       }
     }
-    check(`${planet.id}: nenhuma coluna com buraco`, buracos === 0, `(${buracos} de ${n})`);
-    check(`  nem com trecho sobreposto`, sobrepostos === 0, `(${sobrepostos})`);
-    check(`  e o topo do último trecho é a superfície`, topoErrado === 0, `(${topoErrado})`);
+    check(`${planet.id}: nenhum trecho sobreposto`, sobrepostos === 0, `(${sobrepostos})`);
+    check(`  o topo do último trecho é a superfície`, topoErrado === 0, `(${topoErrado})`);
     check(`  tudo dentro dos limites da dimensão`, foraDosLimites === 0, `(${foraDosLimites})`);
+    check(`  existem cavernas`, colunasComCaverna > n * 0.05,
+          `(${colunasComCaverna} de ${n} colunas, ${vaos} vãos)`);
+    check(`  e nenhuma fura a casca de cima`, vaoRasoDemais === 0, `(${vaoRasoDemais})`);
+    check(`  nem encosta na bedrock`, vaoNaBedrock === 0, `(${vaoNaBedrock})`);
   }
 
-  // --- 2. A estratigrafia que ele pediu --------------------------------------
+  // --- 1b. Os minérios -------------------------------------------------------
   //
-  // De cima pra baixo, SEMPRE: poeira, pedra, ardósia. O gelo é a única coisa
-  // que pode ficar acima da poeira, e só onde o gelo existe de verdade — na
-  // calota polar de Marte e no fundo das crateras polares da Lua.
-  {
-    const ordem = [planet.blocks.ice, planet.blocks.dust, planet.blocks.stone, planet.blocks.deep];
-    let fora = 0, semPoeira = 0, semPoeiraForaDaCratera = 0, semFundo = 0, n = 0;
-    for (let x = -1500; x <= 1500; x += 41) {
-      for (let z = -3000; z <= 3000; z += 47) {
-        const t = terrainAt(planet, x, z);
-        const runs = columnRunsAt(planet, x, z);
-        // de cima pra baixo, sem a bedrock
-        const ids = runs.slice(1).reverse().map((r) => r.id);
-        let pos = 0;
-        for (const id of ids) {
-          const k = ordem.indexOf(id);
-          if (k < pos) { fora++; break; }
-          pos = k;
+  // Um minério fora da faixa de profundidade dele, ou aflorando na poeira, é
+  // bug. E se a taxa escapar pra cima o planeta vira uma mina a céu aberto —
+  // por isso há teto, não só piso.
+  if (planet.ores) {
+    const conta = new Map();
+    let solidos = 0, foraDaFaixa = 0, naPoeira = 0;
+    const faixa = new Map(planet.ores.list.map((m) => [m.block, m]));
+    for (let x = -400; x <= 400; x += 7) {
+      for (let z = -400; z <= 400; z += 11) {
+        const h = heightAt(planet, x, z);
+        for (const r of columnRunsAt(planet, x, z)) {
+          const n = r.y1 - r.y0 + 1;
+          solidos += n;
+          const m = faixa.get(r.id);
+          if (!m) continue;
+          conta.set(r.id, (conta.get(r.id) ?? 0) + n);
+          for (let y = r.y0; y <= r.y1; y++) {
+            const prof = h - y + 1;
+            if (prof < m.from || prof > m.to) foraDaFaixa++;
+            if (prof <= 1) naPoeira++;
+          }
         }
-        if (!ids.includes(planet.blocks.dust)) {
-          semPoeira++;
-          // A poeira só pode faltar onde o impacto a arrancou: no fundo de uma
-          // cratera grande. Em qualquer outro lugar é bug — seria a regra das
-          // camadas quebrada.
-          if (!t.topoDePedra) semPoeiraForaDaCratera++;
-        }
-        if (runs[0].id !== planet.blocks.floor) semFundo++;
-        n++;
       }
     }
-    check(`  poeira → pedra → ardósia, nessa ordem, em toda coluna`, fora === 0,
-          `(${fora} de ${n} fora de ordem)`);
-    check(`  a poeira só falta no fundo de cratera grande`,
-          semPoeiraForaDaCratera === 0,
-          `(${semPoeira} colunas sem poeira, ${semPoeiraForaDaCratera} fora de cratera)`);
-    check(`  com bedrock no fundo`, semFundo === 0, `(${semFundo})`);
+    check(`  ${planet.id}: nenhum minério fora da faixa de profundidade dele`,
+          foraDaFaixa === 0, `(${foraDaFaixa})`);
+    check(`  nenhum aflorando na superfície`, naPoeira === 0, `(${naPoeira})`);
+    for (const m of planet.ores.list) {
+      const taxa = (conta.get(m.block) ?? 0) / solidos;
+      const nome = m.block.split(":")[1];
+      check(`  ${nome}: existe e não é abundante demais`,
+            taxa > 0.0002 && taxa < 0.04, `(${(100 * taxa).toFixed(3)}%)`);
+    }
   }
 
   // --- 2b. O degradê do fundo das crateras -----------------------------------

@@ -98,9 +98,13 @@ function resolveDimension(dimensionId) {
  * recolocado DEPOIS, quando a chunk do destino já está carregada. Teleportar a
  * entidade junto com o jogador é o que fazia o OVNI sumir.
  */
-function travel(player, dimension, loc, onArrive) {
+function travel(player, dimension, loc, onArrive, opcoes) {
   if (!player?.isValid || travelling.has(player.id)) return;
   travelling.add(player.id);
+
+  // Viagem em que a nave NÃO vai junto (a Lua e Marte). Ela fica onde está,
+  // marcada pra não sumir, e o jogador desce a pé.
+  const levaVeiculo = opcoes?.levaVeiculo !== false;
 
   try {
     // O fade escurece em 0.2 s (4 ticks) e segura escuro por 0.6 s — cobre a
@@ -114,6 +118,28 @@ function travel(player, dimension, loc, onArrive) {
   try {
     player.addEffect("slow_falling", 8 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
   } catch { }
+
+  if (!levaVeiculo) {
+    const ficou = vehicle.leaveBehind(player);
+    // Um tick de folga: descer do veículo e teleportar no MESMO tick às vezes
+    // leva o jogador de volta pro assento no destino.
+    system.runTimeout(() => {
+      if (!player?.isValid) { travelling.delete(player.id); return; }
+      try {
+        player.teleport({ x: loc.x, y: loc.y, z: loc.z }, { dimension });
+        try { onArrive?.(player); } catch { }
+      } catch (e) {
+        console.warn("[space_dim] falha ao teleportar: " + e);
+      }
+      if (ficou?.isValid) {
+        try {
+          player.sendMessage("§7A nave ficou no espaço — ela não desce à superfície.");
+        } catch { }
+      }
+      system.runTimeout(() => travelling.delete(player.id), 12);
+    }, 6);
+    return;
+  }
 
   // capture() desmonta, guarda e remove o veículo; devolve a cápsula (ou null
   // se não havia veículo) alguns ticks depois, com a tela já escurecida.
@@ -315,9 +341,8 @@ function enterPlanet(player, body, label) {
       }
       travel(player, dim, spot, (p) => {
         try {
-          // Pouso macio: mesmo com o chão já escrito, o teleporte deixa o
-          // jogador um bloco acima dele.
-          p.addEffect("slow_falling", 10 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
+          // Sem slow_falling: a gravidade do planeta já segura a descida, e ela
+          // não é efeito de poção (ver planetGravity.js).
           p.onScreenDisplay.setTitle(label, {
             subtitle: "§7Superfície — sem ar, traje obrigatório",
             fadeInDuration: 10,
@@ -325,7 +350,7 @@ function enterPlanet(player, body, label) {
             fadeOutDuration: 20,
           });
         } catch { }
-      });
+      }, { levaVeiculo: false });
     })
     .catch((e) => {
       landing.delete(player.id);
