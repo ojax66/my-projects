@@ -886,5 +886,52 @@ def ceu_da_lua_diferente_do_espaco(tmp):
 case("ceu da Lua diferente do ceu do espaco", ceu_da_lua_diferente_do_espaco,
      r"o ceu dela tem que ser o MESMO do espaco")
 
+
+# --- os conjuntos de protecao do config -------------------------------------
+# Os tres conjuntos (armadura de estrela, traje Apollo, traje AxEMU) sao o que
+# liga a protecao. Um id errado ali nao da erro nenhum no jogo: a peca some do
+# inventario, o traje nunca "conta", e o jogador congela vestido.
+def traje_citando_item_inexistente(tmp):
+    caminho = scripts(tmp, "config.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace('item: "space_dim:apollo_chestplate"',
+                      'item: "space_dim:apollo_peitoral"')
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("traje do config citando item que nao existe", traje_citando_item_inexistente,
+     r"BASIC_SUIT_PIECES cita space_dim:apollo_peitoral")
+
+
+def traje_com_peca_de_menos(tmp):
+    caminho = scripts(tmp, "config.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace('  { slot: "Feet", item: "space_dim:apollo_boots" },\n', "")
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("traje do config com tres pecas", traje_com_peca_de_menos,
+     r"BASIC_SUIT_PIECES tem 3 ")
+
+
+def mesma_peca_em_dois_conjuntos(tmp):
+    # O AxEMU usando a peca do Apollo: o Apollo passaria a contar como o
+    # reforcado, e o traje basico anularia a pressao do Sol.
+    caminho = scripts(tmp, "config.js")
+    with open(caminho, encoding="utf-8") as f:
+        src = f.read()
+    src = src.replace('item: "space_dim:reinforced_spacesuit_helmet"',
+                      'item: "space_dim:apollo_helmet"')
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
+case("a mesma peca em dois conjuntos de protecao", mesma_peca_em_dois_conjuntos,
+     r"mais de um conjunto")
+
 print(f"\n{passes} PASS, {fails} FALHOU")
 sys.exit(1 if fails else 0)

@@ -299,6 +299,7 @@ export const ENTITY_GRAVITY_SCAN = 48;
 // ---------------------------------------------------------------------------
 export const BREATHING_ENABLED = true;
 // Traje completo do Spacecraft + mochila de oxigênio com carga = pode respirar.
+// Continua valendo pra quem joga com o addon deles; o traje DAQUI é o de baixo.
 export const SPACESUIT_PIECES = [
   { slot: "Head", item: "nv_sc:spacesuit_helmet" },
   { slot: "Chest", item: "nv_sc:spacesuit_chestplate" },
@@ -306,6 +307,21 @@ export const SPACESUIT_PIECES = [
   { slot: "Feet", item: "nv_sc:spacesuit_boots" },
 ];
 export const OXYGEN_BACKPACK = "nv_sc:oxygen_backpack";
+
+// ---------------------------------------------------------------------------
+// Traje Apollo — o traje básico, e o nosso
+// ---------------------------------------------------------------------------
+// Fabricável na Terra com material do jogo base: é o traje que existe ANTES da
+// primeira subida. Ele é SELADO — as quatro peças bastam pra respirar nas
+// dimensões deste addon, sem mochila nenhuma (não há item de oxigênio aqui).
+// O que ele NÃO faz: não isola do frio do espaço e não segura a pressão do
+// Sol. Pra isso é o reforçado, logo abaixo.
+export const BASIC_SUIT_PIECES = [
+  { slot: "Head", item: "space_dim:apollo_helmet" },
+  { slot: "Chest", item: "space_dim:apollo_chestplate" },
+  { slot: "Legs", item: "space_dim:apollo_leggings" },
+  { slot: "Feet", item: "space_dim:apollo_boots" },
+];
 // Dentro de qualquer um destes o jogador respira normal — e não congela, que é
 // o outro eixo (ver cold.js). A Nave Level 1 é dele, e agora mora aqui dentro:
 // o addon dela foi juntado a este, pra não ficarem dois pacotes separados.
@@ -330,19 +346,23 @@ export const STAR_ARMOR_PIECES = [
 export const STAR_ARMOR_PROTECTS_FROM_HEAT = true;
 
 // ---------------------------------------------------------------------------
-// Traje espacial reforçado
+// Traje AxEMU — o reforçado
 // ---------------------------------------------------------------------------
-// O traje do Spacecraft melhorado com materiais dos planetas deles. Fica ENTRE
-// o traje comum e a armadura de estrela: ajuda, não anula.
+// O Apollo reforçado com pedra da Lua e de Marte. Os ids não mudaram quando
+// ele ganhou modelo e textura próprios: quem já tinha um vestido continua com
+// ele.
 export const REINFORCED_SUIT_PIECES = [
   { slot: "Head", item: "space_dim:reinforced_spacesuit_helmet" },
   { slot: "Chest", item: "space_dim:reinforced_spacesuit_chestplate" },
   { slot: "Legs", item: "space_dim:reinforced_spacesuit_leggings" },
   { slot: "Feet", item: "space_dim:reinforced_spacesuit_boots" },
 ];
-// Quanto da pressão do Sol ainda passa com o traje: 0,35 = corta 65%. Deixa
-// entrar e minerar um pouco, não deixa morar lá — pra isso é a de estrela.
-export const REINFORCED_SUIT_PRESSURE_FACTOR = 0.35;
+// Quanto da pressão do Sol ainda passa com o traje reforçado: 0 = ANULA o dano
+// de pressão por completo, como a armadura de estrela. O que ainda separa os
+// dois é o CALOR de dentro do Sol — com o traje dá pra chegar e entrar sem ser
+// esmagado, mas o jogador pega fogo lá dentro; só a armadura de estrela
+// aguenta isso (ver REINFORCED_SUIT_BLOCKS_APPROACH_HEAT logo abaixo).
+export const REINFORCED_SUIT_PRESSURE_FACTOR = 0;
 // O traje segura o calor da APROXIMAÇÃO (fora da superfície do Sol), mas não o
 // de dentro. Só a armadura de estrela aguenta lá dentro.
 export const REINFORCED_SUIT_BLOCKS_APPROACH_HEAT = true;

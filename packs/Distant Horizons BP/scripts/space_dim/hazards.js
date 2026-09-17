@@ -146,7 +146,12 @@ export function applySunPressure(player) {
 
   const passes = pressureMultiplier(player);
   if (passes <= 0) {
-    return `§e${inside.name}§r §7— a armadura de estrela aguenta a pressão`;
+    // Dois equipamentos chegam aqui: a armadura de estrela e o traje AxEMU.
+    // Dizer "armadura de estrela" pra quem está de traje seria mentira na tela.
+    const quem = protectionTier(player) === "star"
+      ? "a armadura de estrela"
+      : "o traje reforçado";
+    return `§e${inside.name}§r §7— ${quem} aguenta a pressão`;
   }
 
   const damage = Math.max(1, Math.round(inside.pressure.damage * passes));
@@ -163,9 +168,11 @@ export function applySunPressure(player) {
     }
   } catch { }
 
+  // Só sobra caso o fator seja configurado pra um meio-termo; com 0 (o padrão
+  // hoje) o traje já saiu lá em cima.
   return passes < 1
     ? `§6PRESSÃO §r§7— o traje segura em parte; a de estrela anula`
-    : `§4§lPRESSÃO ESMAGADORA §r§7— sem proteção nenhuma`;
+    : `§4§lPRESSÃO ESMAGADORA §r§7— sem proteção contra pressão`;
 }
 
 /** Só a leitura, sem aplicar nada — usado pelos testes e pelo HUD. */

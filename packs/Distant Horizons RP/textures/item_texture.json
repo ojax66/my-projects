@@ -24,22 +24,34 @@
       "textures": "textures/space_dim/items/star_boots"
     },
     "space_dim_reinforced_spacesuit_helmet": {
-      "textures": "textures/nv/moon/items/armor/spacesuit_helmet"
+      "textures": "textures/space_dim/items/space_dim_reinforced_spacesuit_helmet"
     },
     "space_dim_reinforced_spacesuit_chestplate": {
-      "textures": "textures/nv/moon/items/armor/spacesuit_chestplate"
+      "textures": "textures/space_dim/items/space_dim_reinforced_spacesuit_chestplate"
     },
     "space_dim_reinforced_spacesuit_leggings": {
-      "textures": "textures/nv/moon/items/armor/spacesuit_leggings"
+      "textures": "textures/space_dim/items/space_dim_reinforced_spacesuit_leggings"
     },
     "space_dim_reinforced_spacesuit_boots": {
-      "textures": "textures/nv/moon/items/armor/spacesuit_boots"
+      "textures": "textures/space_dim/items/space_dim_reinforced_spacesuit_boots"
     },
     "space_dim_tracker": {
       "textures": "textures/space_dim/items/tracker"
     },
     "space_dim_star_chart": {
       "textures": "textures/space_dim/items/star_chart"
+    },
+    "space_dim_apollo_helmet": {
+      "textures": "textures/space_dim/items/space_dim_apollo_helmet"
+    },
+    "space_dim_apollo_chestplate": {
+      "textures": "textures/space_dim/items/space_dim_apollo_chestplate"
+    },
+    "space_dim_apollo_leggings": {
+      "textures": "textures/space_dim/items/space_dim_apollo_leggings"
+    },
+    "space_dim_apollo_boots": {
+      "textures": "textures/space_dim/items/space_dim_apollo_boots"
     }
   }
 }

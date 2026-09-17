@@ -1,28 +1,34 @@
 /* =========================================================================
  * O que o jogador está vestindo, e o quanto isso protege.
  *
- * São dois degraus, e a diferença entre eles é o ponto:
+ * São três degraus, e a diferença entre eles é o ponto:
  *
- *   TRAJE ESPACIAL REFORÇADO — o traje do Spacecraft melhorado com materiais
- *     dos planetas deles. AJUDA: segura o calor na aproximação do Sol e corta
- *     boa parte da pressão lá dentro, mas não anula. Dá pra encostar no Sol e
- *     entrar correndo; não dá pra morar lá.
+ *   TRAJE APOLLO — o básico, feito na Terra. RESOLVE O AR: é selado, e as
+ *     quatro peças bastam pra respirar. Não isola do frio e não segura nada da
+ *     pressão do Sol. Com ele o espaço é atravessável, não habitável.
+ *
+ *   TRAJE AxEMU — o Apollo reforçado com pedra da Lua e de Marte. Isola do
+ *     frio, segura o calor da APROXIMAÇÃO do Sol e ANULA a pressão lá dentro.
+ *     O que ainda falta nele é o calor de DENTRO do Sol: dá pra entrar sem ser
+ *     esmagado, mas o jogador pega fogo.
  *
  *   ARMADURA DE NÚCLEO DE ESTRELA — feita do próprio núcleo. ANULA calor e
- *     pressão. É o fim da linha.
+ *     pressão. É o fim da linha, e é o que permite ficar dentro do Sol.
  *
- * Os dois valem INTEIROS. Meia armadura não segura pressão de estrela, e meio
+ * Os três valem INTEIROS. Meia armadura não segura pressão de estrela, e meio
  * traje não segura nada.
  *
- * O ciclo que isso desenha: primeira ida ao núcleo com poção de resistência a
- * fogo e o traje reforçado, correndo, só pra arrancar alguns blocos e sair
- * antes do esmagamento. Com o que se traz sai a armadura, e aí o Sol vira um
- * lugar onde dá pra ficar.
+ * O ciclo que isso desenha: Apollo pra subir e chegar à Lua e a Marte; com a
+ * pedra de lá sai o AxEMU, que aguenta o frio e a pressão; e a primeira ida ao
+ * núcleo é com ele mais poção de resistência a fogo, correndo, só pra arrancar
+ * alguns blocos antes de a poção acabar. Com o que se traz sai a armadura, e
+ * aí o Sol vira um lugar onde dá pra ficar.
  * ========================================================================= */
 
 import {
   STAR_ARMOR_PIECES,
   STAR_ARMOR_PROTECTS_FROM_HEAT,
+  BASIC_SUIT_PIECES,
   REINFORCED_SUIT_PIECES,
   REINFORCED_SUIT_PRESSURE_FACTOR,
   OXYGEN_BACKPACK,
@@ -71,8 +77,18 @@ export function starArmorBlocksHeat(player) {
 
 
 // ---------------------------------------------------------------------------
-// Traje espacial reforçado
+// Os trajes daqui
 // ---------------------------------------------------------------------------
+
+/** O jogador está com as quatro peças do traje Apollo (o básico)? */
+export function hasBasicSuit(player) {
+  return wearsAll(player, BASIC_SUIT_PIECES);
+}
+
+/** Qualquer um dos dois trajes DESTE addon, inteiro. Os dois são selados. */
+export function hasSealedSuit(player) {
+  return hasBasicSuit(player) || hasReinforcedSuit(player);
+}
 
 /** O jogador está com as quatro peças do traje reforçado? */
 export function hasReinforcedSuit(player) {
@@ -99,10 +115,16 @@ export function hasChargedBackpack(player) {
 export function protectionTier(player) {
   if (hasStarArmor(player)) return "star";
   if (hasReinforcedSuit(player)) return "suit";
+  if (hasBasicSuit(player)) return "basic";
   return "none";
 }
 
-/** Quanto da pressão do Sol passa: 0 nada, 1 tudo. */
+/**
+ * Quanto da pressão do Sol passa: 0 nada, 1 tudo.
+ *
+ * O Apollo ("basic") não entra: ele resolve o ar, não o esmagamento — quem
+ * entra no Sol só com ele sente a pressão inteira, como quem está sem nada.
+ */
 export function pressureMultiplier(player) {
   const tier = protectionTier(player);
   if (tier === "star") return 0;
@@ -116,10 +138,10 @@ export function pressureMultiplier(player) {
 // ---------------------------------------------------------------------------
 /*
  * Um problema real de addon com addon: o Spacecraft decide se o jogador respira
- * procurando as QUATRO PEÇAS DELE no corpo. O traje reforçado ocupa os mesmos
- * espaços com outros ids, então, pra ele, quem fez o upgrade está sem traje —
- * e sufocaria na Lua justamente por ter melhorado o equipamento. Uma armadilha
- * feia de cair.
+ * procurando as QUATRO PEÇAS DELE no corpo. Os trajes daqui ocupam os mesmos
+ * espaços com outros ids, então, pra ele, quem está de Apollo ou de AxEMU está
+ * sem traje — e sufocaria na Lua deles justamente por ter equipamento melhor.
+ * Uma armadilha feia de cair.
  *
  * Não dá pra mudar o código deles. O que dá é usar a chave que eles mesmos
  * têm: a tag `nv_sc:cant_hurt`, que o loop deles consulta pra suspender o dano
@@ -133,14 +155,16 @@ export function pressureMultiplier(player) {
  * por tick basta nos dois casos.
  *
  * A tag só é reposta com a mochila carregada, exatamente como a regra deles:
- * traje melhor não é fonte de ar.
+ * nas dimensões DELES valem as regras deles, e traje melhor não é fonte de ar.
+ * (Nas dimensões daqui os dois trajes são selados e dispensam a mochila — ver
+ * canBreathe em lifeSupport.js.)
  */
 export function sustainInSpacecraftWorlds(player) {
   let dimId;
   try { dimId = player.dimension?.id; } catch { return false; }
   if (!dimId || !SPACECRAFT_DIMENSIONS.includes(dimId)) return false;
 
-  if (!hasReinforcedSuit(player) || !hasChargedBackpack(player)) return false;
+  if (!hasSealedSuit(player) || !hasChargedBackpack(player)) return false;
 
   try { player.addTag(SPACECRAFT_SAFE_TAG); } catch { }
   return true;

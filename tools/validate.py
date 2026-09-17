@@ -1329,15 +1329,30 @@ for p, d in docs.items():
                 f"o arquivo não carregaria e a receita sumiria sem aviso "
                 f"(use uma de {sorted(allowed)})")
 
-# --- 4f. O config e os itens gerados falam da mesma armadura ------------------
-# STAR_ARMOR_PIECES é o que decide se o jogador está protegido. Se ele citar um
-# id que não existe mais, a proteção simplesmente nunca liga e nada avisa.
-star_pieces = re.findall(r'\{ slot: "\w+", item: "(space_dim:[a-z0-9_]+)" \}', config_src)
-if not star_pieces:
-    warn("não achei STAR_ARMOR_PIECES no config para conferir")
-for piece in star_pieces:
-    if piece not in declared_items:
-        err(f"STAR_ARMOR_PIECES cita {piece}, que não existe como item")
+# --- 4f. O config e os itens gerados falam do mesmo equipamento ---------------
+# Estas três listas são o que decide se o jogador está protegido. Se uma delas
+# citar um id que não existe mais, a proteção simplesmente nunca liga — e nada
+# avisa: o item some do inventário e o jogador morre sem saber por quê.
+for const in ("STAR_ARMOR_PIECES", "BASIC_SUIT_PIECES", "REINFORCED_SUIT_PIECES"):
+    m = re.search(rf"export const {const} = \[(.*?)\];", config_src, re.S)
+    if not m:
+        warn(f"não achei {const} no config para conferir")
+        continue
+    pieces = re.findall(r'\{ slot: "(\w+)", item: "([a-z0-9_]+:[a-z0-9_]+)" \}', m.group(1))
+    if len(pieces) != 4:
+        err(f"{const} tem {len(pieces)} peças; uma armadura são 4")
+    slots = [slot for slot, _ in pieces]
+    if slots != ["Head", "Chest", "Legs", "Feet"]:
+        err(f"{const} não cobre os quatro espaços na ordem certa: {slots}")
+    for _, piece in pieces:
+        if piece.startswith("space_dim:") and piece not in declared_items:
+            err(f"{const} cita {piece}, que não existe como item")
+
+# O conjunto inteiro tem que caber num corpo só: dois ids iguais em listas
+# diferentes fariam um traje contar como o outro.
+_all_pieces = re.findall(r'\{ slot: "\w+", item: "(space_dim:[a-z0-9_]+)" \}', config_src)
+if len(_all_pieces) != len(set(_all_pieces)):
+    err("o mesmo id de peça aparece em mais de um conjunto do config")
 
 # --- 5. Texturas citadas pelas partículas existem -----------------------------
 for p, d in docs.items():

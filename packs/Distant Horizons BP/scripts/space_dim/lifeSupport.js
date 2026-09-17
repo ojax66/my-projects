@@ -3,10 +3,14 @@
  *
  * O Spacecraft só machuca por falta de oxigênio quando o jogador está na Lua,
  * em Marte, em Andrella ou na estação (racoTriggers.js). A dimensão do espaço
- * não existe pra ele, então o dano aqui é nosso — mas a condição é copiada da
- * dele, pra o traje e a mochila valerem igual nos dois lugares:
+ * não existe pra ele, então o dano aqui é nosso — mas a condição do traje DELES
+ * é copiada da dele, pra o traje e a mochila valerem igual nos dois lugares:
  *
- *     traje completo + mochila de oxigênio com carga  →  respira
+ *     traje do Spacecraft + mochila de oxigênio com carga  →  respira
+ *
+ * Os trajes daqui (Apollo e AxEMU) são selados e valem sozinhos: não existe
+ * item de oxigênio neste addon, e o Apollo é justamente o traje que o jogador
+ * tem ANTES de conhecer qualquer outro addon.
  *
  * O que NÃO se repete aqui é o consumo da mochila: o loop do Spacecraft já
  * gasta durabilidade e atualiza o HUD dela em todo tick, em qualquer dimensão.
@@ -16,7 +20,7 @@
  * ========================================================================= */
 
 import * as mc from "@minecraft/server";
-import { hasReinforcedSuit, hasChargedBackpack, hasStarArmor } from "./gear.js";
+import { hasBasicSuit, hasReinforcedSuit, hasStarArmor } from "./gear.js";
 import {
   BREATHING_ENABLED,
   SPACESUIT_PIECES,
@@ -89,9 +93,11 @@ export function canBreathe(player) {
   if (player.hasTag("nv_sc:cant_hurt")) return true;
   if (inPressurizedVehicle(player)) return true;
   if (hasWorkingSpacesuit(player)) return true;
-  // O traje reforçado vale como traje aqui também — com a mochila, pela mesma
-  // regra do Spacecraft: traje melhor não é fonte de ar.
-  if (hasReinforcedSuit(player) && hasChargedBackpack(player)) return true;
+  // Os trajes DAQUI são selados: as quatro peças bastam, sem mochila. Não há
+  // item de oxigênio neste addon pra uma mochila consumir, e o Apollo precisa
+  // funcionar sozinho — ele é o que existe ANTES da primeira subida. O AxEMU é
+  // o Apollo reforçado, então não pode exigir mais que ele.
+  if (hasBasicSuit(player) || hasReinforcedSuit(player)) return true;
   // A armadura de estrela é selada por si: quem chegou nela já não depende de
   // mochila pra respirar.
   if (hasStarArmor(player)) return true;

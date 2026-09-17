@@ -1,0 +1,28 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "space_dim:apollo_chestplate"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "F F",
+      "IFI",
+      "FIF"
+    ],
+    "key": {
+      "F": {
+        "item": "minecraft:white_wool"
+      },
+      "I": {
+        "item": "minecraft:iron_ingot"
+      }
+    },
+    "result": {
+      "item": "space_dim:apollo_chestplate",
+      "count": 1
+    }
+  }
+}

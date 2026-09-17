@@ -1,0 +1,31 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "space_dim:apollo_leggings"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "FIF",
+      "I I",
+      "L L"
+    ],
+    "key": {
+      "F": {
+        "item": "minecraft:white_wool"
+      },
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "L": {
+        "item": "minecraft:leather"
+      }
+    },
+    "result": {
+      "item": "space_dim:apollo_leggings",
+      "count": 1
+    }
+  }
+}

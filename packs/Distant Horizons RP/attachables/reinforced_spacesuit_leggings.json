@@ -8,11 +8,11 @@
         "enchanted": "armor_enchanted"
       },
       "textures": {
-        "default": "textures/nv/moon/entity/spacesuit",
+        "default": "textures/space_dim/armor/axemu_suit_legs",
         "enchanted": "textures/misc/enchanted_actor_glint"
       },
       "geometry": {
-        "default": "geometry.nv_sc.nv_moon.spacesuit_leggings"
+        "default": "geometry.axemu_suit.armor.leggings"
       },
       "scripts": {
         "parent_setup": "variable.leg_layer_visible = 0.0;"

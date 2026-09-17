@@ -22,7 +22,7 @@
         "repair_items": [
           {
             "items": [
-              "nv_sc:titanium_plate"
+              "minecraft:netherite_ingot"
             ],
             "repair_amount": 124
           }
@@ -32,8 +32,8 @@
         "value": 12,
         "slot": "armor_torso"
       },
-      "minecraft:fire_resistant": true,
-      "minecraft:hover_text_color": "aqua"
+      "minecraft:hover_text_color": "aqua",
+      "minecraft:fire_resistant": true
     }
   }
 }

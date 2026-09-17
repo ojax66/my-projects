@@ -2,20 +2,20 @@
   "format_version": "1.10.0",
   "minecraft:attachable": {
     "description": {
-      "identifier": "space_dim:reinforced_spacesuit_boots",
+      "identifier": "space_dim:apollo_leggings",
       "materials": {
         "default": "armor",
         "enchanted": "armor_enchanted"
       },
       "textures": {
-        "default": "textures/space_dim/armor/axemu_suit",
+        "default": "textures/space_dim/armor/apollo_suit_legs",
         "enchanted": "textures/misc/enchanted_actor_glint"
       },
       "geometry": {
-        "default": "geometry.axemu_suit.armor.boots"
+        "default": "geometry.apollo_suit.armor.leggings"
       },
       "scripts": {
-        "parent_setup": "variable.boot_layer_visible = 0.0;"
+        "parent_setup": "variable.leg_layer_visible = 0.0;"
       },
       "render_controllers": [
         "controller.render.armor"

@@ -2,43 +2,27 @@
   "_comment": [
     "O que este addon usa de OUTROS packs, e de onde vem.",
     "",
-    "O traje reforçado é o traje do Spacecraft melhorado, então ele aponta pro",
-    "modelo, pra textura e pros itens DELES em vez de duplicar a arte aqui: os",
-    "packs de recurso se fundem no mundo, e copiar arte de outra pessoa pra",
-    "dentro deste addon não seria certo.",
+    "Os trajes daqui (Apollo e AxEMU) têm modelo, textura e ícones PRÓPRIOS,",
+    "em tools/assets/suits — nada de arte de outro pack. O que sobrou de fora é",
+    "só ITEM: a receita alternativa do AxEMU, pra quem joga com o Spacecraft,",
+    "aceita o traje deles e os materiais deles como caminho de fabricação.",
     "",
-    "Esta lista existe pra o validador não ter que liberar qualquer caminho que",
-    "comece com 'textures/nv/'. Ele confere referência por referência contra o",
-    "que está aqui — assim a dependência fica visível e revisável, e um caminho",
-    "errado de digitação continua sendo pego.",
+    "Esta lista existe pra o validador não ter que liberar qualquer id que",
+    "comece com 'nv_sc:'. Ele confere referência por referência contra o que",
+    "está aqui — assim a dependência fica visível e revisável, e um id errado de",
+    "digitação continua sendo pego.",
     "",
-    "Todos os caminhos abaixo foram conferidos contra o Spacecraft Venzenulon-7",
+    "Todos os ids abaixo foram conferidos contra o Spacecraft Venzenulon-7",
     "(pack de comportamento d771161e / recurso 1da17be7).",
     "",
-    "Se o Spacecraft não estiver no mundo, o traje reforçado fica sem textura —",
-    "mas ele também não teria como ser fabricado, já que a receita inteira é de",
-    "itens de lá."
+    "Sem o Spacecraft no mundo essas receitas simplesmente não aparecem na",
+    "bancada; as receitas próprias do Apollo e do AxEMU continuam funcionando."
   ],
-
   "spacecraft": {
     "provider": "Spacecraft — Venzenulon 7",
-    "required_for": "space_dim:reinforced_spacesuit_*",
-
-    "textures": [
-      "textures/nv/moon/entity/spacesuit",
-      "textures/nv/moon/items/armor/spacesuit_helmet",
-      "textures/nv/moon/items/armor/spacesuit_chestplate",
-      "textures/nv/moon/items/armor/spacesuit_leggings",
-      "textures/nv/moon/items/armor/spacesuit_boots"
-    ],
-
-    "geometries": [
-      "geometry.nv_sc.nv_moon.spacesuit_helmet",
-      "geometry.nv_sc.nv_moon.spacesuit_chestplate",
-      "geometry.nv_sc.nv_moon.spacesuit_leggings",
-      "geometry.nv_sc.nv_moon.spacesuit_boots"
-    ],
-
+    "required_for": "receitas alternativas: space_dim:reinforced_spacesuit_*_from_spacecraft",
+    "textures": [],
+    "geometries": [],
     "items": [
       "nv_sc:spacesuit_helmet",
       "nv_sc:spacesuit_chestplate",
@@ -52,7 +36,6 @@
       "nv_sc:oxygen_backpack"
     ]
   },
-
   "vanilla_geometry_prefixes": [
     "geometry.humanoid."
   ]

@@ -45,12 +45,6 @@ item.space_dim:star_chestplate=Starcore Peitoral
 item.space_dim:star_leggings=Starcore Calças
 item.space_dim:star_boots=Starcore Botas
 
-## traje espacial reforçado (gerado por tools/make_spacesuit.py)
-item.space_dim:reinforced_spacesuit_helmet=Capacete Espacial Reforçado
-item.space_dim:reinforced_spacesuit_chestplate=Peitoral Espacial Reforçado
-item.space_dim:reinforced_spacesuit_leggings=Calças Espaciais Reforçadas
-item.space_dim:reinforced_spacesuit_boots=Botas Espaciais Reforçadas
-
 ## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)
 biome.space_dim.lua_mar_de_basalto.name=Mar de Basalto
 biome.space_dim.lua_terras_altas.name=Terras Altas
@@ -69,3 +63,13 @@ item.spawn_egg.entity.nave:level_1_spaceship.name=§bGerar Nave Level 1§r
 action.interact.nave.ride=§aPilotar a nave!
 action.interact.nave.disassemble=§eDesmontar (tesoura)
 action.hint.exit.nave:level_1_spaceship=§aAgache ou pule para sair!
+
+## trajes espaciais (gerado por tools/make_spacesuit.py)
+item.space_dim:apollo_helmet=Capacete Apollo
+item.space_dim:apollo_chestplate=Peitoral Apollo
+item.space_dim:apollo_leggings=Calças Apollo
+item.space_dim:apollo_boots=Botas Apollo
+item.space_dim:reinforced_spacesuit_helmet=Capacete AxEMU Reforçado
+item.space_dim:reinforced_spacesuit_chestplate=Peitoral AxEMU Reforçado
+item.space_dim:reinforced_spacesuit_leggings=Calças AxEMU Reforçadas
+item.space_dim:reinforced_spacesuit_boots=Botas AxEMU Reforçadas

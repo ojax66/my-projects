@@ -9,13 +9,16 @@
  *     por cima de construção de alguém
  */
 import { world, system, __reset, __advance, __state, ItemStack } from '@minecraft/server';
-import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, REINFORCED_SUIT_PIECES,
-         REINFORCED_SUIT_PRESSURE_FACTOR, SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
+import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, BASIC_SUIT_PIECES,
+         REINFORCED_SUIT_PIECES, REINFORCED_SUIT_PRESSURE_FACTOR,
+         SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
          WRECK_TEMPLATE_ITEM } from './space_dim/config.js';
 import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './space_dim/gravity.js';
 import { canBreathe } from './space_dim/lifeSupport.js';
-import { hasStarArmor, starArmorPieces, hasReinforcedSuit, protectionTier,
-         pressureMultiplier, sustainInSpacecraftWorlds } from './space_dim/gear.js';
+import { hasStarArmor, starArmorPieces, hasBasicSuit, hasReinforcedSuit,
+         protectionTier, pressureMultiplier,
+         sustainInSpacecraftWorlds } from './space_dim/gear.js';
+import { isWarm } from './space_dim/cold.js';
 import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
 import { buildWreckAt } from './space_dim/wreck.js';
 import { rememberSpawn, enforceSpawn } from './space_dim/spawnGuard.js';
@@ -255,32 +258,75 @@ const spaceLoc = (body, d, axis = 'x') => ({
   wear(suited, REINFORCED_SUIT_PIECES);
   wear(starred, STAR_ARMOR_PIECES);
 
+  const basic = world.__addPlayer({ id: 'a', dimensionId: DIMENSION_ID, location: insideSun() });
+  wear(basic, BASIC_SUIT_PIECES);
+
   check('o traje reforçado é reconhecido', hasReinforcedSuit(suited) && !hasStarArmor(suited));
+  check('o traje Apollo é reconhecido, e não conta como reforçado',
+        hasBasicSuit(basic) && !hasReinforcedSuit(basic) && !hasStarArmor(basic));
   check('os degraus são lidos certo',
-        protectionTier(bare) === 'none' && protectionTier(suited) === 'suit'
-        && protectionTier(starred) === 'star');
+        protectionTier(bare) === 'none' && protectionTier(basic) === 'basic'
+        && protectionTier(suited) === 'suit' && protectionTier(starred) === 'star');
 
   // Meio traje nao conta.
   const half = world.__addPlayer({ id: 'h', dimensionId: DIMENSION_ID, location: insideSun() });
   for (let i = 0; i < 3; i++) half.__wear(REINFORCED_SUIT_PIECES[i].slot, REINFORCED_SUIT_PIECES[i].item);
   check('meio traje não conta', !hasReinforcedSuit(half) && protectionTier(half) === 'none');
 
-  // Pressao: nada > traje > estrela, nessa ordem de sofrimento.
-  for (const p of [bare, suited, starred]) {
+  // Pressao dentro do Sol: o Apollo nao segura nada, o AxEMU e a armadura de
+  // estrela anulam. O fator vem do config — se ele deixar de ser 0, o teste
+  // cobra o corte proporcional em vez da anulacao.
+  for (const p of [bare, basic, suited, starred]) {
     p.__damage = 0;
     p.applyDamage = (n) => { p.__damage += n; };
   }
   for (let t = 0; t < 200; t++) {
     system.currentTick = t;
-    applySunPressure(bare); applySunPressure(suited); applySunPressure(starred);
+    applySunPressure(bare); applySunPressure(basic);
+    applySunPressure(suited); applySunPressure(starred);
   }
-  check('sem nada a pressão machuca mais que com o traje',
-        bare.__damage > suited.__damage && suited.__damage > 0,
-        `(nada ${bare.__damage}, traje ${suited.__damage})`);
+  check('sem nada a pressão do Sol machuca', bare.__damage > 0, `(${bare.__damage})`);
+  check('o traje básico não segura pressão nenhuma',
+        basic.__damage === bare.__damage,
+        `(básico ${basic.__damage}, nada ${bare.__damage})`);
   check('a armadura de estrela anula a pressão', starred.__damage === 0);
-  check('o traje corta perto do fator configurado',
-        Math.abs(suited.__damage / bare.__damage - REINFORCED_SUIT_PRESSURE_FACTOR) < 0.25,
-        `(passou ${(suited.__damage / bare.__damage).toFixed(2)}, esperado ~${REINFORCED_SUIT_PRESSURE_FACTOR})`);
+
+  if (REINFORCED_SUIT_PRESSURE_FACTOR <= 0) {
+    check('o traje reforçado ANULA a pressão do Sol', suited.__damage === 0,
+          `(traje ${suited.__damage})`);
+  } else {
+    check('sem nada a pressão machuca mais que com o traje',
+          bare.__damage > suited.__damage && suited.__damage > 0,
+          `(nada ${bare.__damage}, traje ${suited.__damage})`);
+    check('o traje corta perto do fator configurado',
+          Math.abs(suited.__damage / bare.__damage - REINFORCED_SUIT_PRESSURE_FACTOR) < 0.25,
+          `(passou ${(suited.__damage / bare.__damage).toFixed(2)}, esperado ~${REINFORCED_SUIT_PRESSURE_FACTOR})`);
+  }
+}
+
+// --- 7b-bis. O que cada traje resolve, e o que nao resolve ------------------
+// A diferenca entre os dois e o que faz o reforcado valer a pena existir: o
+// Apollo resolve o AR, o AxEMU resolve o FRIO e a PRESSAO.
+{
+  __reset();
+  const longe = { x: 5000, y: 100, z: 5000 };       // longe de qualquer corpo
+  const nu = world.__addPlayer({ id: 'n2', dimensionId: DIMENSION_ID, location: longe });
+  const apollo = world.__addPlayer({ id: 'a2', dimensionId: DIMENSION_ID, location: longe });
+  const axemu = world.__addPlayer({ id: 'x2', dimensionId: DIMENSION_ID, location: longe });
+  for (const x of BASIC_SUIT_PIECES) apollo.__wear(x.slot, x.item);
+  for (const x of REINFORCED_SUIT_PIECES) axemu.__wear(x.slot, x.item);
+
+  check('sem traje o jogador não respira no espaço', !canBreathe(nu));
+  check('o traje Apollo sozinho já deixa respirar', canBreathe(apollo));
+  check('o reforçado também, sem depender de mochila', canBreathe(axemu));
+
+  check('sem traje o jogador congela', !isWarm(nu));
+  check('o traje Apollo NÃO isola do frio', !isWarm(apollo));
+  check('o traje reforçado isola do frio', isWarm(axemu));
+
+  check('só o reforçado anula a pressão',
+        pressureMultiplier(nu) === 1 && pressureMultiplier(apollo) === 1
+        && pressureMultiplier(axemu) === REINFORCED_SUIT_PRESSURE_FACTOR);
 }
 
 // --- 7c. O traje segura o calor da aproximacao, nao o de dentro -------------

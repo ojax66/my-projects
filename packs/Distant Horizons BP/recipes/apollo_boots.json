@@ -1,0 +1,27 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "space_dim:apollo_boots"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "F F",
+      "L L"
+    ],
+    "key": {
+      "F": {
+        "item": "minecraft:white_wool"
+      },
+      "L": {
+        "item": "minecraft:leather"
+      }
+    },
+    "result": {
+      "item": "space_dim:apollo_boots",
+      "count": 1
+    }
+  }
+}
