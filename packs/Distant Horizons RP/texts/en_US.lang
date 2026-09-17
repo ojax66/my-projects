@@ -1,5 +1,5 @@
 pack.name=Distant Horizons: Outer Space RP
-pack.description=Visuals for the Outer Space dimension: black sky, deep space fog and star fields.
+pack.description=Outer space dimension with the Sun, Earth, the Moon and Mars, plus surface dimensions for the Moon and Mars with their own terrain and biomes. Includes the Level 1 Spaceship.
 
 biome.space_dim.espaco_sideral.name=Outer Space
 
@@ -62,3 +62,10 @@ biome.space_dim.marte_valles.name=Valles Marineris
 biome.space_dim.marte_tharsis.name=Tharsis Plateau
 biome.space_dim.marte_campo_de_dunas.name=Dune Field
 biome.space_dim.marte_calota_polar.name=Polar Cap
+
+## nave Level 1 (do addon dele, juntado aqui)
+entity.nave:level_1_spaceship.name=§bLevel 1 Spaceship§r
+item.spawn_egg.entity.nave:level_1_spaceship.name=§bSpawn Level 1 Spaceship§r
+action.interact.nave.ride=§aFly the spaceship!
+action.interact.nave.disassemble=§eDisassemble (shears)
+action.hint.exit.nave:level_1_spaceship=§aCrouch or jump to exit!

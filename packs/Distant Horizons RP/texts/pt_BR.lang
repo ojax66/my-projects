@@ -1,5 +1,5 @@
 pack.name=Distant Horizons: Espaço Sideral RP
-pack.description=Visual da dimensão do Espaço Sideral: céu preto, névoa do espaço profundo e campos de estrelas.
+pack.description=Dimensão do espaço sideral com o Sol, a Terra, a Lua e Marte, mais as dimensões de superfície da Lua e de Marte, com terreno e biomas próprios. Inclui a Nave Level 1.
 
 biome.space_dim.espaco_sideral.name=Espaço Sideral
 
@@ -62,3 +62,10 @@ biome.space_dim.marte_valles.name=Valles Marineris
 biome.space_dim.marte_tharsis.name=Planalto de Tharsis
 biome.space_dim.marte_campo_de_dunas.name=Campo de Dunas
 biome.space_dim.marte_calota_polar.name=Calota Polar
+
+## nave Level 1 (do addon dele, juntado aqui)
+entity.nave:level_1_spaceship.name=§bNave Level 1§r
+item.spawn_egg.entity.nave:level_1_spaceship.name=§bGerar Nave Level 1§r
+action.interact.nave.ride=§aPilotar a nave!
+action.interact.nave.disassemble=§eDesmontar (tesoura)
+action.hint.exit.nave:level_1_spaceship=§aAgache ou pule para sair!

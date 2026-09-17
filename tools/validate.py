@@ -1651,6 +1651,54 @@ for nome, valor in re.findall(
     elif particle_ids and valor not in particle_ids:
         err(f"{nome} aponta pra particula {valor}, que nao existe em RP/particles")
 
+# --- 5e. A Nave Level 1 veio inteira ------------------------------------------
+#
+# O addon dela foi juntado a este. Juntar addon à mão é onde se perde arquivo:
+# falta uma textura e a nave fica roxa e preta; falta o render controller e ela
+# não aparece; falta a entidade do RP e o jogo mostra um cubo branco. Nenhum
+# desses casos dá erro no log — todos aparecem só voando.
+NAVE = "nave:level_1_spaceship"
+if any(NAVE in (config_src or "") for _ in (1,)) or True:
+    faltando = []
+    for caminho in (
+        os.path.join(BP, "entities", "level_1_spaceship.json"),
+        os.path.join(BP, "spawn_rules", "level_1_spaceship.json"),
+        os.path.join(BP, "animation_controllers", "ship.animation_controllers.json"),
+        os.path.join(BP, "loot_tables", "nave", "spaceship_death.json"),
+        os.path.join(BP, "loot_tables", "nave", "spaceship_disassembled.json"),
+        os.path.join(RP, "entity", "level_1_spaceship.json"),
+        os.path.join(RP, "models", "entity", "level_1_spaceship.geo.json"),
+        os.path.join(RP, "render_controllers", "level_1_spaceship.render_controllers.json"),
+        os.path.join(RP, "animations", "level_1_spaceship.animation.json"),
+        os.path.join(RP, "animation_controllers", "level_1_spaceship.animation_controllers.json"),
+        os.path.join(RP, "particles", "nave_ship_circle.particle.json"),
+        os.path.join(RP, "textures", "nave", "level_1_spaceship.png"),
+        os.path.join(RP, "textures", "nave", "shockwave.png"),
+        os.path.join(RP, "sounds", "sound_definitions.json"),
+        os.path.join(RP, "sounds", "nave", "ship_engine.ogg"),
+    ):
+        if not os.path.isfile(caminho):
+            faltando.append(os.path.relpath(caminho, ROOT))
+    if faltando:
+        err("a Nave Level 1 veio incompleta: falta " + ", ".join(faltando))
+
+    # O nome dela tem que estar no RP, senão o jogo mostra o id cru.
+    for lang in ("pt_BR", "en_US", "en_GB"):
+        caminho = os.path.join(RP, "texts", f"{lang}.lang")
+        if not os.path.isfile(caminho):
+            continue
+        with open(caminho, encoding="utf-8") as f:
+            txt = f.read()
+        if f"entity.{NAVE}.name=" not in txt:
+            err(f"a Nave Level 1 sem nome em RP/texts/{lang}.lang — apareceria "
+                f"como '{NAVE}' no jogo")
+
+    # E ela tem que contar como veículo pressurizado, senão o piloto sufoca e
+    # congela dentro da própria nave.
+    if NAVE not in (config_src or ""):
+        err(f"{NAVE} nao esta em PRESSURIZED_VEHICLES — o piloto sufocaria e "
+            f"congelaria dentro da propria nave")
+
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):
     if not os.path.isfile(os.path.join(base, "pack_icon.png")):

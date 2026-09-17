@@ -13,6 +13,7 @@ import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, REINFORCED_SUIT_PIECES,
          REINFORCED_SUIT_PRESSURE_FACTOR, SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
          WRECK_TEMPLATE_ITEM } from './space_dim/config.js';
 import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './space_dim/gravity.js';
+import { canBreathe } from './space_dim/lifeSupport.js';
 import { hasStarArmor, starArmorPieces, hasReinforcedSuit, protectionTier,
          pressureMultiplier, sustainInSpacecraftWorlds } from './space_dim/gear.js';
 import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
@@ -87,7 +88,28 @@ const spaceLoc = (body, d, axis = 'x') => ({
         sun.gravity.reach > earth.gravity.reach && earth.gravity.reach > moon.gravity.reach);
 }
 
-// --- 4. Pilotando, quem é puxado é o veículo -------------------------------
+// --- 3b. A Nave Level 1 é um veículo pressurizado ---------------------------
+//
+// Ela veio do addon dele e agora mora aqui. Se não entrar na lista, o piloto
+// sufoca e congela dentro da própria nave — e o jogo não diz nada, só mata.
+{
+  __reset();
+  const p = world.__addPlayer({
+    id: 'naveiro', dimensionId: DIMENSION_ID, location: spaceLoc(earth, earth.radius + 40),
+  });
+  const nave = world.__spawn(DIMENSION_ID, 'nave:level_1_spaceship', p.location);
+  p.__mountOn(nave);
+  check('dentro da Nave Level 1 o jogador respira', canBreathe(p));
+}
+
+// --- 4. Pilotando, NADA encosta nele ----------------------------------------
+//
+// Nem puxão no jogador, nem impulso no veículo, nem empurrão pra fora de bloco
+// sólido. Quem pilota dirige; o que cai é quem está a pé ou solto.
+//
+// Este teste é o conserto de um bug de verdade: `keepOutOfSolids` TELEPORTA o
+// jogador pra fora do corpo sólido, e teleportar um passageiro é desmontá-lo.
+// Era assim que a nave "saía sozinha" perto de um planeta.
 {
   __reset();
   const p = world.__addPlayer({
@@ -96,10 +118,30 @@ const spaceLoc = (body, d, axis = 'x') => ({
   const ufo = world.__spawn(DIMENSION_ID, 'dlb_van:ufo', p.location);
   p.__mountOn(ufo);
 
-  applyPlayerGravity(p);
-  check('pilotando, o veículo leva o impulso', (ufo.__impulses?.length ?? 0) > 0,
+  const antes = { ...p.location };
+  check('pilotando, a gravidade devolve zero', applyPlayerGravity(p) === 0);
+  check('  o veículo não leva impulso', (ufo.__impulses?.length ?? 0) === 0,
         `(${ufo.__impulses?.length ?? 0} impulso(s))`);
-  check('e o jogador não leva empurrão separado', (p.__knockbacks?.length ?? 0) === 0);
+  check('  o jogador não leva empurrão', (p.__knockbacks?.length ?? 0) === 0);
+  check('  e ele não é teleportado (isso o desmontaria)',
+        p.location.x === antes.x && p.location.y === antes.y && p.location.z === antes.z);
+  check('  continua montado', p.__ridingOn === ufo);
+
+  // E DENTRO de um corpo sólido, que é onde keepOutOfSolids agia: mesmo assim
+  // ninguém mexe nele.
+  {
+    __reset();
+    const dentro = world.__addPlayer({
+      id: 'dentro', dimensionId: DIMENSION_ID,
+      location: { x: earth.center.x, y: earth.center.y, z: earth.center.z },
+    });
+    const nave = world.__spawn(DIMENSION_ID, 'dlb_van:ufo', dentro.location);
+    dentro.__mountOn(nave);
+    const pos = { ...dentro.location };
+    applyPlayerGravity(dentro);
+    check('  nem no meio de um planeta sólido', dentro.__ridingOn === nave
+          && dentro.location.x === pos.x && dentro.location.y === pos.y);
+  }
 
   // A pé, o jogador leva o empurrão horizontal.
   __reset();

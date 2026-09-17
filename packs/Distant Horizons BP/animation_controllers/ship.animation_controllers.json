@@ -1,0 +1,57 @@
+{
+	"format_version": "1.10.0",
+	"animation_controllers": {
+		"controller.animation.nave.ship_damage": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"transitions": [
+						{
+							"moving_normal": "query.vertical_speed > -10 && query.health < 10"
+						},
+						{
+							"moving_damaged": "query.vertical_speed < -10 && query.health < 10"
+						}
+					]
+				},
+				"moving_normal": {
+					"on_entry": [
+						"@s nave:no_damaged"
+					],
+					"transitions": [
+						{
+							"default": "query.vertical_speed < -10 || query.health > 10"
+						}
+					]
+				},
+				"moving_damaged": {
+					"on_entry": [
+						"@s nave:damaged"
+					],
+					"transitions": [
+						{
+							"moving_normal": "query.vertical_speed > -10 || query.health > 10"
+						}
+					]
+				}
+			}
+		},
+		"controller.animation.nave.ship_captured": {
+			"initial_state": "default",
+			"states": {
+				"default": {
+					"transitions": [
+						{
+							"captured": "query.has_rider"
+						}
+					]
+				},
+				"captured": {
+					"on_entry": [
+						"@s nave:tag_ship_captured"
+					]
+				}
+			}
+		}
+	}
+}

@@ -339,6 +339,16 @@ function enterPlanet(player, body, label) {
         markArrival(player);
         return;
       }
+      // A NAVE VAI JUNTO, e o jogador chega montado nela.
+      //
+      // Já foi o contrário: eu deixava a nave no espaço porque o corpo celeste
+      // é atravessável pelo modelo e ela aparecia dentro do planeta. Mas a
+      // causa não era o transporte — era a gravidade. `keepOutOfSolids`
+      // teleportava o piloto pra fora do corpo sólido, e teleportar um
+      // passageiro é desmontá-lo; e o puxão do corpo arrastava a nave no meio
+      // da viagem. Com as duas coisas desligadas pra quem está pilotando (ver
+      // applyPlayerGravity), o transporte normal funciona, e é ele que roda
+      // aqui — o mesmo que já leva a nave pro Overworld.
       travel(player, dim, spot, (p) => {
         try {
           // Sem slow_falling: a gravidade do planeta já segura a descida, e ela
@@ -350,7 +360,7 @@ function enterPlanet(player, body, label) {
             fadeOutDuration: 20,
           });
         } catch { }
-      }, { levaVeiculo: false });
+      });
     })
     .catch((e) => {
       landing.delete(player.id);

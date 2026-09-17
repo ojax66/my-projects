@@ -306,8 +306,10 @@ export const SPACESUIT_PIECES = [
   { slot: "Feet", item: "nv_sc:spacesuit_boots" },
 ];
 export const OXYGEN_BACKPACK = "nv_sc:oxygen_backpack";
-// Dentro de qualquer um destes o jogador respira normal — o OVNI é pressurizado.
-export const PRESSURIZED_VEHICLES = ["dlb_van:ufo"];
+// Dentro de qualquer um destes o jogador respira normal — e não congela, que é
+// o outro eixo (ver cold.js). A Nave Level 1 é dele, e agora mora aqui dentro:
+// o addon dela foi juntado a este, pra não ficarem dois pacotes separados.
+export const PRESSURIZED_VEHICLES = ["dlb_van:ufo", "nave:level_1_spaceship"];
 // Trechos de typeId que também contam como veículo pressurizado (foguete/mech
 // do Spacecraft, que já tratam oxigênio por conta própria).
 export const PRESSURIZED_VEHICLE_MATCHES = ["_rocket", "space_mech"];
@@ -372,7 +374,9 @@ export const MOUNT_BLOCKLIST_MATCHES = ["_rocket"];
 // OVNI só apaga a entidade se ela NÃO tiver essa tag (e for dia, e o jogador
 // mais próximo estiver a 6+ blocos). O addon dele já marca sozinho quando
 // alguém monta; marcar de novo cobre a entidade recém-recriada da estrutura.
-export const VEHICLE_KEEP_ALIVE_TAGS = ["dlb_van_ufo_captured"];
+// `nave_ship_captured` é a da Nave Level 1: o `minecraft:despawn` dela tem o
+// mesmo desenho que o do OVNI — só apaga a entidade se ela NÃO tiver a tag.
+export const VEHICLE_KEEP_ALIVE_TAGS = ["dlb_van_ufo_captured", "nave_ship_captured"];
 
 // ---------------------------------------------------------------------------
 // Destroços de OVNI no Overworld

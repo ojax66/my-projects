@@ -26,6 +26,19 @@ packs/Distant Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
 4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
    `@minecraft/server` 2.8.0, igual ao Spacecraft.
 
+### A Nave Level 1
+
+O addon dela foi **juntado a este** — não são mais dois pacotes separados. Ela
+voa por `input_air_controlled` do próprio jogo, então não depende do Vehicles;
+tem 3 assentos, e conta como veículo pressurizado: dentro dela se respira e não
+se congela.
+
+O validador confere as 15 peças dela (entidade dos dois packs, modelo, textura,
+render controller, animações, partícula, som, tabelas de loot) e o nome nos três
+idiomas. Juntar addon à mão é onde se perde arquivo, e nenhuma dessas faltas dá
+erro no log: falta a textura e a nave fica roxa e preta, falta o render
+controller e ela não aparece. Todas só apareceriam voando.
+
 O addon gera a Lua e Marte por conta própria. O Spacecraft continua valendo a
 pena pelo traje e pela mochila de oxigênio (sem ar não se sobrevive lá em cima),
 e o OVNI só existe com o Vehicles ativo.
@@ -47,6 +60,14 @@ puxão e sem viagem, e o jogador só flutua nela. Desligar tarde é o bug.
 
 O Sol é a exceção: ele não tem portal, e lá o puxão é o que faz cair dentro dele
 ter graça.
+
+**Pilotando, nada da gravidade encosta em você.** Nem puxão no jogador, nem
+impulso na nave, nem empurrão pra fora de corpo sólido. Quem pilota dirige; o
+que cai é quem está a pé ou solto.
+
+Isso conserta um bug de verdade: `keepOutOfSolids` **teleporta** o jogador pra
+fora de um corpo sólido, e teleportar um passageiro é desmontá-lo. Era assim que
+a nave "saía sozinha" perto de um planeta.
 
 **De OVNI, e o OVNI vai junto** — na ida, na volta pra Terra e no pouso na Lua e
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
@@ -156,10 +177,7 @@ aparecia esburacado.
 
 **Vácuo nos dois**: traje completo + mochila de oxigênio, ou dentro do OVNI.
 
-**A nave não desce.** Ela fica boiando no espaço, marcada pra não sumir, e o
-jogador desce a pé. O corpo celeste é atravessável pelo modelo, então a nave
-recolocada na superfície ou aparecia dentro do planeta, ou a recolocação
-falhava.
+**A nave desce junto, e o jogador chega montado nela.**
 
 **Gravidade baixa, por controlador próprio** (`planetGravity.js`) — sem efeito
 de poção nenhum. Lua 0,165 g, Marte 0,38 g, os valores de verdade. O

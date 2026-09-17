@@ -199,6 +199,25 @@ function keepOutOfSolids(player) {
 export function applyPlayerGravity(player) {
   if (!BODY_GRAVITY_ENABLED) return 0;
 
+  // ---------------------------------------------------------------------
+  // PILOTANDO: nada aqui encosta nele. Nem puxão, nem empurrão pra fora de
+  // bloco, nem no jogador, nem na nave.
+  //
+  // Esta saída é a PRIMEIRA COISA da função, e ficar antes do
+  // `keepOutOfSolids` é o conserto — antes ela vinha depois, e isso era um
+  // bug de verdade: `keepOutOfSolids` TELEPORTA o jogador pra fora do corpo
+  // sólido, e teleportar um passageiro é desmontá-lo. Era assim que a nave
+  // "saía sozinha" perto de um planeta.
+  //
+  // E o puxão no veículo também sai. Ele existia pra a nave cair nos corpos
+  // como tudo o mais cai, mas quem está pilotando quer dirigir, não ser
+  // arrastado — e o arrasto perto do planeta é o que embaralhava a viagem.
+  // Nave voa; o que cai é quem está a pé ou solto.
+  // ---------------------------------------------------------------------
+  let mount;
+  try { mount = player.getComponent("riding")?.entityRidingOn; } catch { }
+  if (mount?.isValid) return 0;
+
   // Acabou de chegar: está sem controle enquanto o veículo é recolocado e a
   // montaria refeita. Puxar agora é arrancá-lo de perto do OVNI.
   if (inArrivalGrace(player)) return 0;
@@ -209,14 +228,6 @@ export function applyPlayerGravity(player) {
 
   const g = gravityAt(player.location);
   if (!g) return 0;
-
-  // Pilotando: quem é puxado é o veículo — o passageiro vai junto de carona.
-  let mount;
-  try { mount = player.getComponent("riding")?.entityRidingOn; } catch { }
-  if (mount?.isValid) {
-    try { mount.applyImpulse(g); } catch { }
-    return 0;
-  }
 
   const horizontal = Math.hypot(g.x, g.z);
   if (horizontal > 0.0005) {
