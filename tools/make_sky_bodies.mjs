@@ -30,8 +30,8 @@ import url from 'node:url';
 import zlib from 'node:zlib';
 
 const ROOT = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
-const BP = path.join(ROOT, 'packs', 'Distant Horizons BP');
-const RP = path.join(ROOT, 'packs', 'Distant Horizons RP');
+const BP = path.join(ROOT, 'packs', 'Galactic Horizons BP');
+const RP = path.join(ROOT, 'packs', 'Galactic Horizons RP');
 const NS = 'space_dim';
 
 // Os scripts do addon importam '@minecraft/server'; o stub dos testes serve,

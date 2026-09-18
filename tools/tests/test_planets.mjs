@@ -74,21 +74,49 @@ for (const planet of PLANETS) {
   // por isso há teto, não só piso.
   if (planet.ores) {
     const conta = new Map();
-    let solidos = 0, foraDaFaixa = 0, naPoeira = 0;
-    const faixa = new Map(planet.ores.list.map((m) => [m.block, m]));
+    let solidos = 0, foraDaFaixa = 0, naPoeira = 0, semPar = 0;
+    const faixa = new Map(planet.ores.list.map((m) => [m.ore, m]));
+    // bloco -> tipo. Cada tipo tem DUAS pedras; as duas contam pro mesmo tipo.
+    const tipoDe = new Map();
+    for (const m of planet.ores.list) {
+      tipoDe.set(`space_dim:${planet.id}_${m.ore}_ore`, m.ore);
+      tipoDe.set(`space_dim:${planet.id}_${m.ore}_ore_deep`, m.ore);
+    }
+    // A VARIANTE TEM QUE BATER COM A PEDRA QUE ELA SUBSTITUIU.
+    //
+    // É o invariante de verdade, e não dá pra medir por profundidade: a
+    // espessura das camadas muda de coluna pra coluna, então um minério "fundo"
+    // às vezes cai na pedra do meio — e aí ele TEM que ser a variante clara.
+    // Aqui a camada é recalculada na mão, do mesmo jeito que o gerador faz.
+    const camadaEm = (t, prof) => {
+      let acc = 0;
+      for (const l of t.layers) {
+        if (l.t <= 0) continue;
+        acc += l.t;
+        if (prof <= acc) return l.id;
+      }
+      return planet.blocks.deep;
+    };
+    let varianteErrada = 0;
+    const usadas = { pedra: 0, ardosia: 0 };
     for (let x = -400; x <= 400; x += 7) {
       for (let z = -400; z <= 400; z += 11) {
-        const h = heightAt(planet, x, z);
+        const t = terrainAt(planet, x, z);
         for (const r of columnRunsAt(planet, x, z)) {
           const n = r.y1 - r.y0 + 1;
           solidos += n;
-          const m = faixa.get(r.id);
-          if (!m) continue;
-          conta.set(r.id, (conta.get(r.id) ?? 0) + n);
+          if (r.id.includes("_ore") && !tipoDe.has(r.id)) { semPar += n; continue; }
+          const tipo = tipoDe.get(r.id);
+          if (!tipo) continue;
+          const m = faixa.get(tipo);
+          conta.set(tipo, (conta.get(tipo) ?? 0) + n);
+          const fundo = r.id.endsWith("_deep");
           for (let y = r.y0; y <= r.y1; y++) {
-            const prof = h - y + 1;
+            const prof = t.height - y + 1;
             if (prof < m.from || prof > m.to) foraDaFaixa++;
             if (prof <= 1) naPoeira++;
+            if (fundo) usadas.ardosia++; else usadas.pedra++;
+            if (fundo !== (camadaEm(t, prof) === planet.blocks.deep)) varianteErrada++;
           }
         }
       }
@@ -96,11 +124,36 @@ for (const planet of PLANETS) {
     check(`  ${planet.id}: nenhum minério fora da faixa de profundidade dele`,
           foraDaFaixa === 0, `(${foraDaFaixa})`);
     check(`  nenhum aflorando na superfície`, naPoeira === 0, `(${naPoeira})`);
+    check(`  nenhum bloco de minério fora da tabela`, semPar === 0, `(${semPar})`);
+    check(`  a variante do minério bate com a pedra em que ele está`,
+          varianteErrada === 0, `(${varianteErrada} erradas)`);
+    check(`  e as duas pedras são usadas`,
+          usadas.pedra > 0 && usadas.ardosia > 0,
+          `(pedra ${usadas.pedra}, ardósia ${usadas.ardosia})`);
+
+    // A ESCADA DE RARIDADE. É o pedido dele: ferro e ouro muito raros, diamante
+    // quase impossível. O teto continua existindo pra nenhum deles virar mina a
+    // céu aberto.
     for (const m of planet.ores.list) {
-      const taxa = (conta.get(m.block) ?? 0) / solidos;
-      const nome = m.block.split(":")[1];
-      check(`  ${nome}: existe e não é abundante demais`,
-            taxa > 0.0002 && taxa < 0.04, `(${(100 * taxa).toFixed(3)}%)`);
+      const taxa = (conta.get(m.ore) ?? 0) / solidos;
+      check(`  ${planet.id}/${m.ore}: existe e não é abundante demais`,
+            taxa > 0.000004 && taxa < 0.04, `(${(100 * taxa).toFixed(4)}%)`);
+    }
+    const taxaDe = (o) => (conta.get(o) ?? 0) / solidos;
+    if (faixa.has("silicon") && faixa.has("iron")) {
+      check(`  ${planet.id}: ferro é MUITO mais raro que silício`,
+            taxaDe("iron") * 4 < taxaDe("silicon"),
+            `(ferro ${(100 * taxaDe("iron")).toFixed(4)}%, silício ${(100 * taxaDe("silicon")).toFixed(4)}%)`);
+    }
+    if (faixa.has("gold") && faixa.has("iron")) {
+      check(`  e ouro é mais raro que ferro`, taxaDe("gold") < taxaDe("iron"),
+            `(ouro ${(100 * taxaDe("gold")).toFixed(4)}%)`);
+    }
+    if (faixa.has("diamond")) {
+      check(`  e diamante é quase impossível`,
+            taxaDe("diamond") < taxaDe("gold") / 2,
+            `(diamante ${(100 * taxaDe("diamond")).toFixed(4)}% — 1 bloco a cada ` +
+            `${Math.round(1 / Math.max(taxaDe("diamond"), 1e-9)).toLocaleString("pt-BR")} de pedra)`);
     }
   }
 

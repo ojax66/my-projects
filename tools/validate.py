@@ -12,8 +12,8 @@ import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 
 errors = []
 warnings = []
@@ -249,6 +249,18 @@ for bid in sorted(used_blocks):
     if rp_tex and rp_tex != tex_key:
         err(f"{bid}: blocks.json usa {rp_tex} mas o BP usa {tex_key}")
 
+# A tabela de minérios, a mesma que os geradores usam.
+ORES_SPEC = {}
+_ores_path = os.path.join(ROOT, "tools", "assets", "ores.json")
+if os.path.isfile(_ores_path):
+    try:
+        with open(_ores_path, encoding="utf-8") as f:
+            ORES_SPEC = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        err(f"ores.json ilegível: {e}")
+else:
+    err("tools/assets/ores.json ausente — é a fonte dos minérios")
+
 # "Usado" não é só pelas paletas dos corpos celestes: o terreno da Lua e de
 # Marte (planets.js) tem os blocos de camada, o gelo, a bedrock e os minérios,
 # e nenhum deles aparece em paleta nenhuma.
@@ -258,6 +270,18 @@ if os.path.isfile(_planets_path):
     with open(_planets_path, encoding="utf-8") as f:
         _planets_src = f.read()
 used_blocks |= set(re.findall(r'"(space_dim:[a-z0-9_]+)"', _planets_src))
+
+# Os minérios não aparecem mais por id em planets.js: lá está o TIPO
+# ("silicon"), e o bloco é montado no gerador a partir do planeta, do tipo e da
+# pedra. Então o que conta como uso aqui é o par que a tabela manda existir.
+for _planeta, _host in ORES_SPEC.get("hosts", {}).items():
+    for _tipo in _host.get("ores", []):
+        used_blocks.add(f"space_dim:{_planeta}_{_tipo}_ore")
+        used_blocks.add(f"space_dim:{_planeta}_{_tipo}_ore_deep")
+
+# Blocos que o jogador coloca e nenhum gerador usa. Não são peso morto — são o
+# ponto.
+used_blocks |= set(re.findall(r'"(space_dim:[a-z0-9_]+)"', config_src))
 
 # Blocos declarados que ninguém usa: não quebra nada, mas é peso morto.
 for bid in sorted(set(declared_blocks) - used_blocks):
@@ -323,6 +347,17 @@ def geometry_known(geo, pack_geometries):
 # Um item custom espalha as peças por seis arquivos nos dois packs. O que
 # quebra em silêncio: ícone sem entrada no item_texture, attachable apontando
 # pra geometria que não existe, receita citando item que ninguém declarou.
+# As entidades que o BP declara. Serve pra reconhecer o ovo de geração delas
+# como item válido numa receita: o jogo cria esse item a partir da entidade, e
+# ele nunca aparece em items/.
+declared_entities = set()
+for p, d in docs.items():
+    if not isinstance(d, dict):
+        continue
+    eid = described(d, "minecraft:entity")
+    if eid:
+        declared_entities.add(eid)
+
 declared_items = {}
 for p, d in docs.items():
     if not isinstance(d, dict):
@@ -394,6 +429,55 @@ for iid, (path, doc) in sorted(declared_items.items()):
 for aid in sorted(set(attachables) - set(declared_items)):
     warn(f"attachable {aid} não corresponde a nenhum item")
 
+# --- 4d-quinquies. O arquivo de textura se chama como a coisa que ele desenha -
+#
+# A regra: tirando o prefixo do namespace, a CHAVE do atlas e o NOME DO ARQUIVO
+# são a mesma palavra. `space_dim_apollo_helmet` mora em `apollo_helmet.png`.
+#
+# Sem isso o nome derrapa sozinho — metade dos ícones estava em
+# `space_dim_apollo_helmet.png` e a outra metade em `star_helmet.png`, as duas
+# funcionando, e ninguém achava nada procurando pelo nome do item.
+for _atlas, _pasta in (
+    (os.path.join(RP, "textures", "item_texture.json"), "items"),
+    (os.path.join(RP, "textures", "terrain_texture.json"), "blocks"),
+):
+    _doc = docs.get(_atlas)
+    if not isinstance(_doc, dict):
+        continue
+    for _chave, _entrada in (_doc.get("texture_data") or {}).items():
+        _tex = _entrada.get("textures")
+        if not isinstance(_tex, str):
+            continue                      # lista de faces: outro assunto
+        _esperado = _chave[len("space_dim_"):] if _chave.startswith("space_dim_") else _chave
+        _arquivo = _tex.rsplit("/", 1)[-1]
+        if _arquivo != _esperado:
+            err(f"{_pasta}: a chave {_chave} aponta pra {_arquivo}.png; "
+                f"o arquivo tem que se chamar {_esperado}.png")
+
+# --- 4d-sexies. Modelo de bloco cabe DENTRO do bloco --------------------------
+#
+# A lixeira veio com 20x20x27 unidades e o canto em x = -9,3. Espaço de modelo
+# de bloco vai de -8 a 8 em x e z e de 0 a 16 em y: o que passa disso invade o
+# vizinho e a caixa de colisão não acompanha. make_trash_can.py encolhe o
+# modelo; esta regra é o que garante que ele encolheu o bastante.
+_models_dir = os.path.join(RP, "models", "blocks")
+for _p, _d in docs.items():
+    if not _p.startswith(_models_dir) or not isinstance(_d, dict):
+        continue
+    for _geo in _d.get("minecraft:geometry", []) or []:
+        _gid = _geo.get("description", {}).get("identifier", os.path.basename(_p))
+        for _bone in _geo.get("bones", []) or []:
+            for _c in _bone.get("cubes", []) or []:
+                _o, _t = _c.get("origin"), _c.get("size")
+                if not (_o and _t):
+                    continue
+                _lim = [(-8, 8), (0, 16), (-8, 8)]
+                for _i, _eixo in enumerate("xyz"):
+                    _a, _b = _o[_i], _o[_i] + _t[_i]
+                    if _a < _lim[_i][0] - 0.001 or _b > _lim[_i][1] + 0.001:
+                        err(f"{_gid}: o cubo vai de {_a:.2f} a {_b:.2f} em {_eixo}, "
+                            f"fora do bloco ({_lim[_i][0]} a {_lim[_i][1]})")
+
 # --- 4e. Receitas só citam coisas que existem ---------------------------------
 known = set(declared_items) | set(declared_blocks)
 
@@ -406,6 +490,10 @@ def check_recipe_ref(ref, where):
     name = ref.split("(")[0].strip()
     if name.startswith("minecraft:"):
         return              # item do jogo: fora do nosso alcance conferir
+    # Ovo de geração de uma entidade que ESTE addon declara: o jogo cria o item
+    # sozinho a partir da entidade, então ele não aparece em items/.
+    if name.endswith("_spawn_egg") and name[:-len("_spawn_egg")] in declared_entities:
+        return
     if not name.startswith("space_dim:"):
         # Item de outro addon (o Spacecraft). Só passa se estiver declarado —
         # assim uma receita que dependa deles fica visível, e um id errado de

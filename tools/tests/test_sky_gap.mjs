@@ -15,8 +15,8 @@ import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW,
 // Os testes rodam numa pasta temporária com os scripts copiados; os packs
 // ficam no repositório, então o caminho vem daqui.
 const REPO = process.env.DH_REPO ?? '.';
-const RP_DIR = `${REPO}/packs/Distant Horizons RP`;
-const BP_DIR = `${REPO}/packs/Distant Horizons BP`;
+const RP_DIR = `${REPO}/packs/Galactic Horizons RP`;
+const BP_DIR = `${REPO}/packs/Galactic Horizons BP`;
 
 let failures = 0;
 const check = (name, ok, extra = '') => {

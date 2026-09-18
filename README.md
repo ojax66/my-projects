@@ -1,4 +1,4 @@
-# Distant Horizons: Espaço Sideral
+# Galactic Horizons: Espaço Sideral
 
 Addon de Minecraft Bedrock que adiciona a dimensão do **espaço sideral**: escura,
 cheia de estrelas, sem gravidade, com o Sol, a Terra, a Lua e Marte construídos
@@ -11,17 +11,17 @@ não mais pras do Spacecraft. O que continua do Spacecraft é o equipamento — 
 traje, a mochila de oxigênio e as receitas do traje reforçado.
 
 ```
-tools/build.sh          →  dist/Distant_Horizons.mcaddon
+tools/build.sh          →  dist/Galactic_Horizons.mcaddon
 tools/test.sh           →  validação dos packs + testes de geração e de viagem
-packs/Distant Horizons BP/   comportamento (dimensão, bioma, blocos, scripts)
-packs/Distant Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
+packs/Galactic Horizons BP/   comportamento (dimensão, bioma, blocos, scripts)
+packs/Galactic Horizons RP/   visual (texturas, névoa, céu preto, estrelas)
 ```
 
 ## Instalação
 
-1. `bash tools/build.sh` gera `dist/Distant_Horizons.mcaddon`.
+1. `bash tools/build.sh` gera `dist/Galactic_Horizons.mcaddon`.
 2. Abre o arquivo no Minecraft (ele importa os dois packs de uma vez).
-3. No mundo, ativa **Distant Horizons: Espaço Sideral** (BP) e **Distant Horizons: Espaço Sideral RP** (RP),
+3. No mundo, ativa **Galactic Horizons: Espaço Sideral** (BP) e **Galactic Horizons: Espaço Sideral RP** (RP),
    junto com o Spacecraft e o Vehicles.
 4. É preciso ligar **Beta APIs** nas configurações do mundo — o addon usa
    `@minecraft/server` 2.8.0, igual ao Spacecraft.
@@ -565,7 +565,7 @@ são identificados por `space_dim:<nome>`, que não muda. Só o pack troca de
 identidade; o conteúdo não.
 
 É por isso também que o **namespace continua `space_dim`** mesmo com o addon
-chamando Distant Horizons: renomear pra `new_horizons:` transformaria cada bloco já
+chamando Galactic Horizons: renomear pra `new_horizons:` transformaria cada bloco já
 colocado num cubo roxo e cada item na mochila em nada.
 
 Trocar o header e esquecer a dependência do outro pack faz os dois packs
@@ -594,7 +594,7 @@ de build.
 
 ## Ajustes
 
-Tudo que dá pra mexer está em `packs/Distant Horizons BP/scripts/space_dim/config.js`:
+Tudo que dá pra mexer está em `packs/Galactic Horizons BP/scripts/space_dim/config.js`:
 posição e tamanho dos corpos, altitude de entrada, ritmo da geração, regras de
 respiração, gravidade zero, bússola. Alguns que importam:
 
@@ -995,7 +995,7 @@ por jogador enquanto a criação está em voo.
 O bioma `space_dim:espaco_sideral` é um bioma custom usado como `default_biome`
 da dimensão. Se a versão do jogo não engolir isso, a dimensão não registra e
 `/scriptevent space_dim:info` responde `dimensão: não registrada`. O contorno é
-trocar, em `packs/Distant Horizons BP/dimensions/outer_space.json`:
+trocar, em `packs/Galactic Horizons BP/dimensions/outer_space.json`:
 
 ```json
 "minecraft:default_biome": { "biome": "minecraft:the_end" }

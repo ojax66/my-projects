@@ -53,11 +53,11 @@ def case(name, mutate, expect):
 
 
 def bp(tmp, *parts):
-    return os.path.join(tmp, "packs", "Distant Horizons BP", *parts)
+    return os.path.join(tmp, "packs", "Galactic Horizons BP", *parts)
 
 
 def rp(tmp, *parts):
-    return os.path.join(tmp, "packs", "Distant Horizons RP", *parts)
+    return os.path.join(tmp, "packs", "Galactic Horizons RP", *parts)
 
 
 # --- linha de base: sem mexer em nada, o validador aprova ---------------------
@@ -201,7 +201,7 @@ case("corpo sem textura de ceu", drop_sky_texture,
 # versao anterior dividia por 8, tratando a meia-aresta do cubo como 8 BLOCOS
 # quando ela e meio bloco — dezesseis vezes menor, e nada media isso.
 def zero_step(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+    path = os.path.join(tmp, "packs", "Galactic Horizons BP",
                         "scripts", "space_dim", "skySteps.js")
     src = open(path, encoding="utf-8").read()
     open(path, "w", encoding="utf-8").write(src.replace("[0.05,", "[0,"))
@@ -223,7 +223,7 @@ case("degraus do BP fora de sincronia com skySteps.js", steps_out_of_sync,
 
 def steps_too_narrow(tmp):
     # tira os degraus grandes: o Sol visto do ponto de troca nao caberia
-    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+    path = os.path.join(tmp, "packs", "Galactic Horizons BP",
                         "scripts", "space_dim", "skySteps.js")
     src = open(path, encoding="utf-8").read()
     nums = re.search(r"\[(.*)\]", src).group(1).split(",")
@@ -282,7 +282,7 @@ case("Sol com material nao-emissivo", swap_material,
 # Um corpo alem de SOLAR_SYSTEM_RADIUS fica na nevoa do espaco profundo: o Sol
 # nao o ilumina, e nada avisa.
 def shrink_system(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+    path = os.path.join(tmp, "packs", "Galactic Horizons BP",
                         "scripts", "space_dim", "config.js")
     src = open(path, encoding="utf-8").read()
     src = src.replace("export const SOLAR_SYSTEM_RADIUS = 1500;",
@@ -323,7 +323,7 @@ case("corpo do ceu com material que descarta alfa", wrong_sky_material,
 
 
 def material_without_emissive(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons RP", "materials", "entity.material")
+    path = os.path.join(tmp, "packs", "Galactic Horizons RP", "materials", "entity.material")
     doc = json.load(open(path, encoding="utf-8"))
     doc["materials"]["space_dim_sky:entity"]["+defines"] = []
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
@@ -347,7 +347,7 @@ case("escala que congela fora da tela", frozen_offscreen,
 
 # --- 12f. modelo do ceu que mostra so um pedaco da textura --------------------
 def box_uv(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons RP",
+    path = os.path.join(tmp, "packs", "Galactic Horizons RP",
                         "models", "entity", "sky_body.geo.json")
     doc = json.load(open(path, encoding="utf-8"))
     doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]["uv"] = [0, 0]
@@ -386,7 +386,7 @@ case("cliente voltando a animar a escala", animate_scale_again,
 # `sun_core`, que e o chao macico do nucleo. A primeira camada do Sol fechou —
 # dava pra encostar nele, nao pra entrar — e nada apontava pra isso.
 def solid_on_passable_layer(tmp):
-    path = os.path.join(tmp, "packs", "Distant Horizons BP",
+    path = os.path.join(tmp, "packs", "Galactic Horizons BP",
                         "scripts", "space_dim", "bodies.js")
     src = open(path, encoding="utf-8").read()
     open(path, "w", encoding="utf-8").write(
@@ -885,6 +885,42 @@ def ceu_da_lua_diferente_do_espaco(tmp):
 
 case("ceu da Lua diferente do ceu do espaco", ceu_da_lua_diferente_do_espaco,
      r"o ceu dela tem que ser o MESMO do espaco")
+
+
+# --- o nome do arquivo de textura -------------------------------------------
+# Metade dos icones estava em `space_dim_apollo_helmet.png` e a outra metade em
+# `star_helmet.png`, as duas funcionando no jogo, e ninguem achava nada
+# procurando pelo nome do item.
+def textura_com_nome_torto(tmp):
+    caminho = rp(tmp, "textures", "item_texture.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc["texture_data"]["space_dim_silicon"]["textures"] = \
+        "textures/space_dim/items/space_dim_silicon"
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("textura com nome diferente do item", textura_com_nome_torto,
+     r"o arquivo tem que se chamar silicon\.png")
+
+
+# --- modelo de bloco maior que o bloco --------------------------------------
+# O modelo da lixeira veio com 20x20x27 e o canto em x = -9,3: estourava a
+# caixa do bloco. make_trash_can.py encolhe; esta checagem cobra o resultado.
+def modelo_estourando_o_bloco(tmp):
+    caminho = rp(tmp, "models", "blocks", "trash_can.geo.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    cubo = doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]
+    cubo["origin"] = [-9.3, 4.4, -10.2]
+    cubo["size"] = [20, 20, 27]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("modelo de bloco maior que o bloco", modelo_estourando_o_bloco,
+     r"fora do bloco")
 
 
 # --- os conjuntos de protecao do config -------------------------------------

@@ -22,8 +22,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from langfile import replace_section  # noqa: E402
 
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 PLANETS_JS = os.path.join(BP, "scripts", "space_dim", "planets.js")
 
 MARK = "## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)"

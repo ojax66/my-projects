@@ -121,16 +121,22 @@ class Entity {
   addTag(t) { this.__tags.add(t); return true; }
   hasTag(t) { return this.__tags.has(t); }
   removeTag(t) { return this.__tags.delete(t); }
-  addEffect() { }
-  removeEffect() { }
-  applyDamage(n) {
+  addEffect(id, duracao, opts) {
+    (this.__effects ??= {})[id] = {
+      amplifier: opts?.amplifier ?? 0, duration: duracao,
+    };
+    (this.__effectLog ??= []).push(id);
+  }
+  removeEffect(id) { delete this.__effects?.[id]; }
+  applyDamage(n, opts) {
     this.__health = Math.max(0, (this.__health ?? 20) - (n ?? 0));
+    (this.__damages ??= []).push({ n, cause: opts?.cause });
     return true;
   }
   playSound() { }
   sendMessage() { }
   runCommand() { return { successCount: 1 }; }
-  setOnFire() { }
+  setOnFire(s) { this.__fire = (this.__fire ?? 0) + (s ?? 0); return true; }
   getRotation() { return { x: 0, y: 0 }; }
   getGameMode() { return "Survival"; }
   setProperty(k, v) { (this.__entityProps ??= new Map()).set(k, v); }
@@ -182,6 +188,16 @@ class Entity {
       return {
         getEquipment: (slot) => worn[slot],
         setEquipment: (slot, item) => { worn[slot] = item; return true; },
+      };
+    }
+    if (name === "inventory" || name === "minecraft:inventory") {
+      const slots = (this.__hotbar ??= []);
+      return {
+        container: {
+          get size() { return 36; },
+          getItem: (i) => slots[i],
+          setItem: (i, item) => { slots[i] = item; },
+        },
       };
     }
     return undefined;
@@ -432,6 +448,7 @@ export const world = {
   },
   beforeEvents: {
     playerLeave: noopEvent(),
+    playerInteractWithBlock: realEvent(),
   },
   tickingAreaManager: {
     createTickingArea: async () => { },
@@ -462,6 +479,12 @@ export const system = {
     state.intervals.push({ fn, ticks: Math.max(1, ticks | 0), next: state.tick + Math.max(1, ticks | 0) });
     return state.intervals.length;
   },
+  // `run` é o "faça isso no próximo tick" do jogo. É o que um evento `before`
+  // usa pra mexer no mundo, já que dentro dele não pode.
+  run(fn) {
+    state.timers.push({ at: state.tick + 1, fn });
+    return state.timers.length;
+  },
   runTimeout(fn, ticks) {
     state.timers.push({ at: state.tick + Math.max(1, ticks | 0), fn });
     return state.timers.length;
@@ -472,6 +495,9 @@ export const system = {
 };
 
 export const BlockPermutation = { resolve: () => ({}) };
+// As causas de dano que o addon cita pelo nome. O jogo tem dezenas; aqui só
+// precisam existir as que o código usa, com o mesmo valor de string.
+export const EntityDamageCause = { freezing: "freezing", fire: "fire", lava: "lava" };
 export const EquipmentSlot = { Head: "Head", Chest: "Chest", Legs: "Legs", Feet: "Feet", Offhand: "Offhand" };
 export class BlockVolume {
   constructor(from, to) { this.from = from; this.to = to; }
@@ -479,4 +505,4 @@ export class BlockVolume {
 
 __reset();
 
-export default { world, system, BlockPermutation, BlockVolume, TicksPerSecond, ItemStack, EquipmentSlot };
+export default { world, system, BlockPermutation, BlockVolume, TicksPerSecond, ItemStack, EquipmentSlot, EntityDamageCause };

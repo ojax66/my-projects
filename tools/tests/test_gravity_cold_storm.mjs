@@ -17,7 +17,8 @@ import {
   REINFORCED_SUIT_PIECES, STAR_ARMOR_PIECES, SPACESUIT_PIECES, OXYGEN_BACKPACK,
   MARS_STORM_FOG_AT, MARS_STORM_HEAVY_AT,
   FOG_MARS_STORM_ID, FOG_MARS_STORM_HEAVY_ID,
-} from './space_dim/config.js';
+         COLD_RECOVER_FACTOR,
+         COLD_DAMAGE_INTERVAL} from './space_dim/config.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -142,7 +143,7 @@ function jogadorCaindo(dimId, vy) {
 // Foi o pedido dele, e é o tipo de coisa que volta sem querer na primeira vez
 // que alguém quiser "só um slow_falling rapidinho".
 {
-  const dir = path.join(process.env.DH_REPO ?? '.', 'packs', 'Distant Horizons BP',
+  const dir = path.join(process.env.DH_REPO ?? '.', 'packs', 'Galactic Horizons BP',
                         'scripts', 'space_dim');
   const arquivos = ['planetGravity.js', 'planetWorlds.js', 'marsStorm.js'];
   const achados = [];
@@ -228,20 +229,49 @@ function jogadorNoVacuo(id = 'c1') {
   check('  e perto do Sol o problema é o contrário', isWarm(pertoDoSol));
 }
 
-// --- 9. Reaquecer é rápido --------------------------------------------------
+// --- 9. Descongelar, na proporção da neve fofa ------------------------------
+// Na neve fofa o contador de congelamento sobe 1 por tick dentro dela e desce
+// COLD_RECOVER_FACTOR por tick fora: descongelar é mais rápido do que congelar,
+// e é exatamente essa proporção que este teste trava.
 {
   __reset();
   const p = jogadorNoVacuo('c_volta');
-  for (let i = 0; i < COLD_SECONDS * 20 * 0.8; i++) { applyCold(p); __advance(1); }
+  const gastos = Math.round(COLD_SECONDS * 20 * 0.8);
+  for (let i = 0; i < gastos; i++) { applyCold(p); __advance(1); }
   const gelado = heatReserveOf(p.id);
   check('esfriou de verdade', gelado < 0.3, `(${gelado.toFixed(2)})`);
 
   for (const peca of REINFORCED_SUIT_PIECES) p.__wear(peca.slot, peca.item);
   let ticks = 0;
   while (heatReserveOf(p.id) < 1 && ticks < 20000) { applyCold(p); __advance(1); ticks++; }
-  check('  e reaquece muito mais rápido do que esfriou',
-        ticks < COLD_SECONDS * 20 * 0.8 / 3,
-        `(${ticks} ticks pra encher, contra ${Math.round(COLD_SECONDS * 20 * 0.8)} pra esvaziar)`);
+  const esperado = gastos / COLD_RECOVER_FACTOR;
+  check('  e descongela COLD_RECOVER_FACTOR vezes mais rápido, como na neve fofa',
+        Math.abs(ticks - esperado) <= 2,
+        `(${ticks} ticks pra encher, contra ${gastos} pra esvaziar — esperado ~${Math.round(esperado)})`);
+}
+
+// --- 9b. O congelamento É o da neve fofa ------------------------------------
+// Os três números do jogo: 7 segundos até congelar, 1 de vida a cada 2
+// segundos depois disso, e lentidão junto. Mais a causa `freezing`, que é o
+// que põe "congelou até morrer" no lugar de uma morte sem explicação.
+{
+  __reset();
+  const p = jogadorNoVacuo('c_neve');
+  for (let i = 0; i < COLD_SECONDS * 20 + 5; i++) { applyCold(p); __advance(1); }
+  check('congela nos mesmos 7 segundos da neve fofa', COLD_SECONDS === 7,
+        `(COLD_SECONDS = ${COLD_SECONDS})`);
+  check('  congelado, o jogador fica lento', !!p.getEffect('slowness'));
+
+  p.__damages = [];
+  const de = 200;
+  for (let i = 0; i < de; i++) { applyCold(p); __advance(1); }
+  const golpes = p.__damages.length;
+  check('  e perde 1 de vida a cada 2 segundos',
+        golpes === de / COLD_DAMAGE_INTERVAL && p.__damages.every((d) => d.n === 1),
+        `(${golpes} golpes em ${de} ticks)`);
+  check('  com a causa de congelamento, não com dano genérico',
+        p.__damages.every((d) => d.cause === 'freezing'),
+        `(${p.__damages[0]?.cause})`);
 }
 
 // ===========================================================================

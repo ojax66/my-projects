@@ -1,0 +1,54 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:block": {
+    "description": {
+      "identifier": "space_dim:trash_can",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.Trash_can",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "space_dim_trash_can",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": true
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -5.5556,
+          0.0,
+          -7.5
+        ],
+        "size": [
+          11.1111,
+          11.1111,
+          15.0
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -5.5556,
+          0.0,
+          -7.5
+        ],
+        "size": [
+          11.1111,
+          11.1111,
+          15.0
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 2.5
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 6
+      },
+      "minecraft:map_color": "#8E9499",
+      "minecraft:light_dampening": 0
+    }
+  }
+}

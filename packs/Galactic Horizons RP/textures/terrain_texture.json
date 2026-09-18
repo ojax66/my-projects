@@ -1,0 +1,146 @@
+{
+  "resource_pack_name": "space_dim",
+  "texture_name": "atlas.terrain",
+  "padding": 8,
+  "num_mip_levels": 4,
+  "texture_data": {
+    "space_dim_sun_corona": {
+      "textures": "textures/space_dim/blocks/sun_corona"
+    },
+    "space_dim_sun_plasma": {
+      "textures": "textures/space_dim/blocks/sun_plasma"
+    },
+    "space_dim_sun_core": {
+      "textures": "textures/space_dim/blocks/sun_core"
+    },
+    "space_dim_sun_blaze": {
+      "textures": "textures/space_dim/blocks/sun_blaze"
+    },
+    "space_dim_sun_flare": {
+      "textures": "textures/space_dim/blocks/sun_flare"
+    },
+    "space_dim_sun_ember": {
+      "textures": "textures/space_dim/blocks/sun_ember"
+    },
+    "space_dim_sun_edge": {
+      "textures": "textures/space_dim/blocks/sun_edge"
+    },
+    "space_dim_earth_ocean": {
+      "textures": "textures/space_dim/blocks/earth_ocean"
+    },
+    "space_dim_earth_shallow": {
+      "textures": "textures/space_dim/blocks/earth_shallow"
+    },
+    "space_dim_earth_land": {
+      "textures": "textures/space_dim/blocks/earth_land"
+    },
+    "space_dim_earth_forest": {
+      "textures": "textures/space_dim/blocks/earth_forest"
+    },
+    "space_dim_earth_ice": {
+      "textures": "textures/space_dim/blocks/earth_ice"
+    },
+    "space_dim_moon_regolith_light": {
+      "textures": "textures/space_dim/blocks/moon_regolith_light"
+    },
+    "space_dim_moon_regolith": {
+      "textures": "textures/space_dim/blocks/moon_regolith"
+    },
+    "space_dim_moon_regolith_dark": {
+      "textures": "textures/space_dim/blocks/moon_regolith_dark"
+    },
+    "space_dim_mars_dust": {
+      "textures": "textures/space_dim/blocks/mars_dust"
+    },
+    "space_dim_mars_rock": {
+      "textures": "textures/space_dim/blocks/mars_rock"
+    },
+    "space_dim_mars_rock_dark": {
+      "textures": "textures/space_dim/blocks/mars_rock_dark"
+    },
+    "space_dim_mars_ice": {
+      "textures": "textures/space_dim/blocks/mars_ice"
+    },
+    "space_dim_moon_silicon_ore": {
+      "textures": "textures/space_dim/blocks/moon_silicon_ore"
+    },
+    "space_dim_moon_silicon_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_silicon_ore_deep"
+    },
+    "space_dim_moon_titanium_ore": {
+      "textures": "textures/space_dim/blocks/moon_titanium_ore"
+    },
+    "space_dim_moon_titanium_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_titanium_ore_deep"
+    },
+    "space_dim_moon_helium3_ore": {
+      "textures": "textures/space_dim/blocks/moon_helium3_ore"
+    },
+    "space_dim_moon_helium3_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_helium3_ore_deep"
+    },
+    "space_dim_moon_redstone_ore": {
+      "textures": "textures/space_dim/blocks/moon_redstone_ore"
+    },
+    "space_dim_moon_redstone_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_redstone_ore_deep"
+    },
+    "space_dim_moon_iron_ore": {
+      "textures": "textures/space_dim/blocks/moon_iron_ore"
+    },
+    "space_dim_moon_iron_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_iron_ore_deep"
+    },
+    "space_dim_moon_gold_ore": {
+      "textures": "textures/space_dim/blocks/moon_gold_ore"
+    },
+    "space_dim_moon_gold_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_gold_ore_deep"
+    },
+    "space_dim_moon_diamond_ore": {
+      "textures": "textures/space_dim/blocks/moon_diamond_ore"
+    },
+    "space_dim_moon_diamond_ore_deep": {
+      "textures": "textures/space_dim/blocks/moon_diamond_ore_deep"
+    },
+    "space_dim_mars_silicon_ore": {
+      "textures": "textures/space_dim/blocks/mars_silicon_ore"
+    },
+    "space_dim_mars_silicon_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_silicon_ore_deep"
+    },
+    "space_dim_mars_titanium_ore": {
+      "textures": "textures/space_dim/blocks/mars_titanium_ore"
+    },
+    "space_dim_mars_titanium_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_titanium_ore_deep"
+    },
+    "space_dim_mars_copper_ore": {
+      "textures": "textures/space_dim/blocks/mars_copper_ore"
+    },
+    "space_dim_mars_copper_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_copper_ore_deep"
+    },
+    "space_dim_mars_iron_ore": {
+      "textures": "textures/space_dim/blocks/mars_iron_ore"
+    },
+    "space_dim_mars_iron_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_iron_ore_deep"
+    },
+    "space_dim_mars_gold_ore": {
+      "textures": "textures/space_dim/blocks/mars_gold_ore"
+    },
+    "space_dim_mars_gold_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_gold_ore_deep"
+    },
+    "space_dim_mars_diamond_ore": {
+      "textures": "textures/space_dim/blocks/mars_diamond_ore"
+    },
+    "space_dim_mars_diamond_ore_deep": {
+      "textures": "textures/space_dim/blocks/mars_diamond_ore_deep"
+    },
+    "space_dim_trash_can": {
+      "textures": "textures/space_dim/blocks/trash_can"
+    }
+  }
+}

@@ -12,7 +12,7 @@ import { world, system, __reset, __advance, __state, ItemStack } from '@minecraf
 import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, BASIC_SUIT_PIECES,
          REINFORCED_SUIT_PIECES, REINFORCED_SUIT_PRESSURE_FACTOR,
          SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
-         WRECK_TEMPLATE_ITEM } from './space_dim/config.js';
+         WRECK_TEMPLATE_ITEM, TRASH_CAN_BLOCK } from './space_dim/config.js';
 import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './space_dim/gravity.js';
 import { canBreathe } from './space_dim/lifeSupport.js';
 import { hasStarArmor, starArmorPieces, hasBasicSuit, hasReinforcedSuit,
@@ -20,6 +20,9 @@ import { hasStarArmor, starArmorPieces, hasBasicSuit, hasReinforcedSuit,
          sustainInSpacecraftWorlds } from './space_dim/gear.js';
 import { isWarm } from './space_dim/cold.js';
 import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
+import { applyStarArmorPowers, onEntityHurt } from './space_dim/starPowers.js';
+import { startTrashCan } from './space_dim/trashCan.js';
+startTrashCan();
 import { buildWreckAt } from './space_dim/wreck.js';
 import { rememberSpawn, enforceSpawn } from './space_dim/spawnGuard.js';
 
@@ -381,6 +384,46 @@ const spaceLoc = (body, d, axis = 'x') => ({
         !sustainInSpacecraftWorlds(home) && !home.hasTag(SPACECRAFT_SAFE_TAG));
 }
 
+// --- 7e. O que a armadura de estrela faz alem de proteger -------------------
+// As tres da netherite (nao queima, resiste a repulsao, tenacidade), melhores,
+// mais o fogo em quem encosta. Tudo so com o CONJUNTO INTEIRO.
+{
+  __reset();
+  const longe = { x: 5000, y: 100, z: 5000 };
+  const nu = world.__addPlayer({ id: 'sp_nu', dimensionId: DIMENSION_ID, location: longe });
+  const armado = world.__addPlayer({ id: 'sp_ok', dimensionId: DIMENSION_ID, location: longe });
+  for (const x of STAR_ARMOR_PIECES) armado.__wear(x.slot, x.item);
+  const meio = world.__addPlayer({ id: 'sp_meio', dimensionId: DIMENSION_ID, location: longe });
+  for (let i = 0; i < 3; i++) meio.__wear(STAR_ARMOR_PIECES[i].slot, STAR_ARMOR_PIECES[i].item);
+
+  for (const p of [nu, armado, meio]) applyStarArmorPowers(p);
+  check('a armadura dá resistência ao fogo', !!armado.getEffect('fire_resistance'));
+  check('  e a tenacidade, como Resistência', !!armado.getEffect('resistance'));
+  check('  sem ela, nenhum dos dois', !nu.getEffect('fire_resistance') && !nu.getEffect('resistance'));
+  check('  meia armadura não dá nada',
+        !meio.getEffect('fire_resistance') && !meio.getEffect('resistance'));
+
+  // O golpe: quem bateu pega fogo e o empurrão é desfeito.
+  const mob = world.__spawn(DIMENSION_ID, 'minecraft:zombie', longe);
+  mob.__fire = 0;
+  mob.setOnFire = (seg) => { mob.__fire += seg; return true; };
+  armado.__knockbacks = [];
+  onEntityHurt({ hurtEntity: armado, damageSource: { damagingEntity: mob } });
+  check('o mob que ataca pega fogo', mob.__fire > 0, `(${mob.__fire}s)`);
+  check('  e o empurrão do golpe é zerado',
+        armado.__knockbacks.some((k) => k.x === 0 && k.z === 0 && k.strength === 0));
+
+  // Sem a armadura, nada disso acontece.
+  mob.__fire = 0;
+  onEntityHurt({ hurtEntity: nu, damageSource: { damagingEntity: mob } });
+  check('  sem a armadura o mob não pega fogo', mob.__fire === 0);
+
+  // Dano sem atacante (pressão, frio, queda) não tem em quem pôr fogo.
+  mob.__fire = 0;
+  onEntityHurt({ hurtEntity: armado, damageSource: { cause: 'freezing' } });
+  check('  e dano sem atacante não incendeia ninguém', mob.__fire === 0);
+}
+
 // --- 8. Destroços de OVNI ---------------------------------------------------
 {
   __reset();
@@ -477,6 +520,51 @@ const spaceLoc = (body, d, axis = 'x') => ({
   check('uma segunda viagem não grava o spawn ruim por cima do bom',
         twice.getSpawnPoint()?.x === 9 && twice.getSpawnPoint()?.dimension.id === 'minecraft:overworld',
         `(${twice.getSpawnPoint()?.dimension?.id} ${twice.getSpawnPoint()?.x})`);
+}
+
+// --- 10. A lixeira ----------------------------------------------------------
+// Clicar com item na mão faz o item sumir — um por clique, como o vaso
+// decorado do jogo. Agachado o jogo faz o de sempre, senão não dava pra
+// encostar bloco nenhum nela.
+{
+  __reset();
+  const p = world.__addPlayer({ id: 'lixo', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  const inv = p.getComponent('inventory').container;
+  const dim = world.getDimension('minecraft:overworld');
+  const pos = { x: 10, y: 64, z: 10 };
+  dim.setBlockType(pos, TRASH_CAN_BLOCK);
+  const bloco = dim.getBlock(pos);
+
+  const clicar = (sneak = false) => {
+    p.isSneaking = sneak;
+    const ev = { block: bloco, player: p, itemStack: inv.getItem(0), cancel: false };
+    world.beforeEvents.playerInteractWithBlock.__fire(ev);
+    __advance(1);
+    return ev;
+  };
+
+  inv.setItem(0, new ItemStack('minecraft:dirt', 3));
+  let ev = clicar();
+  check('clicar na lixeira cancela o uso normal do item', ev.cancel === true);
+  check('  e some com UM item da pilha', inv.getItem(0)?.amount === 2,
+        `(sobrou ${inv.getItem(0)?.amount})`);
+
+  clicar(); clicar();
+  check('  até a pilha acabar', inv.getItem(0) === undefined);
+
+  inv.setItem(0, new ItemStack('minecraft:dirt', 3));
+  ev = clicar(true);
+  check('  agachado a lixeira não engole nada',
+        ev.cancel === false && inv.getItem(0)?.amount === 3);
+
+  // Clicar em outro bloco não tem nada a ver com a lixeira.
+  dim.setBlockType({ x: 11, y: 64, z: 10 }, 'minecraft:stone');
+  const outro = { block: dim.getBlock({ x: 11, y: 64, z: 10 }), player: p, itemStack: inv.getItem(0), cancel: false };
+  p.isSneaking = false;
+  world.beforeEvents.playerInteractWithBlock.__fire(outro);
+  __advance(1);
+  check('  e outro bloco qualquer não engole nada',
+        outro.cancel === false && inv.getItem(0)?.amount === 3);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

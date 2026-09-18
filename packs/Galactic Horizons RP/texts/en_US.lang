@@ -1,0 +1,101 @@
+pack.name=Galactic Horizons: Outer Space RP
+pack.description=Outer space dimension with the Sun, Earth, the Moon and Mars, plus surface dimensions for the Moon and Mars with their own terrain and biomes. Includes the Level 1 Spaceship.
+
+biome.space_dim.espaco_sideral.name=Outer Space
+
+## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.space_dim:sun_corona.name=Solar Corona
+tile.space_dim:sun_plasma.name=Solar Plasma
+tile.space_dim:sun_core.name=Solar Core
+tile.space_dim:sun_blaze.name=Solar Blaze
+tile.space_dim:sun_flare.name=Solar Flare
+tile.space_dim:sun_ember.name=Solar Ember
+tile.space_dim:sun_edge.name=Solar Edge
+tile.space_dim:earth_ocean.name=Deep Ocean
+tile.space_dim:earth_shallow.name=Shallow Water
+tile.space_dim:earth_land.name=Continent
+tile.space_dim:earth_forest.name=Forest
+tile.space_dim:earth_ice.name=Polar Ice Cap
+tile.space_dim:moon_regolith_light.name=Regolith Dust
+tile.space_dim:moon_regolith.name=Regolith Stone
+tile.space_dim:moon_regolith_dark.name=Regolith Slate
+tile.space_dim:mars_dust.name=Ferrite Dust
+tile.space_dim:mars_rock.name=Ferrite Stone
+tile.space_dim:mars_rock_dark.name=Ferrite Slate
+tile.space_dim:mars_ice.name=Martian Ice
+tile.space_dim:moon_silicon_ore.name=Lunar Silicon Ore
+tile.space_dim:moon_silicon_ore_deep.name=Deepslate Lunar Silicon Ore
+tile.space_dim:moon_titanium_ore.name=Lunar Titanium Ore
+tile.space_dim:moon_titanium_ore_deep.name=Deepslate Lunar Titanium Ore
+tile.space_dim:moon_helium3_ore.name=Lunar Helium-3 Ore
+tile.space_dim:moon_helium3_ore_deep.name=Deepslate Lunar Helium-3 Ore
+tile.space_dim:moon_redstone_ore.name=Lunar Redstone Ore
+tile.space_dim:moon_redstone_ore_deep.name=Deepslate Lunar Redstone Ore
+tile.space_dim:moon_iron_ore.name=Lunar Iron Ore
+tile.space_dim:moon_iron_ore_deep.name=Deepslate Lunar Iron Ore
+tile.space_dim:moon_gold_ore.name=Lunar Gold Ore
+tile.space_dim:moon_gold_ore_deep.name=Deepslate Lunar Gold Ore
+tile.space_dim:moon_diamond_ore.name=Lunar Diamond Ore
+tile.space_dim:moon_diamond_ore_deep.name=Deepslate Lunar Diamond Ore
+tile.space_dim:mars_silicon_ore.name=Martian Silicon Ore
+tile.space_dim:mars_silicon_ore_deep.name=Deepslate Martian Silicon Ore
+tile.space_dim:mars_titanium_ore.name=Martian Titanium Ore
+tile.space_dim:mars_titanium_ore_deep.name=Deepslate Martian Titanium Ore
+tile.space_dim:mars_copper_ore.name=Martian Copper Ore
+tile.space_dim:mars_copper_ore_deep.name=Deepslate Martian Copper Ore
+tile.space_dim:mars_iron_ore.name=Martian Iron Ore
+tile.space_dim:mars_iron_ore_deep.name=Deepslate Martian Iron Ore
+tile.space_dim:mars_gold_ore.name=Martian Gold Ore
+tile.space_dim:mars_gold_ore_deep.name=Deepslate Martian Gold Ore
+tile.space_dim:mars_diamond_ore.name=Martian Diamond Ore
+tile.space_dim:mars_diamond_ore_deep.name=Deepslate Martian Diamond Ore
+
+## rastreador estelar (gerado por tools/make_tracker.py)
+item.space_dim:tracker=Star Tracker
+item.space_dim:star_chart_sol=Star Chart: Solar System
+
+## equipamento de estrela (gerado por tools/make_star_gear.py)
+item.space_dim:star_core_shard=Star Piece
+item.space_dim:star_core_ingot=Stellar Ingot
+item.space_dim:star_upgrade_template=Space Upgrade Smithing Template
+item.space_dim:star_helmet=Starcore Helmet
+item.space_dim:star_chestplate=Starcore Chestplate
+item.space_dim:star_leggings=Starcore Leggings
+item.space_dim:star_boots=Starcore Boots
+
+## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)
+biome.space_dim.lua_mar_de_basalto.name=Basalt Sea
+biome.space_dim.lua_terras_altas.name=Highlands
+biome.space_dim.lua_bacia_de_impacto.name=Impact Basin
+biome.space_dim.lua_polo_sombrio.name=Shadowed Pole
+biome.space_dim.marte_planicie_boreal.name=Boreal Plain
+biome.space_dim.marte_terras_altas_do_sul.name=Southern Highlands
+biome.space_dim.marte_valles.name=Valles Marineris
+biome.space_dim.marte_tharsis.name=Tharsis Plateau
+biome.space_dim.marte_campo_de_dunas.name=Dune Field
+biome.space_dim.marte_calota_polar.name=Polar Cap
+
+## nave Level 1 (do addon dele, juntado aqui)
+entity.nave:level_1_spaceship.name=§bLevel 1 Spaceship§r
+item.spawn_egg.entity.nave:level_1_spaceship.name=§bSpawn Level 1 Spaceship§r
+action.interact.nave.ride=§aFly the spaceship!
+action.interact.nave.disassemble=§eDisassemble (shears)
+action.hint.exit.nave:level_1_spaceship=§aCrouch or jump to exit!
+
+## trajes espaciais (gerado por tools/make_spacesuit.py)
+item.space_dim:apollo_helmet=Apollo Helmet
+item.space_dim:apollo_chestplate=Apollo Chestplate
+item.space_dim:apollo_leggings=Apollo Leggings
+item.space_dim:apollo_boots=Apollo Boots
+item.space_dim:reinforced_spacesuit_helmet=Reinforced AxEMU Helmet
+item.space_dim:reinforced_spacesuit_chestplate=Reinforced AxEMU Chestplate
+item.space_dim:reinforced_spacesuit_leggings=Reinforced AxEMU Leggings
+item.space_dim:reinforced_spacesuit_boots=Reinforced AxEMU Boots
+
+## materiais dos planetas (gerado por tools/make_materials.py)
+item.space_dim:silicon=Silicon
+item.space_dim:titanium=Titanium
+item.space_dim:helium3=Helium-3
+
+## lixeira (gerado por tools/make_trash_can.py)
+tile.space_dim:trash_can.name=Trash Can

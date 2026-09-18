@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 
 FORMAT_VERSION = "1.21.80"
 
@@ -144,38 +144,50 @@ BLOCKS = {
 
 # --- Minérios ----------------------------------------------------------------
 #
-# A textura de cada um é a PEDRA DO PRÓPRIO PLANETA com grãos de metal por cima
-# (ver ORES em make_block_textures.py). Eles largam o item CRU do jogo base — e
-# isso não é preguiça, é o que os torna úteis no minuto em que são minerados:
-# vai tudo pra fornalha e pras bancadas que o jogador já conhece, sem uma árvore
-# de receitas nova pra decorar.
+# A tabela é tools/assets/ores.json, compartilhada com o gerador de texturas:
+# lá está a aparência de cada minério e o que ele larga; aqui saem o JSON do
+# bloco, a tabela de loot e o nome. Onde cada um aparece (profundidade, peso,
+# raridade) está em planets.js, junto do resto da geração.
 #
-# Onde cada um aparece (faixa de profundidade, raridade, tamanho do veio) está
-# em planets.js, junto do resto da geração.
+# Cada minério existe em DUAS pedras — a do meio da crosta e a ardósia funda —
+# como no jogo base. Quem escolhe a variante é o gerador, pelo bloco que está
+# substituindo.
 #
-# (nome curto, cor de mapa, pt, en, item largado, min, max)
-ORES = [
-    ("moon_iron_ore",     "#8A8E9C", "Minério de Ferro Lunar",     "Lunar Iron Ore",
-     "minecraft:raw_iron", 1, 1),
-    ("moon_gold_ore",     "#8C9088", "Minério de Ouro Lunar",      "Lunar Gold Ore",
-     "minecraft:raw_gold", 1, 1),
-    ("moon_redstone_ore", "#4F4B52", "Minério de Redstone Lunar",  "Lunar Redstone Ore",
-     "minecraft:redstone", 4, 5),
-    ("moon_diamond_ore",  "#4A555B", "Minério de Diamante Lunar",  "Lunar Diamond Ore",
-     "minecraft:diamond", 1, 1),
-    ("mars_iron_ore",     "#95432A", "Minério de Ferro Marciano",  "Martian Iron Ore",
-     "minecraft:raw_iron", 1, 1),
-    ("mars_copper_ore",   "#964024", "Minério de Cobre Marciano",  "Martian Copper Ore",
-     "minecraft:raw_copper", 2, 3),
-    ("mars_gold_ore",     "#592913", "Minério de Ouro Marciano",   "Martian Gold Ore",
-     "minecraft:raw_gold", 1, 1),
-    ("mars_diamond_ore",  "#50281A", "Minério de Diamante Marciano", "Martian Diamond Ore",
-     "minecraft:diamond", 1, 1),
-]
+# Os minérios do jogo base largam o item CRU dele, e isso não é preguiça: é o
+# que os torna úteis no minuto em que são minerados, sem uma árvore de receitas
+# nova pra decorar. Os TRÊS NOVOS (silício, titânio, hélio-3) largam item
+# próprio, porque não existe equivalente no jogo.
+with open(os.path.join(ROOT, "tools", "assets", "ores.json"), encoding="utf-8") as _f:
+    ORES_SPEC = json.load(_f)
+
+# A cor de mapa de um minério é a da pedra que ele substitui: de longe, no mapa,
+# um veio não muda a cor do terreno.
+MAP_COLOR = {
+    "moon_regolith": "#8A8E9C", "moon_regolith_dark": "#4F4B52",
+    "mars_rock": "#95432A", "mars_rock_dark": "#50281A",
+}
+
+ORES = []
+for _planeta, _host in ORES_SPEC["hosts"].items():
+    for _tipo in _host["ores"]:
+        _spec = ORES_SPEC["types"][_tipo]
+        for _suf, _pedra, _pt_pedra, _en_pedra in (
+            ("", _host["stone"], "", ""),
+            ("_deep", _host["deep"], " em Ardósia", "Deepslate "),
+        ):
+            _short = f"{_planeta}_{_tipo}_ore{_suf}"
+            ORES.append((
+                _short, MAP_COLOR[_pedra],
+                f"Minério de {_spec['pt']}{_pt_pedra} {_host['pt']}",
+                f"{_en_pedra}{_host['en']} {_spec['en']} Ore",
+                _spec["drop"], _spec["min"], _spec["max"],
+            ))
 
 for _short, _cor, _pt, _en, _item, _min, _max in ORES:
+    # A ardósia é mais dura, como no jogo base.
     BLOCKS[_short] = block(_short, _cor, _pt, _en,
-                           light=GROUND_LIGHT, hardness=3.0)
+                           light=GROUND_LIGHT,
+                           hardness=4.5 if _short.endswith("_deep") else 3.0)
     BLOCKS[_short]["loot"] = {"item": _item, "min": _min, "max": _max}
 
 NS = "space_dim"

@@ -26,8 +26,8 @@ import os
 import uuid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP", "manifest.json")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP", "manifest.json")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP", "manifest.json")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP", "manifest.json")
 
 
 def load(path):

@@ -62,8 +62,8 @@ def pack_icon(size=128):
 
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    write_png(os.path.join(root, "packs/Distant Horizons RP/textures/space_dim/star.png"), 16, 16, star_texture())
+    write_png(os.path.join(root, "packs/Galactic Horizons RP/textures/space_dim/star.png"), 16, 16, star_texture())
     icon = pack_icon()
-    for p in ("packs/Distant Horizons BP/pack_icon.png", "packs/Distant Horizons RP/pack_icon.png"):
+    for p in ("packs/Galactic Horizons BP/pack_icon.png", "packs/Galactic Horizons RP/pack_icon.png"):
         write_png(os.path.join(root, p), 128, 128, icon)
     print("textures written")

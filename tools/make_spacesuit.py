@@ -33,8 +33,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 SRC = os.path.join(ROOT, "tools", "assets", "suits")
 NS = "space_dim"
 SC = "nv_sc"
@@ -73,31 +73,42 @@ SLOTS = {
 
 # --- Receita do Apollo -------------------------------------------------------
 # Só material do jogo base, de propósito: o traje básico precisa existir ANTES
-# da primeira subida, e exigir coisa de outro addon (ou da Lua) faria dele um
-# item que só se consegue depois de já ter ido aonde ele serve.
+# da primeira subida, e exigir coisa da Lua faria dele um item que só se
+# consegue depois de já ter ido aonde ele serve.
+#
+# Não é só lã e ferro: cobre nas juntas e conectores, couro nas dobras, vidro
+# no visor e redstone no peito (é onde fica o suporte de vida). Cada peça usa
+# uma mistura diferente, pra fabricar o conjunto não ser quatro vezes a mesma
+# receita.
 APOLLO_KEY = {
     "F": {"item": "minecraft:white_wool"},      # o tecido branco do traje
     "I": {"item": "minecraft:iron_ingot"},      # a estrutura
+    "C": {"item": "minecraft:copper_ingot"},    # juntas e conectores
     "G": {"item": "minecraft:glass"},           # o visor
-    "L": {"item": "minecraft:leather"},         # a sola e as juntas
+    "L": {"item": "minecraft:leather"},         # as dobras e a sola
+    "R": {"item": "minecraft:redstone"},        # o suporte de vida, no peito
 }
 APOLLO_PATTERN = {
-    "helmet":     ["FIF", "IGI"],
-    "chestplate": ["F F", "IFI", "FIF"],
-    "leggings":   ["FIF", "I I", "L L"],
-    "boots":      ["F F", "L L"],
+    "helmet":     ["FCF", "IGI"],
+    "chestplate": ["F F", "IRI", "FCF"],
+    "leggings":   ["FIF", "C C", "L L"],
+    "boots":      ["C C", "L L"],
 }
 
 # --- Receita do AxEMU --------------------------------------------------------
-# Feito POR CIMA do Apollo, com pedra da Lua e de Marte: só quem já foi aos
-# dois planetas monta o reforçado. `S` é a peça Apollo correspondente.
+# Feito POR CIMA do Apollo, com os minérios dos planetas: titânio na estrutura,
+# silício na eletrônica e no visor, hélio-3 no aquecimento — é o que dá ao
+# reforçado o isolamento que o Apollo não tem.
+#
+# O hélio-3 só existe na LUA, e é ele que amarra a ordem das coisas: pra
+# montar o reforçado é preciso ter ido lá, e pra ir lá basta o Apollo mais a
+# nave (a cabine é pressurizada e quente). Nenhum passo pede o passo seguinte.
 AXEMU_KEY = {
-    "R": {"item": f"{NS}:moon_regolith_dark"},  # ardósia de regolito (Lua)
-    "M": {"item": f"{NS}:mars_rock_dark"},      # ardósia de ferrita (Marte)
-    "D": {"item": "minecraft:diamond"},
-    "I": {"item": "minecraft:iron_block"},
+    "T": {"item": f"{NS}:titanium"},
+    "Z": {"item": f"{NS}:silicon"},
+    "H": {"item": f"{NS}:helium3"},
 }
-AXEMU_PATTERN = ["DRD", "MSM", "DID"]
+AXEMU_PATTERN = ["TZT", "ZSZ", "THT"]
 
 # --- Receita antiga do AxEMU, pra quem joga com o Spacecraft ------------------
 # O reforçado nasceu como o traje DELES melhorado; quem tem o addo deles ainda
@@ -167,7 +178,18 @@ def item_id(suit, piece):
 
 
 def icon_name(suit, piece):
+    """A CHAVE do ícone no atlas — precisa ser única entre todos os packs."""
     return item_id(suit, piece).replace(":", "_")
+
+
+def icon_file(suit, piece):
+    """O ARQUIVO da textura: o nome exato do item, sem o namespace.
+
+    É a regra do addon inteiro: o arquivo de textura se chama igual à coisa que
+    ele desenha. `apollo_helmet.png` é a textura de `space_dim:apollo_helmet`,
+    e procurar por um acha o outro.
+    """
+    return item_id(suit, piece).split(":")[1]
 
 
 def write_json(path, data):
@@ -332,7 +354,7 @@ def copy_art():
         # ícones, tirados da própria folha
         for piece in SLOTS:
             make_icon(piece, sheets).save(
-                os.path.join(icon_dir, f"{icon_name(suit, piece)}.png"))
+                os.path.join(icon_dir, f"{icon_file(suit, piece)}.png"))
 
     # As quatro geometrias de cada traje têm que estar todas lá: uma faltando
     # deixaria a peça invisível no corpo, e o jogo não avisa.
@@ -436,7 +458,7 @@ def main():
                 )
                 recipes += 1
             else:
-                # por cima do Apollo, com pedra da Lua e de Marte
+                # por cima do Apollo, com os minérios dos planetas
                 key = dict(AXEMU_KEY)
                 key["S"] = {"item": item_id("apollo", piece)}
                 write_json(
@@ -482,8 +504,9 @@ def main():
     }
     for suit in SUITS:
         for piece in SLOTS:
-            n = icon_name(suit, piece)
-            doc["texture_data"][n] = {"textures": f"textures/{NS}/items/{n}"}
+            doc["texture_data"][icon_name(suit, piece)] = {
+                "textures": f"textures/{NS}/items/{icon_file(suit, piece)}"
+            }
     write_json(path, doc)
 
     # --- nomes -----------------------------------------------------------------
@@ -502,6 +525,8 @@ def main():
     print(f"  modelos: {', '.join(geo_ids)}")
     print(f"  {len(SUITS) * len(SLOTS)} attachables, {len(SUITS) * len(SLOTS)} ícones tirados das próprias texturas")
     print(f"  {recipes} receitas")
+    print(f"  Apollo: {', '.join(sorted({v['item'].split(':')[1] for v in APOLLO_KEY.values()}))}")
+    print(f"  AxEMU: peça Apollo + {', '.join(sorted(v['item'].split(':')[1] for v in AXEMU_KEY.values()))}")
 
 
 if __name__ == "__main__":

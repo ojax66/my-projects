@@ -1,0 +1,164 @@
+{
+  "_comment": [
+    "Os minérios da Lua e de Marte: aparência, o que largam e onde ficam.",
+    "",
+    "A TEXTURA é a mesma de sempre em desenho e diferente em cor: o padrão de",
+    "cristal veio dele, em tools/assets/ref_silicon_ore.png (o silício sobre a",
+    "pedra de regolito). Todos os outros minérios reusam ESSE desenho com outra",
+    "paleta — é o que ele pediu: 'cria novos a partir de como é o padrão de",
+    "textura do primeiro'. O silício sai idêntico ao arquivo dele, pixel a",
+    "pixel, e o gerador falha se sair diferente.",
+    "",
+    "Cada tipo usa uma das OITO orientações do desenho (espelho em x, em y e a",
+    "troca dos eixos), pra oito minérios não saírem com o cristal no mesmo lugar.",
+    "Cada minério existe em DUAS pedras: a do meio da crosta e a ardósia funda.",
+    "É o que ele mandou nas quatro imagens — o mesmo cristal sobre os quatro",
+    "fundos. Quem escolhe a variante é o gerador, pelo bloco que está",
+    "substituindo (planetTerrain.js).",
+    "",
+    "`lift` puxa a paleta inteira pra cima ou pra baixo em brilho, mantendo a",
+    "escada de tons do desenho dele. É o que separa um metal branco polido",
+    "(titânio) de um cristal fosco (silício) sem mudar o desenho.",
+    "",
+    "PESO, PROFUNDIDADE E RARIDADE NÃO ESTÃO AQUI — estão em planets.js, junto",
+    "do resto da geração. Aqui é só a aparência e o que cai."
+  ],
+  "pattern": {
+    "ref": "ref_silicon_ore.png",
+    "over": "moon_regolith",
+    "icon_ref": "icons/silicon.png"
+  },
+  "types": {
+    "silicon": {
+      "pt": "Silício",
+      "en": "Silicon",
+      "palette": [
+        "#43465E",
+        "#626688",
+        "#7D81A8",
+        "#8D92B5",
+        "#B3B6CF"
+      ],
+      "flip": 0,
+      "drop": "space_dim:silicon",
+      "min": 1,
+      "max": 2,
+      "item": {
+        "pt": "Silício",
+        "en": "Silicon",
+        "color": "#8D92B5"
+      }
+    },
+    "titanium": {
+      "pt": "Titânio",
+      "en": "Titanium",
+      "base": "#E8EDF2",
+      "lift": 1.25,
+      "flip": 1,
+      "drop": "space_dim:titanium",
+      "min": 1,
+      "max": 2,
+      "item": {
+        "pt": "Titânio",
+        "en": "Titanium",
+        "color": "#E8EDF2"
+      }
+    },
+    "helium3": {
+      "pt": "Hélio-3",
+      "en": "Helium-3",
+      "base": "#C77BE0",
+      "lift": 1.1,
+      "flip": 2,
+      "drop": "space_dim:helium3",
+      "min": 1,
+      "max": 1,
+      "item": {
+        "pt": "Hélio-3",
+        "en": "Helium-3",
+        "color": "#C77BE0"
+      }
+    },
+    "iron": {
+      "pt": "Ferro",
+      "en": "Iron",
+      "base": "#D8AF93",
+      "lift": 1.0,
+      "flip": 4,
+      "drop": "minecraft:raw_iron",
+      "min": 1,
+      "max": 1
+    },
+    "gold": {
+      "pt": "Ouro",
+      "en": "Gold",
+      "base": "#FCEE4B",
+      "lift": 1.1,
+      "flip": 5,
+      "drop": "minecraft:raw_gold",
+      "min": 1,
+      "max": 1
+    },
+    "redstone": {
+      "pt": "Redstone",
+      "en": "Redstone",
+      "base": "#C62D28",
+      "lift": 1.0,
+      "flip": 3,
+      "drop": "minecraft:redstone",
+      "min": 4,
+      "max": 5
+    },
+    "copper": {
+      "pt": "Cobre",
+      "en": "Copper",
+      "base": "#E0734D",
+      "lift": 1.0,
+      "flip": 6,
+      "drop": "minecraft:raw_copper",
+      "min": 2,
+      "max": 3
+    },
+    "diamond": {
+      "pt": "Diamante",
+      "en": "Diamond",
+      "base": "#4AEDD9",
+      "lift": 1.0,
+      "flip": 7,
+      "drop": "minecraft:diamond",
+      "min": 1,
+      "max": 1
+    }
+  },
+  "hosts": {
+    "moon": {
+      "stone": "moon_regolith",
+      "deep": "moon_regolith_dark",
+      "pt": "Lunar",
+      "en": "Lunar",
+      "ores": [
+        "silicon",
+        "titanium",
+        "helium3",
+        "redstone",
+        "iron",
+        "gold",
+        "diamond"
+      ]
+    },
+    "mars": {
+      "stone": "mars_rock",
+      "deep": "mars_rock_dark",
+      "pt": "Marciano",
+      "en": "Martian",
+      "ores": [
+        "silicon",
+        "titanium",
+        "copper",
+        "iron",
+        "gold",
+        "diamond"
+      ]
+    }
+  }
+}

@@ -58,7 +58,8 @@ SIZE = 32
 CELLS = 16
 CELL_PX = SIZE // CELLS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "packs", "Distant Horizons RP", "textures", "space_dim", "blocks")
+OUT = os.path.join(ROOT, "packs", "Galactic Horizons RP", "textures", "space_dim", "blocks")
+REF_DIR = os.path.join(ROOT, "tools", "assets")
 
 
 # --- PNG ---------------------------------------------------------------------
@@ -330,6 +331,11 @@ def color_distance(a, b):
     return math.sqrt((ra - rb) ** 2 + (ga - gb) ** 2 + (ba - bb) ** 2)
 
 
+def luma(cor):
+    """Brilho percebido de UMA cor. O mesmo peso que o center_bias usa."""
+    return 0.299 * cor[0] + 0.587 * cor[1] + 0.114 * cor[2]
+
+
 def luma_range(rows):
     tones = {px[:3] for row in rows for px in row}
     lums = [(c[0] + c[1] + c[2]) / 3 for c in tones]
@@ -361,58 +367,102 @@ def is_chunky(rows):
 # Os grãos são colocados na mesma grade grossa do resto (2x2 pixels), em
 # aglomerados de 2 a 4 células — é assim que minério do jogo se parece, e é o
 # que impede o grão de virar chuvisco.
-ORE_SPECKS = 13          # quantas células de metal, de 256
-ORE_CLUSTER = 3          # até quantas células vizinhas cada aglomerado toma
+# O DESENHO DO CRISTAL VEIO DELE.
+#
+# tools/assets/ref_silicon_ore.png é o silício sobre a pedra de regolito, feito
+# por ele. O padrão de cristal é extraído desse arquivo — as células que ele
+# pintou e o tom de cada uma — e TODOS os minérios reusam esse mesmo desenho
+# com outra paleta. Foi o pedido: "cria novos a partir de como é o padrão de
+# textura do primeiro".
+#
+# O que muda de um minério pro outro:
+#   a PALETA   — cinco tons, na mesma escada de brilho do desenho dele
+#   o ESPELHO  — `flip` gira/espelha o padrão, pra oito minérios não saírem com
+#                o cristal exatamente no mesmo lugar. O silício é `flip` 0, e
+#                por isso sai idêntico ao arquivo dele.
+ORES_SPEC = json.load(open(os.path.join(REF_DIR, "ores.json"), encoding="utf-8"))
+ORE_REF = ORES_SPEC["pattern"]["ref"]
+ORE_REF_OVER = ORES_SPEC["pattern"]["over"]
 
 
-def build_ore(base_rows, cor, seed):
-    """A pedra do planeta com grãos de metal por cima."""
+def extract_crystal(ref_rows, base_rows):
+    """(célula -> posto de tom) e os cinco tons, lidos do arquivo dele.
+
+    O que difere da pedra de base É o cristal. Os tons são ordenados por brilho
+    e viram postos 0..4, pra outra paleta poder entrar no lugar deles.
+    """
+    pintado = {}
+    tons = set()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            if tuple(ref_rows[y][x]) != tuple(base_rows[y][x]):
+                cor = tuple(ref_rows[y][x])[:3]
+                pintado[(x, y)] = cor
+                tons.add(cor)
+    escada = sorted(tons, key=luma)
+    posto = {cor: i for i, cor in enumerate(escada)}
+    return {xy: posto[cor] for xy, cor in pintado.items()}, escada
+
+
+def ramp_from(base_hex, lift, degraus):
+    """Cinco tons na cor do minério, na mesma escada de brilho do desenho dele.
+
+    Manter a escada é o que faz o cristal ter volume em vez de virar adesivo:
+    o desenho dele tem sombra, meio-tom e brilho, e o que troca aqui é só o
+    matiz.
+    """
+    r, g, b = hex_rgb(base_hex)
+    l0 = luma((r, g, b))
+    out = []
+    for alvo in degraus:
+        alvo = min(250.0, alvo * lift)
+        if alvo <= l0:
+            k = alvo / l0 if l0 else 0
+            out.append(tuple(min(255, round(c * k)) for c in (r, g, b)) + (255,))
+        else:
+            t = (alvo - l0) / (255 - l0) if l0 < 255 else 0
+            out.append(tuple(min(255, round(c + (255 - c) * t)) for c in (r, g, b)) + (255,))
+    return out
+
+
+def flip_xy(x, y, flip):
+    """As oito orientações do mesmo desenho.
+
+    bit 0 espelha em x, bit 1 espelha em y, bit 2 troca x com y. Oito
+    combinações pra oito minérios: o cristal é o mesmo, a arrumação não. Todas
+    preservam a grade de células 2x2, então nenhuma delas afina o grão.
+    """
+    if flip & 4:
+        x, y = y, x
+    if flip & 1:
+        x = SIZE - 1 - x
+    if flip & 2:
+        y = SIZE - 1 - y
+    return x, y
+
+
+def build_ore(base_rows, crystal, palette, flip):
+    """A pedra do planeta com o cristal dele por cima."""
     rows = [list(r) for r in base_rows]
-    metal = hex_rgb(cor) + (255,)
-    # uma versão mais escura, pra o grão ter volume em vez de ser um adesivo
-    sombra = tuple(max(0, round(c * 0.72)) for c in hex_rgb(cor)) + (255,)
-
-    postas = set()
-    ordem = sorted((_hash(cx, cy, 4096, seed), cx, cy)
-                   for cy in range(CELLS) for cx in range(CELLS))
-    for h, cx, cy in ordem:
-        if len(postas) >= ORE_SPECKS:
-            break
-        if (cx, cy) in postas:
-            continue
-        # um aglomerado: a célula e alguns vizinhos dela
-        quantas = 1 + int(_hash(cx, cy, 4096, seed + 31) * ORE_CLUSTER)
-        vizinhos = [(0, 0), (1, 0), (0, 1), (1, 1), (-1, 0), (0, -1)]
-        for i in range(min(quantas, len(vizinhos))):
-            if len(postas) >= ORE_SPECKS:
-                break
-            dx, dy = vizinhos[i]
-            nx, ny = (cx + dx) % CELLS, (cy + dy) % CELLS
-            if (nx, ny) in postas:
-                continue
-            postas.add((nx, ny))
-            # a borda de baixo do aglomerado fica na cor de sombra
-            cor_cel = sombra if (i and i % 3 == 0) else metal
-            for py in range(ny * CELL_PX, (ny + 1) * CELL_PX):
-                for px in range(nx * CELL_PX, (nx + 1) * CELL_PX):
-                    rows[py][px] = cor_cel
+    for (x, y), posto in crystal.items():
+        fx, fy = flip_xy(x, y, flip)
+        rows[fy][fx] = palette[posto]
     return rows
 
 
-# id do minério → (bloco de base, cor do metal, seed)
-#
-# Onde cada um mora está em planets.js, junto com a faixa de profundidade e a
-# raridade. Aqui só existe a aparência.
-ORES = {
-    "moon_iron_ore":     ("moon_regolith", "#D8AF93", 811),
-    "moon_gold_ore":     ("moon_regolith", "#FCEE4B", 412),
-    "moon_redstone_ore": ("moon_regolith_dark", "#C62D28", 157),
-    "moon_diamond_ore":  ("moon_regolith_dark", "#4AEDD9", 933),
-    "mars_iron_ore":     ("mars_rock", "#D8AF93", 244),
-    "mars_copper_ore":   ("mars_rock", "#E0734D", 655),
-    "mars_gold_ore":     ("mars_rock_dark", "#FCEE4B", 388),
-    "mars_diamond_ore":  ("mars_rock_dark", "#4AEDD9", 701),
-}
+def ore_blocks():
+    """(nome do bloco) -> (pedra de base, tipo de minério, espelho)."""
+    out = {}
+    for planeta, host in ORES_SPEC["hosts"].items():
+        for tipo in host["ores"]:
+            spec = ORES_SPEC["types"][tipo]
+            flip = spec.get("flip", 0)
+            out[f"{planeta}_{tipo}_ore"] = (host["stone"], tipo, flip)
+            out[f"{planeta}_{tipo}_ore_deep"] = (host["deep"], tipo, flip)
+    return out
+
+
+ORES = ore_blocks()
 
 
 # ---------------------------------------------------------------------------
@@ -464,7 +514,6 @@ def moon_from_source(rows, fator):
 # O arquivo que ele escolheu, guardado. A conferência abaixo é o que impede
 # esta textura de ser "melhorada" de novo: ela já passou por quatro versões e a
 # quinta foi ele que mandou.
-REF_DIR = os.path.join(ROOT, "tools", "assets")
 
 
 def read_png(path):
@@ -508,6 +557,9 @@ if __name__ == "__main__":
     built = {}
     print(f"  {'bloco':22s} {'cores':>5s} {'faixa':>6s} {'média':>8s} {'centro':>7s}")
     fonte_lua = read_png(os.path.join(REF_DIR, MOON_SOURCE))
+    ore_ref = read_png(os.path.join(REF_DIR, ORE_REF))
+    crystal = None          # extraído assim que a pedra de base estiver pronta
+    ore_palettes = {}
 
     todos = ([(n, "corpo") for n in TEXTURES]
              + [(n, "lua") for n in MOON_LAYERS]
@@ -516,8 +568,17 @@ if __name__ == "__main__":
         if tipo == "lua":
             rows = moon_from_source(fonte_lua, MOON_LAYERS[name])
         elif tipo == "minério":
-            base, cor, seed = ORES[name]
-            rows = build_ore(built[base], cor, seed)
+            if crystal is None:
+                crystal, degraus = extract_crystal(ore_ref, built[ORE_REF_OVER])
+                escada = [luma(c) for c in degraus]
+                for t, spec in ORES_SPEC["types"].items():
+                    if "palette" in spec:
+                        # o silício: os tons são os DELE, sem recalcular nada
+                        ore_palettes[t] = [hex_rgb(c) + (255,) for c in spec["palette"]]
+                    else:
+                        ore_palettes[t] = ramp_from(spec["base"], spec.get("lift", 1.0), escada)
+            base, minerio, flip = ORES[name]
+            rows = build_ore(built[base], crystal, ore_palettes[minerio], flip)
         else:
             pal, w, seed, clump, jitter = TEXTURES[name]
             rows = build(pal, w, seed, clump, jitter)
@@ -565,6 +626,16 @@ if __name__ == "__main__":
                         f"({difs} pixels) — esse desenho é dele; não é pra mexer")
     else:
         print(f"  a poeira da Lua bate pixel a pixel com {MOON_SOURCE}")
+
+    ref = read_png(os.path.join(REF_DIR, ORE_REF))
+    got = built[f"{ORE_REF_OVER.split('_')[0]}_silicon_ore"]
+    difs = sum(1 for y in range(len(ref)) for x in range(len(ref[0]))
+               if tuple(got[y][x]) != ref[y][x])
+    if difs:
+        failures.append(f"o minério de silício não bate com {ORE_REF} ({difs} pixels) — "
+                        f"esse cristal é o desenho dele, e é a fonte de todos os outros")
+    else:
+        print(f"  o silício bate pixel a pixel com {ORE_REF}")
 
     for name in ("mars_dust", "mars_rock", "mars_rock_dark"):
         arquivo = f"ref_{name}.png"

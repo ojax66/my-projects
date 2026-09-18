@@ -1,0 +1,37 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "space_dim:level_1_spaceship"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "GGG",
+      "LDL",
+      "RIR"
+    ],
+    "key": {
+      "G": {
+        "item": "minecraft:glass"
+      },
+      "L": {
+        "item": "space_dim:trash_can"
+      },
+      "D": {
+        "item": "minecraft:diamond_block"
+      },
+      "R": {
+        "item": "minecraft:redstone_block"
+      },
+      "I": {
+        "item": "minecraft:iron_block"
+      }
+    },
+    "result": {
+      "item": "nave:level_1_spaceship_spawn_egg",
+      "count": 1
+    }
+  }
+}

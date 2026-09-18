@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from langfile import replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BP = os.path.join(ROOT, "packs", "Distant Horizons BP")
-RP = os.path.join(ROOT, "packs", "Distant Horizons RP")
+BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
+RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 NS = "space_dim"
 
 # O aparelho, e um mapa por sistema estelar. O id do item TEM que ser

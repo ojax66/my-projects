@@ -5,10 +5,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-$ROOT/dist}"
-NAME="Distant_Horizons"
+NAME="Galactic_Horizons"
 
-BP="$ROOT/packs/Distant Horizons BP"
-RP="$ROOT/packs/Distant Horizons RP"
+BP="$ROOT/packs/Galactic Horizons BP"
+RP="$ROOT/packs/Galactic Horizons RP"
 
 for d in "$BP" "$RP"; do
   [ -d "$d" ] || { echo "faltando: $d" >&2; exit 1; }
@@ -22,6 +22,9 @@ python3 "$ROOT/tools/make_block_textures.py"
 python3 "$ROOT/tools/make_blocks.py"
 python3 "$ROOT/tools/make_star_gear.py"
 python3 "$ROOT/tools/make_spacesuit.py"
+python3 "$ROOT/tools/make_materials.py"
+python3 "$ROOT/tools/make_trash_can.py"
+python3 "$ROOT/tools/make_ship.py"
 python3 "$ROOT/tools/make_tracker.py"
 python3 "$ROOT/tools/make_planet_worlds.py"
 node "$ROOT/tools/make_sky_bodies.mjs"
