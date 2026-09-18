@@ -4,11 +4,18 @@ Estes três não têm equivalente no jogo base, então largam item próprio (os
 outros minérios largam o item cru do jogo, que já serve pra tudo). A tabela é
 tools/assets/ores.json, a mesma que o gerador de blocos e o de texturas usam.
 
-O ÍCONE DO SILÍCIO É DELE: tools/assets/icons/silicon.png. Os outros dois saem
-desse mesmo desenho com a cor trocada — o mesmo critério das texturas de
-minério, e pelo mesmo motivo: o traço tem que ser um só. A troca é por BRILHO,
-pixel a pixel: cada tom do desenho dele vira o tom de mesma luminosidade na cor
-do outro material, então sombra, meio-tom e reflexo continuam onde estavam.
+O ÍCONE DO SILÍCIO É DELE: tools/assets/icons/silicon.png — um pedaço de
+cristal, copiado sem tocar em nada.
+
+Os outros dois têm FORMA PRÓPRIA, desenhada aqui, pelo mesmo motivo que os
+minérios deles têm: não são a mesma coisa e não deviam parecer.
+
+  TITÂNIO   um feixe de agulhas. Rutilo e ilmenita, os minerais de titânio,
+            crescem em prismas longos e finos.
+  HÉLIO-3   bolhas. Não é cristal nenhum — é gás preso no regolito.
+
+Repintar o cristal dele nas duas cores era o que estava lá antes, e deixava
+três itens com o mesmo contorno no inventário.
 """
 import json
 import os
@@ -36,7 +43,12 @@ def luma(c):
 
 
 def recolor(img, base_hex):
-    """O desenho dele na cor de outro material, mantendo a escada de brilho."""
+    """O desenho dele na cor de outro material, mantendo a escada de brilho.
+
+    Sobra pra quem não tem forma própria. Hoje ninguém usa — os três materiais
+    ou são o desenho dele ou têm forma aqui — mas um material novo entra por
+    aqui até ganhar a sua.
+    """
     from PIL import Image
 
     r, g, b = hex_rgb(base_hex)
@@ -58,6 +70,90 @@ def recolor(img, base_hex):
                 novo = tuple(min(255, round(v + (255 - v) * t)) for v in (r, g, b))
             px[x, y] = novo + (c[3],)
     return out
+
+
+# --- As formas próprias ------------------------------------------------------
+#
+# Cada uma devolve {(x, y): tom}, num quadro de 16x16, com os tons de 1 (sombra)
+# a 4 (brilho). O 0 é o contorno, posto depois em volta de tudo.
+LADO = 16
+
+# (coluna, topo, base, largura) — três agulhas de alturas diferentes, como um
+# feixe de cristal.
+AGULHAS = ((3, 5, 13, 2), (6, 2, 14, 3), (10, 4, 12, 2))
+
+# (coluna, linha, raio) — quatro bolhas separadas. Encostadas elas viram uma
+# mancha roxa só, que foi a primeira tentativa.
+BOLHAS = ((4, 3, 2), (10, 4, 2), (6, 10, 3), (12, 10, 1))
+
+
+def forma_agulhas():
+    px = {}
+    for cx, y0, y1, w in AGULHAS:
+        for y in range(y0, y1 + 1):
+            larg = 1 if y < y0 + 2 else w        # a ponta afina
+            for i in range(larg):
+                if y > y1 - 2:
+                    tom = 1                      # a base, na sombra
+                elif y == y0 or (i == 0 and y < y0 + 5):
+                    tom = 4                      # o brilho que desce da ponta
+                else:
+                    tom = 3 if i == 0 else 2
+                px[(cx + i, y)] = tom
+    return px
+
+
+def forma_bolhas():
+    px = {}
+    for cx, cy, r in BOLHAS:
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                dx, dy = x - cx, y - cy
+                if dx * dx + dy * dy > r * r + r:
+                    continue                     # fora da bola
+                if dx <= -r + 1 and dy <= -r + 1:
+                    tom = 4                      # o brilho, no canto de cima
+                elif dx + dy >= r:
+                    tom = 1                      # a sombra, na barriga de baixo
+                elif dx < 0 and dy < 0:
+                    tom = 3
+                else:
+                    tom = 2
+                px[(x, y)] = tom
+    return px
+
+
+FORMAS = {"titanium": forma_agulhas, "helium3": forma_bolhas}
+
+
+def contorna(px):
+    """Borda escura em volta, como todo ícone de item do jogo."""
+    out = dict(px)
+    for (x, y) in px:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if (nx, ny) not in px and 0 <= nx < LADO and 0 <= ny < LADO:
+                out[(nx, ny)] = 0
+    return out
+
+
+def rampa(base_hex):
+    """Contorno, sombra, corpo, luz e brilho — cinco tons da cor do material."""
+    r, g, b = hex_rgb(base_hex)
+    escuros = [tuple(round(c * k) for c in (r, g, b)) for k in (0.3, 0.5, 0.72, 0.88)]
+    brilho = tuple(min(255, round(c + (255 - c) * 0.45)) for c in (r, g, b))
+    return escuros + [brilho]
+
+
+def desenha(forma, base_hex):
+    from PIL import Image
+
+    im = Image.new("RGBA", (LADO, LADO), (0, 0, 0, 0))
+    px = im.load()
+    tons = rampa(base_hex)
+    for (x, y), tom in contorna(forma).items():
+        px[x, y] = tons[tom] + (255,)
+    return im
 
 
 def write_json(path, data):
@@ -97,6 +193,8 @@ def main():
         destino = os.path.join(icon_dir, f"{curto}.png")
         if nome == dono:
             shutil.copyfile(fonte, destino)
+        elif nome in FORMAS:
+            desenha(FORMAS[nome](), item["color"]).save(destino)
         else:
             recolor(base_icon, item["color"]).save(destino)
 
@@ -144,8 +242,9 @@ def main():
         )
 
     print(f"{len(materiais)} materiais: {', '.join(sorted(materiais))}")
-    print(f"  ícone do {dono} copiado de {os.path.relpath(fonte, ROOT)}; "
-          f"os outros saem dele com a cor trocada")
+    print(f"  ícone do {dono} copiado de {os.path.relpath(fonte, ROOT)}")
+    for nome in sorted(FORMAS):
+        print(f"  ícone do {nome}: forma própria ({FORMAS[nome].__name__})")
 
 
 if __name__ == "__main__":

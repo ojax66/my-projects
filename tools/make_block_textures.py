@@ -492,16 +492,22 @@ def cristal_agulhas():
 
 
 def cristal_bolhas():
-    """Pontos soltos com o miolo claro — o hélio-3 preso no regolito."""
+    """Pontos soltos com o miolo claro — o hélio-3 preso no regolito.
+
+    Metade são bolhas GRANDES (quatro células, um quadrado) e metade pequenas
+    (uma célula). A primeira versão era uma célula mais um vizinho, e o que
+    saía era um traço de 2x4 pixels: lia como risco, não como bolha.
+    """
     celulas = {}
     for i, (cx, cy) in enumerate(BOLHAS):
-        celulas[(cx, cy)] = 4
-        # metade delas ganha um vizinho mais escuro: sem isso todas viram o
-        # mesmo ponto do mesmo tamanho e a textura fica quadriculada.
         if i % 2 == 0:
+            # a grande: quadrado de quatro células, com a luz no canto de cima
+            celulas[(cx, cy)] = 4
+            celulas[(cx + 1, cy)] = 3
             celulas[(cx, cy + 1)] = 2
+            celulas[(cx + 1, cy + 1)] = 1
         else:
-            celulas[(cx + 1, cy)] = 1
+            celulas[(cx, cy)] = 4
     return celulas
 
 
