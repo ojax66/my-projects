@@ -4,40 +4,108 @@
     {
       "description": {
         "identifier": "geometry.gh.trash_can",
-        "texture_width": 64,
-        "texture_height": 64,
-        "visible_bounds_width": 2,
-        "visible_bounds_height": 2,
+        "texture_width": 128,
+        "texture_height": 128,
+        "visible_bounds_width": 8,
+        "visible_bounds_height": 5.5,
         "visible_bounds_offset": [
           0,
-          0.5,
+          2.25,
           0
         ]
       },
       "bones": [
         {
-          "name": "trash_can",
+          "name": "bb_main",
           "pivot": [
-            0,
-            0,
-            0
+            0.1666,
+            -0.5,
+            -0.0667
           ],
           "cubes": [
             {
               "origin": [
-                -6.0,
-                0,
-                -7.0
+                -5.5556,
+                1.9444,
+                -7.5
               ],
               "size": [
-                12,
-                12,
-                14
+                11.1111,
+                11.1111,
+                15.0
               ],
-              "uv": [
+              "pivot": [
+                -0.0001,
+                7.5,
+                0.0001
+              ],
+              "rotation": [
+                90,
                 0,
                 0
-              ]
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    40
+                  ],
+                  "uv_size": [
+                    20,
+                    20
+                  ]
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    27,
+                    20
+                  ]
+                },
+                "south": {
+                  "uv": [
+                    47,
+                    0
+                  ],
+                  "uv_size": [
+                    20,
+                    20
+                  ]
+                },
+                "west": {
+                  "uv": [
+                    0,
+                    20
+                  ],
+                  "uv_size": [
+                    27,
+                    20
+                  ]
+                },
+                "up": {
+                  "uv": [
+                    27,
+                    0
+                  ],
+                  "uv_size": [
+                    20,
+                    27
+                  ]
+                },
+                "down": {
+                  "uv": [
+                    27,
+                    54
+                  ],
+                  "uv_size": [
+                    20,
+                    -27
+                  ]
+                }
+              }
             }
           ]
         }

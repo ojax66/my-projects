@@ -3,9 +3,9 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.Trash_can",
-				"texture_width": 512,
-				"texture_height": 512,
+				"identifier": "geometry.Level 1 spaceship",
+				"texture_width": 128,
+				"texture_height": 128,
 				"visible_bounds_width": 8,
 				"visible_bounds_height": 5.5,
 				"visible_bounds_offset": [0, 2.25, 0]
@@ -16,17 +16,17 @@
 					"pivot": [0, 0, 0],
 					"cubes": [
 						{
-							"origin": [-9.3, 4.4, -10.2],
-							"size": [20, 20, 27],
-							"pivot": [0.7, 14.4, 3.3],
-							"rotation": [0, 90, -90],
+							"origin": [-8.51295, 3.6366, -11.0583],
+							"size": [16.53, 16.53, 22.3155],
+							"pivot": [-0.24795, 11.9016, 0.09945],
+							"rotation": [90, 0, 0],
 							"uv": {
-								"north": {"uv": [511.9, 135], "uv_size": [-19, 20]},
-								"east": {"uv": [512, 166.4], "uv_size": [-27, 20]},
-								"south": {"uv": [488.2, 135.5], "uv_size": [-19, 20]},
-								"west": {"uv": [512, 166.8], "uv_size": [-27, 20]},
-								"up": {"uv": [492, 129.4], "uv_size": [19, -27]},
-								"down": {"uv": [492, 129.6], "uv_size": [19, -27]}
+								"north": {"uv": [0, 40], "uv_size": [20, 20]},
+								"east": {"uv": [0, 0], "uv_size": [27, 20]},
+								"south": {"uv": [47, 0], "uv_size": [20, 20]},
+								"west": {"uv": [0, 20], "uv_size": [27, 20]},
+								"up": {"uv": [27, 0], "uv_size": [20, 27]},
+								"down": {"uv": [27, 54], "uv_size": [20, -27]}
 							}
 						}
 					]

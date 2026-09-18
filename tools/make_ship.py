@@ -51,35 +51,44 @@ def write_json(path, data):
         f.write("\n")
 
 
+# O ícone do ovo: a arte dele, quadrada.
+#
+# Ele trocou este arquivo à mão pelo render inteiro, 626x470. A intenção está
+# certa — o ovo tem que mostrar a nave, e a minha redução pra 16x16 saía um
+# borrão. O problema é a FORMA: o slot do inventário é quadrado, e uma textura
+# 626x470 é esticada 1,33x na vertical pra caber nele. A nave apareceria
+# espichada.
+#
+# Então é o render dele, sem esticar: recortado no que tem tinta, centrado num
+# quadrado e reduzido pra LADO. 128 e não 16 porque ícone de item pode ter mais
+# resolução que isso, e a nave tem detalhe demais pra caber em 16 pixels.
+LADO = 128
+
+
 def make_icon():
-    from PIL import Image, ImageEnhance
+    from PIL import Image
 
     src = Image.open(os.path.join(ASSETS, RENDER)).convert("RGBA")
     caixa = src.getbbox()          # o que tem tinta, sem a moldura vazia
     if caixa:
         src = src.crop(caixa)
 
-    # Cabe inteira num quadrado, sem esticar: o lado maior manda.
     lado = max(src.size)
     quadro = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
     quadro.paste(src, ((lado - src.width) // 2, (lado - src.height) // 2))
-
-    icone = quadro.resize((16, 16), Image.LANCZOS)
-    # A redução lava a cor: em 16 pixels cada um é a média de mais de mil.
-    icone = ImageEnhance.Color(icone).enhance(1.35)
-    icone = ImageEnhance.Contrast(icone).enhance(1.2)
+    icone = quadro.resize((LADO, LADO), Image.LANCZOS)
 
     # Pixel quase transparente vira sujeira na beirada; ou é opaco ou não é.
     px = icone.load()
-    for y in range(16):
-        for x in range(16):
+    for y in range(LADO):
+        for x in range(LADO):
             r, g, b, a = px[x, y]
             px[x, y] = (r, g, b, 255 if a >= 128 else 0)
 
     destino = os.path.join(RP, "textures", NS, "items", f"{ICON_NAME}.png")
     os.makedirs(os.path.dirname(destino), exist_ok=True)
     icone.save(destino)
-    return sum(1 for y in range(16) for x in range(16) if px[x, y][3])
+    return sum(1 for y in range(LADO) for x in range(LADO) if px[x, y][3])
 
 
 def main():
@@ -119,7 +128,7 @@ def main():
 
     lixeiras = sum(row.count("L") for row in RECIPE_PATTERN)
     print(f"gh: receita de {lixeiras} lixeira(s) + material do Overworld -> {SPAWN_EGG}")
-    print(f"  ícone do ovo: {opacos} de 256 pixels com tinta, de {RENDER}")
+    print(f"  ícone do ovo: {LADO}x{LADO}, {opacos} pixels com tinta, de {RENDER}")
 
 
 if __name__ == "__main__":

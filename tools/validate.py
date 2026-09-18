@@ -487,6 +487,19 @@ for _atlas, _pasta in (
 # de bloco vai de -8 a 8 em x e z e de 0 a 16 em y: o que passa disso invade o
 # vizinho e a caixa de colisão não acompanha. make_trash_can.py encolhe o
 # modelo; esta regra é o que garante que ele encolheu o bastante.
+#
+# A medida é a caixa DEPOIS da rotação. O cubo da lixeira vem girado 90° em X,
+# o que troca a altura pela profundidade — medir a caixa crua responderia sobre
+# um modelo que não é o que aparece no jogo.
+def _gira(p, pivo, rot):
+    x, y, z = (p[i] - pivo[i] for i in range(3))
+    rx, ry, rz = (math.radians(a) for a in rot)
+    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
+    x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)
+    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
+    return [x + pivo[0], y + pivo[1], z + pivo[2]]
+
+
 _models_dir = os.path.join(RP, "models", "blocks")
 for _p, _d in docs.items():
     if not _p.startswith(_models_dir) or not isinstance(_d, dict):
@@ -498,10 +511,17 @@ for _p, _d in docs.items():
                 _o, _t = _c.get("origin"), _c.get("size")
                 if not (_o and _t):
                     continue
+                _rot = _c.get("rotation") or [0, 0, 0]
+                _pivo = _c.get("pivot") or [0, 0, 0]
+                _cantos = [[_o[0] + _t[0] * a, _o[1] + _t[1] * b, _o[2] + _t[2] * d]
+                           for a in (0, 1) for b in (0, 1) for d in (0, 1)]
+                if any(_rot):
+                    _cantos = [_gira(_q, _pivo, _rot) for _q in _cantos]
                 _lim = [(-8, 8), (0, 16), (-8, 8)]
                 for _i, _eixo in enumerate("xyz"):
-                    _a, _b = _o[_i], _o[_i] + _t[_i]
-                    if _a < _lim[_i][0] - 0.001 or _b > _lim[_i][1] + 0.001:
+                    _a = min(_q[_i] for _q in _cantos)
+                    _b = max(_q[_i] for _q in _cantos)
+                    if _a < _lim[_i][0] - 0.01 or _b > _lim[_i][1] + 0.01:
                         err(f"{_gid}: o cubo vai de {_a:.2f} a {_b:.2f} em {_eixo}, "
                             f"fora do bloco ({_lim[_i][0]} a {_lim[_i][1]})")
 
@@ -1907,10 +1927,43 @@ for _p, _d in docs.items():
                             f"da textura ({_x0},{_y0})-({_x1},{_y1}) de "
                             f"{_iw}x{_ih} — o bloco sai invisível")
 
+# --- 4d-octies. Ícone de item é QUADRADO --------------------------------------
+#
+# O slot do inventário é quadrado e a textura é esticada pra caber nele. Uma
+# arte 626x470 — foi o que aconteceu com o ovo da nave — aparece espichada 1,33x
+# na vertical, e nada avisa: o ícone "funciona", só está torto.
+for _chave, _entrada in (item_tex_data or {}).items():
+    _rel = _entrada.get("textures")
+    if not isinstance(_rel, str):
+        continue
+    _arq = os.path.join(RP, _rel + ".png")
+    if not os.path.isfile(_arq):
+        continue
+    try:
+        _iw, _ih, _ = png_rgba(_arq)
+    except Exception as e:  # noqa: BLE001
+        err(f"não deu pra ler o ícone {_arq}: {e}")
+        continue
+    if _iw != _ih:
+        err(f"ícone {_chave} é {_iw}x{_ih}: ícone de item tem que ser quadrado, "
+            f"senão o inventário o estica pra caber no slot")
+
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):
-    if not os.path.isfile(os.path.join(base, "pack_icon.png")):
+    icone = os.path.join(base, "pack_icon.png")
+    if not os.path.isfile(icone):
         warn(f"{name} sem pack_icon.png")
+    else:
+        # O ícone é ARTE DELE (tools/assets/pack_icon.png). Havia aqui um ícone
+        # desenhado em código, e todo build reescrevia o dele por cima — em
+        # silêncio. Só apareceu comparando o .mcaddon que ele editou à mão com
+        # o que sai do build.
+        fonte = os.path.join(ROOT, "tools", "assets", "pack_icon.png")
+        if os.path.isfile(fonte):
+            with open(fonte, "rb") as f1, open(icone, "rb") as f2:
+                if f1.read() != f2.read():
+                    err(f"{name}/pack_icon.png não é o arquivo de "
+                        f"tools/assets/pack_icon.png — algum gerador escreveu por cima")
 
 # --- 7. Imports dos scripts resolvem ------------------------------------------
 script_dir = os.path.join(BP, "scripts", "gh")

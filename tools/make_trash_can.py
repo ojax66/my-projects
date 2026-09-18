@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 """Gera a lixeira: bloco com modelo próprio que engole o item clicado nele.
 
-A ARTE É DELE (tools/assets/trash_can.png). O modelo e a textura são remontados
-aqui, e por um motivo concreto:
+O MODELO E A TEXTURA SÃO DELE, agora usados como vieram — as UVs do arquivo
+novo caem em cima do desenho, e não mais numa parte vazia da folha. (A primeira
+versão do .geo.json tinha as UVs num espaço de 512 apontando pra x 488..512, e
+lá a textura é toda transparente: as seis faces amostravam pixel vazio e o
+bloco ficava invisível no jogo. Foi ele quem remapeou.)
 
-  O .geo.json que veio tem as UVs num espaço de 512x512 apontando pra região
-  x 488..512, y 129..167. Na textura de 128x128 que veio junto, essa região é
-  TRANSPARENTE — o desenho todo está no canto (0,0)-(67,60). Resultado no jogo:
-  as seis faces amostram pixel vazio e o bloco fica invisível. Não é bug de
-  código, é modelo e textura de folhas diferentes.
-
-  Então a textura é REMONTADA no desdobramento de caixa do Bedrock, painel por
-  painel, a partir dos pedaços que ele desenhou; e o modelo vira um cubo com
-  `uv` de caixa, que é o mapeamento que o próprio jogo calcula a partir do
-  tamanho do cubo — impossível apontar pro vazio.
+O que este script faz com o modelo é UMA coisa: encolher pra caber no bloco.
+O cubo vem girado 90° em X, então quem manda é a caixa DEPOIS da rotação —
+16,53 x 22,32 x 16,53, ou seja um caixote alto, mais de um bloco e meio de
+altura. A escala é uniforme e a rotação é preservada, então a proporção e o
+desenho dele ficam intactos; só o tamanho muda.
 
 O comportamento (clicar com item pra jogar fora) é script: ver trashCan.js.
 """
 import json
+import math
 import os
 import shutil
 import sys
@@ -38,25 +37,10 @@ SHORT = "trash_can"
 GEO_SRC = "trash_can_src.geo.json"
 TEXTURE = "trash_can.png"
 
-# O cubo da lixeira, em unidades de bloco (16 = um bloco). Guarda a proporção
-# do modelo dele (20x20x27 ≈ 0,74 : 0,74 : 1) e cabe folgado no bloco.
-LARGURA, ALTURA, FUNDO = 12, 12, 14
-
-# Os painéis que ele desenhou na folha, e em que face cada um vai. O topo é o
-# vão escuro com lixo dentro — é o que faz o bloco se explicar sozinho.
-PAINEIS = {
-    "north": (2, 40, 21, 60),      # o emblema redondo, virado pra quem olha
-    "south": (27, 28, 47, 55),     # a porta de trás
-    "west": (0, 0, 24, 40),        # a lateral comprida, com as nervuras
-    "east": (0, 0, 24, 40),
-    "up": (48, 1, 67, 19),         # o vão aberto, com o lixo lá dentro
-    "down": (0, 0, 24, 40),        # o fundo: a mesma lateral, mais escura
-}
-ESCURECE = {"down": 0.55}
-
-# A folha que sai daqui: quadrada e potência de dois, como toda textura de
-# bloco. O desdobramento ocupa 2*(l+f) por (f+a) — 52x26 — e o resto fica vazio.
-FOLHA = 64
+# Depois de girado, o modelo tem que caber nisto, em unidades de bloco (16 = um
+# bloco). A altura é o que aperta: o caixote dele tem 22,3 de alto.
+ALTURA_MAX = 15.0
+LARGURA_MAX = 14.0
 
 PT = "Lixeira"
 EN = "Trash Can"
@@ -76,82 +60,96 @@ def write_json(path, data):
         f.write("\n")
 
 
-def caixa_uv(l, a, f):
-    """Onde cada face cai na folha, no desdobramento de caixa do Bedrock.
+def rotaciona(p, pivo, rot):
+    """Um ponto girado em torno do pivô, nos três eixos, em graus."""
+    x, y, z = (p[i] - pivo[i] for i in range(3))
+    rx, ry, rz = (math.radians(a) for a in rot)
+    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
+    x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)
+    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
+    return [x + pivo[0], y + pivo[1], z + pivo[2]]
 
-    É a conta que o próprio jogo faz a partir de `uv: [0,0]` e do tamanho do
-    cubo. Escrever a mesma conta aqui é o que permite PINTAR cada face no lugar
-    certo — e é por isso que o modelo não precisa de UV por face, que foi
-    justamente o que apontou pro vazio no arquivo original.
+
+def caixa_girada(cubos):
+    """A caixa que envolve os cubos DEPOIS de girados.
+
+    É ela que decide se o modelo cabe no bloco e é ela que vira a caixa de
+    colisão. Medir a caixa crua daria outro número: o cubo daqui vem girado 90°
+    em X, que troca a altura pela profundidade.
     """
-    return {
-        "up": (f, 0, l, f),
-        "down": (f + l, 0, l, f),
-        "west": (0, f, f, a),
-        "north": (f, f, l, a),
-        "east": (f + l, f, f, a),
-        "south": (f + l + f, f, l, a),
-    }
+    pontos = []
+    for c in cubos:
+        o, t = c["origin"], c["size"]
+        rot = c.get("rotation", [0, 0, 0])
+        pivo = c.get("pivot", [0, 0, 0])
+        for a in (0, 1):
+            for b in (0, 1):
+                for d in (0, 1):
+                    canto = [o[0] + t[0] * a, o[1] + t[1] * b, o[2] + t[2] * d]
+                    pontos.append(rotaciona(canto, pivo, rot) if any(rot) else canto)
+    lo = [min(p[i] for p in pontos) for i in range(3)]
+    hi = [max(p[i] for p in pontos) for i in range(3)]
+    return lo, hi
 
 
-def monta_textura(src):
-    """A folha de caixa, com um painel dele em cada face."""
-    from PIL import Image
+def encaixa_no_bloco(doc):
+    """O modelo dele, encolhido e assentado no chão do bloco.
 
-    folha = Image.new("RGBA", (FOLHA, FOLHA), (0, 0, 0, 0))
-    for face, (u, v, w, h) in caixa_uv(LARGURA, ALTURA, FUNDO).items():
-        painel = src.crop(PAINEIS[face]).resize((w, h), Image.NEAREST)
-        fator = ESCURECE.get(face)
-        if fator:
-            px = painel.load()
-            for y in range(painel.height):
-                for x in range(painel.width):
-                    c = px[x, y]
-                    px[x, y] = tuple(round(v2 * fator) for v2 in c[:3]) + (c[3],)
-        folha.paste(painel, (u, v))
-    return folha
+    Escala UNIFORME em torno da origem — a rotação comuta com ela, então a
+    caixa girada encolhe junto. Depois uma translação que centraliza em x e z e
+    apoia no chão. As UVs não são tocadas: são coordenadas de textura e não têm
+    nada a ver com o tamanho do cubo, e é isso que mantém o desenho dele exato.
+    """
+    geo = doc["minecraft:geometry"][0]
+    cubos = [c for b in geo["bones"] for c in b.get("cubes", [])]
+    if not cubos:
+        raise SystemExit("o modelo da lixeira não tem cubo nenhum")
 
+    lo, hi = caixa_girada(cubos)
+    alto = hi[1] - lo[1]
+    largo = max(hi[0] - lo[0], hi[2] - lo[2])
+    s = min(ALTURA_MAX / alto, LARGURA_MAX / largo, 1.0)
 
-def geometria():
-    """Um cubo com UV de caixa, assentado no chão e centrado no bloco."""
-    return {
-        "format_version": "1.12.0",
-        "minecraft:geometry": [{
-            "description": {
-                "identifier": f"geometry.{NS}.{SHORT}",
-                "texture_width": FOLHA,
-                "texture_height": FOLHA,
-                "visible_bounds_width": 2,
-                "visible_bounds_height": 2,
-                "visible_bounds_offset": [0, 0.5, 0],
-            },
-            "bones": [{
-                "name": SHORT,
-                "pivot": [0, 0, 0],
-                "cubes": [{
-                    "origin": [-LARGURA / 2, 0, -FUNDO / 2],
-                    "size": [LARGURA, ALTURA, FUNDO],
-                    "uv": [0, 0],
-                }],
-            }],
-        }],
-    }
+    for bone in geo["bones"]:
+        bone["pivot"] = [round(v * s, 4) for v in bone.get("pivot", [0, 0, 0])]
+        for c in bone.get("cubes", []):
+            c["origin"] = [round(v * s, 4) for v in c["origin"]]
+            c["size"] = [round(v * s, 4) for v in c["size"]]
+            if "pivot" in c:
+                c["pivot"] = [round(v * s, 4) for v in c["pivot"]]
+            if "inflate" in c:
+                c["inflate"] = round(c["inflate"] * s, 4)
+
+    lo, hi = caixa_girada([c for b in geo["bones"] for c in b.get("cubes", [])])
+    desloca = [-(lo[0] + hi[0]) / 2, -lo[1], -(lo[2] + hi[2]) / 2]
+    for bone in geo["bones"]:
+        bone["pivot"] = [round(bone["pivot"][i] + desloca[i], 4) for i in range(3)]
+        for c in bone.get("cubes", []):
+            c["origin"] = [round(c["origin"][i] + desloca[i], 4) for i in range(3)]
+            if "pivot" in c:
+                c["pivot"] = [round(c["pivot"][i] + desloca[i], 4) for i in range(3)]
+
+    lo, hi = caixa_girada([c for b in geo["bones"] for c in b.get("cubes", [])])
+    base = [round(v, 4) for v in lo]
+    tamanho = [round(hi[i] - lo[i], 4) for i in range(3)]
+    return doc, base, tamanho, s
 
 
 def main():
-    from PIL import Image
+    import shutil
 
-    doc = geometria()
-    geo_id = doc["minecraft:geometry"][0]["description"]["identifier"]
-    base = [-LARGURA / 2, 0, -FUNDO / 2]
-    tamanho = [LARGURA, ALTURA, FUNDO]
+    doc = json.load(open(os.path.join(ASSETS, GEO_SRC), encoding="utf-8"))
+    # O modelo vem com o nome do projeto do Blockbench dele
+    # ("geometry.Level 1 spaceship"); aqui ele entra na família do addon.
+    geo_id = f"geometry.{NS}.{SHORT}"
+    doc["minecraft:geometry"][0]["description"]["identifier"] = geo_id
+    doc, base, tamanho, escala = encaixa_no_bloco(doc)
 
     write_json(os.path.join(RP, "models", "blocks", f"{SHORT}.geo.json"), doc)
 
-    src = Image.open(os.path.join(ASSETS, TEXTURE)).convert("RGBA")
     tex_dir = os.path.join(RP, "textures", NS, "blocks")
     os.makedirs(tex_dir, exist_ok=True)
-    monta_textura(src).save(os.path.join(tex_dir, f"{SHORT}.png"))
+    shutil.copyfile(os.path.join(ASSETS, TEXTURE), os.path.join(tex_dir, f"{SHORT}.png"))
 
     # --- bloco ---------------------------------------------------------------
     # `alpha_test` e não `opaque`: a textura dele tem transparência (é grade
@@ -228,8 +226,9 @@ def main():
         replace_section(os.path.join(RP, "texts", f"{lang}.lang"), MARK,
                         [f"tile.{BLOCK}.name={nome}"])
 
-    print(f"lixeira: {geo_id}, cubo {tamanho} em {base}")
-    print(f"  textura {FOLHA}x{FOLHA} montada de {len(set(PAINEIS.values()))} painéis dele")
+    print(f"lixeira: {geo_id} a {escala:.3f} da escala dele")
+    print(f"  caixa girada {tamanho} em {base}")
+    print(f"  modelo e textura copiados de tools/assets, sem remontar nada")
 
 
 if __name__ == "__main__":

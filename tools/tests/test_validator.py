@@ -941,6 +941,46 @@ case("UV do modelo apontando pra parte vazia da textura", uv_apontando_pro_vazio
      r"aponta pra uma parte VAZIA")
 
 
+# --- icone de item nao quadrado ---------------------------------------------
+# O slot do inventario e quadrado e estica a textura pra caber. Ele trocou o
+# icone do ovo da nave pelo render inteiro, 626x470, e a nave apareceria
+# espichada 1,33x na vertical sem nada avisar.
+def icone_torto(tmp):
+    from struct import pack
+    import zlib
+    caminho = rp(tmp, "textures", "gh", "items", "silicon.png")
+    w, h = 16, 20
+    linhas = b"".join(b"\x00" + bytes([200, 200, 200, 255] * w) for _ in range(h))
+
+    def chunk(tipo, dados):
+        return (pack(">I", len(dados)) + tipo + dados
+                + pack(">I", zlib.crc32(tipo + dados) & 0xFFFFFFFF))
+
+    with open(caminho, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n"
+                + chunk(b"IHDR", pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(linhas))
+                + chunk(b"IEND", b""))
+
+
+case("icone de item nao quadrado", icone_torto,
+     r"tem que ser quadrado")
+
+
+# --- pack_icon sobrescrito por gerador --------------------------------------
+# Havia um icone de pack DESENHADO EM CODIGO aqui, e todo build reescrevia o
+# dele por cima, em silencio. So apareceu comparando o .mcaddon que ele editou
+# a mao com o que sai do build.
+def pack_icon_trocado(tmp):
+    caminho = rp(tmp, "pack_icon.png")
+    with open(caminho, "ab") as f:
+        f.write(b"\x00")
+
+
+case("pack_icon diferente do arquivo dele", pack_icon_trocado,
+     r"algum gerador escreveu por cima")
+
+
 # --- os conjuntos de protecao do config -------------------------------------
 # Os tres conjuntos (armadura de estrela, traje basico, traje reforcado) sao o que
 # liga a protecao. Um id errado ali nao da erro nenhum no jogo: a peca some do
