@@ -198,20 +198,22 @@ def write_json(path, data):
 
 # --- Ícones ------------------------------------------------------------------
 #
-# A FORMA vem das bases que ele mandou (tools/assets/armor_icon_base): são as
-# silhuetas de armadura do próprio jogo, com o contorno e o sombreado já
-# prontos. A COR vem da textura do traje. O que o gerador faz é trocar a paleta
-# da base pela do traje, degrau por degrau de brilho — o desenho continua sendo
-# o dele, e um traje repintado gera ícone repintado sozinho.
+# A SILHUETA vem das bases que ele mandou (tools/assets/armor_icon_base): são
+# as formas de armadura do próprio jogo, que é o que faz o ícone parecer parte
+# do inventário em vez de desenho de fora. Dali sai só o RECORTE — quais pixels
+# são peça e quais são fundo.
 #
-# Ícone desenhado por mim, como era antes, saía com silhueta minha no meio de
-# um inventário inteiro de silhuetas do jogo. Com a base dele o capacete tem a
-# forma de capacete que o jogador já reconhece.
+# O DESENHO DE DENTRO é feito aqui, do zero, na cor do traje: contorno escuro
+# na borda, luz vindo de cima e da esquerda como em todo ícone do jogo, e o
+# detalhe de cada peça (o visor, a costura do peito, o cano da bota). Nada é
+# copiado do sombreado da base.
+#
+# O capacete é FECHADO: a base vem com o rosto aberto e dois pontos soltos
+# embaixo, e no lugar disso entra o visor.
 ICON_BASE_DIR = os.path.join(ROOT, "tools", "assets", "armor_icon_base")
 
-# O visor: onde fica o rosto na base do capacete, e de onde tirar a cor dele na
-# folha do traje (a face frontal da cabeça, sem a moldura).
-VISOR_BOX = (4, 7, 11, 10)          # x0, y0, x1, y1 na base do capacete
+# O visor, no recorte do capacete: a faixa onde ficaria o rosto.
+VISOR = (5, 6, 10, 9)               # x0, y0, x1, y1
 FACE_UV = (8, 8)                    # canto da face frontal da cabeça na folha
 
 
@@ -224,7 +226,7 @@ def saturacao(c):
     return 0 if maior == 0 else (maior - menor) / maior
 
 
-def paleta_do_traje(sheet, degraus=6):
+def paleta_do_traje(sheet, degraus=5):
     """Os tons do CORPO do traje, do escuro pro claro.
 
     A face do capacete fica de fora: o visor é dourado no básico, e deixá-lo
@@ -236,9 +238,9 @@ def paleta_do_traje(sheet, degraus=6):
     em vez de marinho — o traje escuro virava o traje claro. 0,6 deixa passar o
     corpo e continua barrando o dourado (0,79) e o laranja (0,88).
     """
-    SATURADO = 0.6
     from collections import Counter
 
+    SATURADO = 0.6
     conta = Counter()
     for y in range(sheet.height):
         for x in range(sheet.width):
@@ -252,49 +254,165 @@ def paleta_do_traje(sheet, degraus=6):
         raise SystemExit("a folha do traje não tem tom de corpo nenhum")
 
     tons = sorted((c for c, _ in conta.most_common(12)), key=luma)
-    # Espalha os que sobraram nos `degraus` postos, sem repetir vizinho.
     return [tons[round(i * (len(tons) - 1) / (degraus - 1))] for i in range(degraus)]
 
 
 def tons_do_visor(sheet):
-    """Escuro, meio e claro do rosto — é a cor do visor daquele traje."""
+    """Escuro, meio e claro do visor daquele traje.
+
+    O meio é o tom MAIS USADO do rosto — no básico o dourado, no reforçado o
+    azul. Ordenar o rosto e pegar o do meio não servia: entram os pixels da
+    moldura do capacete, e no básico o "meio" saía cinza, o que apagava o
+    dourado justamente no lugar em que ele é a marca do traje.
+    """
+    from collections import Counter
+
     reg = [sheet.getpixel((FACE_UV[0] + x, FACE_UV[1] + y))[:3]
            for y in range(1, 7) for x in range(1, 7)]
-    reg.sort(key=luma)
-    return [reg[0], reg[len(reg) // 2], reg[-1]]
+    meio = Counter(reg).most_common(1)[0][0]
+    escuro = tuple(round(c * 0.55) for c in meio)
+    claro = tuple(min(255, round(c + (255 - c) * 0.45)) for c in meio)
+    return [escuro, meio, claro]
+
+
+def recorte(piece):
+    """Quais pixels são peça, lidos da base dele.
+
+    O capacete sai FECHADO: a base traz o rosto vazado e dois pontos soltos
+    embaixo. Cada linha do domo vira um trecho cheio, de ponta a ponta, e os
+    pontos soltos somem — é onde o visor entra.
+    """
+    from PIL import Image
+
+    base = Image.open(os.path.join(ICON_BASE_DIR, f"{piece}.png")).convert("RGBA")
+    mask = [[base.getpixel((x, y))[3] > 0 for x in range(16)] for y in range(16)]
+    if piece != "helmet":
+        return mask
+
+    # Só o bloco de linhas GRUDADAS de cima: os dois pontos soltos lá embaixo
+    # ficam de fora — com o queixo fechado eles flutuariam.
+    linhas = [y for y in range(16) if any(mask[y])]
+    corpo = [linhas[0]]
+    for y in linhas[1:]:
+        if y != corpo[-1] + 1:
+            break
+        corpo.append(y)
+
+    fechado = [[False] * 16 for _ in range(16)]
+    for y in corpo:
+        cheios = [x for x in range(16) if mask[y][x]]
+        # A linha do queixo vem partida no meio; fechar é preencher de ponta a
+        # ponta. O resto do domo já é inteiro e não muda.
+        for x in range(min(cheios), max(cheios) + 1):
+            fechado[y][x] = True
+    return fechado
+
+
+def na_borda(mask, x, y):
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nx, ny = x + dx, y + dy
+        if not (0 <= nx < 16 and 0 <= ny < 16) or not mask[ny][nx]:
+            return True
+    return False
+
+
+def tom_do_corpo(piece, x, y, caixa):
+    """O tom (0 escuro … 4 claro) de um pixel de dentro da peça.
+
+    A base de tudo é a luz de cima e da esquerda, que é como o jogo desenha
+    metal: o alto-esquerdo é o mais claro, o baixo-direito o mais escuro. Por
+    cima disso vem o detalhe de cada peça.
+    """
+    x0, y0, x1, y1 = caixa
+    nx = (x - x0) / max(1, x1 - x0)
+    ny = (y - y0) / max(1, y1 - y0)
+    tom = 4.0 - 1.9 * (0.45 * nx + 0.55 * ny)
+
+    if piece == "chestplate":
+        if y <= 4:
+            tom += 0.7                       # ombreiras, a parte que pega luz
+        if x in (7, 8) and y >= 5:
+            tom -= 1.1                       # a costura do meio do peito
+        if y >= 8 and (y - 8) % 2 == 1:
+            tom -= 0.6                       # as costelas do peitoral
+        if y >= 13:
+            tom -= 0.6                       # a barra de baixo, na sombra
+    elif piece == "leggings":
+        if y <= 3:
+            tom -= 0.9                       # o cinto
+        if y == 10:
+            tom -= 0.7                       # o reforço do joelho
+        if x in (3, 4, 11, 12):
+            tom -= 0.5                       # o lado de fora de cada perna
+        if x in (7, 8):
+            tom -= 0.3                       # a virilha, entre as pernas
+    elif piece == "boots":
+        if y >= 11:
+            tom -= 1.4                       # a sola
+        elif y >= 9:
+            tom += 0.5                       # o peito do pé, virado pra cima
+        if y <= 5:
+            tom -= 0.3                       # o cano, mais estreito e sombreado
+    elif piece == "helmet":
+        # Sem bônus no alto: o capacete é pequeno e o degradê inteiro cabia nas
+        # três primeiras linhas, o que deixava o domo quase branco enquanto o
+        # peitoral do mesmo traje ficava escuro — os dois pareciam de trajes
+        # diferentes no inventário.
+        if y >= 10:
+            tom -= 1.0                       # o queixo, na sombra
+
+    return max(1, min(4, round(tom)))
+
+
+def no_visor(x, y):
+    """O pixel cai no visor? Os quatro cantos ficam de fora: é o que arredonda
+    o vidro em vez de deixar um retângulo colado no meio do capacete."""
+    x0, y0, x1, y1 = VISOR
+    if not (x0 <= x <= x1 and y0 <= y <= y1):
+        return False
+    return not ((x in (x0, x1)) and (y in (y0, y1)))
+
+
+def tom_do_visor(x, y):
+    """O vidro é a parte CLARA do capacete, não uma faixa escura.
+
+    Luz na maior parte dele, a curva do lado direito um tom abaixo e a sombra
+    na borda de baixo. É o que faz o visor ler como vidro nos dois trajes — no
+    reforçado, que é marinho, um visor no tom do corpo sumia dentro do
+    capacete.
+    """
+    x0, y0, x1, y1 = VISOR
+    if y == y1:
+        return 0                             # a sombra da borda de baixo
+    if x >= x1 - 1:
+        return 1                             # a curva do lado direito
+    return 2                                 # o vidro
 
 
 def make_icon(piece, sheets):
     from PIL import Image
 
-    base = Image.open(os.path.join(ICON_BASE_DIR, f"{piece}.png")).convert("RGBA")
     corpo = paleta_do_traje(sheets[1])
     visor = tons_do_visor(sheets[1])
+    mask = recorte(piece)
 
-    opacos = [base.getpixel((x, y)) for y in range(base.height)
-              for x in range(base.width) if base.getpixel((x, y))[3]]
-    lo, hi = luma(min(opacos, key=luma)), luma(max(opacos, key=luma))
-    faixa = (hi - lo) or 1
+    xs = [x for y in range(16) for x in range(16) if mask[y][x]]
+    ys = [y for y in range(16) for x in range(16) if mask[y][x]]
+    caixa = (min(xs), min(ys), max(xs), max(ys))
 
-    out = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    out = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
     px = out.load()
-    for y in range(base.height):
-        for x in range(base.width):
-            c = base.getpixel((x, y))
-            if c[3] == 0:
+    for y in range(16):
+        for x in range(16):
+            if not mask[y][x]:
                 continue
-            t = (luma(c) - lo) / faixa
-            no_visor = (piece == "helmet"
-                        and VISOR_BOX[0] <= x <= VISOR_BOX[2]
-                        and VISOR_BOX[1] <= y <= VISOR_BOX[3])
-            if no_visor:
-                # O rosto é a parte mais escura da base — mapeado cru, o visor
-                # do traje escuro some dentro do capacete escuro. A escada do
-                # visor começa no meio pra ele aparecer nos dois trajes.
-                escada, t = visor, 0.35 + 0.65 * t
-            else:
-                escada = corpo
-            px[x, y] = escada[min(len(escada) - 1, round(t * (len(escada) - 1)))] + (255,)
+            if na_borda(mask, x, y):
+                px[x, y] = corpo[0] + (255,)          # o contorno
+                continue
+            if piece == "helmet" and no_visor(x, y):
+                px[x, y] = visor[tom_do_visor(x, y)] + (255,)
+                continue
+            px[x, y] = corpo[tom_do_corpo(piece, x, y, caixa)] + (255,)
     return out
 
 
