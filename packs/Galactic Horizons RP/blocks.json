@@ -32,26 +32,6 @@
     "textures": "gh_sun_edge",
     "sound": "stone"
   },
-  "gh:earth_ocean": {
-    "textures": "gh_earth_ocean",
-    "sound": "stone"
-  },
-  "gh:earth_shallow": {
-    "textures": "gh_earth_shallow",
-    "sound": "stone"
-  },
-  "gh:earth_land": {
-    "textures": "gh_earth_land",
-    "sound": "stone"
-  },
-  "gh:earth_forest": {
-    "textures": "gh_earth_forest",
-    "sound": "stone"
-  },
-  "gh:earth_ice": {
-    "textures": "gh_earth_ice",
-    "sound": "stone"
-  },
   "gh:moon_regolith_light": {
     "textures": "gh_moon_regolith_light",
     "sound": "stone"

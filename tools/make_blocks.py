@@ -105,11 +105,6 @@ BLOCKS = {
                         light=15, hardness=2.0, solid=False, dampening=0),
 
     # --- Terra ---------------------------------------------------------------
-    "earth_ocean":   block("earth_ocean", "#063E93", "Oceano Profundo", "Deep Ocean"),
-    "earth_shallow": block("earth_shallow", "#056C91", "Água Rasa", "Shallow Water"),
-    "earth_land":    block("earth_land", "#038500", "Continente", "Continent", hardness=1.0),
-    "earth_forest":  block("earth_forest", "#026002", "Floresta", "Forest", hardness=1.0),
-    "earth_ice":     block("earth_ice", "#E8EFFA", "Calota Polar", "Polar Ice Cap", hardness=1.0),
 
     # --- Lua: os tons são BLOCOS separados, não buraco desenhado na textura ---
     # A cor de mapa é a média da textura que ele desenhou.
@@ -286,30 +281,65 @@ def main():
         })
 
     # --- 2. RP: blocks.json ---------------------------------------------------
-    blocks_json = {"format_version": [1, 1, 0]}
+    # MESCLA, pelo mesmo motivo do terrain_texture logo abaixo: blocos de outros
+    # geradores (a lixeira) moram neste arquivo também. O que sai da mescla é a
+    # entrada de bloco deste gerador que não existe mais.
+    caminho = os.path.join(RP, "blocks.json")
+    blocks_json = json.load(open(caminho, encoding="utf-8")) if os.path.isfile(caminho) else {}
+    blocks_json["format_version"] = [1, 1, 0]
+
+    vivos = {f"{NS}:{short}" for short in BLOCKS}
+    for chave in list(blocks_json):
+        if chave == "format_version" or chave in vivos:
+            continue
+        curto = chave.split(":")[-1]
+        # Só apaga o que ERA daqui: bloco cujo JSON de comportamento sumiu.
+        if not os.path.isfile(os.path.join(BP, "blocks", f"{curto}.json")):
+            del blocks_json[chave]
+
     for short in BLOCKS:
         blocks_json[f"{NS}:{short}"] = {
             "textures": texture_key(short),
             "sound": "stone",
         }
-    write_json(os.path.join(RP, "blocks.json"), blocks_json)
+    write_json(caminho, blocks_json)
 
     # --- 3. RP: terrain_texture.json -----------------------------------------
-    write_json(
-        os.path.join(RP, "textures", "terrain_texture.json"),
-        {
-            "resource_pack_name": NS,
-            "texture_name": "atlas.terrain",
-            "padding": 8,
-            "num_mip_levels": 4,
-            "texture_data": {
-                texture_key(short): {
-                    "textures": f"textures/{NS}/blocks/{BLOCKS[short]['texture']}"
-                }
-                for short in BLOCKS
-            },
-        },
-    )
+    #
+    # MESCLA, não reescreve. O atlas é compartilhado: a lixeira é um bloco de
+    # outro gerador (make_trash_can.py), e reescrever o arquivo inteiro aqui
+    # levava a entrada dela junto — no jogo ela virava cubo roxo, e o único
+    # aviso era esse. É o mesmo motivo do item_texture.json e do .lang.
+    #
+    # O que sai da mescla: chave de bloco que este gerador conhecia e não gera
+    # mais (os cinco da Terra, agora que ela é só modelo). Chave de outro
+    # gerador fica.
+    caminho = os.path.join(RP, "textures", "terrain_texture.json")
+    doc = json.load(open(caminho, encoding="utf-8")) if os.path.isfile(caminho) else {}
+    dados = doc.get("texture_data", {}) if isinstance(doc, dict) else {}
+
+    nossas = {texture_key(short) for short in BLOCKS}
+    for chave in list(dados):
+        # "nossa" é a que aponta pra pasta de blocos deste pack e não está mais
+        # na tabela: é entrada de bloco que deixou de existir.
+        alvo = dados[chave].get("textures")
+        if (isinstance(alvo, str) and alvo.startswith(f"textures/{NS}/blocks/")
+                and chave not in nossas
+                and not os.path.isfile(os.path.join(RP, alvo + ".png"))):
+            del dados[chave]
+
+    for short in BLOCKS:
+        dados[texture_key(short)] = {
+            "textures": f"textures/{NS}/blocks/{BLOCKS[short]['texture']}"
+        }
+
+    write_json(caminho, {
+        "resource_pack_name": NS,
+        "texture_name": "atlas.terrain",
+        "padding": 8,
+        "num_mip_levels": 4,
+        "texture_data": dados,
+    })
 
     # --- 4. Nomes nos .lang ---------------------------------------------------
     # Reescreve só o bloco marcado, pra não perder as linhas escritas à mão.

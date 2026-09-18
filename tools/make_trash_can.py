@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Gera a lixeira: bloco com modelo próprio que engole o item clicado nele.
 
-O modelo e a textura são DELE (tools/assets/trash_can_src.geo.json e
-trash_can.png). O que este script faz com o modelo é UMA coisa: encolher pra
-caber num bloco.
+A ARTE É DELE (tools/assets/trash_can.png). O modelo e a textura são remontados
+aqui, e por um motivo concreto:
 
-POR QUE ENCOLHER. O modelo veio com 20x20x27 unidades e o canto em x = -9,3.
-Modelo de bloco no Bedrock vive num espaço em que x e z vão de -8 a 8 e y de 0
-a 16 — ou seja, ele estourava a caixa em x e era quase o dobro de um bloco em
-z. Bloco maior que o próprio bloco atravessa o vizinho e a caixa de colisão não
-acompanha. A escala é UNIFORME, então a proporção dele fica intacta; só o
-tamanho muda.
+  O .geo.json que veio tem as UVs num espaço de 512x512 apontando pra região
+  x 488..512, y 129..167. Na textura de 128x128 que veio junto, essa região é
+  TRANSPARENTE — o desenho todo está no canto (0,0)-(67,60). Resultado no jogo:
+  as seis faces amostram pixel vazio e o bloco fica invisível. Não é bug de
+  código, é modelo e textura de folhas diferentes.
+
+  Então a textura é REMONTADA no desdobramento de caixa do Bedrock, painel por
+  painel, a partir dos pedaços que ele desenhou; e o modelo vira um cubo com
+  `uv` de caixa, que é o mapeamento que o próprio jogo calcula a partir do
+  tamanho do cubo — impossível apontar pro vazio.
 
 O comportamento (clicar com item pra jogar fora) é script: ver trashCan.js.
 """
@@ -35,10 +38,25 @@ SHORT = "trash_can"
 GEO_SRC = "trash_can_src.geo.json"
 TEXTURE = "trash_can.png"
 
-# O maior lado do modelo passa a ter esta altura, em unidades de bloco (16 = um
-# bloco inteiro). 15 deixa um fio de folga pra a lixeira não encostar na parede
-# do vizinho.
-ALVO = 15.0
+# O cubo da lixeira, em unidades de bloco (16 = um bloco). Guarda a proporção
+# do modelo dele (20x20x27 ≈ 0,74 : 0,74 : 1) e cabe folgado no bloco.
+LARGURA, ALTURA, FUNDO = 12, 12, 14
+
+# Os painéis que ele desenhou na folha, e em que face cada um vai. O topo é o
+# vão escuro com lixo dentro — é o que faz o bloco se explicar sozinho.
+PAINEIS = {
+    "north": (2, 40, 21, 60),      # o emblema redondo, virado pra quem olha
+    "south": (27, 28, 47, 55),     # a porta de trás
+    "west": (0, 0, 24, 40),        # a lateral comprida, com as nervuras
+    "east": (0, 0, 24, 40),
+    "up": (48, 1, 67, 19),         # o vão aberto, com o lixo lá dentro
+    "down": (0, 0, 24, 40),        # o fundo: a mesma lateral, mais escura
+}
+ESCURECE = {"down": 0.55}
+
+# A folha que sai daqui: quadrada e potência de dois, como toda textura de
+# bloco. O desdobramento ocupa 2*(l+f) por (f+a) — 52x26 — e o resto fica vazio.
+FOLHA = 64
 
 PT = "Lixeira"
 EN = "Trash Can"
@@ -58,52 +76,82 @@ def write_json(path, data):
         f.write("\n")
 
 
-def scale_geometry(doc):
-    """O modelo dele, encolhido e assentado no chão do bloco.
+def caixa_uv(l, a, f):
+    """Onde cada face cai na folha, no desdobramento de caixa do Bedrock.
 
-    Só posição e tamanho mudam. As UVs são coordenadas de textura e não têm
-    nada a ver com o tamanho do cubo, então passam intactas — é o que mantém o
-    desenho dele exatamente como ele fez.
+    É a conta que o próprio jogo faz a partir de `uv: [0,0]` e do tamanho do
+    cubo. Escrever a mesma conta aqui é o que permite PINTAR cada face no lugar
+    certo — e é por isso que o modelo não precisa de UV por face, que foi
+    justamente o que apontou pro vazio no arquivo original.
     """
-    geo = doc["minecraft:geometry"][0]
+    return {
+        "up": (f, 0, l, f),
+        "down": (f + l, 0, l, f),
+        "west": (0, f, f, a),
+        "north": (f, f, l, a),
+        "east": (f + l, f, f, a),
+        "south": (f + l + f, f, l, a),
+    }
 
-    cubos = [c for b in geo["bones"] for c in b.get("cubes", [])]
-    if not cubos:
-        raise SystemExit("o modelo da lixeira não tem cubo nenhum")
 
-    lo = [min(c["origin"][i] for c in cubos) for i in range(3)]
-    hi = [max(c["origin"][i] + c["size"][i] for c in cubos) for i in range(3)]
-    maior = max(hi[i] - lo[i] for i in range(3))
-    s = ALVO / maior
+def monta_textura(src):
+    """A folha de caixa, com um painel dele em cada face."""
+    from PIL import Image
 
-    # Depois de escalar: centrado em x e z, apoiado no chão em y.
-    largura = [(hi[i] - lo[i]) * s for i in range(3)]
-    base = [-largura[0] / 2, 0.0, -largura[2] / 2]
+    folha = Image.new("RGBA", (FOLHA, FOLHA), (0, 0, 0, 0))
+    for face, (u, v, w, h) in caixa_uv(LARGURA, ALTURA, FUNDO).items():
+        painel = src.crop(PAINEIS[face]).resize((w, h), Image.NEAREST)
+        fator = ESCURECE.get(face)
+        if fator:
+            px = painel.load()
+            for y in range(painel.height):
+                for x in range(painel.width):
+                    c = px[x, y]
+                    px[x, y] = tuple(round(v2 * fator) for v2 in c[:3]) + (c[3],)
+        folha.paste(painel, (u, v))
+    return folha
 
-    for bone in geo["bones"]:
-        bone["pivot"] = [0, 0, 0]
-        for c in bone.get("cubes", []):
-            c["origin"] = [round(base[i] + (c["origin"][i] - lo[i]) * s, 4)
-                           for i in range(3)]
-            c["size"] = [round(c["size"][i] * s, 4) for i in range(3)]
-            if "inflate" in c:
-                c["inflate"] = round(c["inflate"] * s, 4)
 
-    return doc, [round(v, 4) for v in base], [round(v, 4) for v in largura], s
+def geometria():
+    """Um cubo com UV de caixa, assentado no chão e centrado no bloco."""
+    return {
+        "format_version": "1.12.0",
+        "minecraft:geometry": [{
+            "description": {
+                "identifier": f"geometry.{NS}.{SHORT}",
+                "texture_width": FOLHA,
+                "texture_height": FOLHA,
+                "visible_bounds_width": 2,
+                "visible_bounds_height": 2,
+                "visible_bounds_offset": [0, 0.5, 0],
+            },
+            "bones": [{
+                "name": SHORT,
+                "pivot": [0, 0, 0],
+                "cubes": [{
+                    "origin": [-LARGURA / 2, 0, -FUNDO / 2],
+                    "size": [LARGURA, ALTURA, FUNDO],
+                    "uv": [0, 0],
+                }],
+            }],
+        }],
+    }
 
 
 def main():
-    doc = json.load(open(os.path.join(ASSETS, GEO_SRC), encoding="utf-8"))
-    doc, base, tamanho, escala = scale_geometry(doc)
-    # O modelo dele vem como `geometry.Trash_can`. Aqui ele entra na família do
-    # addon, como todo o resto: `geometry.gh.<coisa>`.
-    geo_id = f"geometry.{NS}.{SHORT}"
-    doc["minecraft:geometry"][0]["description"]["identifier"] = geo_id
+    from PIL import Image
+
+    doc = geometria()
+    geo_id = doc["minecraft:geometry"][0]["description"]["identifier"]
+    base = [-LARGURA / 2, 0, -FUNDO / 2]
+    tamanho = [LARGURA, ALTURA, FUNDO]
 
     write_json(os.path.join(RP, "models", "blocks", f"{SHORT}.geo.json"), doc)
+
+    src = Image.open(os.path.join(ASSETS, TEXTURE)).convert("RGBA")
     tex_dir = os.path.join(RP, "textures", NS, "blocks")
     os.makedirs(tex_dir, exist_ok=True)
-    shutil.copyfile(os.path.join(ASSETS, TEXTURE), os.path.join(tex_dir, f"{SHORT}.png"))
+    monta_textura(src).save(os.path.join(tex_dir, f"{SHORT}.png"))
 
     # --- bloco ---------------------------------------------------------------
     # `alpha_test` e não `opaque`: a textura dele tem transparência (é grade
@@ -150,6 +198,8 @@ def main():
     write_json(path, doc_tex)
 
     # --- blocks.json ---------------------------------------------------------
+    # Bloco custom acha a textura pelo material_instances; o que esta entrada
+    # traz é o SOM — sem ela a lixeira quebra e pisa com som de pedra.
     path = os.path.join(RP, "blocks.json")
     doc_blk = json.load(open(path, encoding="utf-8")) if os.path.isfile(path) else {
         "format_version": [1, 1, 0]
@@ -178,8 +228,8 @@ def main():
         replace_section(os.path.join(RP, "texts", f"{lang}.lang"), MARK,
                         [f"tile.{BLOCK}.name={nome}"])
 
-    print(f"lixeira: {geo_id} a {escala:.3f} da escala dele")
-    print(f"  caixa {tamanho} em {base}")
+    print(f"lixeira: {geo_id}, cubo {tamanho} em {base}")
+    print(f"  textura {FOLHA}x{FOLHA} montada de {len(set(PAINEIS.values()))} painéis dele")
 
 
 if __name__ == "__main__":

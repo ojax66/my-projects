@@ -6,6 +6,7 @@ dependência apontando pro pack errado, identificador que um arquivo declara e
 outro referencia com outro nome, textura citada que não existe.
 """
 import json
+import math
 import os
 import re
 import struct
@@ -221,10 +222,36 @@ if os.path.isfile(bp_lang):
         err(f"BP/texts/en_US.lang tem {len(stray)} nome(s) de item/bloco/bioma — "
             f"o jogo ignora isso no behavior pack; mova pro RP/texts")
 
+# Um id de paleta pode ser DUAS coisas: um bloco de verdade, ou uma cor do
+# modelo de um corpo que não tem versão de blocos (a Terra, `built: false`).
+# No segundo caso ele nunca é colocado no mundo — quem o consome é o gerador da
+# textura do modelo, via a cor média em block_colors.json.
+#
+# A checagem continua valendo pros dois: block_colors.json é GERADO a partir
+# das texturas, então um id com erro de digitação não está lá, e é pego aqui do
+# mesmo jeito.
+_cores_path = os.path.join(ROOT, "tools", "assets", "block_colors.json")
+CORES_DE_MODELO = set()
+if os.path.isfile(_cores_path):
+    try:
+        with open(_cores_path, encoding="utf-8") as f:
+            CORES_DE_MODELO = set(json.load(f))
+    except Exception as e:  # noqa: BLE001
+        err(f"block_colors.json ilegível: {e}")
+
 for bid in sorted(used_blocks):
-    if bid not in declared_blocks:
-        err(f"paleta usa {bid}, que não tem JSON de bloco no BP")
-        continue
+    if bid not in declared_blocks and bid not in CORES_DE_MODELO:
+        err(f"paleta usa {bid}, que não é bloco declarado nem cor de modelo "
+            f"(block_colors.json)")
+
+# As peças de TODO bloco declarado — não só dos que alguma paleta usa.
+#
+# Este laço varria `used_blocks`, e por isso a lixeira passava batido: ela não
+# entra em paleta nenhuma (ninguém a GERA, o jogador é que a coloca). Quando o
+# make_blocks.py reescreveu o terrain_texture.json por cima e levou a entrada
+# dela junto, o validador não viu nada — e um bloco sem entrada no atlas é cubo
+# roxo no jogo.
+for bid in sorted(declared_blocks):
     if bid not in rp_blocks:
         err(f"{bid} não está em RP/blocks.json — viraria cubo roxo")
     if bid not in lang_names:
@@ -1801,6 +1828,84 @@ if any(NAVE in (config_src or "") for _ in (1,)) or True:
     if NAVE not in (config_src or ""):
         err(f"{NAVE} nao esta em PRESSURIZED_VEHICLES — o piloto sufocaria e "
             f"congelaria dentro da propria nave")
+
+# --- 4d-septies. As UVs do modelo apontam pra textura com TINTA ---------------
+#
+# Foi assim que a lixeira nasceu invisível: o .geo.json tinha as UVs num espaço
+# de 512 apontando pra x 488..512, e nessa região a textura de 128 que veio
+# junto é toda transparente. As seis faces amostravam pixel vazio, o bloco
+# sumia no jogo e nada avisava — nem erro no console, nem cubo roxo. Modelo e
+# textura eram de folhas diferentes.
+#
+# A conta é a mesma que o jogo faz: `uv: [u, v]` num cubo se desdobra nas seis
+# faces pelo TAMANHO do cubo; `uv` como objeto traz cada face já escrita.
+def _faces_de_caixa(u, v, l, a, f):
+    return {
+        "up": (u + f, v, l, f), "down": (u + f + l, v, l, f),
+        "west": (u, v + f, f, a), "north": (u + f, v + f, l, a),
+        "east": (u + f + l, v + f, f, a), "south": (u + f + l + f, v + f, l, a),
+    }
+
+
+_modelos_dir = os.path.join(RP, "models", "blocks")
+for _p, _d in docs.items():
+    if not _p.startswith(_modelos_dir) or not isinstance(_d, dict):
+        continue
+    for _geo in _d.get("minecraft:geometry", []) or []:
+        _desc = _geo.get("description", {})
+        _gid = _desc.get("identifier", os.path.basename(_p))
+
+        # Qual bloco usa esta geometria, e com que textura.
+        _tex_arquivo = None
+        for _bid, (_bp, _bdoc) in declared_blocks.items():
+            _comps = _bdoc["minecraft:block"]["components"]
+            if _comps.get("minecraft:geometry") != _gid:
+                continue
+            _chave = (_comps.get("minecraft:material_instances", {})
+                      .get("*", {}).get("texture"))
+            _rel = (terrain_data.get(_chave) or {}).get("textures")
+            if isinstance(_rel, str):
+                _tex_arquivo = os.path.join(RP, _rel + ".png")
+        if not _tex_arquivo or not os.path.isfile(_tex_arquivo):
+            continue
+
+        try:
+            _iw, _ih, _px = png_rgba(_tex_arquivo)
+        except Exception as e:  # noqa: BLE001
+            err(f"{_gid}: não deu pra ler a textura {_tex_arquivo}: {e}")
+            continue
+        _escala_x = _iw / (_desc.get("texture_width") or _iw)
+        _escala_y = _ih / (_desc.get("texture_height") or _ih)
+
+        for _bone in _geo.get("bones", []) or []:
+            for _c in _bone.get("cubes", []) or []:
+                _uv = _c.get("uv")
+                _t = _c.get("size") or [0, 0, 0]
+                if isinstance(_uv, list):
+                    _rects = _faces_de_caixa(_uv[0], _uv[1], *_t)
+                elif isinstance(_uv, dict):
+                    _rects = {}
+                    for _face, _info in _uv.items():
+                        _fu, _fv = _info.get("uv", [0, 0])
+                        _fw, _fh = _info.get("uv_size", [0, 0])
+                        _rects[_face] = (_fu, _fv, _fw, _fh)
+                else:
+                    continue
+
+                for _face, (_u, _v, _w, _h) in _rects.items():
+                    _x0 = int(min(_u, _u + _w) * _escala_x)
+                    _x1 = int(math.ceil(max(_u, _u + _w) * _escala_x))
+                    _y0 = int(min(_v, _v + _h) * _escala_y)
+                    _y1 = int(math.ceil(max(_v, _v + _h) * _escala_y))
+                    _tinta = 0
+                    for _y in range(max(0, _y0), min(_ih, _y1)):
+                        for _x in range(max(0, _x0), min(_iw, _x1)):
+                            if _px[(_y * _iw + _x) * 4 + 3]:
+                                _tinta += 1
+                    if _tinta == 0:
+                        err(f"{_gid}: a face {_face} aponta pra uma parte VAZIA "
+                            f"da textura ({_x0},{_y0})-({_x1},{_y1}) de "
+                            f"{_iw}x{_ih} — o bloco sai invisível")
 
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):

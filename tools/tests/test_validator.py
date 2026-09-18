@@ -923,6 +923,24 @@ case("modelo de bloco maior que o bloco", modelo_estourando_o_bloco,
      r"fora do bloco")
 
 
+# --- UV do modelo apontando pro vazio ---------------------------------------
+# Foi assim que a lixeira nasceu invisivel: o .geo.json veio com as UVs de uma
+# folha e a textura era outra, entao as seis faces amostravam pixel
+# transparente. No jogo nao havia erro nenhum — o bloco simplesmente sumia.
+def uv_apontando_pro_vazio(tmp):
+    caminho = rp(tmp, "models", "blocks", "trash_can.geo.json")
+    with open(caminho, encoding="utf-8") as f:
+        doc = json.load(f)
+    # joga o desdobramento pro canto oposto da folha, que esta vazio
+    doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]["uv"] = [40, 40]
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+
+
+case("UV do modelo apontando pra parte vazia da textura", uv_apontando_pro_vazio,
+     r"aponta pra uma parte VAZIA")
+
+
 # --- os conjuntos de protecao do config -------------------------------------
 # Os tres conjuntos (armadura de estrela, traje basico, traje reforcado) sao o que
 # liga a protecao. Um id errado ali nao da erro nenhum no jogo: a peca some do

@@ -25,21 +25,6 @@
     "gh_sun_edge": {
       "textures": "textures/gh/blocks/sun_edge"
     },
-    "gh_earth_ocean": {
-      "textures": "textures/gh/blocks/earth_ocean"
-    },
-    "gh_earth_shallow": {
-      "textures": "textures/gh/blocks/earth_shallow"
-    },
-    "gh_earth_land": {
-      "textures": "textures/gh/blocks/earth_land"
-    },
-    "gh_earth_forest": {
-      "textures": "textures/gh/blocks/earth_forest"
-    },
-    "gh_earth_ice": {
-      "textures": "textures/gh/blocks/earth_ice"
-    },
     "gh_moon_regolith_light": {
       "textures": "textures/gh/blocks/moon_regolith_light"
     },

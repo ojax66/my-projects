@@ -126,11 +126,18 @@ for (const body of BODIES) {
       path.join(BP_DIR, 'blocks', `${name}.json`), 'utf8'));
     return doc['minecraft:block'].components['minecraft:light_emission'] ?? 0;
   };
-  for (const name of ['earth_land']) {
-    const l = blockLight(name);
-    check(`${name}: emite luz, mas não é lâmpada`, l > 0 && l < 15, `(${l})`);
+  // A Terra saiu daqui: ela é só o MODELO, e os cinco blocos dela não existem
+  // mais. Com isso o único corpo que ainda tem bloco no espaço é o Sol, e ele
+  // é o que emite no máximo — o chão da Lua e de Marte emite zero, logo abaixo.
+  check('o Sol emite no máximo', blockLight('sun_core') === 15);
+
+  // E os blocos da Terra não existem mesmo: é o que ele pediu, e um deles
+  // voltando por engano apareceria no inventário criativo sem servir pra nada.
+  for (const name of ['earth_ocean', 'earth_shallow', 'earth_land',
+                      'earth_forest', 'earth_ice']) {
+    check(`  ${name} não existe mais como bloco`,
+          !fs.existsSync(path.join(BP_DIR, 'blocks', `${name}.json`)));
   }
-  check('o Sol é o único no máximo', blockLight('sun_core') === 15);
 
   // O CHÃO da Lua e de Marte é a exceção: emissão ZERO.
   //
@@ -164,7 +171,7 @@ for (const body of BODIES) {
   }
   check('os blocos dos corpos celestes MANTÊM a oclusão',
         mat('sun_core').ambient_occlusion === true &&
-        mat('earth_land').ambient_occlusion === true);
+        mat('sun_corona').ambient_occlusion === true);
 
   // A estrela: o corpo visto de fora do sistema. Sem ela, quem se afasta da
   // borda não veria nada — nem bloco, nem modelo, nem ponto.

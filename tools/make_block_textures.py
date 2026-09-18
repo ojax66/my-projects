@@ -380,6 +380,19 @@ def is_chunky(rows):
 #   o ESPELHO  — `flip` gira/espelha o padrão, pra oito minérios não saírem com
 #                o cristal exatamente no mesmo lugar. O silício é `flip` 0, e
 #                por isso sai idêntico ao arquivo dele.
+# A TERRA NÃO TEM MAIS VERSÃO DE BLOCOS.
+#
+# Ela é só o MODELO (`built: false` no config), e era assim há várias rodadas —
+# mas os cinco blocos dela continuavam existindo no jogo, aparecendo no
+# inventário criativo sem servir pra nada. Agora eles saem do pack.
+#
+# As texturas continuam sendo GERADAS, e não é sobra: a textura do modelo da
+# Terra é pintada com a cor média de cada uma delas (block_colors.json, ver o
+# fim deste arquivo). O que muda é que elas não são mais gravadas no pack nem
+# viram bloco — são a paleta do modelo, não blocos.
+SO_PARA_COR = {"earth_ocean", "earth_shallow", "earth_land", "earth_forest",
+               "earth_ice"}
+
 ORES_SPEC = json.load(open(os.path.join(REF_DIR, "ores.json"), encoding="utf-8"))
 ORE_REF = ORES_SPEC["pattern"]["ref"]
 ORE_REF_OVER = ORES_SPEC["pattern"]["over"]
@@ -439,6 +452,76 @@ def flip_xy(x, y, flip):
     if flip & 2:
         y = SIZE - 1 - y
     return x, y
+
+
+# --- Os dois que têm forma própria ------------------------------------------
+#
+# Silício, e todos os que reusam o desenho dele, são pedaços chapados de
+# cristal. Titânio e hélio-3 não são a mesma coisa e não deviam parecer:
+#
+#   TITÂNIO   cresce em AGULHA. O mineral de titânio do mundo real (rutilo,
+#             ilmenita) forma prismas longos e finos, e é isso que está aqui:
+#             riscos verticais de três a quatro células, com um brilho no meio.
+#
+#   HÉLIO-3   não é cristal nenhum — é GÁS preso no regolito. Então são
+#             BOLHAS: células soltas e pequenas, espalhadas, com o miolo claro.
+#             Poucas, porque ele é raro.
+#
+# As duas tabelas são (coluna, linha de cima, comprimento) e (coluna, linha).
+# A grade é a mesma de 16x16 células que o resto das texturas usa, então o grão
+# continua grosso e nada aqui afina a textura.
+AGULHAS = [(2, 1, 4), (6, 5, 3), (9, 2, 4), (13, 6, 4),
+           (4, 10, 4), (11, 11, 4), (8, 12, 3)]
+# O tom de cada célula da agulha, de cima pra baixo: ponta, brilho, corpo, base.
+AGULHA_TONS = [2, 4, 3, 1]
+
+BOLHAS = [(1, 3), (4, 1), (7, 6), (10, 2), (13, 4), (2, 9),
+          (5, 12), (8, 9), (12, 10), (14, 13), (3, 14), (10, 14)]
+
+
+def cristal_agulhas():
+    """Riscos finos e verticais — o titânio."""
+    celulas = {}
+    for cx, cy, comp in AGULHAS:
+        for i in range(comp):
+            celulas[(cx, cy + i)] = AGULHA_TONS[min(i, len(AGULHA_TONS) - 1)]
+        # uma célula ao lado no meio do risco, pra a agulha ter corpo em vez de
+        # ser um fio de um pixel
+        celulas[(cx + 1, cy + 1)] = 2
+    return celulas
+
+
+def cristal_bolhas():
+    """Pontos soltos com o miolo claro — o hélio-3 preso no regolito."""
+    celulas = {}
+    for i, (cx, cy) in enumerate(BOLHAS):
+        celulas[(cx, cy)] = 4
+        # metade delas ganha um vizinho mais escuro: sem isso todas viram o
+        # mesmo ponto do mesmo tamanho e a textura fica quadriculada.
+        if i % 2 == 0:
+            celulas[(cx, cy + 1)] = 2
+        else:
+            celulas[(cx + 1, cy)] = 1
+    return celulas
+
+
+# Quem NÃO usa o desenho do silício.
+PADROES = {
+    "titanium": cristal_agulhas,
+    "helium3": cristal_bolhas,
+}
+
+
+def celulas_para_pixels(celulas):
+    """Da grade de células (16x16) pros pixels (32x32)."""
+    saida = {}
+    for (cx, cy), posto in celulas.items():
+        if not (0 <= cx < CELLS and 0 <= cy < CELLS):
+            continue
+        for py in range(cy * CELL_PX, (cy + 1) * CELL_PX):
+            for px in range(cx * CELL_PX, (cx + 1) * CELL_PX):
+                saida[(px, py)] = posto
+    return saida
 
 
 def build_ore(base_rows, crystal, palette, flip):
@@ -578,11 +661,18 @@ if __name__ == "__main__":
                     else:
                         ore_palettes[t] = ramp_from(spec["base"], spec.get("lift", 1.0), escada)
             base, minerio, flip = ORES[name]
-            rows = build_ore(built[base], crystal, ore_palettes[minerio], flip)
+            desenho = PADROES.get(minerio)
+            rows = build_ore(
+                built[base],
+                celulas_para_pixels(desenho()) if desenho else crystal,
+                ore_palettes[minerio],
+                0 if desenho else flip,      # forma própria não precisa girar
+            )
         else:
             pal, w, seed, clump, jitter = TEXTURES[name]
             rows = build(pal, w, seed, clump, jitter)
-        write_png(os.path.join(OUT, f"{name}.png"), rows)
+        if name not in SO_PARA_COR:
+            write_png(os.path.join(OUT, f"{name}.png"), rows)
 
         nc = distinct_colors(rows)
         bias = center_bias(rows)
