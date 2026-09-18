@@ -198,23 +198,77 @@ def write_json(path, data):
 
 # --- Ícones ------------------------------------------------------------------
 #
-# A SILHUETA vem das bases que ele mandou (tools/assets/armor_icon_base): são
-# as formas de armadura do próprio jogo, que é o que faz o ícone parecer parte
-# do inventário em vez de desenho de fora. Dali sai só o RECORTE — quais pixels
-# são peça e quais são fundo.
+# O ícone é a PEÇA VISTA DE FRENTE, montada da própria folha de textura do
+# traje. Cada pedaço do recorte puxa a face frontal da parte do corpo que ele
+# representa: o tronco vem do peito, os braços vêm do braço, as pernas da
+# perna, o capacete da cabeça — com o visor que já está desenhado lá. O padrão
+# e a paleta são os dele, pixel por pixel; o que é meu é o recorte, a montagem
+# e o contorno.
 #
-# O DESENHO DE DENTRO é feito aqui, do zero, na cor do traje: contorno escuro
-# na borda, luz vindo de cima e da esquerda como em todo ícone do jogo, e o
-# detalhe de cada peça (o visor, a costura do peito, o cano da bota). Nada é
-# copiado do sombreado da base.
+# Foi assim que o peitoral ganhou BRAÇOS: a silhueta base do jogo só tem duas
+# ombreiras, e uma peça de peito cobre o braço inteiro. As mangas descem pelos
+# lados e acabam num punho.
 #
-# O capacete é FECHADO: a base vem com o rosto aberto e dois pontos soltos
-# embaixo, e no lugar disso entra o visor.
+# O capacete é FECHADO: a base vem com o rosto vazado e dois pontos soltos
+# embaixo. Fechado, o rosto passa a mostrar o visor da textura.
 ICON_BASE_DIR = os.path.join(ROOT, "tools", "assets", "armor_icon_base")
 
-# O visor, no recorte do capacete: a faixa onde ficaria o rosto.
-VISOR = (5, 6, 10, 9)               # x0, y0, x1, y1
-FACE_UV = (8, 8)                    # canto da face frontal da cabeça na folha
+# Onde cada parte do corpo mora na folha 64x32, face FRONTAL:
+#   cabeça  uv (8,8)    8x8      braço  uv (44,20)  4x12
+#   tronco  uv (20,20)  8x12     perna  uv (4,20)   4x12
+CABECA = (8, 8, 8, 8)
+TRONCO = (20, 20, 8, 12)
+BRACO = (44, 20, 4, 12)
+PERNA = (4, 20, 4, 12)
+PE = (4, 26, 4, 6)                  # o pedaço de baixo da perna, que a bota cobre
+
+# O peitoral com braço. A base do jogo para nas ombreiras; daqui pra baixo as
+# mangas são minhas, com o vão de um pixel que separa braço de tronco.
+PEITORAL_COM_BRACOS = [
+    "................",
+    "................",
+    ".###........###.",
+    ".##############.",
+    ".##############.",
+    ".##############.",
+    ".##############.",
+    ".###.######.###.",
+    ".###.######.###.",
+    ".###.######.###.",
+    ".###.######.###.",
+    "..##.######.##..",
+    ".....######.....",
+    ".....######.....",
+    "......####......",
+    "................",
+]
+
+# De onde cada pedaço do recorte tira o desenho. `camada` 1 é a folha do corpo,
+# 2 a da calça; `espelha` vira a fonte, pro lado direito não ser o esquerdo
+# repetido.
+REGIOES = {
+    # O capacete puxa a face frontal da cabeça INTEIRA, moldura e visor. Por
+    # isso ele mapeia só o miolo (`interior`): se a face fosse esticada até a
+    # borda, o contorno comeria a moldura branca e sobrava só o visor — o
+    # capacete do traje básico virava um retângulo dourado.
+    "helmet": [
+        dict(camada=1, src=CABECA, onde=lambda x, y: True, interior=True),
+    ],
+    "chestplate": [
+        dict(camada=1, src=BRACO, onde=lambda x, y: x <= 3),
+        dict(camada=1, src=BRACO, onde=lambda x, y: x >= 12, espelha=True),
+        dict(camada=1, src=TRONCO, onde=lambda x, y: 4 <= x <= 11),
+    ],
+    "leggings": [
+        dict(camada=2, src=TRONCO, onde=lambda x, y: y <= 6),
+        dict(camada=2, src=PERNA, onde=lambda x, y: y >= 7 and x <= 7),
+        dict(camada=2, src=PERNA, onde=lambda x, y: y >= 7 and x >= 8, espelha=True),
+    ],
+    "boots": [
+        dict(camada=1, src=PE, onde=lambda x, y: x <= 7),
+        dict(camada=1, src=PE, onde=lambda x, y: x >= 8, espelha=True),
+    ],
+}
 
 
 def luma(c):
@@ -226,71 +280,41 @@ def saturacao(c):
     return 0 if maior == 0 else (maior - menor) / maior
 
 
-def paleta_do_traje(sheet, degraus=5):
-    """Os tons do CORPO do traje, do escuro pro claro.
+def cor_do_contorno(sheet):
+    """O contorno: o tom mais escuro do CORPO do traje, um pouco mais escuro.
 
-    A face do capacete fica de fora: o visor é dourado no básico, e deixá-lo
-    entrar puxaria a armadura inteira pro amarelo. Cor muito saturada também
-    sai — num traje ela é detalhe (a faixa laranja), não o corpo.
-
-    O limiar é ALTO de propósito. Com 0,35 o azul-marinho do traje reforçado
-    (saturação 0,39) caía junto com a faixa laranja, e o ícone saía cinza-claro
-    em vez de marinho — o traje escuro virava o traje claro. 0,6 deixa passar o
-    corpo e continua barrando o dourado (0,79) e o laranja (0,88).
+    Tirado da folha e não fixo em preto pra o contorno pertencer ao traje — no
+    básico ele é um cinza-azulado, no reforçado é quase preto, e nos dois a
+    peça fica com a borda da própria família de cor.
     """
-    from collections import Counter
-
-    SATURADO = 0.6
-    conta = Counter()
-    for y in range(sheet.height):
-        for x in range(sheet.width):
-            if FACE_UV[0] <= x < FACE_UV[0] + 8 and FACE_UV[1] <= y < FACE_UV[1] + 8:
-                continue
-            c = sheet.getpixel((x, y))
-            if c[3] == 0 or saturacao(c) > SATURADO:
-                continue
-            conta[c[:3]] += 1
-    if not conta:
-        raise SystemExit("a folha do traje não tem tom de corpo nenhum")
-
-    tons = sorted((c for c, _ in conta.most_common(12)), key=luma)
-    return [tons[round(i * (len(tons) - 1) / (degraus - 1))] for i in range(degraus)]
-
-
-def tons_do_visor(sheet):
-    """Escuro, meio e claro do visor daquele traje.
-
-    O meio é o tom MAIS USADO do rosto — no básico o dourado, no reforçado o
-    azul. Ordenar o rosto e pegar o do meio não servia: entram os pixels da
-    moldura do capacete, e no básico o "meio" saía cinza, o que apagava o
-    dourado justamente no lugar em que ele é a marca do traje.
-    """
-    from collections import Counter
-
-    reg = [sheet.getpixel((FACE_UV[0] + x, FACE_UV[1] + y))[:3]
-           for y in range(1, 7) for x in range(1, 7)]
-    meio = Counter(reg).most_common(1)[0][0]
-    escuro = tuple(round(c * 0.55) for c in meio)
-    claro = tuple(min(255, round(c + (255 - c) * 0.45)) for c in meio)
-    return [escuro, meio, claro]
+    tons = [sheet.getpixel((x, y))[:3]
+            for y in range(sheet.height) for x in range(sheet.width)
+            if sheet.getpixel((x, y))[3] and saturacao(sheet.getpixel((x, y))) <= 0.6]
+    if not tons:
+        return (0, 0, 0)
+    escuro = min(tons, key=luma)
+    return tuple(round(c * 0.75) for c in escuro)
 
 
 def recorte(piece):
-    """Quais pixels são peça, lidos da base dele.
+    """Quais pixels são peça.
 
-    O capacete sai FECHADO: a base traz o rosto vazado e dois pontos soltos
-    embaixo. Cada linha do domo vira um trecho cheio, de ponta a ponta, e os
-    pontos soltos somem — é onde o visor entra.
+    O peitoral usa o recorte com braços daqui. Os outros três vêm das bases
+    dele; o capacete sai FECHADO — cada linha do domo vira um trecho cheio, de
+    ponta a ponta, e os dois pontos soltos embaixo saem.
     """
     from PIL import Image
+
+    if piece == "chestplate":
+        return [[c == "#" for c in linha] for linha in PEITORAL_COM_BRACOS]
 
     base = Image.open(os.path.join(ICON_BASE_DIR, f"{piece}.png")).convert("RGBA")
     mask = [[base.getpixel((x, y))[3] > 0 for x in range(16)] for y in range(16)]
     if piece != "helmet":
         return mask
 
-    # Só o bloco de linhas GRUDADAS de cima: os dois pontos soltos lá embaixo
-    # ficam de fora — com o queixo fechado eles flutuariam.
+    # Só o bloco de linhas GRUDADAS de cima: os pontos soltos lá embaixo ficam
+    # de fora — com o queixo fechado eles flutuariam.
     linhas = [y for y in range(16) if any(mask[y])]
     corpo = [linhas[0]]
     for y in linhas[1:]:
@@ -301,8 +325,6 @@ def recorte(piece):
     fechado = [[False] * 16 for _ in range(16)]
     for y in corpo:
         cheios = [x for x in range(16) if mask[y][x]]
-        # A linha do queixo vem partida no meio; fechar é preencher de ponta a
-        # ponta. O resto do domo já é inteiro e não muda.
         for x in range(min(cheios), max(cheios) + 1):
             fechado[y][x] = True
     return fechado
@@ -316,103 +338,46 @@ def na_borda(mask, x, y):
     return False
 
 
-def tom_do_corpo(piece, x, y, caixa):
-    """O tom (0 escuro … 4 claro) de um pixel de dentro da peça.
-
-    A base de tudo é a luz de cima e da esquerda, que é como o jogo desenha
-    metal: o alto-esquerdo é o mais claro, o baixo-direito o mais escuro. Por
-    cima disso vem o detalhe de cada peça.
-    """
-    x0, y0, x1, y1 = caixa
-    nx = (x - x0) / max(1, x1 - x0)
-    ny = (y - y0) / max(1, y1 - y0)
-    tom = 4.0 - 1.9 * (0.45 * nx + 0.55 * ny)
-
-    if piece == "chestplate":
-        if y <= 4:
-            tom += 0.7                       # ombreiras, a parte que pega luz
-        if x in (7, 8) and y >= 5:
-            tom -= 1.1                       # a costura do meio do peito
-        if y >= 8 and (y - 8) % 2 == 1:
-            tom -= 0.6                       # as costelas do peitoral
-        if y >= 13:
-            tom -= 0.6                       # a barra de baixo, na sombra
-    elif piece == "leggings":
-        if y <= 3:
-            tom -= 0.9                       # o cinto
-        if y == 10:
-            tom -= 0.7                       # o reforço do joelho
-        if x in (3, 4, 11, 12):
-            tom -= 0.5                       # o lado de fora de cada perna
-        if x in (7, 8):
-            tom -= 0.3                       # a virilha, entre as pernas
-    elif piece == "boots":
-        if y >= 11:
-            tom -= 1.4                       # a sola
-        elif y >= 9:
-            tom += 0.5                       # o peito do pé, virado pra cima
-        if y <= 5:
-            tom -= 0.3                       # o cano, mais estreito e sombreado
-    elif piece == "helmet":
-        # Sem bônus no alto: o capacete é pequeno e o degradê inteiro cabia nas
-        # três primeiras linhas, o que deixava o domo quase branco enquanto o
-        # peitoral do mesmo traje ficava escuro — os dois pareciam de trajes
-        # diferentes no inventário.
-        if y >= 10:
-            tom -= 1.0                       # o queixo, na sombra
-
-    return max(1, min(4, round(tom)))
-
-
-def no_visor(x, y):
-    """O pixel cai no visor? Os quatro cantos ficam de fora: é o que arredonda
-    o vidro em vez de deixar um retângulo colado no meio do capacete."""
-    x0, y0, x1, y1 = VISOR
-    if not (x0 <= x <= x1 and y0 <= y <= y1):
-        return False
-    return not ((x in (x0, x1)) and (y in (y0, y1)))
-
-
-def tom_do_visor(x, y):
-    """O vidro é a parte CLARA do capacete, não uma faixa escura.
-
-    Luz na maior parte dele, a curva do lado direito um tom abaixo e a sombra
-    na borda de baixo. É o que faz o visor ler como vidro nos dois trajes — no
-    reforçado, que é marinho, um visor no tom do corpo sumia dentro do
-    capacete.
-    """
-    x0, y0, x1, y1 = VISOR
-    if y == y1:
-        return 0                             # a sombra da borda de baixo
-    if x >= x1 - 1:
-        return 1                             # a curva do lado direito
-    return 2                                 # o vidro
-
-
 def make_icon(piece, sheets):
     from PIL import Image
 
-    corpo = paleta_do_traje(sheets[1])
-    visor = tons_do_visor(sheets[1])
     mask = recorte(piece)
-
-    xs = [x for y in range(16) for x in range(16) if mask[y][x]]
-    ys = [y for y in range(16) for x in range(16) if mask[y][x]]
-    caixa = (min(xs), min(ys), max(xs), max(ys))
+    contorno = cor_do_contorno(sheets[1]) + (255,)
 
     out = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
     px = out.load()
+
+    for regiao in REGIOES[piece]:
+        onde = regiao["onde"]
+        dentro = [(x, y) for y in range(16) for x in range(16)
+                  if mask[y][x] and onde(x, y)
+                  and not (regiao.get("interior") and na_borda(mask, x, y))]
+        if not dentro:
+            continue
+        x0 = min(x for x, _ in dentro); x1 = max(x for x, _ in dentro)
+        y0 = min(y for _, y in dentro); y1 = max(y for _, y in dentro)
+        su, sv, sw, sh = regiao["src"]
+        sheet = sheets[regiao["camada"]]
+
+        for x, y in dentro:
+            # A parte do corpo é esticada pro tamanho do pedaço do ícone. O
+            # desenho dela — as faixas, a caixa do peito, o visor — vem junto.
+            fx = (x - x0) / max(1, x1 - x0 + 1 - 1) if x1 > x0 else 0
+            fy = (y - y0) / max(1, y1 - y0 + 1 - 1) if y1 > y0 else 0
+            if regiao.get("espelha"):
+                fx = 1 - fx
+            u = su + min(sw - 1, int(fx * (sw - 1) + 0.5))
+            v = sv + min(sh - 1, int(fy * (sh - 1) + 0.5))
+            c = sheet.getpixel((u, v))
+            px[x, y] = c[:3] + (255,) if c[3] else contorno
+
+    # O contorno por cima de tudo: sem ele a peça se dissolve no fundo do
+    # inventário, que é justamente o que a borda escura dos ícones do jogo
+    # resolve.
     for y in range(16):
         for x in range(16):
-            if not mask[y][x]:
-                continue
-            if na_borda(mask, x, y):
-                px[x, y] = corpo[0] + (255,)          # o contorno
-                continue
-            if piece == "helmet" and no_visor(x, y):
-                px[x, y] = visor[tom_do_visor(x, y)] + (255,)
-                continue
-            px[x, y] = corpo[tom_do_corpo(piece, x, y, caixa)] + (255,)
+            if mask[y][x] and na_borda(mask, x, y):
+                px[x, y] = contorno
     return out
 
 
