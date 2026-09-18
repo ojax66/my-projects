@@ -22,7 +22,7 @@ import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -222,9 +222,7 @@ def main():
 
     # --- nome ----------------------------------------------------------------
     MARK = "## lixeira (gerado por tools/make_trash_can.py)"
-    for lang, nome in (("pt_BR", PT), ("en_US", EN), ("en_GB", EN)):
-        replace_section(os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-                        [f"tile.{BLOCK}.name={nome}"])
+    escreve_idiomas(RP, MARK, [f"tile.{BLOCK}.name={PT}"], [f"tile.{BLOCK}.name={EN}"])
 
     print(f"lixeira: {geo_id} a {escala:.3f} da escala dele")
     print(f"  caixa girada {tamanho} em {base}")

@@ -15,6 +15,7 @@ import * as mc from "@minecraft/server";
 import { unlockSystem } from "./tracker.js";
 import { systemById } from "./catalog.js";
 import { openTracker } from "./trackerUI.js";
+import { t, nome } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -48,7 +49,7 @@ function useChart(player, typeId) {
   const systemId = typeId.slice(CHART_PREFIX.length);
   const target = systemById(systemId);
   if (!target) {
-    try { player.sendMessage("§cEste mapa não aponta pra lugar nenhum."); } catch { }
+    try { player.sendMessage(t(player, "mapa.sem_alvo")); } catch { }
     return;
   }
 
@@ -56,7 +57,8 @@ function useChart(player, typeId) {
     // Já conhecido: avisa e devolve o item. Consumir aqui seria cobrar de novo
     // por algo que o jogador já pagou.
     try {
-      player.sendMessage(`§7Você já tem as coordenadas de ${strip(target.name)}.`);
+      player.sendMessage(t(player, "mapa.ja_tem",
+                           { alvo: strip(nome(player, target.id, target.name)) }));
     } catch { }
     return;
   }
@@ -64,7 +66,8 @@ function useChart(player, typeId) {
   consumeHeld(player, typeId);
   try {
     player.sendMessage(
-      `§b§lCOORDENADAS REGISTRADAS\n§r§7${strip(target.name)} entrou no rastreador.`
+      t(player, "mapa.registrado",
+        { alvo: strip(nome(player, target.id, target.name)) })
     );
     player.playSound("random.levelup", { volume: 0.6, pitch: 1.2 });
   } catch { }

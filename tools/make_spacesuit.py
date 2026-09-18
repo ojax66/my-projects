@@ -27,7 +27,7 @@ import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -573,13 +573,15 @@ def main():
     MARK = "## trajes espaciais (gerado por tools/make_spacesuit.py)"
     # O bloco antigo tinha outro título e só o reforçado. Lista vazia apaga.
     OLD_MARK = "## traje espacial reforçado (gerado por tools/make_spacesuit.py)"
-    for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
+    for lang in ("pt_BR", "en_US", "en_GB", "es_ES", "es_MX"):
         replace_section(os.path.join(RP, "texts", f"{lang}.lang"), OLD_MARK, [])
-        replace_section(
-            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-            [f"item.{item_id(suit, piece)}={SUITS[suit][key][piece]}"
-             for suit in SUITS for piece in SLOTS],
-        )
+    escreve_idiomas(
+        RP, MARK,
+        [f"item.{item_id(suit, piece)}={SUITS[suit]['pt'][piece]}"
+         for suit in SUITS for piece in SLOTS],
+        [f"item.{item_id(suit, piece)}={SUITS[suit]['en'][piece]}"
+         for suit in SUITS for piece in SLOTS],
+    )
 
     print(f"{len(SUITS)} trajes x {len(SLOTS)} peças = {len(SUITS) * len(SLOTS)} itens")
     print(f"  modelos: {', '.join(geo_ids)}")

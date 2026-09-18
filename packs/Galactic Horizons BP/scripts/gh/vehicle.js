@@ -46,6 +46,7 @@
 
 import * as mc from "@minecraft/server";
 import { MOUNT_BLOCKLIST_MATCHES, VEHICLE_KEEP_ALIVE_TAGS } from "./config.js";
+import { t } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -404,7 +405,7 @@ export function restore(player, dimension, loc, capsule) {
       } catch (e) {
         console.warn("[gh] não deu pra recriar o veículo: " + e);
         try {
-          player.sendMessage("§cO veículo não pôde ser trazido — /scriptevent gh:info");
+          player.sendMessage(t(player, "veiculo.nao_trazido"));
         } catch { }
         return;
       }

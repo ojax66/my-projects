@@ -3,7 +3,7 @@
   "header": {
     "name": "pack.name",
     "description": "pack.description",
-    "uuid": "f043e7cc-1498-49c0-9072-bc75eb6b9198",
+    "uuid": "80ca3f22-3e5f-4542-881e-3663d44e940a",
     "version": [
       1,
       2,
@@ -19,7 +19,7 @@
   "modules": [
     {
       "type": "resources",
-      "uuid": "1c913443-87ea-44cb-8223-e324aa242b92",
+      "uuid": "720b8ba5-23b2-4e35-a0f8-cd62714585a6",
       "version": [
         1,
         2,
@@ -29,7 +29,7 @@
   ],
   "dependencies": [
     {
-      "uuid": "30184b26-d4c7-44b3-ab95-398023a9752e",
+      "uuid": "2b116e4a-b8fa-4edb-91bf-cf45658e8c4a",
       "version": [
         1,
         2,
@@ -39,5 +39,22 @@
   ],
   "metadata": {
     "product_type": "addon"
-  }
+  },
+  "subpacks": [
+    {
+      "folder_name": "pt",
+      "name": "Português",
+      "memory_tier": 0
+    },
+    {
+      "folder_name": "en",
+      "name": "English",
+      "memory_tier": 0
+    },
+    {
+      "folder_name": "es",
+      "name": "Español",
+      "memory_tier": 0
+    }
+  ]
 }

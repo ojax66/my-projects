@@ -197,6 +197,12 @@ class Entity {
           get size() { return 36; },
           getItem: (i) => slots[i],
           setItem: (i, item) => { slots[i] = item; },
+          addItem: (item) => {
+            for (let i = 0; i < 36; i++) {
+              if (!slots[i]) { slots[i] = item; return item; }
+            }
+            throw new Error("inventário cheio");
+          },
         },
       };
     }

@@ -13,7 +13,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -344,11 +344,11 @@ def main():
     # --- 4. Nomes nos .lang ---------------------------------------------------
     # Reescreve só o bloco marcado, pra não perder as linhas escritas à mão.
     MARK = "## blocos dos corpos celestes (gerado por tools/make_blocks.py)"
-    for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        replace_section(
-            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-            [f"tile.{NS}:{short}.name={spec[key]}" for short, spec in BLOCKS.items()],
-        )
+    escreve_idiomas(
+        RP, MARK,
+        [f"tile.{NS}:{short}.name={spec['pt']}" for short, spec in BLOCKS.items()],
+        [f"tile.{NS}:{short}.name={spec['en']}" for short, spec in BLOCKS.items()],
+    )
 
     print(f"{len(BLOCKS)} blocos gerados:")
     print(f"  BP/blocks/*.json")

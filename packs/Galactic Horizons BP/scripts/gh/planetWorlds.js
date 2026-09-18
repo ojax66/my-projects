@@ -41,6 +41,7 @@ import {
   spawnStormDust,
   stormNotice,
 } from "./marsStorm.js";
+import { t as txt, nome } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -212,7 +213,8 @@ export function applyPlanetTick(player) {
       pushFog(player, stormFog(tempestade) ?? t.biome.fog ?? planet.fog);
       if (lastBiome.get(player.id) !== t.biome.id) {
         lastBiome.set(player.id, t.biome.id);
-        actionBar(player, planet.name + " §8· §r" + t.biome.name);
+        actionBar(player, nome(player, planet.id, planet.name) + " §8· §r"
+                          + nome(player, t.biome.id, t.biome.name));
       }
     } catch (e) {
       onError("bioma", e);
@@ -226,14 +228,14 @@ export function applyPlanetTick(player) {
   if (PLANET_VACUUM) {
     const breathing = applyLifeSupport(player);
     if (!breathing && now % 20 === 0) {
-      actionBar(player, "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI");
+      actionBar(player, txt(player, "hud.sem_oxigenio"));
       return true;
     }
   }
 
   // O aviso da tempestade só aparece quando não há nada mais urgente na tela.
   if (now % 20 === 0) {
-    const aviso = stormNotice(tempestade);
+    const aviso = stormNotice(tempestade, player);
     if (aviso) actionBar(player, aviso);
   }
 

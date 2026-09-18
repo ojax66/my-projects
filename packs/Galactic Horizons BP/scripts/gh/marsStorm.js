@@ -58,6 +58,7 @@ import {
   MARS_STORM_HEAVY_AT,
 } from "./config.js";
 import { hash2 } from "./world_generator_API.js";
+import { t } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -180,12 +181,12 @@ export function spawnStormDust(player, intensidade) {
 }
 
 /** Texto pra barra de ação enquanto a tempestade está forte, ou null. */
-export function stormNotice(intensidade) {
+export function stormNotice(intensidade, player) {
   if (intensidade >= MARS_STORM_HEAVY_AT) {
-    return "§6§lTEMPESTADE DE AREIA §r§7— visibilidade quase nula";
+    return t(player, "tempestade.forte");
   }
   if (intensidade >= MARS_STORM_FOG_AT) {
-    return "§6Poeira em suspensão §7— a vista fecha";
+    return t(player, "tempestade.fraca");
   }
   return null;
 }

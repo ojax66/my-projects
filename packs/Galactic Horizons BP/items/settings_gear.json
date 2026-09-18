@@ -1,0 +1,17 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:item": {
+    "description": {
+      "identifier": "gh:settings_gear",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": "gh_settings_gear",
+      "minecraft:max_stack_size": 1,
+      "minecraft:hover_text_color": "aqua",
+      "minecraft:glint": true
+    }
+  }
+}

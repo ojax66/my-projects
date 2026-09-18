@@ -66,3 +66,64 @@ def replace_section(path, marker, lines):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Os cinco idiomas
+# ---------------------------------------------------------------------------
+# O addon fala português, inglês e espanhol. Cada gerador sabe o pt e o en das
+# coisas dele; o ESPANHOL fica todo num lugar só (tools/assets/es.json), como
+# um dicionário do texto em português pro texto em espanhol.
+#
+# Por que num arquivo à parte e não numa terceira coluna em cada tabela: são
+# nove geradores e mais de cem nomes. Espalhado, revisar a tradução exige abrir
+# nove arquivos e caçar campo por campo; junto, é uma lista que se lê de cima a
+# baixo. E o que faltar não some calado — `FALTANDO_ES` acumula, o gerador
+# avisa e o validador reprova.
+import json as _json
+
+_ES = None
+FALTANDO_ES = set()
+
+
+def _dicionario_es():
+    global _ES
+    if _ES is None:
+        caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "assets", "es.json")
+        if os.path.isfile(caminho):
+            with open(caminho, encoding="utf-8") as f:
+                _ES = {k: v for k, v in _json.load(f).items()
+                       if not k.startswith("_")}
+        else:
+            _ES = {}
+    return _ES
+
+
+def para_es(texto):
+    """O texto em espanhol. Sem tradução, devolve o português e ANOTA."""
+    d = _dicionario_es()
+    if texto in d:
+        return d[texto]
+    FALTANDO_ES.add(texto)
+    return texto
+
+
+def escreve_idiomas(rp, marcador, linhas_pt, linhas_en):
+    """Grava o bloco `marcador` nos cinco .lang do pack.
+
+    pt_BR / en_US / en_GB saem das listas; es_ES / es_MX saem do português
+    passado pelo dicionário, chave por chave — a chave (o que vem antes do
+    `=`) nunca é traduzida, só o valor.
+    """
+    textos = os.path.join(rp, "texts")
+    replace_section(os.path.join(textos, "pt_BR.lang"), marcador, linhas_pt)
+    for lang in ("en_US", "en_GB"):
+        replace_section(os.path.join(textos, f"{lang}.lang"), marcador, linhas_en)
+
+    linhas_es = []
+    for linha in linhas_pt:
+        chave, sep, valor = linha.partition("=")
+        linhas_es.append(f"{chave}{sep}{para_es(valor)}" if sep else linha)
+    for lang in ("es_ES", "es_MX"):
+        replace_section(os.path.join(textos, f"{lang}.lang"), marcador, linhas_es)

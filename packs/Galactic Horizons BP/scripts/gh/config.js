@@ -309,6 +309,22 @@ export const SPACESUIT_PIECES = [
 export const OXYGEN_BACKPACK = "nv_sc:oxygen_backpack";
 
 // ---------------------------------------------------------------------------
+// Idioma
+// ---------------------------------------------------------------------------
+// O idioma de tudo que o SCRIPT escreve (avisos, títulos, o rastreador). Os
+// NOMES de item e bloco não passam por aqui: eles vêm dos .lang do pack de
+// recurso, e quem escolhe é a engrenagem do pack, nas configurações do mundo.
+//
+// Isto é só o PADRÃO de quem nunca escolheu. Cada jogador troca o dele na
+// engrenagem que ganha ao entrar — ver i18n.js e gear.js... (settings.js).
+export const IDIOMA_PADRAO = "pt";
+// A engrenagem: o item que abre a tela de idioma.
+export const SETTINGS_ITEM = "gh:settings_gear";
+// Marca de que este jogador já ganhou a dele. Sem isto ele ganharia uma a cada
+// entrada, e em pouco tempo o inventário seria só engrenagem.
+export const SETTINGS_GIVEN_PROP = "gh:gear_given";
+
+// ---------------------------------------------------------------------------
 // Lixeira
 // ---------------------------------------------------------------------------
 // Bloco em que o jogador clica com um item na mão e o item some. Ver

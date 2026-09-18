@@ -97,6 +97,10 @@ echo "--- gravidade dos planetas, frio e tempestade ---"
 node test_gravity_cold_storm.mjs
 
 echo
+echo "--- idioma e a engrenagem ---"
+node test_idioma.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

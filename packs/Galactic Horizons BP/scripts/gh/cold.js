@@ -38,6 +38,7 @@ import {
 import { protectionTier } from "./gear.js";
 import { inPressurizedVehicle } from "./lifeSupport.js";
 import { heatLevelAt } from "./hazards.js";
+import { t } from "./i18n.js";
 
 const system = mc.system;
 
@@ -92,7 +93,7 @@ export function applyCold(player) {
     r = Math.min(1, r + POR_TICK * COLD_RECOVER_FACTOR);
     reserva.set(player.id, r);
     // Enquanto reaquece ele ainda vê que está reaquecendo.
-    if (r < COLD_WARN_AT) return "§b§lREAQUECENDO §r§7— " + barra(r);
+    if (r < COLD_WARN_AT) return t(player, "frio.reaquecendo", { barra: barra(r) });
     return null;
   }
 
@@ -119,10 +120,10 @@ export function applyCold(player) {
       } catch { }
       try { player.playSound("mob.player.hurt_freeze", { volume: 0.5, pitch: 1.2 }); } catch { }
     }
-    return "§b§lCONGELANDO §r§7— traje reforçado, armadura de estrela ou o OVNI";
+    return t(player, "frio.congelando");
   }
 
-  if (r < COLD_WARN_AT) return "§b§lPERDENDO CALOR §r§7— " + barra(r);
+  if (r < COLD_WARN_AT) return t(player, "frio.perdendo", { barra: barra(r) });
   return null;
 }
 

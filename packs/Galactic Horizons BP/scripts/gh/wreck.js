@@ -32,6 +32,7 @@ import {
   WRECK_LOOT,
   WRECK_TEMPLATE_ITEM,
 } from "./config.js";
+import { t } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -325,9 +326,8 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
   const ok = buildWreckAt(player.dimension, cx, cz);
   try {
     player.sendMessage(
-      ok
-        ? `§7Destroços em §f${cx}, ${cz}§7.`
-        : "§cTerreno acidentado demais aqui — tente num lugar mais aberto."
+      ok ? t(player, "destrocos.ok", { x: cx, z: cz })
+         : t(player, "destrocos.terreno")
     );
   } catch { }
 });

@@ -1,0 +1,96 @@
+pack.name=Galactic Horizons: Espacio Exterior RP
+pack.description=Una dimensión de espacio exterior con el Sol, la Tierra, la Luna y Marte, más las dimensiones de superficie de la Luna y Marte, con su propio terreno y biomas. Incluye la Nave Nivel 1.
+biome.gh.espaco_sideral.name=Espacio Exterior
+entity.gh:level_1_spaceship.name=§bNave Nivel 1§r
+item.spawn_egg.entity.gh:level_1_spaceship.name=§bGenerar Nave Nivel 1§r
+action.interact.gh.ride=§a¡Pilotar la nave!
+action.interact.gh.disassemble=§eDesmontar (tijeras)
+action.hint.exit.gh:level_1_spaceship=§a¡Agáchate o salta para salir!
+
+## engrenagem de configuração (gerado por tools/make_settings_item.py)
+item.gh:settings_gear=Engranaje de Configuración
+
+## blocos dos corpos celestes (gerado por tools/make_blocks.py)
+tile.gh:sun_corona.name=Corona Solar
+tile.gh:sun_plasma.name=Plasma Solar
+tile.gh:sun_core.name=Núcleo Solar
+tile.gh:sun_blaze.name=Destello Solar
+tile.gh:sun_flare.name=Fulgor Solar
+tile.gh:sun_ember.name=Brasa Solar
+tile.gh:sun_edge.name=Borde Solar
+tile.gh:moon_regolith_light.name=Polvo de Regolito
+tile.gh:moon_regolith.name=Piedra de Regolito
+tile.gh:moon_regolith_dark.name=Pizarra de Regolito
+tile.gh:mars_dust.name=Polvo de Ferrita
+tile.gh:mars_rock.name=Piedra de Ferrita
+tile.gh:mars_rock_dark.name=Pizarra de Ferrita
+tile.gh:mars_ice.name=Hielo Marciano
+tile.gh:moon_silicon_ore.name=Mena de Silicio Lunar
+tile.gh:moon_silicon_ore_deep.name=Mena de Silicio en Pizarra Lunar
+tile.gh:moon_titanium_ore.name=Mena de Titanio Lunar
+tile.gh:moon_titanium_ore_deep.name=Mena de Titanio en Pizarra Lunar
+tile.gh:moon_helium3_ore.name=Mena de Helio-3 Lunar
+tile.gh:moon_helium3_ore_deep.name=Mena de Helio-3 en Pizarra Lunar
+tile.gh:moon_redstone_ore.name=Mena de Redstone Lunar
+tile.gh:moon_redstone_ore_deep.name=Mena de Redstone en Pizarra Lunar
+tile.gh:moon_iron_ore.name=Mena de Hierro Lunar
+tile.gh:moon_iron_ore_deep.name=Mena de Hierro en Pizarra Lunar
+tile.gh:moon_gold_ore.name=Mena de Oro Lunar
+tile.gh:moon_gold_ore_deep.name=Mena de Oro en Pizarra Lunar
+tile.gh:moon_diamond_ore.name=Mena de Diamante Lunar
+tile.gh:moon_diamond_ore_deep.name=Mena de Diamante en Pizarra Lunar
+tile.gh:mars_silicon_ore.name=Mena de Silicio Marciana
+tile.gh:mars_silicon_ore_deep.name=Mena de Silicio en Pizarra Marciana
+tile.gh:mars_titanium_ore.name=Mena de Titanio Marciana
+tile.gh:mars_titanium_ore_deep.name=Mena de Titanio en Pizarra Marciana
+tile.gh:mars_copper_ore.name=Mena de Cobre Marciana
+tile.gh:mars_copper_ore_deep.name=Mena de Cobre en Pizarra Marciana
+tile.gh:mars_iron_ore.name=Mena de Hierro Marciana
+tile.gh:mars_iron_ore_deep.name=Mena de Hierro en Pizarra Marciana
+tile.gh:mars_gold_ore.name=Mena de Oro Marciana
+tile.gh:mars_gold_ore_deep.name=Mena de Oro en Pizarra Marciana
+tile.gh:mars_diamond_ore.name=Mena de Diamante Marciana
+tile.gh:mars_diamond_ore_deep.name=Mena de Diamante en Pizarra Marciana
+
+## materiais dos planetas (gerado por tools/make_materials.py)
+item.gh:silicon=Silicio
+item.gh:titanium=Titanio
+item.gh:helium3=Helio-3
+
+## equipamento de estrela (gerado por tools/make_star_gear.py)
+item.gh:star_core_shard=Fragmento de Estrella
+item.gh:star_core_ingot=Lingote Estelar
+item.gh:star_upgrade_template=Plantilla de Herrería de Mejora Espacial
+item.gh:star_helmet=Casco Starcore
+item.gh:star_chestplate=Peto Starcore
+item.gh:star_leggings=Pantalones Starcore
+item.gh:star_boots=Botas Starcore
+
+## lixeira (gerado por tools/make_trash_can.py)
+tile.gh:trash_can.name=Contenedor de Basura
+
+## trajes espaciais (gerado por tools/make_spacesuit.py)
+item.gh:basic_spacesuit_helmet=Casco Espacial Básico
+item.gh:basic_spacesuit_chestplate=Peto Espacial Básico
+item.gh:basic_spacesuit_leggings=Pantalones Espaciales Básicos
+item.gh:basic_spacesuit_boots=Botas Espaciales Básicas
+item.gh:reinforced_spacesuit_helmet=Casco Espacial Reforzado
+item.gh:reinforced_spacesuit_chestplate=Peto Espacial Reforzado
+item.gh:reinforced_spacesuit_leggings=Pantalones Espaciales Reforzados
+item.gh:reinforced_spacesuit_boots=Botas Espaciales Reforzadas
+
+## rastreador estelar (gerado por tools/make_tracker.py)
+item.gh:tracker=Rastreador Estelar
+item.gh:star_chart_sol=Mapa Estelar: Sistema Solar
+
+## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)
+biome.gh.lua_mar_de_basalto.name=Mar de Basalto
+biome.gh.lua_terras_altas.name=Tierras Altas
+biome.gh.lua_bacia_de_impacto.name=Cuenca de Impacto
+biome.gh.lua_polo_sombrio.name=Polo Oscuro
+biome.gh.marte_planicie_boreal.name=Llanura Boreal
+biome.gh.marte_terras_altas_do_sul.name=Tierras Altas del Sur
+biome.gh.marte_valles.name=Valles Marineris
+biome.gh.marte_tharsis.name=Meseta de Tharsis
+biome.gh.marte_campo_de_dunas.name=Campo de Dunas
+biome.gh.marte_calota_polar.name=Casquete Polar

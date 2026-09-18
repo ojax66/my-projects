@@ -25,6 +25,11 @@ import {
 } from "./config.js";
 import { chebyshevTo } from "./bodies.js";
 import { trackedBodies, hudChannel } from "./tracker.js";
+import { t, nome } from "./i18n.js";
+
+// O título do placar é do MUNDO, não de um jogador: o objetivo é um só e
+// todo mundo vê o mesmo. Fica em português, que é o idioma padrão do addon.
+const HUD_TITULO = "§lRASTREADOR";
 
 const world = mc.world;
 const system = mc.system;
@@ -136,7 +141,7 @@ let sidebarShown = "";
 function sidebarObjective() {
   try {
     let obj = world.scoreboard.getObjective(HUD_OBJECTIVE);
-    if (!obj) obj = world.scoreboard.addObjective(HUD_OBJECTIVE, "§lRASTREADOR");
+    if (!obj) obj = world.scoreboard.addObjective(HUD_OBJECTIVE, HUD_TITULO);
     if (!objectiveReady) {
       world.scoreboard.setObjectiveAtDisplaySlot("sidebar", { objective: obj });
       objectiveReady = true;
@@ -195,7 +200,7 @@ export function showCompass(player, warning) {
   let tracked;
   try { tracked = trackedBodies(player); } catch { tracked = []; }
   if (!tracked.length) {
-    write(player, channel, ["§8rastreador sem nada ligado"]);
+    write(player, channel, [t(player, "hud.nada_ligado")]);
     return;
   }
 
@@ -207,7 +212,7 @@ export function showCompass(player, warning) {
   // Encostando em algum corpo: a dica do que ele faz vale mais que a bússola.
   const touching = entries[0];
   if (touching && touching.dist <= touching.body.radius + PORTAL_MARGIN + 6) {
-    const hint = compassHintFor(touching.body);
+    const hint = compassHintFor(touching.body, player);
     if (hint) {
       write(player, channel, [hint]);
       return;
@@ -215,7 +220,8 @@ export function showCompass(player, warning) {
   }
 
   const lines = entries.map(
-    (e) => `${marker(bearingDelta(player, e.body))} ${e.body.name} §f${Math.round(e.surface)}m`
+    (e) => `${marker(bearingDelta(player, e.body))} `
+           + `${nome(player, e.body.id, e.body.name)} §f${Math.round(e.surface)}m`
   );
   write(player, channel, lines);
 }
@@ -250,13 +256,14 @@ function soloInSpace(player) {
  * Lua e Marte viraram dimensões nossas, e nada denunciava — a bússola só
  * ficava calada na hora de pousar.
  */
-export function compassHintFor(body) {
+export function compassHintFor(body, player) {
   // O corpo do rastreador é uma vista simplificada; o portal está no BODIES.
   const full = BODIES.find((b) => b.id === body.id);
   // O Sol tem aviso próprio, vindo do campo de calor — não sobrescreve aqui.
   if (!full?.portal) return null;
   body = full;
-  if (body.portal.kind === "overworld") return `${body.name} §7— encoste pra voltar ao Overworld`;
-  if (body.portal.kind === "planet") return `${body.name} §7— encoste pra pousar`;
+  const corpo = nome(player, body.id, body.name);
+  if (body.portal.kind === "overworld") return t(player, "portal.overworld", { corpo });
+  if (body.portal.kind === "planet") return t(player, "portal.planeta", { corpo });
   return null;
 }

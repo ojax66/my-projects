@@ -12,15 +12,15 @@
 
 import { ActionFormData } from "@minecraft/server-ui";
 import { trackerState, toggleSystem, toggleBody, hudChannel, cycleHudChannel } from "./tracker.js";
+import { t, nome } from "./i18n.js";
 
 // A barra de ação some quando outro addon roda `hud @s hide all` — o Spacecraft
 // faz isso nas cinemáticas dele. O placar lateral não é um `hud_element` e
 // sobrevive a isso, então é o padrão.
-const CHANNEL_LABEL = {
-  sidebar: "mostrar no placar lateral",
-  actionbar: "mostrar na barra de ação",
-  off: "§8não mostrar",
-};
+// O nome de cada canal, no idioma do jogador.
+function canal(player, id) {
+  return t(player, `tracker.canal_${id}`);
+}
 
 const ON = "§a●";
 const OFF = "§8○";
@@ -31,24 +31,25 @@ export async function openTracker(player) {
   const state = trackerState(player);
 
   const form = new ActionFormData()
-    .title("§lRastreador Estelar")
+    .title(t(player, "tracker.titulo"))
     .body(
-      "§7Sistemas que você conhece. Desligar não apaga o que já foi\n" +
-      "§7descoberto — só tira da tela."
+      t(player, "tracker.corpo")
     );
 
   // Primeiro botão: onde o rastreador escreve. Fica no topo de propósito —
   // quem chega aqui porque não está vendo nada precisa achar isto de cara.
-  form.button(`§f${CHANNEL_LABEL[hudChannel(player)]}\n§7toque pra trocar`);
+  form.button(`§f${canal(player, hudChannel(player))}\n${t(player, "tracker.trocar")}`);
 
   for (const system of state) {
     if (!system.unlocked) {
-      form.button(`${LOCKED} §8${stripColor(system.name)}\n§8sem coordenadas`);
+      form.button(`${LOCKED} §8${stripColor(nome(player, system.id, system.name))}\n`
+                  + t(player, "tracker.sem_coordenadas"));
       continue;
     }
     const mark = system.on ? ON : OFF;
     const count = system.bodies.filter((b) => b.on).length;
-    form.button(`${mark} ${system.name}\n§7${count} de ${system.bodies.length} corpos`);
+    form.button(`${mark} ${nome(player, system.id, system.name)}\n`
+                + t(player, "tracker.corpos_de", { n: count, total: system.bodies.length }));
   }
 
   const res = await form.show(player);
@@ -56,7 +57,7 @@ export async function openTracker(player) {
 
   if (res.selection === 0) {
     const next = cycleHudChannel(player);
-    say(player, `Rastreador: §f${CHANNEL_LABEL[next]}`);
+    say(player, t(player, "tracker.agora", { canal: canal(player, next) }));
     await openTracker(player);
     return;
   }
@@ -64,7 +65,7 @@ export async function openTracker(player) {
   const chosen = state[res.selection - 1];
   if (!chosen) return;
   if (!chosen.unlocked) {
-    say(player, "§7Você ainda não tem as coordenadas desse sistema.");
+    say(player, t(player, "tracker.falta_coordenada"));
     return;
   }
   await openSystem(player, chosen.id);
@@ -77,24 +78,26 @@ async function openSystem(player, systemId) {
 
   const form = new ActionFormData()
     .title(system.name)
-    .body("§7Toque pra ligar ou desligar.")
+    .body(t(player, "tracker.liga_desliga"))
     .button(
-      `${system.on ? ON : OFF} §fSistema inteiro\n§7${system.on ? "ligado" : "desligado"}`
+      `${system.on ? ON : OFF} ${t(player, "tracker.sistema_inteiro")}\n§7`
+      + t(player, system.on ? "tracker.ligado" : "tracker.desligado")
     );
 
   for (const body of system.bodies) {
     const mark = body.on ? ON : OFF;
-    const note = body.generated ? "§7visitável" : "§8só rastreio";
+    const note = t(player, body.generated ? "tracker.visitavel" : "tracker.so_rastreio");
     form.button(`${mark} ${body.name}\n${note}`);
   }
-  form.button("§8‹ voltar");
+  form.button(t(player, "tracker.voltar"));
 
   const res = await form.show(player);
   if (res.canceled || res.selection === undefined) return;
 
   if (res.selection === 0) {
     const on = toggleSystem(player, system.id);
-    say(player, `${stripColor(system.name)}: ${on ? "§aligado" : "§8desligado"}`);
+    say(player, `${stripColor(nome(player, system.id, system.name))}: `
+                + t(player, on ? "tracker.ligado_cor" : "tracker.desligado_cor"));
     await openSystem(player, systemId);
     return;
   }
@@ -107,7 +110,8 @@ async function openSystem(player, systemId) {
 
   const body = system.bodies[bodyIndex];
   const on = toggleBody(player, body.id);
-  say(player, `${stripColor(body.name)}: ${on ? "§aligado" : "§8desligado"}`);
+  say(player, `${stripColor(nome(player, body.id, body.name))}: `
+              + t(player, on ? "tracker.ligado_cor" : "tracker.desligado_cor"));
   await openSystem(player, systemId);
 }
 

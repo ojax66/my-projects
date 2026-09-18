@@ -25,6 +25,7 @@ import {
 // encostado nas quinas.
 import { chebyshevTo } from "./bodies.js";
 import { hasStarArmor, starArmorBlocksHeat, protectionTier, pressureMultiplier } from "./gear.js";
+import { t as txt, nome } from "./i18n.js";
 
 const system = mc.system;
 
@@ -97,8 +98,8 @@ export function applySunHeat(player) {
 
   if (isExempt(player, t)) {
     return t >= 1
-      ? `§6${body.name}§r §7— dentro do Sol, protegido do calor`
-      : `§6${body.name}§r §7— calor intenso, mas você está protegido`;
+      ? txt(player, "calor.dentro_protegido", { corpo: nome(player, body.id, body.name) })
+      : txt(player, "calor.intenso_protegido", { corpo: nome(player, body.id, body.name) });
   }
 
   // O fogo é o que mata na aproximação. A duração cresce com a proximidade, e
@@ -114,9 +115,9 @@ export function applySunHeat(player) {
     try { player.applyDamage(dmg); } catch { }
   }
 
-  if (t >= 1) return `§4§lVOCÊ ESTÁ DENTRO DO SOL`;
-  if (t > 0.6) return `§c§lCALOR EXTREMO §r§7— afaste-se do Sol`;
-  return `§6Calor do Sol §r§7— está ficando perigoso`;
+  if (t >= 1) return txt(player, "calor.dentro_do_sol");
+  if (t > 0.6) return txt(player, "calor.extremo");
+  return txt(player, "calor.perigoso");
 }
 
 /**
@@ -148,10 +149,10 @@ export function applySunPressure(player) {
   if (passes <= 0) {
     // Dois equipamentos chegam aqui: a armadura de estrela e o traje reforçado.
     // Dizer "armadura de estrela" pra quem está de traje seria mentira na tela.
-    const quem = protectionTier(player) === "star"
-      ? "a armadura de estrela"
-      : "o traje reforçado";
-    return `§e${inside.name}§r §7— ${quem} aguenta a pressão`;
+    const quem = txt(player, protectionTier(player) === "star"
+      ? "pressao.quem_estrela" : "pressao.quem_traje");
+    return txt(player, "pressao.aguenta",
+               { corpo: nome(player, inside.id, inside.name), quem });
   }
 
   const damage = Math.max(1, Math.round(inside.pressure.damage * passes));
@@ -170,9 +171,7 @@ export function applySunPressure(player) {
 
   // Só sobra caso o fator seja configurado pra um meio-termo; com 0 (o padrão
   // hoje) o traje já saiu lá em cima.
-  return passes < 1
-    ? `§6PRESSÃO §r§7— o traje segura em parte; a de estrela anula`
-    : `§4§lPRESSÃO ESMAGADORA §r§7— sem proteção contra pressão`;
+  return txt(player, passes < 1 ? "pressao.parcial" : "pressao.esmagadora");
 }
 
 /** Só a leitura, sem aplicar nada — usado pelos testes e pelo HUD. */

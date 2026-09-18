@@ -39,6 +39,7 @@ import { anchorAt } from "./physics.js";
 import * as vehicle from "./vehicle.js";
 import { rememberSpawn } from "./spawnGuard.js";
 import { markArrival, inArrivalGrace, forgetArrival } from "./arrival.js";
+import { t } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -133,7 +134,7 @@ function travel(player, dimension, loc, onArrive, opcoes) {
       }
       if (ficou?.isValid) {
         try {
-          player.sendMessage("§7A nave ficou no espaço — ela não desce à superfície.");
+          player.sendMessage(t(player, "viagem.nave_ficou"));
         } catch { }
       }
       system.runTimeout(() => travelling.delete(player.id), 12);
@@ -228,7 +229,7 @@ export function checkSpaceEntry(player) {
   const dim = resolveDimension(DIMENSION_ID);
   if (!dim) {
     try {
-      player.sendMessage("§cA dimensão do espaço não pôde ser aberta.");
+      player.sendMessage(t(player, "viagem.erro_dimensao"));
     } catch { }
     // Sem carência, a mensagem se repetiria a cada tick lá em cima.
     markArrival(player);
@@ -248,8 +249,8 @@ export function checkSpaceEntry(player) {
     // tick lê o alvo antigo (lá de 800 de altura) e tenta corrigir.
     anchorAt(p, spot.y);
     try {
-      p.onScreenDisplay.setTitle("§f§lESPAÇO SIDERAL", {
-        subtitle: "§7Sem gravidade — pule pra subir, agache pra descer",
+      p.onScreenDisplay.setTitle(t(p, "viagem.titulo_espaco"), {
+        subtitle: t(p, "viagem.sub_espaco"),
         fadeInDuration: 10,
         stayDuration: 60,
         fadeOutDuration: 20,
@@ -289,8 +290,8 @@ function enterOverworld(player) {
     try {
       // Reentrada: desce devagar em vez de virar cratera.
       p.addEffect("slow_falling", 60 * mc.TicksPerSecond, { amplifier: 0, showParticles: false });
-      p.onScreenDisplay.setTitle("§a§lTERRA", {
-        subtitle: "§7Reentrada na atmosfera",
+      p.onScreenDisplay.setTitle(t(p, "viagem.titulo_terra"), {
+        subtitle: t(p, "viagem.sub_terra"),
         fadeInDuration: 10,
         stayDuration: 50,
         fadeOutDuration: 20,
@@ -321,7 +322,7 @@ function enterPlanet(player, body, label) {
   const dim = resolveDimension(planet.dimensionId);
   if (!dim) {
     try {
-      player.sendMessage("§cNão deu pra chegar em " + label + "§c: a dimensão não abriu.");
+      player.sendMessage(t(player, "viagem.erro_chegada", { alvo: label }));
     } catch { }
     // Sem destino, a carência evita repetir a mensagem a cada tick.
     markArrival(player);
@@ -354,7 +355,7 @@ function enterPlanet(player, body, label) {
           // Sem slow_falling: a gravidade do planeta já segura a descida, e ela
           // não é efeito de poção (ver planetGravity.js).
           p.onScreenDisplay.setTitle(label, {
-            subtitle: "§7Superfície — sem ar, traje obrigatório",
+            subtitle: t(p, "viagem.sub_superficie"),
             fadeInDuration: 10,
             stayDuration: 50,
             fadeOutDuration: 20,

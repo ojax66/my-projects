@@ -19,7 +19,7 @@ import sys
 import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -446,12 +446,13 @@ def main():
 
     # --- nomes ---------------------------------------------------------------
     MARK = "## equipamento de estrela (gerado por tools/make_star_gear.py)"
-    for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        replace_section(
-            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-            [f"item.{NS}:{name}={spec[key]}"
-             for name, spec in list(ITEMS.items()) + list(ARMOR.items())],
-        )
+    escreve_idiomas(
+        RP, MARK,
+        [f"item.{NS}:{name}={spec['pt']}"
+         for name, spec in list(ITEMS.items()) + list(ARMOR.items())],
+        [f"item.{NS}:{name}={spec['en']}"
+         for name, spec in list(ITEMS.items()) + list(ARMOR.items())],
+    )
 
     print(f"{len(ITEMS)} itens + {len(ARMOR)} peças de armadura")
     print(f"  geometrias: {', '.join(geo_ids)}")

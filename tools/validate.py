@@ -1948,6 +1948,126 @@ for _chave, _entrada in (item_tex_data or {}).items():
         err(f"ícone {_chave} é {_iw}x{_ih}: ícone de item tem que ser quadrado, "
             f"senão o inventário o estica pra caber no slot")
 
+# --- 5f. Os cinco idiomas dizem as mesmas coisas ------------------------------
+#
+# Chave que existe num .lang e não noutro vira o ID CRU na tela de quem joga
+# naquele idioma — "gh:moon_regolith" no lugar de "Piedra de Regolito". Não dá
+# erro, não aparece no console: só fica feio pra metade dos jogadores.
+IDIOMAS_LANG = ("pt_BR", "en_US", "en_GB", "es_ES", "es_MX")
+
+
+def _linhas_lang(caminho):
+    saida = {}
+    if not os.path.isfile(caminho):
+        return saida
+    with open(caminho, encoding="utf-8") as f:
+        for linha in f:
+            if "=" in linha and not linha.lstrip().startswith("#"):
+                chave, _, valor = linha.partition("=")
+                saida[chave.strip()] = valor.strip()
+    return saida
+
+
+for _base, _nome in ((RP, "RP"), (BP, "BP")):
+    _tab = {lang: _linhas_lang(os.path.join(_base, "texts", f"{lang}.lang"))
+            for lang in IDIOMAS_LANG}
+    _existentes = {k: v for k, v in _tab.items() if v}
+    if len(_existentes) < len(IDIOMAS_LANG):
+        err(f"{_nome}/texts: falta(m) "
+            f"{sorted(set(IDIOMAS_LANG) - set(_existentes))}")
+    _todas = set()
+    for _v in _existentes.values():
+        _todas |= set(_v)
+    for _lang, _v in _existentes.items():
+        _faltando = sorted(_todas - set(_v))
+        if _faltando:
+            err(f"{_nome}/texts/{_lang}.lang não tem {len(_faltando)} chave(s) que "
+                f"os outros idiomas têm: {', '.join(_faltando[:4])}...")
+
+    # languages.json tem que listar os cinco, senão o jogo nem abre o arquivo.
+    _decl = docs.get(os.path.join(_base, "texts", "languages.json"))
+    if isinstance(_decl, list) and set(_decl) != set(IDIOMAS_LANG):
+        err(f"{_nome}/texts/languages.json lista {sorted(_decl)}, "
+            f"esperado {sorted(IDIOMAS_LANG)}")
+
+# --- 5g. Espanhol de verdade, não português copiado ---------------------------
+#
+# O espanhol sai de tools/assets/es.json, um dicionário do português pro
+# espanhol. Nome que não estiver lá passa em branco — e o .lang espanhol fica
+# com uma linha em português no meio, que é o tipo de coisa que só um falante
+# de espanhol notaria, e tarde.
+_es_dic_path = os.path.join(ROOT, "tools", "assets", "es.json")
+_es_dic = {}
+if os.path.isfile(_es_dic_path):
+    try:
+        with open(_es_dic_path, encoding="utf-8") as f:
+            _es_dic = {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+    except Exception as e:  # noqa: BLE001
+        err(f"es.json ilegível: {e}")
+else:
+    err("tools/assets/es.json ausente — é a fonte do espanhol")
+
+_pt = _linhas_lang(os.path.join(RP, "texts", "pt_BR.lang"))
+_es = _linhas_lang(os.path.join(RP, "texts", "es_ES.lang"))
+_sem_traducao = [k for k, v in _pt.items()
+                 if _es.get(k) == v and v not in _es_dic]
+if _sem_traducao:
+    err(f"{len(_sem_traducao)} nome(s) iguais em pt e es sem estar em es.json: "
+        + ", ".join(_sem_traducao[:4]) + ("..." if len(_sem_traducao) > 4 else ""))
+
+# --- 5h. Os subpacotes de idioma ----------------------------------------------
+_rp_manifest = docs.get(os.path.join(RP, "manifest.json"), {})
+for _sub in (_rp_manifest.get("subpacks") or []):
+    _pasta = os.path.join(RP, "subpacks", _sub.get("folder_name", ""))
+    if not os.path.isdir(_pasta):
+        err(f"o subpacote {_sub.get('name')} aponta pra pasta que não existe: "
+            f"subpacks/{_sub.get('folder_name')}")
+        continue
+    for _lang in IDIOMAS_LANG:
+        if not os.path.isfile(os.path.join(_pasta, "texts", f"{_lang}.lang")):
+            err(f"o subpacote {_sub.get('name')} não tem texts/{_lang}.lang — "
+                f"quem jogar nesse idioma cai no texto do pack base")
+
+# --- 5i. Toda chave de texto que o script usa existe no i18n ------------------
+#
+# `t(player, "frio.congelano")` — um erro de digitação — não quebra nada: a
+# função devolve "[frio.congelano]" e isso vai pra tela do jogador.
+#
+# A varredura pega qualquer texto entre aspas DENTRO de uma chamada de t(), o
+# que cobre também o `t(p, x ? "a" : "b")`. Chave montada com crase
+# (`tracker.canal_${id}`) fica de fora, e é o preço de não sair conferindo
+# expressão — em compensação nenhum id de som ("random.fizz") é confundido com
+# chave de texto, que é o que aconteceria varrendo o arquivo inteiro.
+_i18n_path = os.path.join(BP, "scripts", "gh", "i18n.js")
+if os.path.isfile(_i18n_path):
+    with open(_i18n_path, encoding="utf-8") as f:
+        _i18n_src = f.read()
+    _bloco = _i18n_src[_i18n_src.index("const TEXTOS = {"):_i18n_src.index("const NOMES = {")]
+    _chaves = set(re.findall(r'"([a-z0-9_]+\.[a-z0-9_]+)":', _bloco))
+    if not _chaves:
+        err("i18n.js sem texto nenhum em TEXTOS")
+
+    for _p, _, _fs in os.walk(os.path.join(BP, "scripts", "gh")):
+        for _f in _fs:
+            if not _f.endswith(".js") or _f == "i18n.js":
+                continue
+            with open(os.path.join(_p, _f), encoding="utf-8") as fh:
+                _src = fh.read()
+            for _m in re.finditer(r'\bt(?:xt)?\(', _src):
+                # até o parêntese que fecha ESTA chamada, e não um punhado de
+                # caracteres à frente: passar do fim da chamada pegava o id do
+                # som da linha seguinte ("random.levelup") como se fosse texto.
+                _nivel, _i = 1, _m.end()
+                while _i < len(_src) and _nivel:
+                    if _src[_i] == "(":
+                        _nivel += 1
+                    elif _src[_i] == ")":
+                        _nivel -= 1
+                    _i += 1
+                for _lit in re.findall(r'"([a-z0-9_]+\.[a-z0-9_]+)"', _src[_m.end():_i]):
+                    if _lit not in _chaves:
+                        err(f"{_f} usa o texto {_lit!r}, que não existe em i18n.js")
+
 # --- 6. Ícones dos packs ------------------------------------------------------
 for base, name in ((BP, "BP"), (RP, "RP")):
     icone = os.path.join(base, "pack_icon.png")

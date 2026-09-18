@@ -1,7 +1,11 @@
 pack.name=Galactic Horizons: Outer Space RP
-pack.description=Outer space dimension with the Sun, Earth, the Moon and Mars, plus surface dimensions for the Moon and Mars with their own terrain and biomes. Includes the Level 1 Spaceship.
-
+pack.description=An outer space dimension with the Sun, Earth, the Moon and Mars, plus surface dimensions for the Moon and Mars, with their own terrain and biomes. Includes the Level 1 Spaceship.
 biome.gh.espaco_sideral.name=Outer Space
+entity.gh:level_1_spaceship.name=§bLevel 1 Spaceship§r
+item.spawn_egg.entity.gh:level_1_spaceship.name=§bSpawn Level 1 Spaceship§r
+action.interact.gh.ride=§aFly the ship!
+action.interact.gh.disassemble=§eDisassemble (shears)
+action.hint.exit.gh:level_1_spaceship=§aSneak or jump to exit!
 
 ## blocos dos corpos celestes (gerado por tools/make_blocks.py)
 tile.gh:sun_corona.name=Solar Corona
@@ -70,13 +74,6 @@ biome.gh.marte_tharsis.name=Tharsis Plateau
 biome.gh.marte_campo_de_dunas.name=Dune Field
 biome.gh.marte_calota_polar.name=Polar Cap
 
-## nave Level 1 (do addon dele, juntado aqui)
-entity.gh:level_1_spaceship.name=§bLevel 1 Spaceship§r
-item.spawn_egg.entity.gh:level_1_spaceship.name=§bSpawn Level 1 Spaceship§r
-action.interact.gh.ride=§aFly the spaceship!
-action.interact.gh.disassemble=§eDisassemble (shears)
-action.hint.exit.gh:level_1_spaceship=§aCrouch or jump to exit!
-
 ## trajes espaciais (gerado por tools/make_spacesuit.py)
 item.gh:basic_spacesuit_helmet=Basic Spacesuit Helmet
 item.gh:basic_spacesuit_chestplate=Basic Spacesuit Chestplate
@@ -94,3 +91,6 @@ item.gh:helium3=Helium-3
 
 ## lixeira (gerado por tools/make_trash_can.py)
 tile.gh:trash_can.name=Trash Can
+
+## engrenagem de configuração (gerado por tools/make_settings_item.py)
+item.gh:settings_gear=Settings Gear

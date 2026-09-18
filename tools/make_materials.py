@@ -23,7 +23,7 @@ import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -235,11 +235,11 @@ def main():
 
     # --- nomes -----------------------------------------------------------------
     MARK = "## materiais dos planetas (gerado por tools/make_materials.py)"
-    for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        replace_section(
-            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-            [f"item.{t['drop']}={t['item'][key]}" for t in materiais.values()],
-        )
+    escreve_idiomas(
+        RP, MARK,
+        [f"item.{t['drop']}={t['item']['pt']}" for t in materiais.values()],
+        [f"item.{t['drop']}={t['item']['en']}" for t in materiais.values()],
+    )
 
     print(f"{len(materiais)} materiais: {', '.join(sorted(materiais))}")
     print(f"  ícone do {dono} copiado de {os.path.relpath(fonte, ROOT)}")

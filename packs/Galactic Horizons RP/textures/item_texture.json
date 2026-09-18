@@ -64,6 +64,9 @@
     },
     "gh_ship_spawn_egg": {
       "textures": "textures/gh/items/ship_spawn_egg"
+    },
+    "gh_settings_gear": {
+      "textures": "textures/gh/items/settings_gear"
     }
   }
 }

@@ -37,6 +37,7 @@ import { applyEntityGravity } from "./gravity.js";
 import { sustainInSpacecraftWorlds } from "./gear.js";
 import { applyStarArmorPowers, startStarArmor } from "./starPowers.js";
 import { startTrashCan } from "./trashCan.js";
+import { startSettings } from "./settings.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet } from "./planetWorlds.js";
@@ -54,6 +55,7 @@ import {
   showCompass,
   forgetPlayer as forgetAmbience,
 } from "./ambience.js";
+import { t as txt } from "./i18n.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -214,7 +216,7 @@ system.runInterval(() => {
         player,
         pressureWarning ??
         heatWarning ??
-        (breathing ? null : "§4§lSEM OXIGÊNIO §r§7— traje completo + mochila, ou entre no OVNI") ??
+        (breathing ? null : txt(player, "hud.sem_oxigenio")) ??
         coldWarning
       );
     } catch (e) {
@@ -236,6 +238,8 @@ system.runInterval(() => {
 startStarArmor();
 // A lixeira: clicar nela com um item na mão joga o item fora.
 startTrashCan();
+// A engrenagem de idioma, e a entrega dela a quem entra pela primeira vez.
+startSettings();
 
 // ---------------------------------------------------------------------------
 // Limpeza
@@ -275,7 +279,7 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
     if (player?.typeId !== "minecraft:player") return;
     try {
       player.teleport({ x: player.location.x, y: SPACE_ENTRY_Y + 2, z: player.location.z });
-      player.sendMessage("§7Subindo até a altitude de saída...");
+      player.sendMessage(txt(player, "viagem.subindo"));
     } catch { }
     return;
   }
@@ -304,7 +308,7 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
     try {
       const planet = planetOfDimension(player.dimension.id);
       if (!planet) {
-        player.sendMessage("§7Você não está na Lua nem em Marte.");
+        player.sendMessage(txt(player, "diag.fora_do_planeta"));
         return;
       }
       const loc = player.location;
@@ -328,7 +332,7 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
       player.sendMessage(
         `§7dimensão: §f${dimOk ? "ok" : "§cnão registrada"}\n` +
         `§7aqui: §f${player.dimension.id}\n` +
-        `§7respirando: §f${canBreathe(player) ? "sim" : "não"}\n` +
+        `§7respirando: §f${txt(player, canBreathe(player) ? "diag.sim" : "diag.nao")}\n` +
         `§7altitude de saída (Overworld): §f${SPACE_ENTRY_Y}`
       );
     } catch { }

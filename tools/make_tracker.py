@@ -13,7 +13,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
@@ -82,11 +82,11 @@ def main():
 
     # --- nomes ---------------------------------------------------------------
     MARK = "## rastreador estelar (gerado por tools/make_tracker.py)"
-    for lang, idx in (("pt_BR", 0), ("en_US", 1), ("en_GB", 1)):
-        replace_section(
-            os.path.join(RP, "texts", f"{lang}.lang"), MARK,
-            [f"item.{NS}:{item}={pair[idx]}" for item, pair in names.items()],
-        )
+    escreve_idiomas(
+        RP, MARK,
+        [f"item.{NS}:{item}={pair[0]}" for item, pair in names.items()],
+        [f"item.{NS}:{item}={pair[1]}" for item, pair in names.items()],
+    )
 
     print(f"rastreador + {len(CHARTS)} mapa(s) estelar(es): {', '.join(CHARTS)}")
 

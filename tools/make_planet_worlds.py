@@ -20,7 +20,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-from langfile import replace_section  # noqa: E402
+from langfile import escreve_idiomas, replace_section  # noqa: E402
 
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
@@ -197,18 +197,15 @@ def main():
             })
             written += 2
 
-    for lang, key in (("pt_BR", "pt"), ("en_US", "en"), ("en_GB", "en")):
-        lines = []
-        for p in planets:
-            for b in p["biomes"]:
-                short = b["biomeId"].split(":")[1]
-                label = strip_colors(b["name"]) if key == "pt" else EN[b["id"]]
-                lines.append("biome.gh.%s.name=%s" % (short, label))
-        # Só no RP: nome de bioma no behavior pack o jogo ignora, e o
-        # validador reclama (com razão — vira nome faltando no jogo).
-        path = os.path.join(RP, "texts", "%s.lang" % lang)
-        if os.path.isfile(path):
-            replace_section(path, MARK, lines)
+    # Só no RP: nome de bioma no behavior pack o jogo ignora, e o validador
+    # reclama (com razão — vira nome faltando no jogo).
+    linhas_pt, linhas_en = [], []
+    for p in planets:
+        for b in p["biomes"]:
+            short = b["biomeId"].split(":")[1]
+            linhas_pt.append("biome.gh.%s.name=%s" % (short, strip_colors(b["name"])))
+            linhas_en.append("biome.gh.%s.name=%s" % (short, EN[b["id"]]))
+    escreve_idiomas(RP, MARK, linhas_pt, linhas_en)
 
     print("%d arquivo(s) de mundo gerados (y %d..%d, saida a %d):"
           % (written, bounds["min"], bounds["max"], exit_y))
