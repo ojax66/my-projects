@@ -10,8 +10,8 @@
  *    e cada uma das seis faces vira chão, inclusive a de baixo, onde se anda
  *    de cabeça pra baixo.
  */
-import { BODIES } from './space_dim/config.js';
-import { gravityAt } from './space_dim/gravity.js';
+import { BODIES } from './gh/config.js';
+import { gravityAt } from './gh/gravity.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -94,8 +94,8 @@ const at = (body, dx, dy, dz) => ({
 // encolhida, então a caixa bateria no vazio ao lado dele. A solidez vem do
 // script.
 {
-  const { solidPushOut } = await import('./space_dim/bodies.js');
-  const { BODIES } = await import('./space_dim/config.js');
+  const { solidPushOut } = await import('./gh/bodies.js');
+  const { BODIES } = await import('./gh/config.js');
 
   for (const body of BODIES.filter((b) => b.solid)) {
     const c = body.center;

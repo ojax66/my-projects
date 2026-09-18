@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:dimension": {
     "description": {
-      "identifier": "space_dim:mars"
+      "identifier": "gh:mars"
     },
     "components": {
       "minecraft:dimension_bounds": {
@@ -13,7 +13,7 @@
         "generator_type": "void"
       },
       "minecraft:default_biome": {
-        "biome": "space_dim:marte_terras_altas_do_sul"
+        "biome": "gh:marte_terras_altas_do_sul"
       }
     }
   }

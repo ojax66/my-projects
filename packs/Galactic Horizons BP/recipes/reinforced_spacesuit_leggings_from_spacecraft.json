@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:reinforced_spacesuit_leggings_from_spacecraft"
+      "identifier": "gh:reinforced_spacesuit_leggings_from_spacecraft"
     },
     "tags": [
       "crafting_table"
@@ -33,7 +33,7 @@
       }
     },
     "result": {
-      "item": "space_dim:reinforced_spacesuit_leggings",
+      "item": "gh:reinforced_spacesuit_leggings",
       "count": 1
     }
   }

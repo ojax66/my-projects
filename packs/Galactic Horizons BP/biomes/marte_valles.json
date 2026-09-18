@@ -2,7 +2,7 @@
   "format_version": "1.21.40",
   "minecraft:biome": {
     "description": {
-      "identifier": "space_dim:marte_valles"
+      "identifier": "gh:marte_valles"
     },
     "components": {
       "minecraft:climate": {

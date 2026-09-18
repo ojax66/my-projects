@@ -10,9 +10,9 @@
  * isso ele é o canal padrão, e por isso estes testes existem.
  */
 import { world, system, __reset, __state, __advance } from '@minecraft/server';
-import { DIMENSION_ID, HUD_CHANNEL_DEFAULT, HUD_OBJECTIVE, HUD_INTERVAL_TICKS } from './space_dim/config.js';
-import { hudChannel, cycleHudChannel, CHANNELS } from './space_dim/tracker.js';
-import { showCompass, clearSidebar } from './space_dim/ambience.js';
+import { DIMENSION_ID, HUD_CHANNEL_DEFAULT, HUD_OBJECTIVE, HUD_INTERVAL_TICKS } from './gh/config.js';
+import { hudChannel, cycleHudChannel, CHANNELS } from './gh/tracker.js';
+import { showCompass, clearSidebar } from './gh/ambience.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {

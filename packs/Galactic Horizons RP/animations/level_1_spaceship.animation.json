@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.nave.ship_idle": {
+		"animation.gh.ship_idle": {
 			"loop": true,
 			"animation_length": 3.0833,
 			"bones": {
@@ -34,7 +34,7 @@
 				}
 			}
 		},
-		"animation.nave.yaw_moment_air": {
+		"animation.gh.yaw_moment_air": {
 			"loop": true,
 			"bones": {
 				"nave_main": {
@@ -46,7 +46,7 @@
 				}
 			}
 		},
-		"animation.nave.up": {
+		"animation.gh.up": {
 			"loop": true,
 			"bones": {
 				"nave_root": {
@@ -55,7 +55,7 @@
 				}
 			}
 		},
-		"animation.nave.down": {
+		"animation.gh.down": {
 			"loop": true,
 			"bones": {
 				"nave_root": {
@@ -64,7 +64,7 @@
 				}
 			}
 		},
-		"animation.nave.death": {
+		"animation.gh.death": {
 			"loop": false,
 			"animation_length": 2,
 			"bones": {
@@ -73,7 +73,7 @@
 				}
 			}
 		},
-		"animation.nave.spawn_timer": {
+		"animation.gh.spawn_timer": {
 			"loop": "hold_on_last_frame",
 			"animation_length": 0.5,
 			"bones": {
@@ -85,7 +85,7 @@
 				}
 			}
 		},
-		"animation.nave.landing_gear": {
+		"animation.gh.landing_gear": {
 			"loop": "hold_on_last_frame",
 			"animation_length": 1,
 			"bones": {
@@ -131,17 +131,17 @@
 				}
 			}
 		},
-		"animation.nave.ship_circle": {
+		"animation.gh.ship_circle": {
 			"loop": true,
 			"animation_length": 0.8,
 			"particle_effects": {
 				"0.0": {
-					"effect": "nave_ship_circle",
+					"effect": "gh_ship_circle",
 					"locator": "ufo_move"
 				}
 			}
 		},
-		"animation.nave.damage_smoke": {
+		"animation.gh.damage_smoke": {
 			"loop": true,
 			"animation_length": 0.05,
 			"particle_effects": {
@@ -151,7 +151,7 @@
 				}
 			}
 		},
-		"animation.nave.engine_sound": {
+		"animation.gh.engine_sound": {
 			"loop": true,
 			"animation_length": 0.25,
 			"sound_effects": {

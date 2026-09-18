@@ -1,11 +1,11 @@
 {
   "format_version": "1.8.0",
   "animations": {
-    "animation.space_dim.sky_body.size": {
+    "animation.gh.sky_body.size": {
       "loop": true,
       "bones": {
         "body": {
-          "scale": "q.property('space_dim:size')"
+          "scale": "q.property('gh:size')"
         }
       }
     }

@@ -8,7 +8,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/packs/Galactic Horizons BP/scripts/space_dim"
+SRC="$ROOT/packs/Galactic Horizons BP/scripts/gh"
 
 echo "--- texturas dos blocos (emenda e viés centro/borda) ---"
 python3 "$ROOT/tools/make_block_textures.py"
@@ -24,8 +24,8 @@ python3 "$ROOT/tools/tests/test_validator.py"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-mkdir -p "$STAGE/space_dim" "$STAGE/node_modules"
-cp "$SRC"/*.js "$STAGE/space_dim/"
+mkdir -p "$STAGE/gh" "$STAGE/node_modules"
+cp "$SRC"/*.js "$STAGE/gh/"
 cp -r "$ROOT/tools/tests/stub/@minecraft" "$STAGE/node_modules/"
 cp "$ROOT/tools/tests"/*.mjs "$STAGE/"
 echo '{ "type": "module" }' > "$STAGE/package.json"
@@ -39,7 +39,7 @@ cd "$STAGE"
 echo
 echo "--- todos os módulos carregam ---"
 node --input-type=module -e "
-import('./space_dim/main.js').then(
+import('./gh/main.js').then(
   () => console.log('ok: main.js e as dependências dele carregam'),
   e  => { console.error('FALHOU:', e.message); process.exit(1); }
 );"

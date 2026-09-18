@@ -1,4 +1,4 @@
-import { columnRuns } from './space_dim/bodies.js';
+import { columnRuns } from './gh/bodies.js';
 // `true`: os planetas são `built: false` e não colocam bloco no mundo, mas a
 // paleta deles continua desenhando a textura do modelo — e é dela que as
 // calotas fazem parte.
@@ -10,7 +10,7 @@ const generateColumn = (dim, x, z) => {
   return runs.length ? top : -64;
 };
 
-import { BODIES } from './space_dim/config.js';
+import { BODIES } from './gh/config.js';
 
 // Confere o tamanho das calotas polares: pequenas demais somem, grandes
 // demais viram touca. O bloco de gelo de cada corpo termina em _ice.

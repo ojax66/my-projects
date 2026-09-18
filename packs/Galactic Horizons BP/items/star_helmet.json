@@ -2,14 +2,14 @@
   "format_version": "1.21.80",
   "minecraft:item": {
     "description": {
-      "identifier": "space_dim:star_helmet",
+      "identifier": "gh:star_helmet",
       "menu_category": {
         "category": "equipment",
         "group": "minecraft:itemGroup.name.helmet"
       }
     },
     "components": {
-      "minecraft:icon": "space_dim_star_helmet",
+      "minecraft:icon": "gh_star_helmet",
       "minecraft:max_stack_size": 1,
       "minecraft:durability": {
         "max_durability": 610
@@ -22,7 +22,7 @@
         "repair_items": [
           {
             "items": [
-              "space_dim:star_core_ingot"
+              "gh:star_core_ingot"
             ],
             "repair_amount": 152
           }

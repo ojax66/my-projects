@@ -2,11 +2,11 @@
   "format_version": "1.21.40",
   "minecraft:client_biome": {
     "description": {
-      "identifier": "space_dim:marte_campo_de_dunas"
+      "identifier": "gh:marte_campo_de_dunas"
     },
     "components": {
       "minecraft:fog_appearance": {
-        "fog_identifier": "space_dim:fog_mars_dust"
+        "fog_identifier": "gh:fog_mars_dust"
       },
       "minecraft:sky_color": {
         "sky_color": "#C7A180"

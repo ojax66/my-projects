@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""Gera os DOIS trajes do addon: o Apollo (básico) e o AxEMU (reforçado).
+"""Gera os DOIS trajes do addon: o básico e o reforçado.
 
-O modelo e a textura dos dois vieram prontos do autor do addon
-(tools/assets/suits) — não são mais emprestados do Spacecraft. Isso muda o
-traje reforçado: ele continua com os mesmos ids de item (mundo antigo não
-perde o que estava vestindo), mas agora tem cara própria.
+O modelo, a textura e a base dos ícones vieram prontos do autor do addon
+(tools/assets/suits e tools/assets/armor_icon_base) — nada aqui é emprestado de
+outro pack.
 
 A escada que os dois desenham:
 
-  TRAJE APOLLO — básico, fabricável na Terra com material do jogo. RESOLVE O
-    AR: é selado, o jogador respira nas dimensões deste addon sem depender de
+  TRAJE BÁSICO — fabricável na Terra com material do jogo. RESOLVE O AR: é selado, o jogador respira nas dimensões deste addon sem depender de
     mochila nenhuma. NÃO isola do frio e NÃO segura a pressão do Sol — com ele
     o espaço já é atravessável, mas ainda congela.
 
-  TRAJE AxEMU — reforçado, feito por cima do Apollo com pedra da Lua e de
-    Marte. Isola do frio, segura o calor da APROXIMAÇÃO do Sol e ANULA a
+  TRAJE REFORÇADO — feito por cima do básico com os minérios dos planetas. Isola do frio, segura o calor da APROXIMAÇÃO do Sol e ANULA a
     pressão lá dentro (config REINFORCED_SUIT_PRESSURE_FACTOR = 0). O que
     ainda falta nele é o calor de DENTRO do Sol — pra isso só a armadura de
     estrela.
@@ -36,7 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 SRC = os.path.join(ROOT, "tools", "assets", "suits")
-NS = "space_dim"
+NS = "gh"
 SC = "nv_sc"
 FORMAT_VERSION = "1.21.80"
 # Receita usa outro schema — ver a nota em make_star_gear.py. "1.21.80" numa
@@ -71,7 +68,7 @@ SLOTS = {
     ),
 }
 
-# --- Receita do Apollo -------------------------------------------------------
+# --- Receita do traje básico -------------------------------------------------------
 # Só material do jogo base, de propósito: o traje básico precisa existir ANTES
 # da primeira subida, e exigir coisa da Lua faria dele um item que só se
 # consegue depois de já ter ido aonde ele serve.
@@ -80,7 +77,7 @@ SLOTS = {
 # no visor e redstone no peito (é onde fica o suporte de vida). Cada peça usa
 # uma mistura diferente, pra fabricar o conjunto não ser quatro vezes a mesma
 # receita.
-APOLLO_KEY = {
+BASICO_KEY = {
     "F": {"item": "minecraft:white_wool"},      # o tecido branco do traje
     "I": {"item": "minecraft:iron_ingot"},      # a estrutura
     "C": {"item": "minecraft:copper_ingot"},    # juntas e conectores
@@ -88,29 +85,29 @@ APOLLO_KEY = {
     "L": {"item": "minecraft:leather"},         # as dobras e a sola
     "R": {"item": "minecraft:redstone"},        # o suporte de vida, no peito
 }
-APOLLO_PATTERN = {
+BASICO_PATTERN = {
     "helmet":     ["FCF", "IGI"],
     "chestplate": ["F F", "IRI", "FCF"],
     "leggings":   ["FIF", "C C", "L L"],
     "boots":      ["C C", "L L"],
 }
 
-# --- Receita do AxEMU --------------------------------------------------------
-# Feito POR CIMA do Apollo, com os minérios dos planetas: titânio na estrutura,
+# --- Receita do traje reforçado --------------------------------------------------------
+# Feito POR CIMA do básico, com os minérios dos planetas: titânio na estrutura,
 # silício na eletrônica e no visor, hélio-3 no aquecimento — é o que dá ao
-# reforçado o isolamento que o Apollo não tem.
+# reforçado o isolamento que o básico não tem.
 #
 # O hélio-3 só existe na LUA, e é ele que amarra a ordem das coisas: pra
-# montar o reforçado é preciso ter ido lá, e pra ir lá basta o Apollo mais a
+# montar o reforçado é preciso ter ido lá, e pra ir lá basta o básico mais a
 # nave (a cabine é pressurizada e quente). Nenhum passo pede o passo seguinte.
-AXEMU_KEY = {
+REFORCADO_KEY = {
     "T": {"item": f"{NS}:titanium"},
     "Z": {"item": f"{NS}:silicon"},
     "H": {"item": f"{NS}:helium3"},
 }
-AXEMU_PATTERN = ["TZT", "ZSZ", "THT"]
+REFORCADO_PATTERN = ["TZT", "ZSZ", "THT"]
 
-# --- Receita antiga do AxEMU, pra quem joga com o Spacecraft ------------------
+# --- Receita antiga do reforçado, pra quem joga com o Spacecraft ------------------
 # O reforçado nasceu como o traje DELES melhorado; quem tem o addo deles ainda
 # pode montá-lo por esse caminho. É um id de receita separado — as duas
 # convivem na bancada.
@@ -131,33 +128,32 @@ SC_BASE = {
 
 # --- Os dois trajes ----------------------------------------------------------
 # Ferro é 2/6/5/2 de proteção e 165/240/225/195 de durabilidade; netherite é
-# 3/8/6/3. O Apollo fica em cima do ferro em durabilidade e um pouco abaixo em
-# proteção (é traje, não armadura de combate); o AxEMU fica entre o Apollo e a
+# 3/8/6/3. O básico fica em cima do ferro em durabilidade e um pouco abaixo em
+# proteção (é traje, não armadura de combate); o reforçado fica entre o básico e a
 # armadura de estrela (4/9/7/4).
 SUITS = {
-    "apollo": dict(
-        geo="apollo_suit.geo.json",
-        geometry="geometry.apollo_suit.armor.{piece}",
-        texture=f"textures/{NS}/armor/apollo_suit",
-        legs_texture=f"textures/{NS}/armor/apollo_suit_legs",
-        item="{NS}:apollo_{piece}",
+    "basic": dict(
+        geo="basic_suit.geo.json",
+        geometry="geometry.gh.basic_suit.armor.{piece}",
+        texture=f"textures/{NS}/armor/basic_suit",
+        legs_texture=f"textures/{NS}/armor/basic_suit_legs",
+        item="{NS}:basic_spacesuit_{piece}",
         repair="minecraft:iron_ingot",
         color="white",
         fire_resistant=False,
         enchant=9,
         protection=dict(helmet=2, chestplate=5, leggings=4, boots=2),
         durability=dict(helmet=300, chestplate=420, leggings=390, boots=330),
-        pt=dict(helmet="Capacete Apollo", chestplate="Peitoral Apollo",
-                leggings="Calças Apollo", boots="Botas Apollo"),
-        en=dict(helmet="Apollo Helmet", chestplate="Apollo Chestplate",
-                leggings="Apollo Leggings", boots="Apollo Boots"),
+        pt=dict(helmet="Capacete Espacial Básico", chestplate="Peitoral Espacial Básico",
+                leggings="Calças Espaciais Básicas", boots="Botas Espaciais Básicas"),
+        en=dict(helmet="Basic Spacesuit Helmet", chestplate="Basic Spacesuit Chestplate",
+                leggings="Basic Spacesuit Leggings", boots="Basic Spacesuit Boots"),
     ),
-    "axemu": dict(
-        geo="axemu_suit.geo.json",
-        geometry="geometry.axemu_suit.armor.{piece}",
-        texture=f"textures/{NS}/armor/axemu_suit",
-        legs_texture=f"textures/{NS}/armor/axemu_suit_legs",
-        # O id do reforçado NÃO muda: quem já tinha um vestido continua com ele.
+    "reinforced": dict(
+        geo="reinforced_suit.geo.json",
+        geometry="geometry.gh.reinforced_suit.armor.{piece}",
+        texture=f"textures/{NS}/armor/reinforced_suit",
+        legs_texture=f"textures/{NS}/armor/reinforced_suit_legs",
         item="{NS}:reinforced_spacesuit_{piece}",
         repair="minecraft:netherite_ingot",
         color="aqua",
@@ -165,10 +161,10 @@ SUITS = {
         enchant=12,
         protection=dict(helmet=3, chestplate=7, leggings=5, boots=3),
         durability=dict(helmet=480, chestplate=620, leggings=580, boots=500),
-        pt=dict(helmet="Capacete AxEMU Reforçado", chestplate="Peitoral AxEMU Reforçado",
-                leggings="Calças AxEMU Reforçadas", boots="Botas AxEMU Reforçadas"),
-        en=dict(helmet="Reinforced AxEMU Helmet", chestplate="Reinforced AxEMU Chestplate",
-                leggings="Reinforced AxEMU Leggings", boots="Reinforced AxEMU Boots"),
+        pt=dict(helmet="Capacete Espacial Reforçado", chestplate="Peitoral Espacial Reforçado",
+                leggings="Calças Espaciais Reforçadas", boots="Botas Espaciais Reforçadas"),
+        en=dict(helmet="Reinforced Spacesuit Helmet", chestplate="Reinforced Spacesuit Chestplate",
+                leggings="Reinforced Spacesuit Leggings", boots="Reinforced Spacesuit Boots"),
     ),
 }
 
@@ -186,7 +182,8 @@ def icon_file(suit, piece):
     """O ARQUIVO da textura: o nome exato do item, sem o namespace.
 
     É a regra do addon inteiro: o arquivo de textura se chama igual à coisa que
-    ele desenha. `apollo_helmet.png` é a textura de `space_dim:apollo_helmet`,
+    ele desenha. `basic_spacesuit_helmet.png` é a textura de
+    `gh:basic_spacesuit_helmet`,
     e procurar por um acha o outro.
     """
     return item_id(suit, piece).split(":")[1]
@@ -201,123 +198,103 @@ def write_json(path, data):
 
 # --- Ícones ------------------------------------------------------------------
 #
-# Os ícones do inventário saem da PRÓPRIA folha de textura do traje: um molde
-# 16x16 com a silhueta da peça, preenchido com os pixels da face frontal
-# correspondente. Nenhuma cor é inventada aqui — a paleta é inteiramente a que
-# veio na textura, e um traje repintado gera ícone repintado sozinho.
-MASKS = {
-    "helmet": [
-        "................",
-        "................",
-        "....########....",
-        "...##########...",
-        "..############..",
-        "..############..",
-        "..####....####..",
-        "..###......###..",
-        "..###......###..",
-        "..###......###..",
-        "..####....####..",
-        "..############..",
-        "...##########...",
-        "................",
-        "................",
-        "................",
-    ],
-    "chestplate": [
-        "................",
-        "................",
-        ".###........###.",
-        ".####......####.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        "..############..",
-        "..############..",
-        "..###......###..",
-        "................",
-        "................",
-    ],
-    "leggings": [
-        "................",
-        "................",
-        "..############..",
-        "..############..",
-        "..############..",
-        "..############..",
-        "..############..",
-        "..####....####..",
-        "..###......###..",
-        "..###......###..",
-        "..###......###..",
-        "..###......###..",
-        "..###......###..",
-        "..###......###..",
-        "................",
-        "................",
-    ],
-    "boots": [
-        "................",
-        "................",
-        "................",
-        "................",
-        "..####....####..",
-        "..####....####..",
-        "..####....####..",
-        "..####....####..",
-        ".#####....#####.",
-        ".######..######.",
-        ".##############.",
-        ".##############.",
-        ".##############.",
-        "................",
-        "................",
-        "................",
-    ],
-}
+# A FORMA vem das bases que ele mandou (tools/assets/armor_icon_base): são as
+# silhuetas de armadura do próprio jogo, com o contorno e o sombreado já
+# prontos. A COR vem da textura do traje. O que o gerador faz é trocar a paleta
+# da base pela do traje, degrau por degrau de brilho — o desenho continua sendo
+# o dele, e um traje repintado gera ícone repintado sozinho.
+#
+# Ícone desenhado por mim, como era antes, saía com silhueta minha no meio de
+# um inventário inteiro de silhuetas do jogo. Com a base dele o capacete tem a
+# forma de capacete que o jogador já reconhece.
+ICON_BASE_DIR = os.path.join(ROOT, "tools", "assets", "armor_icon_base")
 
-# De onde cada ícone tira a cor, na folha 64x32 do traje. É sempre a face
-# FRONTAL da parte do corpo, que é o desenho que o jogador reconhece.
-# (camada, x, y, largura, altura) — camada 2 é a folha da calça.
-ICON_SOURCE = {
-    "helmet":     (1, 8, 8, 8, 8),      # cabeça
-    "chestplate": (1, 20, 20, 8, 12),   # torso
-    "leggings":   (2, 4, 20, 4, 12),    # perna, na folha da calça
-    "boots":      (1, 4, 27, 4, 5),     # o pé: as últimas linhas da perna
-}
+# O visor: onde fica o rosto na base do capacete, e de onde tirar a cor dele na
+# folha do traje (a face frontal da cabeça, sem a moldura).
+VISOR_BOX = (4, 7, 11, 10)          # x0, y0, x1, y1 na base do capacete
+FACE_UV = (8, 8)                    # canto da face frontal da cabeça na folha
 
 
-def mask_bbox(mask):
-    xs = [x for row in mask for x, c in enumerate(row) if c == "#"]
-    ys = [y for y, row in enumerate(mask) for c in row if c == "#"]
-    return min(xs), min(ys), max(xs), max(ys)
+def luma(c):
+    return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+
+def saturacao(c):
+    maior, menor = max(c[:3]), min(c[:3])
+    return 0 if maior == 0 else (maior - menor) / maior
+
+
+def paleta_do_traje(sheet, degraus=6):
+    """Os tons do CORPO do traje, do escuro pro claro.
+
+    A face do capacete fica de fora: o visor é dourado no básico, e deixá-lo
+    entrar puxaria a armadura inteira pro amarelo. Cor muito saturada também
+    sai — num traje ela é detalhe (a faixa laranja), não o corpo.
+
+    O limiar é ALTO de propósito. Com 0,35 o azul-marinho do traje reforçado
+    (saturação 0,39) caía junto com a faixa laranja, e o ícone saía cinza-claro
+    em vez de marinho — o traje escuro virava o traje claro. 0,6 deixa passar o
+    corpo e continua barrando o dourado (0,79) e o laranja (0,88).
+    """
+    SATURADO = 0.6
+    from collections import Counter
+
+    conta = Counter()
+    for y in range(sheet.height):
+        for x in range(sheet.width):
+            if FACE_UV[0] <= x < FACE_UV[0] + 8 and FACE_UV[1] <= y < FACE_UV[1] + 8:
+                continue
+            c = sheet.getpixel((x, y))
+            if c[3] == 0 or saturacao(c) > SATURADO:
+                continue
+            conta[c[:3]] += 1
+    if not conta:
+        raise SystemExit("a folha do traje não tem tom de corpo nenhum")
+
+    tons = sorted((c for c, _ in conta.most_common(12)), key=luma)
+    # Espalha os que sobraram nos `degraus` postos, sem repetir vizinho.
+    return [tons[round(i * (len(tons) - 1) / (degraus - 1))] for i in range(degraus)]
+
+
+def tons_do_visor(sheet):
+    """Escuro, meio e claro do rosto — é a cor do visor daquele traje."""
+    reg = [sheet.getpixel((FACE_UV[0] + x, FACE_UV[1] + y))[:3]
+           for y in range(1, 7) for x in range(1, 7)]
+    reg.sort(key=luma)
+    return [reg[0], reg[len(reg) // 2], reg[-1]]
 
 
 def make_icon(piece, sheets):
     from PIL import Image
 
-    mask = MASKS[piece]
-    layer, sx0, sy0, sw, sh = ICON_SOURCE[piece]
-    src = sheets[layer]
-    x0, y0, x1, y1 = mask_bbox(mask)
-    bw, bh = x1 - x0 + 1, y1 - y0 + 1
+    base = Image.open(os.path.join(ICON_BASE_DIR, f"{piece}.png")).convert("RGBA")
+    corpo = paleta_do_traje(sheets[1])
+    visor = tons_do_visor(sheets[1])
 
-    out = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    opacos = [base.getpixel((x, y)) for y in range(base.height)
+              for x in range(base.width) if base.getpixel((x, y))[3]]
+    lo, hi = luma(min(opacos, key=luma)), luma(max(opacos, key=luma))
+    faixa = (hi - lo) or 1
+
+    out = Image.new("RGBA", base.size, (0, 0, 0, 0))
     px = out.load()
-    for y, row in enumerate(mask):
-        for x, c in enumerate(row):
-            if c != "#":
+    for y in range(base.height):
+        for x in range(base.width):
+            c = base.getpixel((x, y))
+            if c[3] == 0:
                 continue
-            # A metade direita repete a esquerda: o ícone sai simétrico mesmo
-            # quando a textura tem detalhe só de um lado.
-            mx = x if x - x0 < bw / 2 else x1 - (x - x0)
-            u = sx0 + min(sw - 1, int((mx - x0) * sw / bw))
-            v = sy0 + min(sh - 1, int((y - y0) * sh / bh))
-            px[x, y] = src.getpixel((u, v))
+            t = (luma(c) - lo) / faixa
+            no_visor = (piece == "helmet"
+                        and VISOR_BOX[0] <= x <= VISOR_BOX[2]
+                        and VISOR_BOX[1] <= y <= VISOR_BOX[3])
+            if no_visor:
+                # O rosto é a parte mais escura da base — mapeado cru, o visor
+                # do traje escuro some dentro do capacete escuro. A escada do
+                # visor começa no meio pra ele aparecer nos dois trajes.
+                escada, t = visor, 0.35 + 0.65 * t
+            else:
+                escada = corpo
+            px[x, y] = escada[min(len(escada) - 1, round(t * (len(escada) - 1)))] + (255,)
     return out
 
 
@@ -439,9 +416,9 @@ def main():
             )
 
             # --- receitas ----------------------------------------------------
-            if suit == "apollo":
-                pattern = APOLLO_PATTERN[piece]
-                key = {k: v for k, v in APOLLO_KEY.items()
+            if suit == "basic":
+                pattern = BASICO_PATTERN[piece]
+                key = {k: v for k, v in BASICO_KEY.items()
                        if any(k in row for row in pattern)}
                 write_json(
                     os.path.join(BP, "recipes", f"{name}.json"),
@@ -458,9 +435,9 @@ def main():
                 )
                 recipes += 1
             else:
-                # por cima do Apollo, com os minérios dos planetas
-                key = dict(AXEMU_KEY)
-                key["S"] = {"item": item_id("apollo", piece)}
+                # por cima do básico, com os minérios dos planetas
+                key = dict(REFORCADO_KEY)
+                key["S"] = {"item": item_id("basic", piece)}
                 write_json(
                     os.path.join(BP, "recipes", f"{name}.json"),
                     {
@@ -468,7 +445,7 @@ def main():
                         "minecraft:recipe_shaped": {
                             "description": {"identifier": iid},
                             "tags": ["crafting_table"],
-                            "pattern": AXEMU_PATTERN,
+                            "pattern": REFORCADO_PATTERN,
                             "key": key,
                             "result": {"item": iid, "count": 1},
                         },
@@ -525,8 +502,8 @@ def main():
     print(f"  modelos: {', '.join(geo_ids)}")
     print(f"  {len(SUITS) * len(SLOTS)} attachables, {len(SUITS) * len(SLOTS)} ícones tirados das próprias texturas")
     print(f"  {recipes} receitas")
-    print(f"  Apollo: {', '.join(sorted({v['item'].split(':')[1] for v in APOLLO_KEY.values()}))}")
-    print(f"  AxEMU: peça Apollo + {', '.join(sorted(v['item'].split(':')[1] for v in AXEMU_KEY.values()))}")
+    print(f"  básico: {', '.join(sorted({v['item'].split(':')[1] for v in BASICO_KEY.values()}))}")
+    print(f"  reforçado: peça do básico + {', '.join(sorted(v['item'].split(':')[1] for v in REFORCADO_KEY.values()))}")
 
 
 if __name__ == "__main__":

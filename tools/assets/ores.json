@@ -40,7 +40,7 @@
         "#B3B6CF"
       ],
       "flip": 0,
-      "drop": "space_dim:silicon",
+      "drop": "gh:silicon",
       "min": 1,
       "max": 2,
       "item": {
@@ -55,7 +55,7 @@
       "base": "#E8EDF2",
       "lift": 1.25,
       "flip": 1,
-      "drop": "space_dim:titanium",
+      "drop": "gh:titanium",
       "min": 1,
       "max": 2,
       "item": {
@@ -70,7 +70,7 @@
       "base": "#C77BE0",
       "lift": 1.1,
       "flip": 2,
-      "drop": "space_dim:helium3",
+      "drop": "gh:helium3",
       "min": 1,
       "max": 1,
       "item": {

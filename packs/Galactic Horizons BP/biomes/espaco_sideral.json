@@ -2,7 +2,7 @@
   "format_version": "1.21.40",
   "minecraft:biome": {
     "description": {
-      "identifier": "space_dim:espaco_sideral"
+      "identifier": "gh:espaco_sideral"
     },
     "components": {
       "minecraft:climate": {

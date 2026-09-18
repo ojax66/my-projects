@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gera as dimensões, os biomas e os nomes da Lua e de Marte.
 
-A fonte da verdade é UMA: `scripts/space_dim/planets.js`. Quem quiser mudar um
+A fonte da verdade é UMA: `scripts/gh/planets.js`. Quem quiser mudar um
 bioma de nome, trocar a cor do céu ou acrescentar um bioma mexe lá e roda isto —
 os JSONs de dimensão, os biomas dos dois packs e os .lang saem daqui.
 
@@ -24,7 +24,7 @@ from langfile import replace_section  # noqa: E402
 
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
-PLANETS_JS = os.path.join(BP, "scripts", "space_dim", "planets.js")
+PLANETS_JS = os.path.join(BP, "scripts", "gh", "planets.js")
 
 MARK = "## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)"
 
@@ -203,7 +203,7 @@ def main():
             for b in p["biomes"]:
                 short = b["biomeId"].split(":")[1]
                 label = strip_colors(b["name"]) if key == "pt" else EN[b["id"]]
-                lines.append("biome.space_dim.%s.name=%s" % (short, label))
+                lines.append("biome.gh.%s.name=%s" % (short, label))
         # Só no RP: nome de bioma no behavior pack o jogo ignora, e o
         # validador reclama (com razão — vira nome faltando no jogo).
         path = os.path.join(RP, "texts", "%s.lang" % lang)

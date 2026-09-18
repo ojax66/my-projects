@@ -2,21 +2,21 @@
   "format_version": "1.10.0",
   "minecraft:client_entity": {
     "description": {
-      "identifier": "space_dim:sky_sun",
+      "identifier": "gh:sky_sun",
       "materials": {
-        "default": "space_dim_glow"
+        "default": "gh_glow"
       },
       "textures": {
-        "default": "textures/space_dim/sky/glow_sun"
+        "default": "textures/gh/sky/glow_sun"
       },
       "geometry": {
-        "default": "geometry.space_dim.sky_glow"
+        "default": "geometry.gh.sky_glow"
       },
       "scripts": {
         "should_update_bones_and_effects_offscreen": true
       },
       "render_controllers": [
-        "controller.render.space_dim.sky_body"
+        "controller.render.gh.sky_body"
       ]
     }
   }

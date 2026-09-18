@@ -2,13 +2,13 @@
 	"format_version": "1.21.90",
 	"minecraft:entity": {
 		"description": {
-			"identifier": "nave:level_1_spaceship",
+			"identifier": "gh:level_1_spaceship",
 			"is_spawnable": true,
 			"is_summonable": true,
 			"is_experimental": false,
 			"animations": {
-				"nave_damage_controller": "controller.animation.nave.ship_damage",
-				"nave_captured_controller": "controller.animation.nave.ship_captured"
+				"nave_damage_controller": "controller.animation.gh.ship_damage",
+				"nave_captured_controller": "controller.animation.gh.ship_captured"
 			},
 			"scripts": {
 				"animate": [
@@ -101,7 +101,7 @@
 				]
 			},
 			"minecraft:loot": {
-				"table": "loot_tables/nave/spaceship_death.json"
+				"table": "loot_tables/gh/spaceship_death.json"
 			},
 			"minecraft:interact": {
 				"interactions": [
@@ -117,10 +117,10 @@
 									}
 								]
 							},
-							"event": "nave:disassembled"
+							"event": "gh:disassembled"
 						},
 						"hurt_item": 2,
-						"interact_text": "action.interact.nave.disassemble"
+						"interact_text": "action.interact.gh.disassemble"
 					}
 				]
 			},
@@ -133,7 +133,7 @@
 				"family_types": [
 					"player"
 				],
-				"interact_text": "action.interact.nave.ride",
+				"interact_text": "action.interact.gh.ride",
 				"seats": [
 					{
 						"position": [-0.53, 1.85, -0.3]
@@ -168,7 +168,7 @@
 									]
 								}
 							],
-							"event": "nave:ship_horn"
+							"event": "gh:ship_horn"
 						},
 						"deals_damage": "no"
 					},
@@ -181,7 +181,7 @@
 			"minecraft:entity_sensor": {
 				"subsensors": [
 					{
-						"event": "nave:tag_riding_on",
+						"event": "gh:tag_riding_on",
 						"event_filters": [
 							{
 								"all_of": [
@@ -195,7 +195,7 @@
 						]
 					},
 					{
-						"event": "nave:tag_riding_off",
+						"event": "gh:tag_riding_off",
 						"event_filters": [
 							{
 								"all_of": [
@@ -207,7 +207,7 @@
 									{
 										"test": "has_tag",
 										"subject": "self",
-										"value": "nave:riding_on"
+										"value": "gh:riding_on"
 									}
 								]
 							}
@@ -226,7 +226,7 @@
 						{
 							"test": "has_tag",
 							"subject": "self",
-							"value": "nave_ship_captured",
+							"value": "gh_ship_captured",
 							"operator": "!="
 						},
 						{
@@ -239,27 +239,27 @@
 			}
 		},
 		"component_groups": {
-			"nave:disassembled_group": {
+			"gh:disassembled_group": {
 				"minecraft:loot": {
-					"table": "loot_tables/nave/spaceship_disassembled.json"
+					"table": "loot_tables/gh/spaceship_disassembled.json"
 				},
 				"minecraft:health": {
 					"value": -1
 				}
 			},
-			"nave:tag_riding_on": {
+			"gh:tag_riding_on": {
 				"minecraft:collision_box": {
 					"height": 1,
 					"width": 1
 				}
 			},
-			"nave:collision_restart": {
+			"gh:collision_restart": {
 				"minecraft:collision_box": {
 					"height": 2.8,
 					"width": 3.8
 				}
 			},
-			"nave:damaged": {
+			"gh:damaged": {
 				"minecraft:damage_sensor": {
 					"triggers": [
 						{
@@ -281,7 +281,7 @@
 										]
 									}
 								],
-								"event": "nave:ship_horn"
+								"event": "gh:ship_horn"
 							},
 							"deals_damage": "no"
 						},
@@ -289,13 +289,13 @@
 							"cause": "fall",
 							"deals_damage": "yes",
 							"on_damage": {
-								"event": "nave:crash_explosion"
+								"event": "gh:crash_explosion"
 							}
 						}
 					]
 				}
 			},
-			"nave:no_damaged": {
+			"gh:no_damaged": {
 				"minecraft:damage_sensor": {
 					"triggers": [
 						{
@@ -317,7 +317,7 @@
 										]
 									}
 								],
-								"event": "nave:ship_horn"
+								"event": "gh:ship_horn"
 							},
 							"deals_damage": "no"
 						},
@@ -328,34 +328,34 @@
 					]
 				}
 			},
-			"nave:death": {
+			"gh:death": {
 				"minecraft:health": {
 					"value": 0
 				}
 			},
-			"nave:despawn": {
+			"gh:despawn": {
 				"minecraft:instant_despawn": {}
 			},
-			"nave:despawn_timer": {
+			"gh:despawn_timer": {
 				"minecraft:timer": {
 					"looping": true,
 					"time": 0.1,
 					"time_down_event": {
-						"event": "nave:despawn"
+						"event": "gh:despawn"
 					}
 				}
 			},
-			"nave:start_animation": {
+			"gh:start_animation": {
 				"minecraft:mark_variant": {
 					"value": 30
 				}
 			},
-			"nave:stop_animation": {
+			"gh:stop_animation": {
 				"minecraft:mark_variant": {
 					"value": 0
 				}
 			},
-			"nave:abduct_golem": {
+			"gh:abduct_golem": {
 				"minecraft:spawn_entity": {
 					"entities": [
 						{
@@ -369,7 +369,7 @@
 					]
 				}
 			},
-			"nave:abduct_cat": {
+			"gh:abduct_cat": {
 				"minecraft:spawn_entity": {
 					"entities": [
 						{
@@ -383,80 +383,80 @@
 					]
 				}
 			},
-			"nave:abduct_timer": {
+			"gh:abduct_timer": {
 				"minecraft:timer": {
 					"looping": false,
 					"time": 0.5,
 					"time_down_event": {
-						"event": "nave:abduct_entities"
+						"event": "gh:abduct_entities"
 					}
 				}
 			}
 		},
 		"events": {
-			"nave:disassembled": {
+			"gh:disassembled": {
 				"add": {
 					"component_groups": [
-						"nave:disassembled_group"
+						"gh:disassembled_group"
 					]
 				}
 			},
-			"nave:ship_horn": {
+			"gh:ship_horn": {
 				"queue_command": {
 					"command": [
 						"playsound mob.wither.shoot @a ~ ~ ~ 0.6 1.6"
 					]
 				}
 			},
-			"nave:tag_riding_on": {
+			"gh:tag_riding_on": {
 				"sequence": [
 					{
 						"queue_command": {
 							"command": [
-								"tag @s add nave:riding_on"
+								"tag @s add gh:riding_on"
 							]
 						},
 						"add": {
 							"component_groups": [
-								"nave:tag_riding_on"
+								"gh:tag_riding_on"
 							]
 						}
 					}
 				]
 			},
-			"nave:tag_riding_off": {
+			"gh:tag_riding_off": {
 				"sequence": [
 					{
 						"queue_command": {
 							"command": [
-								"tag @s remove nave:riding_on"
+								"tag @s remove gh:riding_on"
 							]
 						}
 					},
 					{
 						"add": {
 							"component_groups": [
-								"nave:collision_restart"
+								"gh:collision_restart"
 							]
 						}
 					}
 				]
 			},
-			"nave:damaged": {
+			"gh:damaged": {
 				"add": {
 					"component_groups": [
-						"nave:damaged"
+						"gh:damaged"
 					]
 				}
 			},
-			"nave:no_damaged": {
+			"gh:no_damaged": {
 				"add": {
 					"component_groups": [
-						"nave:no_damaged"
+						"gh:no_damaged"
 					]
 				}
 			},
-			"nave:crash_explosion": {
+			"gh:crash_explosion": {
 				"sequence": [
 					{
 						"queue_command": {
@@ -469,25 +469,25 @@
 					{
 						"add": {
 							"component_groups": [
-								"nave:death"
+								"gh:death"
 							]
 						}
 					}
 				]
 			},
-			"nave:tag_ship_captured": {
+			"gh:tag_ship_captured": {
 				"queue_command": {
 					"command": [
-						"tag @s add nave_ship_captured"
+						"tag @s add gh_ship_captured"
 					]
 				},
 				"add": {
 					"component_groups": [
-						"nave:stop_animation"
+						"gh:stop_animation"
 					]
 				}
 			},
-			"nave:despawn": {
+			"gh:despawn": {
 				"sequence": [
 					{
 						"filters": [
@@ -501,7 +501,7 @@
 									{
 										"test": "has_tag",
 										"subject": "self",
-										"value": "nave_ship_captured",
+										"value": "gh_ship_captured",
 										"operator": "!="
 									}
 								]
@@ -509,13 +509,13 @@
 						],
 						"add": {
 							"component_groups": [
-								"nave:despawn"
+								"gh:despawn"
 							]
 						}
 					}
 				]
 			},
-			"nave:abduct_entities": {
+			"gh:abduct_entities": {
 				"sequence": [
 					{
 						"randomize": [
@@ -523,7 +523,7 @@
 								"weight": 10,
 								"add": {
 									"component_groups": [
-										"nave:abduct_golem"
+										"gh:abduct_golem"
 									]
 								}
 							},
@@ -531,7 +531,7 @@
 								"weight": 15,
 								"add": {
 									"component_groups": [
-										"nave:abduct_cat"
+										"gh:abduct_cat"
 									]
 								}
 							},
@@ -558,7 +558,7 @@
 						],
 						"queue_command": {
 							"command": [
-								"tag @s add nave_ship_captured"
+								"tag @s add gh_ship_captured"
 							]
 						}
 					},
@@ -574,7 +574,7 @@
 									{
 										"test": "has_tag",
 										"subject": "self",
-										"value": "nave_ship_captured",
+										"value": "gh_ship_captured",
 										"operator": "!="
 									},
 									{
@@ -587,7 +587,7 @@
 						],
 						"add": {
 							"component_groups": [
-								"nave:abduct_timer"
+								"gh:abduct_timer"
 							]
 						}
 					},
@@ -603,7 +603,7 @@
 									{
 										"test": "has_tag",
 										"subject": "self",
-										"value": "nave_ship_captured",
+										"value": "gh_ship_captured",
 										"operator": "!="
 									},
 									{
@@ -621,7 +621,7 @@
 						},
 						"add": {
 							"component_groups": [
-								"nave:start_animation"
+								"gh:start_animation"
 							]
 						}
 					},
@@ -637,7 +637,7 @@
 									{
 										"test": "has_tag",
 										"subject": "self",
-										"value": "nave_ship_captured",
+										"value": "gh_ship_captured",
 										"operator": "!="
 									}
 								]
@@ -645,7 +645,7 @@
 						],
 						"add": {
 							"component_groups": [
-								"nave:despawn_timer"
+								"gh:despawn_timer"
 							]
 						}
 					}

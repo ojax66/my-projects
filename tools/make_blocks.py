@@ -190,7 +190,7 @@ for _short, _cor, _pt, _en, _item, _min, _max in ORES:
                            hardness=4.5 if _short.endswith("_deep") else 3.0)
     BLOCKS[_short]["loot"] = {"item": _item, "min": _min, "max": _max}
 
-NS = "space_dim"
+NS = "gh"
 
 
 def texture_key(short):

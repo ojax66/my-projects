@@ -1,7 +1,7 @@
 {
   "format_version": "1.8.0",
   "render_controllers": {
-    "controller.render.space_dim.sky_body": {
+    "controller.render.gh.sky_body": {
       "geometry": "Geometry.default",
       "materials": [
         {

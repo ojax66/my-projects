@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:reinforced_spacesuit_chestplate"
+      "identifier": "gh:reinforced_spacesuit_chestplate"
     },
     "tags": [
       "crafting_table"
@@ -14,20 +14,20 @@
     ],
     "key": {
       "T": {
-        "item": "space_dim:titanium"
+        "item": "gh:titanium"
       },
       "Z": {
-        "item": "space_dim:silicon"
+        "item": "gh:silicon"
       },
       "H": {
-        "item": "space_dim:helium3"
+        "item": "gh:helium3"
       },
       "S": {
-        "item": "space_dim:apollo_chestplate"
+        "item": "gh:basic_spacesuit_chestplate"
       }
     },
     "result": {
-      "item": "space_dim:reinforced_spacesuit_chestplate",
+      "item": "gh:reinforced_spacesuit_chestplate",
       "count": 1
     }
   }

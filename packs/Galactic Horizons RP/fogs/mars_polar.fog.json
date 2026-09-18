@@ -2,7 +2,7 @@
   "format_version": "1.16.100",
   "minecraft:fog_settings": {
     "description": {
-      "identifier": "space_dim:fog_mars_polar"
+      "identifier": "gh:fog_mars_polar"
     },
     "distance": {
       "air": {

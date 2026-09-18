@@ -120,7 +120,7 @@ if default_biome != biome_id:
     err(f"default_biome da dimensão ({default_biome}) não é o bioma declarado ({biome_id})")
 
 # --- 4. Os scripts usam os mesmos ids que os JSONs declaram -------------------
-config_path = os.path.join(BP, "scripts", "space_dim", "config.js")
+config_path = os.path.join(BP, "scripts", "gh", "config.js")
 config_src = ""
 if os.path.isfile(config_path):
     with open(config_path, encoding="utf-8") as f:
@@ -181,11 +181,11 @@ if config_src:
 # Um bloco custom precisa de quatro peças em dois packs. Faltando uma, o bloco
 # vira cubo roxo no jogo e nada avisa. Aqui as quatro são conferidas contra os
 # ids que as paletas de bodies.js realmente usam.
-bodies_path = os.path.join(BP, "scripts", "space_dim", "bodies.js")
+bodies_path = os.path.join(BP, "scripts", "gh", "bodies.js")
 used_blocks = set()
 if os.path.isfile(bodies_path):
     with open(bodies_path, encoding="utf-8") as f:
-        used_blocks = set(re.findall(r'"(space_dim:[a-z0-9_]+)"', f.read()))
+        used_blocks = set(re.findall(r'"(gh:[a-z0-9_]+)"', f.read()))
 else:
     err("bodies.js não encontrado")
 
@@ -208,7 +208,7 @@ lang_names = set()
 lang_path = os.path.join(RP, "texts", "en_US.lang")
 if os.path.isfile(lang_path):
     with open(lang_path, encoding="utf-8") as f:
-        lang_names = set(re.findall(r"^tile\.(space_dim:[a-z0-9_]+)\.name=", f.read(), re.M))
+        lang_names = set(re.findall(r"^tile\.(gh:[a-z0-9_]+)\.name=", f.read(), re.M))
 else:
     err("RP/texts/en_US.lang nao existe — nenhum nome apareceria no jogo")
 
@@ -265,23 +265,23 @@ else:
 # Marte (planets.js) tem os blocos de camada, o gelo, a bedrock e os minérios,
 # e nenhum deles aparece em paleta nenhuma.
 _planets_src = ""
-_planets_path = os.path.join(BP, "scripts", "space_dim", "planets.js")
+_planets_path = os.path.join(BP, "scripts", "gh", "planets.js")
 if os.path.isfile(_planets_path):
     with open(_planets_path, encoding="utf-8") as f:
         _planets_src = f.read()
-used_blocks |= set(re.findall(r'"(space_dim:[a-z0-9_]+)"', _planets_src))
+used_blocks |= set(re.findall(r'"(gh:[a-z0-9_]+)"', _planets_src))
 
 # Os minérios não aparecem mais por id em planets.js: lá está o TIPO
 # ("silicon"), e o bloco é montado no gerador a partir do planeta, do tipo e da
 # pedra. Então o que conta como uso aqui é o par que a tabela manda existir.
 for _planeta, _host in ORES_SPEC.get("hosts", {}).items():
     for _tipo in _host.get("ores", []):
-        used_blocks.add(f"space_dim:{_planeta}_{_tipo}_ore")
-        used_blocks.add(f"space_dim:{_planeta}_{_tipo}_ore_deep")
+        used_blocks.add(f"gh:{_planeta}_{_tipo}_ore")
+        used_blocks.add(f"gh:{_planeta}_{_tipo}_ore_deep")
 
 # Blocos que o jogador coloca e nenhum gerador usa. Não são peso morto — são o
 # ponto.
-used_blocks |= set(re.findall(r'"(space_dim:[a-z0-9_]+)"', config_src))
+used_blocks |= set(re.findall(r'"(gh:[a-z0-9_]+)"', config_src))
 
 # Blocos declarados que ninguém usa: não quebra nada, mas é peso morto.
 for bid in sorted(set(declared_blocks) - used_blocks):
@@ -390,7 +390,7 @@ for p, d in docs.items():
 item_lang = set()
 if os.path.isfile(lang_path):
     with open(lang_path, encoding="utf-8") as f:
-        item_lang = set(re.findall(r"^item\.(space_dim:[a-z0-9_]+)=", f.read(), re.M))
+        item_lang = set(re.findall(r"^item\.(gh:[a-z0-9_]+)=", f.read(), re.M))
 
 for iid, (path, doc) in sorted(declared_items.items()):
     comps = doc["minecraft:item"]["components"]
@@ -432,10 +432,10 @@ for aid in sorted(set(attachables) - set(declared_items)):
 # --- 4d-quinquies. O arquivo de textura se chama como a coisa que ele desenha -
 #
 # A regra: tirando o prefixo do namespace, a CHAVE do atlas e o NOME DO ARQUIVO
-# são a mesma palavra. `space_dim_apollo_helmet` mora em `apollo_helmet.png`.
+# são a mesma palavra. `gh_basic_spacesuit_helmet` mora em `basic_spacesuit_helmet.png`.
 #
 # Sem isso o nome derrapa sozinho — metade dos ícones estava em
-# `space_dim_apollo_helmet.png` e a outra metade em `star_helmet.png`, as duas
+# `gh_basic_spacesuit_helmet.png` e a outra metade em `star_helmet.png`, as duas
 # funcionando, e ninguém achava nada procurando pelo nome do item.
 for _atlas, _pasta in (
     (os.path.join(RP, "textures", "item_texture.json"), "items"),
@@ -448,7 +448,7 @@ for _atlas, _pasta in (
         _tex = _entrada.get("textures")
         if not isinstance(_tex, str):
             continue                      # lista de faces: outro assunto
-        _esperado = _chave[len("space_dim_"):] if _chave.startswith("space_dim_") else _chave
+        _esperado = _chave[len("gh_"):] if _chave.startswith("gh_") else _chave
         _arquivo = _tex.rsplit("/", 1)[-1]
         if _arquivo != _esperado:
             err(f"{_pasta}: a chave {_chave} aponta pra {_arquivo}.png; "
@@ -494,7 +494,7 @@ def check_recipe_ref(ref, where):
     # sozinho a partir da entidade, então ele não aparece em items/.
     if name.endswith("_spawn_egg") and name[:-len("_spawn_egg")] in declared_entities:
         return
-    if not name.startswith("space_dim:"):
+    if not name.startswith("gh:"):
         # Item de outro addon (o Spacecraft). Só passa se estiver declarado —
         # assim uma receita que dependa deles fica visível, e um id errado de
         # digitação é pego em vez de virar receita que nunca funciona.
@@ -550,7 +550,7 @@ RECIPE_FORMAT_OK = {
 # lados, e da textura. Faltando qualquer peça o corpo some quando passa da
 # distância de renderização — que no espaço é quase sempre.
 config_src = ""
-config_path = os.path.join(BP, "scripts", "space_dim", "config.js")
+config_path = os.path.join(BP, "scripts", "gh", "config.js")
 if os.path.isfile(config_path):
     with open(config_path, encoding="utf-8") as f:
         config_src = f.read()
@@ -566,7 +566,7 @@ for extra in ("star",):
         err(f"falta a entidade sky_{extra} no BP")
     if not os.path.isfile(os.path.join(RP, "entity", f"sky_{extra}.entity.json")):
         err(f"falta a entidade sky_{extra} no RP")
-    if not os.path.isfile(os.path.join(RP, "textures", "space_dim", "sky", f"{extra}.png")):
+    if not os.path.isfile(os.path.join(RP, "textures", "gh", "sky", f"{extra}.png")):
         err(f"falta a textura da {extra}")
 
 def png_rgba(path):
@@ -620,7 +620,7 @@ def sky_desc(bid):
 def sky_texture_path(bid):
     ref = sky_desc(bid).get("textures", {}).get("default")
     if not ref:
-        return os.path.join(RP, "textures", "space_dim", "sky", f"{bid}.png")
+        return os.path.join(RP, "textures", "gh", "sky", f"{bid}.png")
     return os.path.join(RP, *ref.split("/")) + ".png"
 
 
@@ -668,8 +668,8 @@ def body_blocks(src):
 
 BODY_SRC = body_blocks(config_src)
 
-SKY_MATERIAL = "space_dim_sky"
-GLOW_MATERIAL = "space_dim_glow"
+SKY_MATERIAL = "gh_sky"
+GLOW_MATERIAL = "gh_glow"
 
 mat_doc = {}
 mat_path = os.path.join(RP, "materials", "entity.material")
@@ -728,13 +728,13 @@ for bid in list(body_ids) + ["star"]:
         continue
     desc = doc.get("minecraft:client_entity", {}).get("description", {})
     mat = desc.get("materials", {}).get("default")
-    # Tres famílias. O corpo opaco usa `space_dim_sky`; o volumetrico (o Sol)
-    # usa `space_dim_glow`; e o corpo com ANEL de atmosfera usa
-    # `space_dim_halo`, que e o sky mais DisableDepthWrite — sem isso o cubo do
+    # Tres famílias. O corpo opaco usa `gh_sky`; o volumetrico (o Sol)
+    # usa `gh_glow`; e o corpo com ANEL de atmosfera usa
+    # `gh_halo`, que e o sky mais DisableDepthWrite — sem isso o cubo do
     # corpo, que esta atras dos aneis, e recusado pelo teste de profundidade.
     tem_anel = "atmosphere:" in BODY_SRC.get(bid, "")
     esperado = (GLOW_MATERIAL if sky_is_glow(bid)
-                else "space_dim_halo" if tem_anel else SKY_MATERIAL)
+                else "gh_halo" if tem_anel else SKY_MATERIAL)
     if mat != esperado:
         err(f"sky_{bid} usa o material {mat}, esperado {esperado}")
     if not desc.get("scripts", {}).get("should_update_bones_and_effects_offscreen"):
@@ -830,7 +830,7 @@ for bid in body_ids:
     gpath = os.path.join(RP, "models", "entity", "sky_glow.geo.json")
     gdoc = docs.get(gpath)
     if not isinstance(gdoc, dict):
-        err(f"sky_{bid} usa geometry.space_dim.sky_glow, que nao existe no RP")
+        err(f"sky_{bid} usa geometry.gh.sky_glow, que nao existe no RP")
         continue
     gentry = (gdoc.get("minecraft:geometry") or [{}])[0]
     gdesc = gentry.get("description", {})
@@ -899,7 +899,7 @@ for bid, trecho in BODY_SRC.items():
 # `solid` so tem efeito se alguem chamar solidPushOut. Sem isso a marca no
 # config e decorativa e o planeta continua atravessavel.
 grav_src = ""
-grav_path = os.path.join(BP, "scripts", "space_dim", "gravity.js")
+grav_path = os.path.join(BP, "scripts", "gh", "gravity.js")
 if os.path.isfile(grav_path):
     with open(grav_path, encoding="utf-8") as f:
         grav_src = f.read()
@@ -1069,7 +1069,7 @@ for bid, trecho in BODY_SRC.items():
 # brasa e o que troca esse branco por algo legivel. Longa demais ela nao corta o
 # brilho e o problema volta.
 main_src = ""
-main_path = os.path.join(BP, "scripts", "space_dim", "main.js")
+main_path = os.path.join(BP, "scripts", "gh", "main.js")
 if os.path.isfile(main_path):
     with open(main_path, encoding="utf-8") as f:
         main_src = f.read()
@@ -1110,7 +1110,7 @@ if mfi:
 # O 2 vem da meia-aresta do cubo do geometry, que e 0,5 bloco (16 unidades de
 # aresta). A versao anterior dividia por 8, tratando a meia-aresta como 8
 # BLOCOS: dezesseis vezes menor, e nada media isso.
-steps_path = os.path.join(BP, "scripts", "space_dim", "skySteps.js")
+steps_path = os.path.join(BP, "scripts", "gh", "skySteps.js")
 steps = []
 if os.path.isfile(steps_path):
     with open(steps_path, encoding="utf-8") as f:
@@ -1118,7 +1118,7 @@ if os.path.isfile(steps_path):
     if m:
         steps = [float(x) for x in m.group(1).split(",") if x.strip()]
 if not steps:
-    err("scripts/space_dim/skySteps.js sem degraus de escala")
+    err("scripts/gh/skySteps.js sem degraus de escala")
 if any(v <= 0 for v in steps):
     err("ha um degrau de escala <= 0 em skySteps.js — escala zero e um modelo "
         "invisivel, que e exatamente o defeito que isto substitui")
@@ -1140,10 +1140,10 @@ for bid in list(body_ids) + ["star"]:
             f"o script pediria um evento que nao existe")
         continue
     for i, value in enumerate(steps):
-        got = groups.get(f"space_dim:size_{i}", {}).get("minecraft:scale", {}).get("value")
+        got = groups.get(f"gh:size_{i}", {}).get("minecraft:scale", {}).get("value")
         if got is None or abs(float(got) - value) > 1e-6:
             err(f"sky_{bid}: grupo size_{i} tem escala {got}, skySteps.js diz {value}")
-        if f"space_dim:set_size_{i}" not in events:
+        if f"gh:set_size_{i}" not in events:
             err(f"sky_{bid} sem o evento set_size_{i}")
 
 # A faixa dos degraus tem que cobrir o que a conta realmente pede: do corpo
@@ -1263,7 +1263,7 @@ for bid in list(body_ids) + ["star"]:
 #
 # A lista de blocos de cada paleta sai do proprio bodies.js.
 bodies_src = ""
-bodies_path = os.path.join(BP, "scripts", "space_dim", "bodies.js")
+bodies_path = os.path.join(BP, "scripts", "gh", "bodies.js")
 if os.path.isfile(bodies_path):
     with open(bodies_path, encoding="utf-8") as f:
         bodies_src = f.read()
@@ -1312,7 +1312,7 @@ for palette in sorted(passable_palettes):
         m2 = re.search(r"const SUN_DISC = \[(.*?)\];", bodies_src, re.S)
         if m2:
             body_src += m2.group(1)
-    used = set(re.findall(r'"(space_dim:\w+)"', body_src))
+    used = set(re.findall(r'"(gh:\w+)"', body_src))
     if not used:
         warn(f"nao consegui ler os blocos da paleta {palette}")
     for block_id in sorted(used):
@@ -1329,7 +1329,7 @@ for palette in sorted(passable_palettes):
 # pra um sistema que nao existe no catalogo e um item que nao faz nada: o
 # jogador usa, nao acontece nada, e nada explica por que.
 catalog_src = ""
-catalog_path = os.path.join(BP, "scripts", "space_dim", "catalog.js")
+catalog_path = os.path.join(BP, "scripts", "gh", "catalog.js")
 if os.path.isfile(catalog_path):
     with open(catalog_path, encoding="utf-8") as f:
         catalog_src = f.read()
@@ -1395,7 +1395,7 @@ for p, d in docs.items():
     for slot, tag in SMITHING_SLOT_TAG.items():
         v = r.get(slot)
         iid = v.get("item") if isinstance(v, dict) else v
-        if not isinstance(iid, str) or not iid.startswith("space_dim:"):
+        if not isinstance(iid, str) or not iid.startswith("gh:"):
             continue  # item do jogo base ja vem com a tag
         tags = item_tags(iid)
         if tags is None:
@@ -1433,12 +1433,12 @@ for const in ("STAR_ARMOR_PIECES", "BASIC_SUIT_PIECES", "REINFORCED_SUIT_PIECES"
     if slots != ["Head", "Chest", "Legs", "Feet"]:
         err(f"{const} não cobre os quatro espaços na ordem certa: {slots}")
     for _, piece in pieces:
-        if piece.startswith("space_dim:") and piece not in declared_items:
+        if piece.startswith("gh:") and piece not in declared_items:
             err(f"{const} cita {piece}, que não existe como item")
 
 # O conjunto inteiro tem que caber num corpo só: dois ids iguais em listas
 # diferentes fariam um traje contar como o outro.
-_all_pieces = re.findall(r'\{ slot: "\w+", item: "(space_dim:[a-z0-9_]+)" \}', config_src)
+_all_pieces = re.findall(r'\{ slot: "\w+", item: "(gh:[a-z0-9_]+)" \}', config_src)
 if len(_all_pieces) != len(set(_all_pieces)):
     err("o mesmo id de peça aparece em mais de um conjunto do config")
 
@@ -1462,7 +1462,7 @@ for p, d in docs.items():
 # erro nenhum no jogo: vira um pedaço de mundo sem névoa e sem nome, e ninguém
 # descobre por quê.
 planets_src = ""
-planets_path = os.path.join(BP, "scripts", "space_dim", "planets.js")
+planets_path = os.path.join(BP, "scripts", "gh", "planets.js")
 if os.path.isfile(planets_path):
     with open(planets_path, encoding="utf-8") as f:
         planets_src = f.read()
@@ -1523,7 +1523,7 @@ def block_exists(bid):
 # deixa de ser opinião: a mais clara em cima, a mais escura embaixo.
 def block_luma(bid):
     name = bid.partition(":")[2]
-    path = os.path.join(RP, "textures", "space_dim", "blocks", f"{name}.png")
+    path = os.path.join(RP, "textures", "gh", "blocks", f"{name}.png")
     if not os.path.isfile(path):
         return None
     w, h, px = png_rgba(path)
@@ -1638,7 +1638,7 @@ for pid, src in PLANET_SRC.items():
     #     E o vacuo. Duas definicoes separadas com a mesma intencao e como elas
     #     acabam diferentes.
     if pid == "moon":
-        espaco = client_biomes.get("space_dim:espaco_sideral")
+        espaco = client_biomes.get("gh:espaco_sideral")
         if espaco:
             ec = docs[espaco]["minecraft:client_biome"].get("components", {})
             alvo_fog = ec.get("minecraft:fog_appearance", {}).get("fog_identifier")
@@ -1668,7 +1668,7 @@ for pid, src in PLANET_SRC.items():
         nome = bloco.partition(":")[2]
         if not os.path.isfile(os.path.join(BP, "blocks", f"{nome}.json")):
             err(f"o minerio {bloco} de {pid} nao tem BP/blocks/{nome}.json")
-        elif not os.path.isfile(os.path.join(BP, "loot_tables", "space_dim",
+        elif not os.path.isfile(os.path.join(BP, "loot_tables", "gh",
                                              "blocks", f"{nome}.json")):
             err(f"o minerio {bloco} nao tem tabela de loot — ele largaria ele "
                 f"mesmo, e um bloco de minerio no inventario nao serve pra nada")
@@ -1760,25 +1760,25 @@ for nome, valor in re.findall(
 # falta uma textura e a nave fica roxa e preta; falta o render controller e ela
 # não aparece; falta a entidade do RP e o jogo mostra um cubo branco. Nenhum
 # desses casos dá erro no log — todos aparecem só voando.
-NAVE = "nave:level_1_spaceship"
+NAVE = "gh:level_1_spaceship"
 if any(NAVE in (config_src or "") for _ in (1,)) or True:
     faltando = []
     for caminho in (
         os.path.join(BP, "entities", "level_1_spaceship.json"),
         os.path.join(BP, "spawn_rules", "level_1_spaceship.json"),
         os.path.join(BP, "animation_controllers", "ship.animation_controllers.json"),
-        os.path.join(BP, "loot_tables", "nave", "spaceship_death.json"),
-        os.path.join(BP, "loot_tables", "nave", "spaceship_disassembled.json"),
+        os.path.join(BP, "loot_tables", "gh", "spaceship_death.json"),
+        os.path.join(BP, "loot_tables", "gh", "spaceship_disassembled.json"),
         os.path.join(RP, "entity", "level_1_spaceship.json"),
         os.path.join(RP, "models", "entity", "level_1_spaceship.geo.json"),
         os.path.join(RP, "render_controllers", "level_1_spaceship.render_controllers.json"),
         os.path.join(RP, "animations", "level_1_spaceship.animation.json"),
         os.path.join(RP, "animation_controllers", "level_1_spaceship.animation_controllers.json"),
-        os.path.join(RP, "particles", "nave_ship_circle.particle.json"),
-        os.path.join(RP, "textures", "nave", "level_1_spaceship.png"),
-        os.path.join(RP, "textures", "nave", "shockwave.png"),
+        os.path.join(RP, "particles", "gh_ship_circle.particle.json"),
+        os.path.join(RP, "textures", "gh", "level_1_spaceship.png"),
+        os.path.join(RP, "textures", "gh", "shockwave.png"),
         os.path.join(RP, "sounds", "sound_definitions.json"),
-        os.path.join(RP, "sounds", "nave", "ship_engine.ogg"),
+        os.path.join(RP, "sounds", "gh", "ship_engine.ogg"),
     ):
         if not os.path.isfile(caminho):
             faltando.append(os.path.relpath(caminho, ROOT))
@@ -1808,7 +1808,7 @@ for base, name in ((BP, "BP"), (RP, "RP")):
         warn(f"{name} sem pack_icon.png")
 
 # --- 7. Imports dos scripts resolvem ------------------------------------------
-script_dir = os.path.join(BP, "scripts", "space_dim")
+script_dir = os.path.join(BP, "scripts", "gh")
 if os.path.isdir(script_dir):
     for name in os.listdir(script_dir):
         if not name.endswith(".js"):

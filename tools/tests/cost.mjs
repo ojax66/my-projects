@@ -1,4 +1,4 @@
-import { columnRuns } from './space_dim/bodies.js';
+import { columnRuns } from './gh/bodies.js';
 const generateColumn = (dim, x, z) => {
   const runs = columnRuns(x, z);
   let top = -64;
@@ -7,7 +7,7 @@ const generateColumn = (dim, x, z) => {
   return runs.length ? top : -64;
 };
 
-import { BODIES, CHUNKS_PER_TICK, BLOCK_BUDGET_PER_TICK } from './space_dim/config.js';
+import { BODIES, CHUNKS_PER_TICK, BLOCK_BUDGET_PER_TICK } from './gh/config.js';
 
 
 for (const body of BODIES) {

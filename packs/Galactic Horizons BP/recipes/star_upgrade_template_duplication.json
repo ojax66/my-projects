@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:star_upgrade_template_duplication"
+      "identifier": "gh:star_upgrade_template_duplication"
     },
     "tags": [
       "crafting_table"
@@ -17,14 +17,14 @@
         "item": "minecraft:diamond"
       },
       "T": {
-        "item": "space_dim:star_upgrade_template"
+        "item": "gh:star_upgrade_template"
       },
       "E": {
         "item": "minecraft:end_stone"
       }
     },
     "result": {
-      "item": "space_dim:star_upgrade_template",
+      "item": "gh:star_upgrade_template",
       "count": 2
     }
   }

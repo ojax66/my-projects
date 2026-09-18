@@ -3,7 +3,7 @@
   "minecraft:geometry": [
     {
       "description": {
-        "identifier": "geometry.space_dim.star_armor.helmet",
+        "identifier": "geometry.gh.star_armor.helmet",
         "texture_width": 64,
         "texture_height": 64,
         "visible_bounds_width": 4,
@@ -185,7 +185,7 @@
     },
     {
       "description": {
-        "identifier": "geometry.space_dim.star_armor.chestplate",
+        "identifier": "geometry.gh.star_armor.chestplate",
         "texture_width": 64,
         "texture_height": 64,
         "visible_bounds_width": 4,
@@ -283,7 +283,7 @@
     },
     {
       "description": {
-        "identifier": "geometry.space_dim.star_armor.boots",
+        "identifier": "geometry.gh.star_armor.boots",
         "texture_width": 64,
         "texture_height": 64,
         "visible_bounds_width": 4,

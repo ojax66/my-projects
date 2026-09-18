@@ -1,4 +1,4 @@
-import { columnRuns } from './space_dim/bodies.js';
+import { columnRuns } from './gh/bodies.js';
 const generateColumn = (dim, x, z) => {
   const runs = columnRuns(x, z);
   let top = -64;
@@ -18,8 +18,8 @@ const paintColumn = (dim, x, z) => {
     for (let y = r.y0; y <= r.y1; y++) dim.setBlockType({ x, y, z }, r.id);
   return runs.length;
 };
-import { getHeight, distanceTo, builtRadius } from './space_dim/bodies.js';
-import { BODIES, DIM_MIN_Y } from './space_dim/config.js';
+import { getHeight, distanceTo, builtRadius } from './gh/bodies.js';
+import { BODIES, DIM_MIN_Y } from './gh/config.js';
 
 
 // Dimensão falsa que só anota o que foi escrito.
@@ -149,17 +149,17 @@ for (const body of BODIES) {
   const OWN_BLOCKS = new Set([
     // O Sol tem seis tons de superficie, nao tres: e com eles que o disco dele
     // faz o degrade do branco ao vermelho, trocando de bloco.
-    'space_dim:sun_edge','space_dim:sun_corona','space_dim:sun_ember',
-    'space_dim:sun_plasma','space_dim:sun_flare','space_dim:sun_blaze',
+    'gh:sun_edge','gh:sun_corona','gh:sun_ember',
+    'gh:sun_plasma','gh:sun_flare','gh:sun_blaze',
     // `sun_blaze` e `sun_core` sao o mesmo branco com papeis opostos: o blaze e
     // o miolo claro da casca externa, que TEM que ser atravessavel, e o core e
     // o chao macico la no meio. Pintar a casca com o core fechou a primeira
     // camada do Sol.
-    'space_dim:sun_core',
-    'space_dim:earth_ocean','space_dim:earth_shallow','space_dim:earth_land',
-    'space_dim:earth_forest','space_dim:earth_ice',
-    'space_dim:moon_regolith_light','space_dim:moon_regolith','space_dim:moon_regolith_dark',
-    'space_dim:mars_dust','space_dim:mars_rock','space_dim:mars_rock_dark','space_dim:mars_ice',
+    'gh:sun_core',
+    'gh:earth_ocean','gh:earth_shallow','gh:earth_land',
+    'gh:earth_forest','gh:earth_ice',
+    'gh:moon_regolith_light','gh:moon_regolith','gh:moon_regolith_dark',
+    'gh:mars_dust','gh:mars_rock','gh:mars_rock_dark','gh:mars_ice',
   ]);
   const used = new Set();
   for (const body of BODIES) {
@@ -220,22 +220,22 @@ for (const body of BODIES) {
 
   const expectations = {
     earth: [
-      ['space_dim:earth_ocean', 45, 65],
-      ['space_dim:earth_shallow', 8, 22],
-      ['space_dim:earth_land', 10, 25],
-      ['space_dim:earth_forest', 4, 16],
-      ['space_dim:earth_ice', 1, 6],
+      ['gh:earth_ocean', 45, 65],
+      ['gh:earth_shallow', 8, 22],
+      ['gh:earth_land', 10, 25],
+      ['gh:earth_forest', 4, 16],
+      ['gh:earth_ice', 1, 6],
     ],
     moon: [
-      ['space_dim:moon_regolith_light', 30, 60],
-      ['space_dim:moon_regolith', 30, 55],
-      ['space_dim:moon_regolith_dark', 5, 25],
+      ['gh:moon_regolith_light', 30, 60],
+      ['gh:moon_regolith', 30, 55],
+      ['gh:moon_regolith_dark', 5, 25],
     ],
     mars: [
-      ['space_dim:mars_dust', 45, 70],
-      ['space_dim:mars_rock', 20, 45],
-      ['space_dim:mars_rock_dark', 2, 15],
-      ['space_dim:mars_ice', 0.5, 5],
+      ['gh:mars_dust', 45, 70],
+      ['gh:mars_rock', 20, 45],
+      ['gh:mars_rock_dark', 2, 15],
+      ['gh:mars_ice', 0.5, 5],
     ],
   };
 
@@ -244,7 +244,7 @@ for (const body of BODIES) {
     const pct = share(body);
     for (const [id, lo, hi] of rows) {
       const v = pct.get(id) ?? 0;
-      check(`${bodyId}: ${id.replace('space_dim:', '')} entre ${lo}% e ${hi}%`,
+      check(`${bodyId}: ${id.replace('gh:', '')} entre ${lo}% e ${hi}%`,
             v >= lo && v <= hi, `(${v.toFixed(1)}%)`);
     }
   }

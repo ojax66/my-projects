@@ -1,7 +1,7 @@
 {
 	"format_version": "1.10.0",
 	"animation_controllers": {
-		"controller.animation.nave.death": {
+		"controller.animation.gh.death": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -19,7 +19,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.up_down": {
+		"controller.animation.gh.up_down": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -57,7 +57,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.yaw_moment": {
+		"controller.animation.gh.yaw_moment": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -81,7 +81,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.landing_gear": {
+		"controller.animation.gh.landing_gear": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -105,7 +105,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.damage": {
+		"controller.animation.gh.damage": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -127,7 +127,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.ground": {
+		"controller.animation.gh.ground": {
 			"initial_state": "default",
 			"states": {
 				"default": {

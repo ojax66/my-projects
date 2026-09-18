@@ -1,7 +1,7 @@
 {
 	"format_version": "1.10.0",
 	"animation_controllers": {
-		"controller.animation.nave.ship_damage": {
+		"controller.animation.gh.ship_damage": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -16,7 +16,7 @@
 				},
 				"moving_normal": {
 					"on_entry": [
-						"@s nave:no_damaged"
+						"@s gh:no_damaged"
 					],
 					"transitions": [
 						{
@@ -26,7 +26,7 @@
 				},
 				"moving_damaged": {
 					"on_entry": [
-						"@s nave:damaged"
+						"@s gh:damaged"
 					],
 					"transitions": [
 						{
@@ -36,7 +36,7 @@
 				}
 			}
 		},
-		"controller.animation.nave.ship_captured": {
+		"controller.animation.gh.ship_captured": {
 			"initial_state": "default",
 			"states": {
 				"default": {
@@ -48,7 +48,7 @@
 				},
 				"captured": {
 					"on_entry": [
-						"@s nave:tag_ship_captured"
+						"@s gh:tag_ship_captured"
 					]
 				}
 			}

@@ -2,21 +2,21 @@
   "format_version": "1.10.0",
   "minecraft:client_entity": {
     "description": {
-      "identifier": "space_dim:sky_mars",
+      "identifier": "gh:sky_mars",
       "materials": {
-        "default": "space_dim_sky"
+        "default": "gh_sky"
       },
       "textures": {
-        "default": "textures/space_dim/sky/mars"
+        "default": "textures/gh/sky/mars"
       },
       "geometry": {
-        "default": "geometry.space_dim.sky_body"
+        "default": "geometry.gh.sky_body"
       },
       "scripts": {
         "should_update_bones_and_effects_offscreen": true
       },
       "render_controllers": [
-        "controller.render.space_dim.sky_body"
+        "controller.render.gh.sky_body"
       ]
     }
   }

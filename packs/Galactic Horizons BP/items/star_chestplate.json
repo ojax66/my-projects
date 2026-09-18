@@ -2,14 +2,14 @@
   "format_version": "1.21.80",
   "minecraft:item": {
     "description": {
-      "identifier": "space_dim:star_chestplate",
+      "identifier": "gh:star_chestplate",
       "menu_category": {
         "category": "equipment",
         "group": "minecraft:itemGroup.name.chestplate"
       }
     },
     "components": {
-      "minecraft:icon": "space_dim_star_chestplate",
+      "minecraft:icon": "gh_star_chestplate",
       "minecraft:max_stack_size": 1,
       "minecraft:durability": {
         "max_durability": 888
@@ -22,7 +22,7 @@
         "repair_items": [
           {
             "items": [
-              "space_dim:star_core_ingot"
+              "gh:star_core_ingot"
             ],
             "repair_amount": 222
           }

@@ -2,17 +2,17 @@
   "format_version": "1.10.0",
   "minecraft:attachable": {
     "description": {
-      "identifier": "space_dim:reinforced_spacesuit_chestplate",
+      "identifier": "gh:reinforced_spacesuit_chestplate",
       "materials": {
         "default": "armor",
         "enchanted": "armor_enchanted"
       },
       "textures": {
-        "default": "textures/space_dim/armor/axemu_suit",
+        "default": "textures/gh/armor/reinforced_suit",
         "enchanted": "textures/misc/enchanted_actor_glint"
       },
       "geometry": {
-        "default": "geometry.axemu_suit.armor.chestplate"
+        "default": "geometry.gh.reinforced_suit.armor.chestplate"
       },
       "scripts": {
         "parent_setup": "variable.chest_layer_visible = 0.0;"

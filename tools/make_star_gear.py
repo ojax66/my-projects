@@ -24,7 +24,7 @@ from langfile import replace_section  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
-NS = "space_dim"
+NS = "gh"
 FORMAT_VERSION = "1.21.80"
 
 # RECEITA USA OUTRO SCHEMA. Um format_version que o jogo não reconhece pra

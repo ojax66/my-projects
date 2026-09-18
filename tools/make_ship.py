@@ -23,13 +23,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 ASSETS = os.path.join(ROOT, "tools", "assets")
-NS = "space_dim"
+NS = "gh"
 RECIPE_FORMAT = "1.12"
 
-SHIP_ENTITY = "nave:level_1_spaceship"
+SHIP_ENTITY = "gh:level_1_spaceship"
 SPAWN_EGG = f"{SHIP_ENTITY}_spawn_egg"
-ICON_KEY = f"{NS}_nave_spawn_egg"
-ICON_NAME = "nave_spawn_egg"
+ICON_KEY = f"{NS}_ship_spawn_egg"
+ICON_NAME = "ship_spawn_egg"
 RENDER = "ship_render.png"
 
 # G vidro (a cúpula), L lixeira, D bloco de diamante (o núcleo),
@@ -118,7 +118,7 @@ def main():
     )
 
     lixeiras = sum(row.count("L") for row in RECIPE_PATTERN)
-    print(f"nave: receita de {lixeiras} lixeira(s) + material do Overworld -> {SPAWN_EGG}")
+    print(f"gh: receita de {lixeiras} lixeira(s) + material do Overworld -> {SPAWN_EGG}")
     print(f"  ícone do ovo: {opacos} de 256 pixels com tinta, de {RENDER}")
 
 

@@ -12,9 +12,9 @@
 import { world, system, __reset, __advance } from '@minecraft/server';
 import {
   BODIES, ARRIVAL_JITTER, ARRIVAL_CLEARANCE, DIMENSION_ID, SPACE_ENTRY_Y,
-} from './space_dim/config.js';
-import { gravityStrengthAt } from './space_dim/gravity.js';
-import { markArrival } from './space_dim/arrival.js';
+} from './gh/config.js';
+import { gravityStrengthAt } from './gh/gravity.js';
+import { markArrival } from './gh/arrival.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -67,8 +67,8 @@ for (const body of arriving) {
   // normal, e um buster aqui daria ao teste um módulo DIFERENTE do que ele
   // consulta — a marca de chegada iria pro Map errado e o teste passaria a
   // medir nada.
-  const { applyPlayerGravity, applyEntityGravity } = await import('./space_dim/gravity.js');
-  const arrival = await import('./space_dim/arrival.js');
+  const { applyPlayerGravity, applyEntityGravity } = await import('./gh/gravity.js');
+  const arrival = await import('./gh/arrival.js');
   arrival.forgetArrival('p1');
 
   const earth = BODIES.find((b) => b.id === 'earth');

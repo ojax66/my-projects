@@ -2,14 +2,14 @@
   "format_version": "1.21.80",
   "minecraft:item": {
     "description": {
-      "identifier": "space_dim:star_boots",
+      "identifier": "gh:star_boots",
       "menu_category": {
         "category": "equipment",
         "group": "minecraft:itemGroup.name.boots"
       }
     },
     "components": {
-      "minecraft:icon": "space_dim_star_boots",
+      "minecraft:icon": "gh_star_boots",
       "minecraft:max_stack_size": 1,
       "minecraft:durability": {
         "max_durability": 721
@@ -22,7 +22,7 @@
         "repair_items": [
           {
             "items": [
-              "space_dim:star_core_ingot"
+              "gh:star_core_ingot"
             ],
             "repair_amount": 180
           }

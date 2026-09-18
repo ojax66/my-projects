@@ -58,7 +58,7 @@ SIZE = 32
 CELLS = 16
 CELL_PX = SIZE // CELLS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "packs", "Galactic Horizons RP", "textures", "space_dim", "blocks")
+OUT = os.path.join(ROOT, "packs", "Galactic Horizons RP", "textures", "gh", "blocks")
 REF_DIR = os.path.join(ROOT, "tools", "assets")
 
 
@@ -697,7 +697,7 @@ if __name__ == "__main__":
     colors_path = os.path.join(ROOT, "tools", "assets", "block_colors.json")
     os.makedirs(os.path.dirname(colors_path), exist_ok=True)
     with open(colors_path, "w", encoding="utf-8") as f:
-        json.dump({f"space_dim:{n}": average_color(rows) for n, rows in built.items()},
+        json.dump({f"gh:{n}": average_color(rows) for n, rows in built.items()},
                   f, indent=2)
         f.write("\n")
 

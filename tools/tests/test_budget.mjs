@@ -1,6 +1,6 @@
 import { system } from '@minecraft/server';
-import { generateColumn, isBudgetError, builtRadius } from './space_dim/bodies.js';
-import { BODIES, BLOCK_BUDGET_PER_TICK, CHUNKS_PER_TICK } from './space_dim/config.js';
+import { generateColumn, isBudgetError, builtRadius } from './gh/bodies.js';
+import { BODIES, BLOCK_BUDGET_PER_TICK, CHUNKS_PER_TICK } from './gh/config.js';
 
 let failures = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?'  '+x:''}`); if(!ok) failures++; };

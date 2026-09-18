@@ -9,10 +9,10 @@
  *   - uma chunk cara demais, que trava o celular na hora de gerar.
  */
 import { PLANETS, planetOfDimension, planetOfBody, PLANET_BOUNDS, PLANET_EXIT_Y }
-  from './space_dim/planets.js';
-import { terrainAt, columnRunsAt, heightAt, biomeAt } from './space_dim/planetTerrain.js';
+  from './gh/planets.js';
+import { terrainAt, columnRunsAt, heightAt, biomeAt } from './gh/planetTerrain.js';
 import { BODIES, BLOCK_BUDGET_PER_TICK, GEN_RADIUS_CHUNKS, SPACE_ENTRY_Y }
-  from './space_dim/config.js';
+  from './gh/config.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -79,8 +79,8 @@ for (const planet of PLANETS) {
     // bloco -> tipo. Cada tipo tem DUAS pedras; as duas contam pro mesmo tipo.
     const tipoDe = new Map();
     for (const m of planet.ores.list) {
-      tipoDe.set(`space_dim:${planet.id}_${m.ore}_ore`, m.ore);
-      tipoDe.set(`space_dim:${planet.id}_${m.ore}_ore_deep`, m.ore);
+      tipoDe.set(`gh:${planet.id}_${m.ore}_ore`, m.ore);
+      tipoDe.set(`gh:${planet.id}_${m.ore}_ore_deep`, m.ore);
     }
     // A VARIANTE TEM QUE BATER COM A PEDRA QUE ELA SUBSTITUIU.
     //
@@ -359,7 +359,7 @@ for (const planet of PLANETS) {
   // A dica da bússola tem que reconhecer o portal novo. Ela decidia por
   // `kind === "spacecraft"`, que não existe mais: sem isto o jogador chegaria
   // do lado da Lua e a bússola não diria o que fazer.
-  const { compassHintFor } = await import('./space_dim/ambience.js');
+  const { compassHintFor } = await import('./gh/ambience.js');
   for (const planet of PLANETS) {
     const body = BODIES.find((b) => b.id === planet.bodyId);
     const hint = compassHintFor(body);

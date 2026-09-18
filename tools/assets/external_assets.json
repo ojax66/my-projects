@@ -2,9 +2,9 @@
   "_comment": [
     "O que este addon usa de OUTROS packs, e de onde vem.",
     "",
-    "Os trajes daqui (Apollo e AxEMU) têm modelo, textura e ícones PRÓPRIOS,",
+    "Os trajes daqui (básico e reforçado) têm modelo, textura e ícones PRÓPRIOS,",
     "em tools/assets/suits — nada de arte de outro pack. O que sobrou de fora é",
-    "só ITEM: a receita alternativa do AxEMU, pra quem joga com o Spacecraft,",
+    "só ITEM: a receita alternativa do reforçado, pra quem joga com o Spacecraft,",
     "aceita o traje deles e os materiais deles como caminho de fabricação.",
     "",
     "Esta lista existe pra o validador não ter que liberar qualquer id que",
@@ -16,11 +16,11 @@
     "(pack de comportamento d771161e / recurso 1da17be7).",
     "",
     "Sem o Spacecraft no mundo essas receitas simplesmente não aparecem na",
-    "bancada; as receitas próprias do Apollo e do AxEMU continuam funcionando."
+    "bancada; as receitas próprias dos dois trajes continuam funcionando."
   ],
   "spacecraft": {
     "provider": "Spacecraft — Venzenulon 7",
-    "required_for": "receitas alternativas: space_dim:reinforced_spacesuit_*_from_spacecraft",
+    "required_for": "receitas alternativas: gh:reinforced_spacesuit_*_from_spacecraft",
     "textures": [],
     "geometries": [],
     "items": [

@@ -73,9 +73,9 @@ a nave "saía sozinha" perto de um planeta.
 em Marte. A única montaria que não viaja é o foguete do Spacecraft: o lançamento
 dele tem coreografia própria e interromper no meio quebra a viagem.
 
-Atalho pra teste: `/scriptevent space_dim:go` (sobe até a altitude de saída),
-`/scriptevent space_dim:info` (estado da dimensão e da respiração) e
-`/scriptevent space_dim:planeta` (bioma, altura e camadas debaixo dos pés, na
+Atalho pra teste: `/scriptevent gh:go` (sobe até a altitude de saída),
+`/scriptevent gh:info` (estado da dimensão e da respiração) e
+`/scriptevent gh:planeta` (bioma, altura e camadas debaixo dos pés, na
 Lua ou em Marte).
 
 ## O que tem lá
@@ -87,8 +87,8 @@ entre a Terra e a Lua, com as duas à vista.
 |---|---|---|---|---|
 | **Sol** | 100 | −520, 128, 120 | atravessável — queima, não teleporta | — |
 | **Terra** | 26 | 0, 128, 0 | Overworld | volta pro espaço |
-| **Lua** | 12 | 0, 128, 190 | `space_dim:moon` (superfície da Lua) | volta pro espaço |
-| **Marte** | 20 | 520, 128, −120 | `space_dim:mars` (superfície de Marte) | volta pro espaço |
+| **Lua** | 12 | 0, 128, 190 | `gh:moon` (superfície da Lua) | volta pro espaço |
+| **Marte** | 20 | 520, 128, −120 | `gh:mars` (superfície de Marte) | volta pro espaço |
 
 O Sol é ~4× a Terra em raio. Na escala real seriam 109×, o que faria a Terra
 sumir; a proporção aqui segue as representações de livro didático, com a Terra
@@ -451,7 +451,7 @@ JSON daquele item, senão é erro de build.
 
 Um `.lang` no **behavior** pack não dá nome a nada. O jogo só lê `item.*`,
 `tile.*` e `biome.*` no **resource** pack — e quando não acha, não reclama:
-mostra o identificador cru (`space_dim:star_core_ingot`) no inventário, como se
+mostra o identificador cru (`gh:star_core_ingot`) no inventário, como se
 fosse o nome. O addon escrevia tudo no BP, e por isso todo item e todo bloco
 apareciam com o id.
 
@@ -499,7 +499,7 @@ diferente — a direção do rombo no casco e o tamanho do disco mudam.
 Três cuidados pra isso não virar vandalismo: só em terreno aberto (o bloco mais
 alto precisa ser chão natural, então nada de cair no meio de uma casa), nunca
 substitui bloco que não seja terreno, e o baú procura um lugar livre antes de
-ser posto. `/scriptevent space_dim:wreck` força uma queda perto, pra ver.
+ser posto. `/scriptevent gh:wreck` força uma queda perto, pra ver.
 
 ## O renascimento não fica no espaço
 
@@ -561,10 +561,10 @@ tem como confundir.
 
 O preço: **o mundo que já usava a versão antiga não migra sozinho** — é preciso
 ativar o pack novo nele. O que já está construído sobrevive, porque bloco e item
-são identificados por `space_dim:<nome>`, que não muda. Só o pack troca de
+são identificados por `gh:<nome>`, que não muda. Só o pack troca de
 identidade; o conteúdo não.
 
-É por isso também que o **namespace continua `space_dim`** mesmo com o addon
+É por isso também que o **namespace continua `gh`** mesmo com o addon
 chamando Galactic Horizons: renomear pra `new_horizons:` transformaria cada bloco já
 colocado num cubo roxo e cada item na mochila em nada.
 
@@ -594,7 +594,7 @@ de build.
 
 ## Ajustes
 
-Tudo que dá pra mexer está em `packs/Galactic Horizons BP/scripts/space_dim/config.js`:
+Tudo que dá pra mexer está em `packs/Galactic Horizons BP/scripts/gh/config.js`:
 posição e tamanho dos corpos, altitude de entrada, ritmo da geração, regras de
 respiração, gravidade zero, bússola. Alguns que importam:
 
@@ -992,9 +992,9 @@ por jogador enquanto a criação está em voo.
 
 ## Se a dimensão não abrir
 
-O bioma `space_dim:espaco_sideral` é um bioma custom usado como `default_biome`
+O bioma `gh:espaco_sideral` é um bioma custom usado como `default_biome`
 da dimensão. Se a versão do jogo não engolir isso, a dimensão não registra e
-`/scriptevent space_dim:info` responde `dimensão: não registrada`. O contorno é
+`/scriptevent gh:info` responde `dimensão: não registrada`. O contorno é
 trocar, em `packs/Galactic Horizons BP/dimensions/outer_space.json`:
 
 ```json

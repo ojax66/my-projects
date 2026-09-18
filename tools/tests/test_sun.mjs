@@ -6,9 +6,9 @@
  * senão não há o que atravessar.
  */
 import { world, system, __reset, __advance } from '@minecraft/server';
-import { columnRuns, builtRadius } from './space_dim/bodies.js';
-import { BODIES } from './space_dim/config.js';
-import { applySunHeat, heatLevelAt } from './space_dim/hazards.js';
+import { columnRuns, builtRadius } from './gh/bodies.js';
+import { BODIES } from './gh/config.js';
+import { applySunHeat, heatLevelAt } from './gh/hazards.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -24,7 +24,7 @@ const R = sun.radius;
   // Coluna passando pelo centro: de cima pra baixo tem que alternar
   // casca / vácuo / casca / vácuo / núcleo / vácuo / casca / vácuo / casca.
   const runs = columnRuns(sun.center.x, sun.center.z).sort((a, b) => a.y0 - b.y0);
-  const blocks = runs.map(r => `${r.id.replace('space_dim:', '')}(${r.y0}..${r.y1})`);
+  const blocks = runs.map(r => `${r.id.replace('gh:', '')}(${r.y0}..${r.y1})`);
   console.log('      coluna central:', blocks.join(' '));
 
   const kinds = runs.map(r => r.id);
@@ -86,11 +86,11 @@ const R = sun.radius;
 // --- 3. Quem chega perto pega fogo, quem está longe não ---------------------
 {
   __reset();
-  const dim = world.getDimension('space_dim:outer_space');
+  const dim = world.getDimension('gh:outer_space');
 
   const makeAt = (d) => {
     const p = world.__addPlayer({
-      id: 'p' + d, dimensionId: 'space_dim:outer_space',
+      id: 'p' + d, dimensionId: 'gh:outer_space',
       location: { x: sun.center.x + d, y: sun.center.y, z: sun.center.z },
     });
     p.__fire = 0;
@@ -124,7 +124,7 @@ const R = sun.radius;
 {
   __reset();
   const p = world.__addPlayer({
-    id: 'fireproof', dimensionId: 'space_dim:outer_space',
+    id: 'fireproof', dimensionId: 'gh:outer_space',
     location: { x: sun.center.x, y: sun.center.y, z: sun.center.z },
   });
   p.__fire = 0; p.__damage = 0;
@@ -141,7 +141,7 @@ const R = sun.radius;
 {
   __reset();
   const p = world.__addPlayer({
-    id: 'creative', dimensionId: 'space_dim:outer_space',
+    id: 'creative', dimensionId: 'gh:outer_space',
     location: { x: sun.center.x, y: sun.center.y, z: sun.center.z },
   });
   p.__fire = 0; p.__damage = 0;
@@ -203,7 +203,7 @@ const R = sun.radius;
     const off = Math.round((i / 40) * R * 0.99);
     const id = blockAt(off, off, R);
     if (!id) continue;
-    const nome = id.replace('space_dim:', '');
+    const nome = id.replace('gh:', '');
     if (vistos[vistos.length - 1] !== nome) vistos.push(nome);
   }
   const indices = vistos.map((n) => RAMPA.indexOf(n));
@@ -219,7 +219,7 @@ const R = sun.radius;
   // quadrada de antes a borda inteira da face era o último tom.
   const noEixo = blockAt(Math.round(R * 0.99), 0, R);
   check('  pelo eixo o degradê para antes do tom mais escuro',
-        noEixo !== 'space_dim:sun_edge', `(${noEixo})`);
+        noEixo !== 'gh:sun_edge', `(${noEixo})`);
 
   // Os seis aparecem de verdade: um tom que ocupa 1% não faz degradê nenhum.
   const conta = {};
@@ -231,7 +231,7 @@ const R = sun.radius;
   }
   const total = Object.values(conta).reduce((a, b) => a + b, 0);
   for (const nome of RAMPA) {
-    const pct = 100 * (conta['space_dim:' + nome] || 0) / total;
+    const pct = 100 * (conta['gh:' + nome] || 0) / total;
     // Os tons de fora vivem nas QUINAS (só o canto passa de R·√2), então a
     // fatia deles é naturalmente menor que a do miolo. O que a regra pega é um
     // tom que sumiu.
@@ -243,7 +243,7 @@ const R = sun.radius;
   const faces = [[0, 0, -R], [R, 0, 0], [-R, 0, 0], [0, R, 0], [0, -R, 0]];
   for (const [dx, dy, dz] of faces) {
     check(`  o miolo de (${dx},${dy},${dz}) também é claro`,
-          blockAt(dx, dy, dz) === 'space_dim:sun_blaze', `(${blockAt(dx, dy, dz)})`);
+          blockAt(dx, dy, dz) === 'gh:sun_blaze', `(${blockAt(dx, dy, dz)})`);
   }
 }
 
@@ -256,7 +256,7 @@ const R = sun.radius;
 {
   const sun = BODIES.find((b) => b.id === 'sun');
   const R = builtRadius(sun);
-  const SOLIDOS = new Set(['space_dim:sun_core']);
+  const SOLIDOS = new Set(['gh:sun_core']);
   const blockAt2 = (dx, dy, dz) => {
     const runs = columnRuns(sun.center.x + dx, sun.center.z + dz);
     const y = sun.center.y + dy;
@@ -275,7 +275,7 @@ const R = sun.radius;
         `(${presos.length} pontos: ${presos.slice(0, 4).join(' ')}${presos.length > 4 ? '…' : ''})`);
 
   // E o núcleo continua sólido, senão não há onde pousar lá dentro.
-  check('o núcleo continua sendo chão', blockAt2(0, 0, 0) === 'space_dim:sun_core',
+  check('o núcleo continua sendo chão', blockAt2(0, 0, 0) === 'gh:sun_core',
         `(${blockAt2(0, 0, 0)})`);
 }
 

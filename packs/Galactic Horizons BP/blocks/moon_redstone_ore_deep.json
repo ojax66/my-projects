@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "space_dim:moon_redstone_ore_deep",
+      "identifier": "gh:moon_redstone_ore_deep",
       "menu_category": {
         "category": "nature"
       }
@@ -11,7 +11,7 @@
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "space_dim_moon_redstone_ore_deep",
+          "texture": "gh_moon_redstone_ore_deep",
           "render_method": "opaque",
           "ambient_occlusion": true,
           "face_dimming": true
@@ -24,7 +24,7 @@
         "explosion_resistance": 15
       },
       "minecraft:map_color": "#4F4B52",
-      "minecraft:loot": "loot_tables/space_dim/blocks/moon_redstone_ore_deep.json"
+      "minecraft:loot": "loot_tables/gh/blocks/moon_redstone_ore_deep.json"
     }
   }
 }

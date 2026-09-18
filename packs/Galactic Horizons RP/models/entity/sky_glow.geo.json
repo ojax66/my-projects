@@ -3,7 +3,7 @@
   "minecraft:geometry": [
     {
       "description": {
-        "identifier": "geometry.space_dim.sky_glow",
+        "identifier": "geometry.gh.sky_glow",
         "texture_width": 64,
         "texture_height": 4,
         "visible_bounds_width": 64,

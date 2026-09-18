@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:trash_can"
+      "identifier": "gh:trash_can"
     },
     "tags": [
       "crafting_table"
@@ -18,7 +18,7 @@
       }
     },
     "result": {
-      "item": "space_dim:trash_can",
+      "item": "gh:trash_can",
       "count": 1
     }
   }

@@ -16,7 +16,7 @@
  *   RP/models/entity/sky_body.geo.json um cubo só, compartilhado
  *   RP/animations/sky_body.animation.json  escala o cubo pela propriedade
  *   RP/render_controllers/...          um só, compartilhado
- *   RP/textures/space_dim/sky/<id>.png a planificação das seis faces
+ *   RP/textures/gh/sky/<id>.png a planificação das seis faces
  *
  * A textura NÃO é desenhada à mão: as faces saem do mesmo columnRuns() que
  * constrói o corpo de blocos, com as mesmas cores dos mesmos blocos. O que se
@@ -32,21 +32,21 @@ import zlib from 'node:zlib';
 const ROOT = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
 const BP = path.join(ROOT, 'packs', 'Galactic Horizons BP');
 const RP = path.join(ROOT, 'packs', 'Galactic Horizons RP');
-const NS = 'space_dim';
+const NS = 'gh';
 
 // Os scripts do addon importam '@minecraft/server'; o stub dos testes serve,
 // porque nada aqui usa o motor — só geometria e paleta.
 const STAGE = path.join(ROOT, 'tools', '.sky_stage');
 fs.rmSync(STAGE, { recursive: true, force: true });
 fs.mkdirSync(path.join(STAGE, 'node_modules'), { recursive: true });
-fs.cpSync(path.join(BP, 'scripts', 'space_dim'), path.join(STAGE, 'space_dim'), { recursive: true });
+fs.cpSync(path.join(BP, 'scripts', 'gh'), path.join(STAGE, 'gh'), { recursive: true });
 fs.cpSync(path.join(ROOT, 'tools', 'tests', 'stub', '@minecraft'),
           path.join(STAGE, 'node_modules', '@minecraft'), { recursive: true });
 fs.writeFileSync(path.join(STAGE, 'package.json'), '{ "type": "module" }');
 
-const { columnRuns } = await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'bodies.js')));
+const { columnRuns } = await import(url.pathToFileURL(path.join(STAGE, 'gh', 'bodies.js')));
 const { BODIES } =
-  await import(url.pathToFileURL(path.join(STAGE, 'space_dim', 'config.js')));
+  await import(url.pathToFileURL(path.join(STAGE, 'gh', 'config.js')));
 
 const COLORS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'tools', 'assets', 'block_colors.json'), 'utf8'));
@@ -431,7 +431,7 @@ function skyTexture(body) {
       const i = (oy + v) * W + ox + u, d = i * 4;
       painted[i] = 1;
       px[d] = col[0]; px[d + 1] = col[1]; px[d + 2] = col[2];
-      // Alfa 0 = BRILHO MÁXIMO no material `space_dim_sky` (USE_EMISSIVE), e o
+      // Alfa 0 = BRILHO MÁXIMO no material `gh_sky` (USE_EMISSIVE), e o
       // pixel continua opaco porque o material herda de `entity`.
       //
       // Efeito colateral que confunde: aberta num visualizador de imagens, a
@@ -568,7 +568,7 @@ function bpEntity(body, prefix = '') {
         'minecraft:health': { value: 1, max: 1 },
         'minecraft:fire_immune': true,
         'minecraft:conditional_bandwidth_optimization': {},
-        'minecraft:type_family': { family: ['space_dim_sky'] },
+        'minecraft:type_family': { family: ['gh_sky'] },
       },
       component_groups: groups,
       events,
@@ -596,12 +596,12 @@ function rpEntity(body) {
         // translúcidas, então precisa de um material que MISTURE. Aí
         // `entity_emissive_alpha` é o certo, e o alfa volta a querer dizer
         // transparência — por isso a textura dele não é alfa 0, é alfa 128.
-        // O corpo com atmosfera precisa de `space_dim_halo`: DisableDepthWrite
+        // O corpo com atmosfera precisa de `gh_halo`: DisableDepthWrite
         // e culling LIGADO. Sem a escrita de profundidade os anéis, que são
         // cubos MAIORES que o corpo, deixam de recusar o cubo do corpo pelo
         // teste de profundidade — é o que faz o planeta aparecer na frente do
         // próprio halo, já que ele é o último cubo da lista. Mas o culling tem
-        // que ficar, ao contrário de `space_dim_sky`: sem profundidade quem
+        // que ficar, ao contrário de `gh_sky`: sem profundidade quem
         // decide o pixel é a ordem, e a face de TRÁS de cada cubo vem depois da
         // da frente em dois dos três eixos. A de trás tem a normal invertida,
         // não recebe luz, e aqui a superfície é alfa 254 (quase sem brilho) —
@@ -609,8 +609,8 @@ function rpEntity(body) {
         // corpos não aparecia porque a textura deles é alfa 0: brilho máximo,
         // a luz não entra na conta.
         materials: {
-          default: isVolumetric(body) ? 'space_dim_glow'
-            : body.atmosphere ? 'space_dim_halo' : 'space_dim_sky',
+          default: isVolumetric(body) ? 'gh_glow'
+            : body.atmosphere ? 'gh_halo' : 'gh_sky',
         },
         textures: {
           default: isVolumetric(body)
@@ -674,7 +674,7 @@ for (const body of SKY) {
         'minecraft:health': { value: 1, max: 1 },
         'minecraft:fire_immune': true,
         'minecraft:conditional_bandwidth_optimization': {},
-        'minecraft:type_family': { family: ['space_dim_sky'] },
+        'minecraft:type_family': { family: ['gh_sky'] },
         'minecraft:scale': { value: STAR_SCALE_FIXED },
       },
     },
@@ -685,7 +685,7 @@ for (const body of SKY) {
     'minecraft:client_entity': {
       description: {
         identifier: `${NS}:sky_star`,
-        materials: { default: 'space_dim_sky' },
+        materials: { default: 'gh_sky' },
         textures: { default: `textures/${NS}/sky/star` },
         geometry: { default: `geometry.${NS}.sky_body` },
         // Sem animação de escala: ela vem de `minecraft:scale`, no servidor.
@@ -865,7 +865,7 @@ write(path.join(RP, 'render_controllers', 'sky_body.render_controllers.json'), {
 // Os degraus vão pro lado do script: ele escolhe o mais próximo, e as duas
 // listas não podem divergir.
 fs.writeFileSync(
-  path.join(BP, 'scripts', 'space_dim', 'skySteps.js'),
+  path.join(BP, 'scripts', 'gh', 'skySteps.js'),
   '/* GERADO por tools/make_sky_bodies.mjs — não edite à mão.\n' +
   ' *\n' +
   ' * Os degraus de escala dos corpos vistos de longe. Cada um é um component\n' +

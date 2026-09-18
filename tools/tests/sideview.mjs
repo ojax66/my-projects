@@ -1,4 +1,4 @@
-import { columnRuns, builtRadius } from './space_dim/bodies.js';
+import { columnRuns, builtRadius } from './gh/bodies.js';
 const generateColumn = (dim, x, z) => {
   const runs = columnRuns(x, z);
   let top = -64;
@@ -9,7 +9,7 @@ const generateColumn = (dim, x, z) => {
 // Vista de fora. Os corpos sao CUBOS, entao duas vistas ortogonais chapadas
 // contam tudo: a face da frente (a mistura da superficie) e a face de cima
 // (a calota polar, que nao aparece de frente).
-import { BODIES } from './space_dim/config.js';
+import { BODIES } from './gh/config.js';
 // Pega o bloco da coluna (x,z) cujo Y esta mais perto do alvo: arredondar
 // x, y e z de forma independente cai fora da casca com frequencia, mas a
 // coluna real sempre tem blocos (garantido pelos testes de geometria).
@@ -29,16 +29,16 @@ function blockAt(body, x, y, z) {
 }
 
 const CH = {
-  'space_dim:earth_ocean':'~', 'space_dim:earth_shallow':'-',
-  'space_dim:earth_land':'#', 'space_dim:earth_forest':'@',
-  'space_dim:earth_ice':'*',
-  'space_dim:moon_regolith_light':'.', 'space_dim:moon_regolith':':',
-  'space_dim:moon_regolith_dark':'@',
-  'space_dim:mars_dust':'o', 'space_dim:mars_rock':'R',
-  'space_dim:mars_rock_dark':'X', 'space_dim:mars_ice':'*',
-  'space_dim:sun_edge':'e', 'space_dim:sun_corona':'c', 'space_dim:sun_ember':'m',
-  'space_dim:sun_plasma':'p', 'space_dim:sun_flare':'f', 'space_dim:sun_blaze':'B',
-  'space_dim:sun_core':'O',
+  'gh:earth_ocean':'~', 'gh:earth_shallow':'-',
+  'gh:earth_land':'#', 'gh:earth_forest':'@',
+  'gh:earth_ice':'*',
+  'gh:moon_regolith_light':'.', 'gh:moon_regolith':':',
+  'gh:moon_regolith_dark':'@',
+  'gh:mars_dust':'o', 'gh:mars_rock':'R',
+  'gh:mars_rock_dark':'X', 'gh:mars_ice':'*',
+  'gh:sun_edge':'e', 'gh:sun_corona':'c', 'gh:sun_ember':'m',
+  'gh:sun_plasma':'p', 'gh:sun_flare':'f', 'gh:sun_blaze':'B',
+  'gh:sun_core':'O',
 };
 
 function render(body, face) {

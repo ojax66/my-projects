@@ -13,7 +13,7 @@
  * afirmação: nada de buraco, uma chunk de cada vez, e as da frente primeiro.
  */
 import { world, system, __reset, __tickIntervals } from '@minecraft/server';
-import { createTerrainGenerator } from './space_dim/world_generator_API.js';
+import { createTerrainGenerator } from './gh/world_generator_API.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {

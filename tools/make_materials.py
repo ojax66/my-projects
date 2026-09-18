@@ -22,7 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 ASSETS = os.path.join(ROOT, "tools", "assets")
-NS = "space_dim"
+NS = "gh"
 FORMAT_VERSION = "1.21.80"
 
 

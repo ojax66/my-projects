@@ -8,17 +8,17 @@ import { world, system, __reset, __advance } from '@minecraft/server';
 import {
   applyPlanetGravity, fallDamageRefund, gravityOf, EARTH_G,
   forgetPlayer as forgetGravity,
-} from './space_dim/planetGravity.js';
-import { applyCold, isWarm, heatReserveOf, forgetPlayer as forgetCold } from './space_dim/cold.js';
-import { stormIntensity, stormFog, stormNotice, spawnStormDust } from './space_dim/marsStorm.js';
-import { PLANETS } from './space_dim/planets.js';
+} from './gh/planetGravity.js';
+import { applyCold, isWarm, heatReserveOf, forgetPlayer as forgetCold } from './gh/cold.js';
+import { stormIntensity, stormFog, stormNotice, spawnStormDust } from './gh/marsStorm.js';
+import { PLANETS } from './gh/planets.js';
 import {
   BODIES, DIMENSION_ID, COLD_SECONDS, COLD_WARN_AT,
   REINFORCED_SUIT_PIECES, STAR_ARMOR_PIECES, SPACESUIT_PIECES, OXYGEN_BACKPACK,
   MARS_STORM_FOG_AT, MARS_STORM_HEAVY_AT,
   FOG_MARS_STORM_ID, FOG_MARS_STORM_HEAVY_ID,
          COLD_RECOVER_FACTOR,
-         COLD_DAMAGE_INTERVAL} from './space_dim/config.js';
+         COLD_DAMAGE_INTERVAL} from './gh/config.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -144,7 +144,7 @@ function jogadorCaindo(dimId, vy) {
 // que alguém quiser "só um slow_falling rapidinho".
 {
   const dir = path.join(process.env.DH_REPO ?? '.', 'packs', 'Galactic Horizons BP',
-                        'scripts', 'space_dim');
+                        'scripts', 'gh');
   const arquivos = ['planetGravity.js', 'planetWorlds.js', 'marsStorm.js'];
   const achados = [];
   for (const f of arquivos) {
@@ -279,8 +279,8 @@ function jogadorNoVacuo(id = 'c1') {
 // ===========================================================================
 console.log('\n--- tempestade de areia de Marte ---');
 
-import { gravityAt, inNoPullZone } from './space_dim/gravity.js';
-import { MARS_STORM_EPOCH, PORTAL_MARGIN, GRAVITY_OFF_MARGIN } from './space_dim/config.js';
+import { gravityAt, inNoPullZone } from './gh/gravity.js';
+import { MARS_STORM_EPOCH, PORTAL_MARGIN, GRAVITY_OFF_MARGIN } from './gh/config.js';
 
 // --- 10. Determinística -----------------------------------------------------
 {

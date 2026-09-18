@@ -2,14 +2,14 @@
   "format_version": "1.21.80",
   "minecraft:item": {
     "description": {
-      "identifier": "space_dim:star_leggings",
+      "identifier": "gh:star_leggings",
       "menu_category": {
         "category": "equipment",
         "group": "minecraft:itemGroup.name.leggings"
       }
     },
     "components": {
-      "minecraft:icon": "space_dim_star_leggings",
+      "minecraft:icon": "gh_star_leggings",
       "minecraft:max_stack_size": 1,
       "minecraft:durability": {
         "max_durability": 832
@@ -22,7 +22,7 @@
         "repair_items": [
           {
             "items": [
-              "space_dim:star_core_ingot"
+              "gh:star_core_ingot"
             ],
             "repair_amount": 208
           }

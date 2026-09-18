@@ -2,7 +2,7 @@
   "format_version": "1.16.100",
   "minecraft:fog_settings": {
     "description": {
-      "identifier": "space_dim:fog_mars_storm_heavy"
+      "identifier": "gh:fog_mars_storm_heavy"
     },
     "distance": {
       "air": {

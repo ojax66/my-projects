@@ -2,7 +2,7 @@
   "format_version": "1.21.40",
   "minecraft:biome": {
     "description": {
-      "identifier": "space_dim:marte_campo_de_dunas"
+      "identifier": "gh:marte_campo_de_dunas"
     },
     "components": {
       "minecraft:climate": {

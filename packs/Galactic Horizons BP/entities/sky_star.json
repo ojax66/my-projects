@@ -2,7 +2,7 @@
   "format_version": "1.21.80",
   "minecraft:entity": {
     "description": {
-      "identifier": "space_dim:sky_star",
+      "identifier": "gh:sky_star",
       "is_spawnable": false,
       "is_summonable": true
     },
@@ -51,7 +51,7 @@
       "minecraft:conditional_bandwidth_optimization": {},
       "minecraft:type_family": {
         "family": [
-          "space_dim_sky"
+          "gh_sky"
         ]
       },
       "minecraft:scale": {

@@ -6,8 +6,8 @@
  * cena e não voltava, e que só o Overworld tinha porta pro espaço.
  */
 import { world, system, __reset, __advance, __state } from '@minecraft/server';
-import { BODIES, SPACE_ENTRY_Y, DIMENSION_ID } from './space_dim/config.js';
-import { PLANET_EXIT_Y } from './space_dim/planets.js';
+import { BODIES, SPACE_ENTRY_Y, DIMENSION_ID } from './gh/config.js';
+import { PLANET_EXIT_Y } from './gh/planets.js';
 
 // O pouso num planeta nosso passa por findValidSpot, que é assíncrono: ele
 // gera as chunks em volta do alvo antes de dizer onde dá pra pisar. __advance
@@ -29,14 +29,14 @@ const check = (name, ok, extra = '') => {
 // fica valendo pra sempre). Por isso a marca do jogador de teste é apagada na
 // mão a cada carga — é a mesma função que o playerLeave usa.
 async function loadTravel() {
-  const { forgetArrival } = await import('./space_dim/arrival.js');
+  const { forgetArrival } = await import('./gh/arrival.js');
   forgetArrival('p1');
   // O orçamento de blocos é um só pro jogo inteiro e não é recarregado aqui.
   // __reset volta o relógio pra zero, então sem isto o tick 0 deste caso seria
   // o mesmo tick 0 do anterior — com o orçamento já gasto.
-  const { resetBudget } = await import('./space_dim/budget.js');
+  const { resetBudget } = await import('./gh/budget.js');
   resetBudget();
-  return import(`./space_dim/travel.js?v=${Math.random()}`);
+  return import(`./gh/travel.js?v=${Math.random()}`);
 }
 
 const UFO = 'dlb_van:ufo';
@@ -53,8 +53,8 @@ function makePlayer(dimensionId, loc) {
 {
   const cases = [
     ['minecraft:overworld', 'earth', SPACE_ENTRY_Y],
-    ['space_dim:moon', 'moon', PLANET_EXIT_Y],
-    ['space_dim:mars', 'mars', PLANET_EXIT_Y],
+    ['gh:moon', 'moon', PLANET_EXIT_Y],
+    ['gh:mars', 'mars', PLANET_EXIT_Y],
   ];
   for (const [fromDim, bodyId, altura] of cases) {
     __reset();
@@ -76,10 +76,10 @@ function makePlayer(dimensionId, loc) {
   // construir uma torre alta viraria viagem.
   __reset();
   const travel = await loadTravel();
-  const p = makePlayer('space_dim:moon', { x: 0, y: PLANET_EXIT_Y - 1, z: 0 });
+  const p = makePlayer('gh:moon', { x: 0, y: PLANET_EXIT_Y - 1, z: 0 });
   travel.checkSpaceEntry(p);
   __advance(40);
-  check(`abaixo de ${PLANET_EXIT_Y} na Lua não viaja`, p.dimension.id === 'space_dim:moon');
+  check(`abaixo de ${PLANET_EXIT_Y} na Lua não viaja`, p.dimension.id === 'gh:moon');
 }
 
 // --- 2. Abaixo da altitude, nada acontece -----------------------------------
@@ -218,8 +218,8 @@ function makePlayer(dimensionId, loc) {
 {
   const rotas = [
     ['earth', 'minecraft:overworld'],
-    ['moon', 'space_dim:moon'],
-    ['mars', 'space_dim:mars'],
+    ['moon', 'gh:moon'],
+    ['mars', 'gh:mars'],
   ];
   for (const [bodyId, expectDim] of rotas) {
     __reset();
@@ -329,7 +329,7 @@ function makePlayer(dimensionId, loc) {
 {
   __reset();
   const travel = await loadTravel();
-  const { forgetArrival } = await import('./space_dim/arrival.js');
+  const { forgetArrival } = await import('./gh/arrival.js');
 
   const alto = { x: 0, y: SPACE_ENTRY_Y + 1, z: 0 };
   const nave = world.__spawn('minecraft:overworld', UFO, alto);
@@ -367,7 +367,7 @@ function makePlayer(dimensionId, loc) {
   check('  e os três estão no espaço',
         tripulacao.every((p) => p.dimension.id === DIMENSION_ID));
 
-  const sobraram = [...__state().structures.keys()].filter((k) => k.startsWith('space_dim:veh_'));
+  const sobraram = [...__state().structures.keys()].filter((k) => k.startsWith('gh:veh_'));
   check('  sem estrutura de veículo sobrando', sobraram.length === 0,
         `(${sobraram.join(', ') || 'nenhuma'})`);
 }

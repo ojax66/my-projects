@@ -26,7 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 ASSETS = os.path.join(ROOT, "tools", "assets")
-NS = "space_dim"
+NS = "gh"
 FORMAT_VERSION = "1.21.80"
 RECIPE_FORMAT = "1.12"
 
@@ -95,7 +95,10 @@ def scale_geometry(doc):
 def main():
     doc = json.load(open(os.path.join(ASSETS, GEO_SRC), encoding="utf-8"))
     doc, base, tamanho, escala = scale_geometry(doc)
-    geo_id = doc["minecraft:geometry"][0]["description"]["identifier"]
+    # O modelo dele vem como `geometry.Trash_can`. Aqui ele entra na família do
+    # addon, como todo o resto: `geometry.gh.<coisa>`.
+    geo_id = f"geometry.{NS}.{SHORT}"
+    doc["minecraft:geometry"][0]["description"]["identifier"] = geo_id
 
     write_json(os.path.join(RP, "models", "blocks", f"{SHORT}.geo.json"), doc)
     tex_dir = os.path.join(RP, "textures", NS, "blocks")

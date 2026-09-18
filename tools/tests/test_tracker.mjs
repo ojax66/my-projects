@@ -10,13 +10,13 @@
  *   - corpo novo no catálogo entra ligado, sem mexer em save de ninguém.
  */
 import { world, system, __reset, __advance } from '@minecraft/server';
-import { SYSTEMS, allTrackable, bodiesOf, defaultSystems } from './space_dim/catalog.js';
+import { SYSTEMS, allTrackable, bodiesOf, defaultSystems } from './gh/catalog.js';
 import {
   unlockedSystems, isSystemUnlocked, unlockSystem,
   isBodyOn, toggleBody, toggleSystem, trackedBodies, trackerState,
-} from './space_dim/tracker.js';
+} from './gh/tracker.js';
 import { DIMENSION_ID, SKY_MODEL_DISTANCE, SKY_MODEL_HIDE_BELOW,
-         SKY_MODEL_NEAREST } from './space_dim/config.js';
+         SKY_MODEL_NEAREST } from './gh/config.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -116,7 +116,7 @@ const mk = (id = 'p1') =>
 
 // --- 6. Modelos de céu seguem o rastreador -----------------------------------
 {
-  const skybox = await import('./space_dim/skybox.js');
+  const skybox = await import('./gh/skybox.js');
   const p = mk('ceu');
   const dim = world.getDimension(DIMENSION_ID);
 
@@ -126,8 +126,8 @@ const mk = (id = 'p1') =>
   // Sem as atmosferas: elas são entidades de céu também, mas não são corpos —
   // acompanham o corpo delas e têm o tamanho aumentado de propósito.
   const models = dim.getEntities().filter(
-    (e) => e.typeId.startsWith('space_dim:sky_') &&
-           !e.typeId.startsWith('space_dim:sky_atmo_'));
+    (e) => e.typeId.startsWith('gh:sky_') &&
+           !e.typeId.startsWith('gh:sky_atmo_'));
   check('cada corpo rastreado e distante ganha um modelo',
         models.length > 0, `(${models.length} modelos)`);
 
@@ -135,7 +135,7 @@ const mk = (id = 'p1') =>
   // garantir que ele continue sendo renderizado: uma entidade parada no centro
   // real, a centenas de blocos, o jogo não desenha — foi o que fez os corpos
   // sumirem quando eles ficavam lá.
-  const { BODIES: TODOS } = await import('./space_dim/config.js');
+  const { BODIES: TODOS } = await import('./gh/config.js');
   // Tudo medido da CABEÇA: é de lá que sai o raio da câmera, e é de lá que o
   // skybox projeta. Medir dos pés dava quase 6° de erro no degrau de 16 blocos.
   const olho = p.getHeadLocation();
@@ -150,7 +150,7 @@ const mk = (id = 'p1') =>
   // dela a entidade descarrega e para de ser desenhada — foi o que fez os
   // corpos sumirem quando o modelo ia pra posição real, a 112 blocos.
   const reais = models.map((e) => {
-    const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
+    const body = TODOS.find((b) => b.id === e.typeId.slice('gh:sky_'.length));
     return Math.hypot(body.center.x - olho.x, body.center.y - olho.y,
                       body.center.z - olho.z);
   });
@@ -180,7 +180,7 @@ const mk = (id = 'p1') =>
 
   // E na direção certa: o modelo tem que aparecer onde o corpo está.
   const torto = models.filter((e) => {
-    const body = TODOS.find((b) => b.id === e.typeId.slice('space_dim:sky_'.length));
+    const body = TODOS.find((b) => b.id === e.typeId.slice('gh:sky_'.length));
     if (!body) return true;
     const dir = (a, b, c) => {
       const n = Math.hypot(a, b, c);
@@ -202,7 +202,7 @@ const mk = (id = 'p1') =>
   __advance(2);
   skybox.updateSky(p);
   const restantes = dim.getEntities()
-    .filter((e) => e.typeId === `space_dim:sky_${alvo.id}`);
+    .filter((e) => e.typeId === `gh:sky_${alvo.id}`);
   check('desligar no menu apaga o modelo daquele corpo', restantes.length === 0,
         `(${alvo.id}: ${restantes.length})`);
   toggleBody(p, alvo.id);
@@ -217,7 +217,7 @@ const mk = (id = 'p1') =>
   __advance(2);
   skybox.updateSky(p);
   const aindaLa = dim.getEntities()
-    .filter((e) => e.typeId === `space_dim:sky_${perto.id}`);
+    .filter((e) => e.typeId === `gh:sky_${perto.id}`);
   const temBloco = perto.built !== false &&
     !(perto.layers ?? []).some((l) => l.modelOnly);
   check(temBloco
@@ -227,7 +227,7 @@ const mk = (id = 'p1') =>
         `(${perto.id}: ${aindaLa.length})`);
 
   skybox.clearModels(p.id);
-  const zerados = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
+  const zerados = dim.getEntities().filter((e) => e.typeId.startsWith('gh:sky_'));
   check('sair do espaço leva todos os modelos junto', zerados.length === 0,
         `(${zerados.length} sobraram)`);
 }
@@ -239,17 +239,17 @@ const mk = (id = 'p1') =>
 // ponto branco, como qualquer estrela vista daqui.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
   const { SOLAR_SYSTEM_RADIUS, SKY_MODEL_HIDE_BELOW, STAR_ENTITY } =
-    await import('./space_dim/config.js');
-  const { BODIES } = await import('./space_dim/config.js');
+    await import('./gh/config.js');
+  const { BODIES } = await import('./gh/config.js');
 
   const dim = world.getDimension(DIMENSION_ID);
   const sun = BODIES.find((b) => b.id === 'sun');
   const earth = BODIES.find((b) => b.id === 'earth');
   const p = mk('niveis');
 
-  const modelosDe = (id) => dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+  const modelosDe = (id) => dim.getEntities().filter((e) => e.typeId === `gh:sky_${id}`);
   const estrelas = () => dim.getEntities().filter((e) => e.typeId === STAR_ENTITY);
 
   // Perto do Sol: a Terra está a 520 dali, muito além dos blocos — tem que
@@ -295,9 +295,9 @@ const mk = (id = 'p1') =>
 // dezesseis vezes menor, e nada media isso.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
-  const { BODIES } = await import('./space_dim/config.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
+  const { SKY_SIZE_STEPS } = await import('./gh/skySteps.js');
+  const { BODIES } = await import('./gh/config.js');
 
   const dim = world.getDimension(DIMENSION_ID);
   const moon = BODIES.find((b) => b.id === 'moon');
@@ -307,11 +307,11 @@ const mk = (id = 'p1') =>
   p.teleport({ x: moon.center.x, y: moon.center.y, z: moon.center.z + 95 });
   __advance(2); updateSky(p);
 
-  const modelo = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_moon')[0];
+  const modelo = dim.getEntities().filter((e) => e.typeId === 'gh:sky_moon')[0];
   check('a Lua a 95 blocos vira um modelo', !!modelo);
 
-  const ev = (modelo?.__events ?? []).find((e) => e.startsWith('space_dim:set_size_'));
-  const escala = SKY_SIZE_STEPS[Number(ev?.slice('space_dim:set_size_'.length))];
+  const ev = (modelo?.__events ?? []).find((e) => e.startsWith('gh:set_size_'));
+  const escala = SKY_SIZE_STEPS[Number(ev?.slice('gh:set_size_'.length))];
   check('  e recebeu um degrau de escala', escala > 0, `(${ev} = ${escala})`);
 
   // O ângulo do modelo tem que bater com o do corpo real. A distância do modelo
@@ -338,8 +338,8 @@ const mk = (id = 'p1') =>
 // que deviam escondê-los.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { BODIES } = await import('./space_dim/config.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
+  const { BODIES } = await import('./gh/config.js');
   const dim = world.getDimension(DIMENSION_ID);
   const sun = BODIES.find((b) => b.id === 'sun');
   const p = mk('dentro');
@@ -347,16 +347,16 @@ const mk = (id = 'p1') =>
   // Fora, mas perto: o céu aparece.
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 400 });
   __advance(2); updateSky(p);
-  const fora = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
+  const fora = dim.getEntities().filter((e) => e.typeId.startsWith('gh:sky_')).length;
   check('fora do Sol o céu aparece', fora > 0, `(${fora} modelos)`);
 
   // Dentro do Sol: some tudo menos a coroa dele, que é a camada em que o
   // jogador está e que nenhum bloco desenha.
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + 30 });
   __advance(2); updateSky(p);
-  const restam = dim.getEntities().filter((e) => e.typeId.startsWith('space_dim:sky_'));
+  const restam = dim.getEntities().filter((e) => e.typeId.startsWith('gh:sky_'));
   check('dentro do Sol os outros corpos somem',
-        restam.every((e) => e.typeId === 'space_dim:sky_sun'),
+        restam.every((e) => e.typeId === 'gh:sky_sun'),
         `(${restam.map((e) => e.typeId).join(', ') || 'nenhum'})`);
   check('  mas o Sol continua', restam.length === 1);
 
@@ -369,9 +369,9 @@ const mk = (id = 'p1') =>
                            coroa.location.z - cab.z);
   check('  centrada na cabeça do jogador', longe < 0.5, `(a ${longe.toFixed(2)} blocos)`);
 
-  const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
-  const evc = (coroa.__events ?? []).filter((e) => e.startsWith('space_dim:set_size_')).pop();
-  const escalaCoroa = SKY_SIZE_STEPS[Number(evc?.slice('space_dim:set_size_'.length))];
+  const { SKY_SIZE_STEPS } = await import('./gh/skySteps.js');
+  const evc = (coroa.__events ?? []).filter((e) => e.startsWith('gh:set_size_')).pop();
+  const escalaCoroa = SKY_SIZE_STEPS[Number(evc?.slice('gh:set_size_'.length))];
   const alvoCoroa = 2 * sun.radius;
   check('  e do tamanho do corpo',
         Math.abs(Math.log(escalaCoroa / alvoCoroa)) < Math.log(1.25),
@@ -380,7 +380,7 @@ const mk = (id = 'p1') =>
   // Voltando pra fora, ela volta a ser projetada de longe.
   p.teleport({ x: sun.center.x, y: sun.center.y, z: sun.center.z + sun.radius + 300 });
   __advance(2); updateSky(p);
-  const fora2 = dim.getEntities().filter((e) => e.typeId === 'space_dim:sky_sun')[0];
+  const fora2 = dim.getEntities().filter((e) => e.typeId === 'gh:sky_sun')[0];
   const c2 = p.getHeadLocation();
   const longe2 = Math.hypot(fora2.location.x - c2.x, fora2.location.y - c2.y,
                             fora2.location.z - c2.z);
@@ -402,15 +402,15 @@ const mk = (id = 'p1') =>
 //   2. mesmo com a medida certa, nenhum bloco assume o lugar da coroa.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { BODIES, SKY_MODEL_HIDE_BELOW } = await import('./space_dim/config.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
+  const { BODIES, SKY_MODEL_HIDE_BELOW } = await import('./gh/config.js');
   const dim = world.getDimension(DIMENSION_ID);
   const sun = BODIES.find((b) => b.id === 'sun');
   const earth = BODIES.find((b) => b.id === 'earth');
   const p = mk('coroa');
 
   const modelosDe = (id) =>
-    dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+    dim.getEntities().filter((e) => e.typeId === `gh:sky_${id}`);
 
   // Colado na coroa: 2 blocos fora do raio nominal. Aqui o modelo do Sol seria
   // desligado por qualquer regra de distância — e não pode ser.
@@ -447,13 +447,13 @@ const mk = (id = 'p1') =>
 // errado. Quem está junto passa a dividir um conjunto só.
 {
   __reset();
-  const { updateSkyAll, clearModels } = await import('./space_dim/skybox.js');
-  const { SKY_SHARE_RADIUS } = await import('./space_dim/config.js');
+  const { updateSkyAll, clearModels } = await import('./gh/skybox.js');
+  const { SKY_SHARE_RADIUS } = await import('./gh/config.js');
   // Relida a cada chamada: __reset() cria uma dimensão NOVA, e uma referência
   // guardada antes dele conta as entidades da dimensão velha.
   const conta = () =>
     world.getDimension(DIMENSION_ID).getEntities()
-      .filter((e) => e.typeId.startsWith('space_dim:sky_')).length;
+      .filter((e) => e.typeId.startsWith('gh:sky_')).length;
 
   const a = mk('mp_a');
   const b = mk('mp_b');
@@ -494,13 +494,13 @@ const mk = (id = 'p1') =>
 // estar dentro: o céu sumia e o planeta virava uma caixa em volta da cabeça.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { BODIES, SKY_MODEL_REAL_BELOW } = await import('./space_dim/config.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
+  const { BODIES, SKY_MODEL_REAL_BELOW } = await import('./gh/config.js');
   const dim = world.getDimension(DIMENSION_ID);
   const terra = BODIES.find((b) => b.id === 'earth');
   const p = mk('pouso');
   const modelosDe = (id) =>
-    dim.getEntities().filter((e) => e.typeId === `space_dim:sky_${id}`);
+    dim.getEntities().filter((e) => e.typeId === `gh:sky_${id}`);
 
   // Pousado: exatamente no raio, que é onde a barreira deixa o jogador.
   p.teleport({ x: terra.center.x, y: terra.center.y + terra.radius,
@@ -535,7 +535,7 @@ const mk = (id = 'p1') =>
 // escalava, sem `built`/`solid`/`atmosphere` os planetas sumiam ao chegar perto.
 // Campo novo em BODIES tem que chegar aqui sozinho.
 {
-  const { BODIES } = await import('./space_dim/config.js');
+  const { BODIES } = await import('./gh/config.js');
   const resolvidos = new Map(allTrackable().map((b) => [b.id, b]));
   const faltando = [];
   for (const body of BODIES) {
@@ -557,21 +557,21 @@ const mk = (id = 'p1') =>
 // entidade de atmosfera nenhuma — é o desenho da superfície que faz o halo.
 {
   __reset();
-  const { updateSky, clearModels } = await import('./space_dim/skybox.js');
-  const { BODIES } = await import('./space_dim/config.js');
+  const { updateSky, clearModels } = await import('./gh/skybox.js');
+  const { BODIES } = await import('./gh/config.js');
   const dim = world.getDimension(DIMENSION_ID);
   const p = mk('atmo');
   __advance(2); updateSky(p);
 
   const cascas = dim.getEntities()
-    .filter((e) => e.typeId.startsWith('space_dim:sky_atmo_')
-                   || e.typeId.startsWith('space_dim:sky_in_'));
+    .filter((e) => e.typeId.startsWith('gh:sky_atmo_')
+                   || e.typeId.startsWith('gh:sky_in_'));
   check('nenhuma entidade de casca em volta dos corpos', cascas.length === 0,
         `(${cascas.map((e) => e.typeId).join(', ') || 'nenhuma'})`);
 
   for (const body of BODIES.filter((b) => b.atmosphere)) {
     const corpo = dim.getEntities()
-      .filter((e) => e.typeId === `space_dim:sky_${body.id}`);
+      .filter((e) => e.typeId === `gh:sky_${body.id}`);
     check(`${body.id}: o corpo com atmosfera aparece normalmente`,
           corpo.length === 1, `(${corpo.length})`);
   }
@@ -586,11 +586,11 @@ const mk = (id = 'p1') =>
 // lugar de verdade e todo mundo olha a mesma.
 {
   __reset();
-  const { updateSkyAll, clearGlobals } = await import('./space_dim/skybox.js');
-  const { BODIES, SKY_GLOBAL_BELOW } = await import('./space_dim/config.js');
+  const { updateSkyAll, clearGlobals } = await import('./gh/skybox.js');
+  const { BODIES, SKY_GLOBAL_BELOW } = await import('./gh/config.js');
   const terra = BODIES.find((b) => b.id === 'earth');
   const conta = (id) => world.getDimension(DIMENSION_ID).getEntities()
-    .filter((e) => e.typeId === `space_dim:sky_${id}`);
+    .filter((e) => e.typeId === `gh:sky_${id}`);
 
   // Dois jogadores perto da Terra, LONGE um do outro (mais que o raio de grupo,
   // senão o agrupamento resolveria sozinho e o teste não provaria nada).
@@ -613,10 +613,10 @@ const mk = (id = 'p1') =>
                          terras[0].location.z - terra.center.z);
     check('  e ela está no lugar de verdade do corpo', d < 0.01, `(a ${d.toFixed(2)})`);
 
-    const { SKY_SIZE_STEPS } = await import('./space_dim/skySteps.js');
+    const { SKY_SIZE_STEPS } = await import('./gh/skySteps.js');
     const ev = (terras[0].__events ?? []).filter(
-      (e) => e.startsWith('space_dim:set_size_')).pop();
-    const escala = SKY_SIZE_STEPS[Number(ev?.slice('space_dim:set_size_'.length))];
+      (e) => e.startsWith('gh:set_size_')).pop();
+    const escala = SKY_SIZE_STEPS[Number(ev?.slice('gh:set_size_'.length))];
     check('  e no tamanho de verdade dele',
           Math.abs(Math.log(escala / (2 * terra.radius))) < Math.log(1.25),
           `(${escala} vs ${2 * terra.radius})`);

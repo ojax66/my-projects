@@ -2,14 +2,14 @@
   "format_version": "1.21.80",
   "minecraft:item": {
     "description": {
-      "identifier": "space_dim:reinforced_spacesuit_chestplate",
+      "identifier": "gh:reinforced_spacesuit_chestplate",
       "menu_category": {
         "category": "equipment",
         "group": "minecraft:itemGroup.name.chestplate"
       }
     },
     "components": {
-      "minecraft:icon": "space_dim_reinforced_spacesuit_chestplate",
+      "minecraft:icon": "gh_reinforced_spacesuit_chestplate",
       "minecraft:max_stack_size": 1,
       "minecraft:durability": {
         "max_durability": 620

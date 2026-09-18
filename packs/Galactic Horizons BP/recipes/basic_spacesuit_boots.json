@@ -1,0 +1,27 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:basic_spacesuit_boots"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "C C",
+      "L L"
+    ],
+    "key": {
+      "C": {
+        "item": "minecraft:copper_ingot"
+      },
+      "L": {
+        "item": "minecraft:leather"
+      }
+    },
+    "result": {
+      "item": "gh:basic_spacesuit_boots",
+      "count": 1
+    }
+  }
+}

@@ -78,7 +78,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # --- 1. nome no behavior pack (o jogo so le nome no resource pack) ------------
 def name_in_bp(tmp):
-    line = "item.space_dim:star_core_ingot=Lingote Estelar\n"
+    line = "item.gh:star_core_ingot=Lingote Estelar\n"
     for lang in ("pt_BR", "en_US", "en_GB"):
         with open(bp(tmp, "texts", f"{lang}.lang"), "a", encoding="utf-8") as f:
             f.write(line)
@@ -93,7 +93,7 @@ def drop_name(tmp):
     for lang in ("pt_BR", "en_US", "en_GB"):
         path = rp(tmp, "texts", f"{lang}.lang")
         keep = [l for l in open(path, encoding="utf-8").read().splitlines()
-                if not l.startswith("item.space_dim:star_helmet=")]
+                if not l.startswith("item.gh:star_helmet=")]
         open(path, "w", encoding="utf-8").write("\n".join(keep) + "\n")
 
 
@@ -106,7 +106,7 @@ def drop_block_name(tmp):
     for lang in ("pt_BR", "en_US", "en_GB"):
         path = rp(tmp, "texts", f"{lang}.lang")
         keep = [l for l in open(path, encoding="utf-8").read().splitlines()
-                if not l.startswith("tile.space_dim:moon_regolith.name=")]
+                if not l.startswith("tile.gh:moon_regolith.name=")]
         open(path, "w", encoding="utf-8").write("\n".join(keep) + "\n")
 
 
@@ -139,7 +139,7 @@ case("lingote sem minecraft:transform_materials", drop_material_tag,
 def drop_template_tag(tmp):
     path = bp(tmp, "items", "star_upgrade_template.json")
     doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:item"]["components"]["minecraft:tags"] = {"tags": ["space_dim:qualquer"]}
+    doc["minecraft:item"]["components"]["minecraft:tags"] = {"tags": ["gh:qualquer"]}
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
 
@@ -187,7 +187,7 @@ case("corpo sem entidade de ceu", drop_sky_entity,
 
 
 def drop_sky_texture(tmp):
-    os.remove(rp(tmp, "textures", "space_dim", "sky", "earth.png"))
+    os.remove(rp(tmp, "textures", "gh", "sky", "earth.png"))
 
 
 case("corpo sem textura de ceu", drop_sky_texture,
@@ -202,7 +202,7 @@ case("corpo sem textura de ceu", drop_sky_texture,
 # quando ela e meio bloco — dezesseis vezes menor, e nada media isso.
 def zero_step(tmp):
     path = os.path.join(tmp, "packs", "Galactic Horizons BP",
-                        "scripts", "space_dim", "skySteps.js")
+                        "scripts", "gh", "skySteps.js")
     src = open(path, encoding="utf-8").read()
     open(path, "w", encoding="utf-8").write(src.replace("[0.05,", "[0,"))
 
@@ -213,7 +213,7 @@ case("degrau de escala igual a zero", zero_step, r"degrau de escala <= 0")
 def steps_out_of_sync(tmp):
     path = bp(tmp, "entities", "sky_moon.json")
     doc = json.load(open(path, encoding="utf-8"))
-    doc["minecraft:entity"]["component_groups"].pop("space_dim:size_3")
+    doc["minecraft:entity"]["component_groups"].pop("gh:size_3")
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
 
@@ -224,7 +224,7 @@ case("degraus do BP fora de sincronia com skySteps.js", steps_out_of_sync,
 def steps_too_narrow(tmp):
     # tira os degraus grandes: o Sol visto do ponto de troca nao caberia
     path = os.path.join(tmp, "packs", "Galactic Horizons BP",
-                        "scripts", "space_dim", "skySteps.js")
+                        "scripts", "gh", "skySteps.js")
     src = open(path, encoding="utf-8").read()
     nums = re.search(r"\[(.*)\]", src).group(1).split(",")
     curto = "[" + ",".join(nums[:10]) + "]"
@@ -240,7 +240,7 @@ case("degraus que nao cobrem o que a conta pede", steps_too_narrow,
 def orphan_chart(tmp):
     src = bp(tmp, "items", "star_chart_sol.json")
     doc = json.load(open(src, encoding="utf-8"))
-    doc["minecraft:item"]["description"]["identifier"] = "space_dim:star_chart_fantasma"
+    doc["minecraft:item"]["description"]["identifier"] = "gh:star_chart_fantasma"
     json.dump(doc, open(bp(tmp, "items", "star_chart_fantasma.json"), "w",
                         encoding="utf-8"), indent=2, ensure_ascii=False)
 
@@ -283,7 +283,7 @@ case("Sol com material nao-emissivo", swap_material,
 # nao o ilumina, e nada avisa.
 def shrink_system(tmp):
     path = os.path.join(tmp, "packs", "Galactic Horizons BP",
-                        "scripts", "space_dim", "config.js")
+                        "scripts", "gh", "config.js")
     src = open(path, encoding="utf-8").read()
     src = src.replace("export const SOLAR_SYSTEM_RADIUS = 1500;",
                       "export const SOLAR_SYSTEM_RADIUS = 600;")
@@ -303,7 +303,7 @@ def missing_fog(tmp):
 # checagem de nevoa, e nao deve haver — duas mensagens pro mesmo defeito so
 # fazem quem le a saida procurar dois problemas onde ha um.
 case("nevoa citada pelo config e ausente do RP", missing_fog,
-     r"FOG_ID space_dim:fog_outer_space n[ãa]o existe no RP")
+     r"FOG_ID gh:fog_outer_space n[ãa]o existe no RP")
 
 
 # --- 12e. material do ceu que descarta alfa 0 --------------------------------
@@ -325,7 +325,7 @@ case("corpo do ceu com material que descarta alfa", wrong_sky_material,
 def material_without_emissive(tmp):
     path = os.path.join(tmp, "packs", "Galactic Horizons RP", "materials", "entity.material")
     doc = json.load(open(path, encoding="utf-8"))
-    doc["materials"]["space_dim_sky:entity"]["+defines"] = []
+    doc["materials"]["gh_sky:entity"]["+defines"] = []
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
 
@@ -360,8 +360,8 @@ case("modelo do ceu com box UV", box_uv, r"usa box UV")
 def wrong_texture_size(tmp):
     # troca a textura da Lua por uma de outro tamanho
     import shutil as sh
-    sh.copyfile(rp(tmp, "textures", "space_dim", "blocks", "moon_regolith.png"),
-                rp(tmp, "textures", "space_dim", "sky", "moon.png"))
+    sh.copyfile(rp(tmp, "textures", "gh", "blocks", "moon_regolith.png"),
+                rp(tmp, "textures", "gh", "sky", "moon.png"))
 
 
 case("textura de ceu com tamanho diferente do modelo", wrong_texture_size,
@@ -387,14 +387,14 @@ case("cliente voltando a animar a escala", animate_scale_again,
 # dava pra encostar nele, nao pra entrar — e nada apontava pra isso.
 def solid_on_passable_layer(tmp):
     path = os.path.join(tmp, "packs", "Galactic Horizons BP",
-                        "scripts", "space_dim", "bodies.js")
+                        "scripts", "gh", "bodies.js")
     src = open(path, encoding="utf-8").read()
     open(path, "w", encoding="utf-8").write(
-        src.replace('block: "space_dim:sun_blaze"', 'block: "space_dim:sun_core"'))
+        src.replace('block: "gh:sun_blaze"', 'block: "gh:sun_core"'))
 
 
 case("camada atravessavel pintada com bloco solido", solid_on_passable_layer,
-     r"pinta com space_dim:sun_core, que TEM colisao")
+     r"pinta com gh:sun_core, que TEM colisao")
 
 
 # --- 13. os geradores nao podem depender da ordem ----------------------------
@@ -440,7 +440,7 @@ def scrambled_generators():
 def paint_black_corner(tmp):
     import struct
     import zlib
-    tex = rp(tmp, "textures", "space_dim", "sky", "earth.png")
+    tex = rp(tmp, "textures", "gh", "sky", "earth.png")
     with open(tex, "rb") as f:
         raw = f.read()
     w, h = struct.unpack(">II", raw[16:24])
@@ -482,8 +482,8 @@ def material_sem_mistura(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:
         doc = json.load(f)
-    doc["materials"]["space_dim_glow:entity"] = doc["materials"].pop(
-        "space_dim_glow:entity_emissive_alpha")
+    doc["materials"]["gh_glow:entity"] = doc["materials"].pop(
+        "gh_glow:entity_emissive_alpha")
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
 
@@ -518,7 +518,7 @@ case("casca do Sol fora do centro", casca_descentrada, r"nao esta centrada")
 def cascas_opacas(tmp):
     import struct
     import zlib
-    tex = rp(tmp, "textures", "space_dim", "sky", "glow_sun.png")
+    tex = rp(tmp, "textures", "gh", "sky", "glow_sun.png")
     with open(tex, "rb") as f:
         raw = f.read()
     w, h = struct.unpack(">II", raw[16:24])
@@ -545,7 +545,7 @@ case("cascas do Sol com alfa opaco", cascas_opacas, r"alfa 255")
 
 # --- planetas sem bloco e a atmosfera ---------------------------------------
 def bp_config(tmp):
-    return bp(tmp, "scripts", "space_dim", "config.js")
+    return bp(tmp, "scripts", "gh", "config.js")
 
 
 def le_config(tmp):
@@ -570,7 +570,7 @@ case("corpo built:false sem barreira", planeta_sem_barreira,
 
 
 def gravidade_sem_barreira(tmp):
-    caminho = bp(tmp, "scripts", "space_dim", "gravity.js")
+    caminho = bp(tmp, "scripts", "gh", "gravity.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
     with open(caminho, "w", encoding="utf-8") as f:
@@ -598,7 +598,7 @@ def superficie_voltando_pra_alfa_zero(tmp):
     # passada transparente, desenhada DEPOIS dos aneis.
     import struct
     import zlib
-    tex = rp(tmp, "textures", "space_dim", "sky", "earth.png")
+    tex = rp(tmp, "textures", "gh", "sky", "earth.png")
     with open(tex, "rb") as f:
         raw = f.read()
     w, h = struct.unpack(">II", raw[16:24])
@@ -645,7 +645,7 @@ def material_sem_disabledepthwrite(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:
         doc = json.load(f)
-    doc["materials"]["space_dim_halo:entity"]["+states"] = []
+    doc["materials"]["gh_halo:entity"]["+states"] = []
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
 
@@ -663,7 +663,7 @@ def material_do_halo_sem_culling(tmp):
     caminho = rp(tmp, "materials", "entity.material")
     with open(caminho, encoding="utf-8") as f:
         doc = json.load(f)
-    doc["materials"]["space_dim_halo:entity"]["+states"] = [
+    doc["materials"]["gh_halo:entity"]["+states"] = [
         "DisableCulling", "DisableDepthWrite"]
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
@@ -716,7 +716,7 @@ case("neblina de dentro longa demais", neblina_de_dentro_longa,
 
 
 def main_sem_neblina_de_dentro(tmp):
-    caminho = bp(tmp, "scripts", "space_dim", "main.js")
+    caminho = bp(tmp, "scripts", "gh", "main.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
     with open(caminho, "w", encoding="utf-8") as f:
@@ -732,7 +732,7 @@ scrambled_generators()
 
 # --- as dimensoes de superficie ----------------------------------------------
 def scripts(tmp, name):
-    return bp(tmp, "scripts", "space_dim", name)
+    return bp(tmp, "scripts", "gh", name)
 
 
 def bioma_sem_arquivo(tmp):
@@ -830,10 +830,10 @@ def camadas_fora_de_ordem(tmp):
     caminho = scripts(tmp, "planets.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace('dust: "space_dim:moon_regolith_light"',
-                      'dust: "space_dim:moon_regolith_dark"')
-    src = src.replace('deep: "space_dim:moon_regolith_dark"',
-                      'deep: "space_dim:moon_regolith_light"')
+    src = src.replace('dust: "gh:moon_regolith_light"',
+                      'dust: "gh:moon_regolith_dark"')
+    src = src.replace('deep: "gh:moon_regolith_dark"',
+                      'deep: "gh:moon_regolith_light"')
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 
@@ -863,7 +863,7 @@ def portal_pra_planeta_inexistente(tmp):
     caminho = scripts(tmp, "config.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace('dimension: "space_dim:moon"', 'dimension: "space_dim:pluto"')
+    src = src.replace('dimension: "gh:moon"', 'dimension: "gh:pluto"')
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 
@@ -888,15 +888,15 @@ case("ceu da Lua diferente do ceu do espaco", ceu_da_lua_diferente_do_espaco,
 
 
 # --- o nome do arquivo de textura -------------------------------------------
-# Metade dos icones estava em `space_dim_apollo_helmet.png` e a outra metade em
+# Metade dos icones estava em `gh_basic_spacesuit_helmet.png` e a outra metade em
 # `star_helmet.png`, as duas funcionando no jogo, e ninguem achava nada
 # procurando pelo nome do item.
 def textura_com_nome_torto(tmp):
     caminho = rp(tmp, "textures", "item_texture.json")
     with open(caminho, encoding="utf-8") as f:
         doc = json.load(f)
-    doc["texture_data"]["space_dim_silicon"]["textures"] = \
-        "textures/space_dim/items/space_dim_silicon"
+    doc["texture_data"]["gh_silicon"]["textures"] = \
+        "textures/gh/items/gh_silicon"
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=2)
 
@@ -924,28 +924,28 @@ case("modelo de bloco maior que o bloco", modelo_estourando_o_bloco,
 
 
 # --- os conjuntos de protecao do config -------------------------------------
-# Os tres conjuntos (armadura de estrela, traje Apollo, traje AxEMU) sao o que
+# Os tres conjuntos (armadura de estrela, traje basico, traje reforcado) sao o que
 # liga a protecao. Um id errado ali nao da erro nenhum no jogo: a peca some do
 # inventario, o traje nunca "conta", e o jogador congela vestido.
 def traje_citando_item_inexistente(tmp):
     caminho = scripts(tmp, "config.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace('item: "space_dim:apollo_chestplate"',
-                      'item: "space_dim:apollo_peitoral"')
+    src = src.replace('item: "gh:basic_spacesuit_chestplate"',
+                      'item: "gh:basic_spacesuit_peitoral"')
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 
 
 case("traje do config citando item que nao existe", traje_citando_item_inexistente,
-     r"BASIC_SUIT_PIECES cita space_dim:apollo_peitoral")
+     r"BASIC_SUIT_PIECES cita gh:basic_spacesuit_peitoral")
 
 
 def traje_com_peca_de_menos(tmp):
     caminho = scripts(tmp, "config.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace('  { slot: "Feet", item: "space_dim:apollo_boots" },\n', "")
+    src = src.replace('  { slot: "Feet", item: "gh:basic_spacesuit_boots" },\n', "")
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 
@@ -955,13 +955,13 @@ case("traje do config com tres pecas", traje_com_peca_de_menos,
 
 
 def mesma_peca_em_dois_conjuntos(tmp):
-    # O AxEMU usando a peca do Apollo: o Apollo passaria a contar como o
+    # O reforcado usando a peca do basico: o basico passaria a contar como o
     # reforcado, e o traje basico anularia a pressao do Sol.
     caminho = scripts(tmp, "config.js")
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
-    src = src.replace('item: "space_dim:reinforced_spacesuit_helmet"',
-                      'item: "space_dim:apollo_helmet"')
+    src = src.replace('item: "gh:reinforced_spacesuit_helmet"',
+                      'item: "gh:basic_spacesuit_helmet"')
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(src)
 

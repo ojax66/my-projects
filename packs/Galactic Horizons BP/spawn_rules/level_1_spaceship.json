@@ -2,7 +2,7 @@
 	"format_version": "1.8.0",
 	"minecraft:spawn_rules": {
 		"description": {
-			"identifier": "nave:level_1_spaceship",
+			"identifier": "gh:level_1_spaceship",
 			"population_control": "animal"
 		},
 		"conditions": [

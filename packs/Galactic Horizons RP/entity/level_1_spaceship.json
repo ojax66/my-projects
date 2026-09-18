@@ -2,40 +2,40 @@
   "format_version": "1.10.0",
   "minecraft:client_entity": {
     "description": {
-      "identifier": "nave:level_1_spaceship",
+      "identifier": "gh:level_1_spaceship",
       "materials": {
         "default": "entity_alphatest"
       },
       "textures": {
-        "default": "textures/nave/level_1_spaceship"
+        "default": "textures/gh/level_1_spaceship"
       },
       "geometry": {
-        "default": "geometry.nave.level_1_spaceship"
+        "default": "geometry.gh.level_1_spaceship"
       },
       "render_controllers": [
-        "controller.render.nave.ship"
+        "controller.render.gh.ship"
       ],
       "spawn_egg": {
-        "texture": "space_dim_nave_spawn_egg",
+        "texture": "gh_ship_spawn_egg",
         "texture_index": 0
       },
       "animations": {
-        "ship_idle_animation": "animation.nave.ship_idle",
-        "yaw_moment_animation": "animation.nave.yaw_moment_air",
-        "up_animation": "animation.nave.up",
-        "down_animation": "animation.nave.down",
-        "death_animation": "animation.nave.death",
-        "spawn_timer_animation": "animation.nave.spawn_timer",
-        "landing_gear_animation": "animation.nave.landing_gear",
-        "ship_circle_animation": "animation.nave.ship_circle",
-        "damage_smoke_animation": "animation.nave.damage_smoke",
-        "engine_sound_animation": "animation.nave.engine_sound",
-        "death_controller": "controller.animation.nave.death",
-        "up_down_controller": "controller.animation.nave.up_down",
-        "yaw_moment_controller": "controller.animation.nave.yaw_moment",
-        "landing_gear_controller": "controller.animation.nave.landing_gear",
-        "damage_controller": "controller.animation.nave.damage",
-        "ground_controller": "controller.animation.nave.ground"
+        "ship_idle_animation": "animation.gh.ship_idle",
+        "yaw_moment_animation": "animation.gh.yaw_moment_air",
+        "up_animation": "animation.gh.up",
+        "down_animation": "animation.gh.down",
+        "death_animation": "animation.gh.death",
+        "spawn_timer_animation": "animation.gh.spawn_timer",
+        "landing_gear_animation": "animation.gh.landing_gear",
+        "ship_circle_animation": "animation.gh.ship_circle",
+        "damage_smoke_animation": "animation.gh.damage_smoke",
+        "engine_sound_animation": "animation.gh.engine_sound",
+        "death_controller": "controller.animation.gh.death",
+        "up_down_controller": "controller.animation.gh.up_down",
+        "yaw_moment_controller": "controller.animation.gh.yaw_moment",
+        "landing_gear_controller": "controller.animation.gh.landing_gear",
+        "damage_controller": "controller.animation.gh.damage",
+        "ground_controller": "controller.animation.gh.ground"
       },
       "scripts": {
         "animate": [
@@ -49,10 +49,10 @@
         ]
       },
       "sound_effects": {
-        "nave_engine_sound": "nave.ship_engine"
+        "nave_engine_sound": "gh.ship_engine"
       },
       "particle_effects": {
-        "nave_ship_circle": "nave:ship_circle",
+        "gh_ship_circle": "gh:ship_circle",
         "nave_damage_smoke": "minecraft:basic_smoke_particle"
       }
     }

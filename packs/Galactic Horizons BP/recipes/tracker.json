@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:tracker"
+      "identifier": "gh:tracker"
     },
     "tags": [
       "crafting_table"
@@ -27,7 +27,7 @@
       }
     },
     "result": {
-      "item": "space_dim:tracker",
+      "item": "gh:tracker",
       "count": 1
     }
   }

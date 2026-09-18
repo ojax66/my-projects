@@ -2,7 +2,7 @@
   "format_version": "1.12",
   "minecraft:recipe_shaped": {
     "description": {
-      "identifier": "space_dim:level_1_spaceship"
+      "identifier": "gh:level_1_spaceship"
     },
     "tags": [
       "crafting_table"
@@ -17,7 +17,7 @@
         "item": "minecraft:glass"
       },
       "L": {
-        "item": "space_dim:trash_can"
+        "item": "gh:trash_can"
       },
       "D": {
         "item": "minecraft:diamond_block"
@@ -30,7 +30,7 @@
       }
     },
     "result": {
-      "item": "nave:level_1_spaceship_spawn_egg",
+      "item": "gh:level_1_spaceship_spawn_egg",
       "count": 1
     }
   }

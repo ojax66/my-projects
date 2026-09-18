@@ -2,14 +2,14 @@
   "format_version": "1.20.10",
   "minecraft:recipe_smithing_transform": {
     "description": {
-      "identifier": "space_dim:star_leggings_smithing"
+      "identifier": "gh:star_leggings_smithing"
     },
     "tags": [
       "smithing_table"
     ],
-    "template": "space_dim:star_upgrade_template",
+    "template": "gh:star_upgrade_template",
     "base": "minecraft:netherite_leggings",
-    "addition": "space_dim:star_core_ingot",
-    "result": "space_dim:star_leggings"
+    "addition": "gh:star_core_ingot",
+    "result": "gh:star_leggings"
   }
 }

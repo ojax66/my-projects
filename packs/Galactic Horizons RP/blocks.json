@@ -4,188 +4,188 @@
     1,
     0
   ],
-  "space_dim:sun_corona": {
-    "textures": "space_dim_sun_corona",
+  "gh:sun_corona": {
+    "textures": "gh_sun_corona",
     "sound": "stone"
   },
-  "space_dim:sun_plasma": {
-    "textures": "space_dim_sun_plasma",
+  "gh:sun_plasma": {
+    "textures": "gh_sun_plasma",
     "sound": "stone"
   },
-  "space_dim:sun_core": {
-    "textures": "space_dim_sun_core",
+  "gh:sun_core": {
+    "textures": "gh_sun_core",
     "sound": "stone"
   },
-  "space_dim:sun_blaze": {
-    "textures": "space_dim_sun_blaze",
+  "gh:sun_blaze": {
+    "textures": "gh_sun_blaze",
     "sound": "stone"
   },
-  "space_dim:sun_flare": {
-    "textures": "space_dim_sun_flare",
+  "gh:sun_flare": {
+    "textures": "gh_sun_flare",
     "sound": "stone"
   },
-  "space_dim:sun_ember": {
-    "textures": "space_dim_sun_ember",
+  "gh:sun_ember": {
+    "textures": "gh_sun_ember",
     "sound": "stone"
   },
-  "space_dim:sun_edge": {
-    "textures": "space_dim_sun_edge",
+  "gh:sun_edge": {
+    "textures": "gh_sun_edge",
     "sound": "stone"
   },
-  "space_dim:earth_ocean": {
-    "textures": "space_dim_earth_ocean",
+  "gh:earth_ocean": {
+    "textures": "gh_earth_ocean",
     "sound": "stone"
   },
-  "space_dim:earth_shallow": {
-    "textures": "space_dim_earth_shallow",
+  "gh:earth_shallow": {
+    "textures": "gh_earth_shallow",
     "sound": "stone"
   },
-  "space_dim:earth_land": {
-    "textures": "space_dim_earth_land",
+  "gh:earth_land": {
+    "textures": "gh_earth_land",
     "sound": "stone"
   },
-  "space_dim:earth_forest": {
-    "textures": "space_dim_earth_forest",
+  "gh:earth_forest": {
+    "textures": "gh_earth_forest",
     "sound": "stone"
   },
-  "space_dim:earth_ice": {
-    "textures": "space_dim_earth_ice",
+  "gh:earth_ice": {
+    "textures": "gh_earth_ice",
     "sound": "stone"
   },
-  "space_dim:moon_regolith_light": {
-    "textures": "space_dim_moon_regolith_light",
+  "gh:moon_regolith_light": {
+    "textures": "gh_moon_regolith_light",
     "sound": "stone"
   },
-  "space_dim:moon_regolith": {
-    "textures": "space_dim_moon_regolith",
+  "gh:moon_regolith": {
+    "textures": "gh_moon_regolith",
     "sound": "stone"
   },
-  "space_dim:moon_regolith_dark": {
-    "textures": "space_dim_moon_regolith_dark",
+  "gh:moon_regolith_dark": {
+    "textures": "gh_moon_regolith_dark",
     "sound": "stone"
   },
-  "space_dim:mars_dust": {
-    "textures": "space_dim_mars_dust",
+  "gh:mars_dust": {
+    "textures": "gh_mars_dust",
     "sound": "stone"
   },
-  "space_dim:mars_rock": {
-    "textures": "space_dim_mars_rock",
+  "gh:mars_rock": {
+    "textures": "gh_mars_rock",
     "sound": "stone"
   },
-  "space_dim:mars_rock_dark": {
-    "textures": "space_dim_mars_rock_dark",
+  "gh:mars_rock_dark": {
+    "textures": "gh_mars_rock_dark",
     "sound": "stone"
   },
-  "space_dim:mars_ice": {
-    "textures": "space_dim_mars_ice",
+  "gh:mars_ice": {
+    "textures": "gh_mars_ice",
     "sound": "stone"
   },
-  "space_dim:moon_silicon_ore": {
-    "textures": "space_dim_moon_silicon_ore",
+  "gh:moon_silicon_ore": {
+    "textures": "gh_moon_silicon_ore",
     "sound": "stone"
   },
-  "space_dim:moon_silicon_ore_deep": {
-    "textures": "space_dim_moon_silicon_ore_deep",
+  "gh:moon_silicon_ore_deep": {
+    "textures": "gh_moon_silicon_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_titanium_ore": {
-    "textures": "space_dim_moon_titanium_ore",
+  "gh:moon_titanium_ore": {
+    "textures": "gh_moon_titanium_ore",
     "sound": "stone"
   },
-  "space_dim:moon_titanium_ore_deep": {
-    "textures": "space_dim_moon_titanium_ore_deep",
+  "gh:moon_titanium_ore_deep": {
+    "textures": "gh_moon_titanium_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_helium3_ore": {
-    "textures": "space_dim_moon_helium3_ore",
+  "gh:moon_helium3_ore": {
+    "textures": "gh_moon_helium3_ore",
     "sound": "stone"
   },
-  "space_dim:moon_helium3_ore_deep": {
-    "textures": "space_dim_moon_helium3_ore_deep",
+  "gh:moon_helium3_ore_deep": {
+    "textures": "gh_moon_helium3_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_redstone_ore": {
-    "textures": "space_dim_moon_redstone_ore",
+  "gh:moon_redstone_ore": {
+    "textures": "gh_moon_redstone_ore",
     "sound": "stone"
   },
-  "space_dim:moon_redstone_ore_deep": {
-    "textures": "space_dim_moon_redstone_ore_deep",
+  "gh:moon_redstone_ore_deep": {
+    "textures": "gh_moon_redstone_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_iron_ore": {
-    "textures": "space_dim_moon_iron_ore",
+  "gh:moon_iron_ore": {
+    "textures": "gh_moon_iron_ore",
     "sound": "stone"
   },
-  "space_dim:moon_iron_ore_deep": {
-    "textures": "space_dim_moon_iron_ore_deep",
+  "gh:moon_iron_ore_deep": {
+    "textures": "gh_moon_iron_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_gold_ore": {
-    "textures": "space_dim_moon_gold_ore",
+  "gh:moon_gold_ore": {
+    "textures": "gh_moon_gold_ore",
     "sound": "stone"
   },
-  "space_dim:moon_gold_ore_deep": {
-    "textures": "space_dim_moon_gold_ore_deep",
+  "gh:moon_gold_ore_deep": {
+    "textures": "gh_moon_gold_ore_deep",
     "sound": "stone"
   },
-  "space_dim:moon_diamond_ore": {
-    "textures": "space_dim_moon_diamond_ore",
+  "gh:moon_diamond_ore": {
+    "textures": "gh_moon_diamond_ore",
     "sound": "stone"
   },
-  "space_dim:moon_diamond_ore_deep": {
-    "textures": "space_dim_moon_diamond_ore_deep",
+  "gh:moon_diamond_ore_deep": {
+    "textures": "gh_moon_diamond_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_silicon_ore": {
-    "textures": "space_dim_mars_silicon_ore",
+  "gh:mars_silicon_ore": {
+    "textures": "gh_mars_silicon_ore",
     "sound": "stone"
   },
-  "space_dim:mars_silicon_ore_deep": {
-    "textures": "space_dim_mars_silicon_ore_deep",
+  "gh:mars_silicon_ore_deep": {
+    "textures": "gh_mars_silicon_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_titanium_ore": {
-    "textures": "space_dim_mars_titanium_ore",
+  "gh:mars_titanium_ore": {
+    "textures": "gh_mars_titanium_ore",
     "sound": "stone"
   },
-  "space_dim:mars_titanium_ore_deep": {
-    "textures": "space_dim_mars_titanium_ore_deep",
+  "gh:mars_titanium_ore_deep": {
+    "textures": "gh_mars_titanium_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_copper_ore": {
-    "textures": "space_dim_mars_copper_ore",
+  "gh:mars_copper_ore": {
+    "textures": "gh_mars_copper_ore",
     "sound": "stone"
   },
-  "space_dim:mars_copper_ore_deep": {
-    "textures": "space_dim_mars_copper_ore_deep",
+  "gh:mars_copper_ore_deep": {
+    "textures": "gh_mars_copper_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_iron_ore": {
-    "textures": "space_dim_mars_iron_ore",
+  "gh:mars_iron_ore": {
+    "textures": "gh_mars_iron_ore",
     "sound": "stone"
   },
-  "space_dim:mars_iron_ore_deep": {
-    "textures": "space_dim_mars_iron_ore_deep",
+  "gh:mars_iron_ore_deep": {
+    "textures": "gh_mars_iron_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_gold_ore": {
-    "textures": "space_dim_mars_gold_ore",
+  "gh:mars_gold_ore": {
+    "textures": "gh_mars_gold_ore",
     "sound": "stone"
   },
-  "space_dim:mars_gold_ore_deep": {
-    "textures": "space_dim_mars_gold_ore_deep",
+  "gh:mars_gold_ore_deep": {
+    "textures": "gh_mars_gold_ore_deep",
     "sound": "stone"
   },
-  "space_dim:mars_diamond_ore": {
-    "textures": "space_dim_mars_diamond_ore",
+  "gh:mars_diamond_ore": {
+    "textures": "gh_mars_diamond_ore",
     "sound": "stone"
   },
-  "space_dim:mars_diamond_ore_deep": {
-    "textures": "space_dim_mars_diamond_ore_deep",
+  "gh:mars_diamond_ore_deep": {
+    "textures": "gh_mars_diamond_ore_deep",
     "sound": "stone"
   },
-  "space_dim:trash_can": {
-    "textures": "space_dim_trash_can",
+  "gh:trash_can": {
+    "textures": "gh_trash_can",
     "sound": "metal"
   }
 }

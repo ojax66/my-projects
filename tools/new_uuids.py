@@ -9,7 +9,7 @@ tem como confundir.
 
 O preço: o mundo que já usava a versão antiga não migra sozinho. É preciso
 ativar o pack novo nele. Os blocos e itens já colocados sobrevivem, porque eles
-são identificados por `space_dim:<nome>`, que não muda — só o pack muda de
+são identificados por `gh:<nome>`, que não muda — só o pack muda de
 identidade, o conteúdo não.
 
 São cinco UUIDs, e as duas dependências cruzadas precisam continuar batendo

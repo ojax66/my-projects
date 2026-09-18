@@ -12,19 +12,19 @@ import { world, system, __reset, __advance, __state, ItemStack } from '@minecraf
 import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, BASIC_SUIT_PIECES,
          REINFORCED_SUIT_PIECES, REINFORCED_SUIT_PRESSURE_FACTOR,
          SPACECRAFT_SAFE_TAG, OXYGEN_BACKPACK,
-         WRECK_TEMPLATE_ITEM, TRASH_CAN_BLOCK } from './space_dim/config.js';
-import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './space_dim/gravity.js';
-import { canBreathe } from './space_dim/lifeSupport.js';
+         WRECK_TEMPLATE_ITEM, TRASH_CAN_BLOCK } from './gh/config.js';
+import { gravityAt, gravityStrengthAt, applyPlayerGravity, applyEntityGravity } from './gh/gravity.js';
+import { canBreathe } from './gh/lifeSupport.js';
 import { hasStarArmor, starArmorPieces, hasBasicSuit, hasReinforcedSuit,
          protectionTier, pressureMultiplier,
-         sustainInSpacecraftWorlds } from './space_dim/gear.js';
-import { isWarm } from './space_dim/cold.js';
-import { applySunPressure, applySunHeat } from './space_dim/hazards.js';
-import { applyStarArmorPowers, onEntityHurt } from './space_dim/starPowers.js';
-import { startTrashCan } from './space_dim/trashCan.js';
+         sustainInSpacecraftWorlds } from './gh/gear.js';
+import { isWarm } from './gh/cold.js';
+import { applySunPressure, applySunHeat } from './gh/hazards.js';
+import { applyStarArmorPowers, onEntityHurt } from './gh/starPowers.js';
+import { startTrashCan } from './gh/trashCan.js';
 startTrashCan();
-import { buildWreckAt } from './space_dim/wreck.js';
-import { rememberSpawn, enforceSpawn } from './space_dim/spawnGuard.js';
+import { buildWreckAt } from './gh/wreck.js';
+import { rememberSpawn, enforceSpawn } from './gh/spawnGuard.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -103,7 +103,7 @@ const spaceLoc = (body, d, axis = 'x') => ({
   const p = world.__addPlayer({
     id: 'naveiro', dimensionId: DIMENSION_ID, location: spaceLoc(earth, earth.radius + 40),
   });
-  const nave = world.__spawn(DIMENSION_ID, 'nave:level_1_spaceship', p.location);
+  const nave = world.__spawn(DIMENSION_ID, 'gh:level_1_spaceship', p.location);
   p.__mountOn(nave);
   check('dentro da Nave Level 1 o jogador respira', canBreathe(p));
 }
@@ -265,7 +265,7 @@ const spaceLoc = (body, d, axis = 'x') => ({
   wear(basic, BASIC_SUIT_PIECES);
 
   check('o traje reforçado é reconhecido', hasReinforcedSuit(suited) && !hasStarArmor(suited));
-  check('o traje Apollo é reconhecido, e não conta como reforçado',
+  check('o traje básico é reconhecido, e não conta como reforçado',
         hasBasicSuit(basic) && !hasReinforcedSuit(basic) && !hasStarArmor(basic));
   check('os degraus são lidos certo',
         protectionTier(bare) === 'none' && protectionTier(basic) === 'basic'
@@ -276,7 +276,7 @@ const spaceLoc = (body, d, axis = 'x') => ({
   for (let i = 0; i < 3; i++) half.__wear(REINFORCED_SUIT_PIECES[i].slot, REINFORCED_SUIT_PIECES[i].item);
   check('meio traje não conta', !hasReinforcedSuit(half) && protectionTier(half) === 'none');
 
-  // Pressao dentro do Sol: o Apollo nao segura nada, o AxEMU e a armadura de
+  // Pressao dentro do Sol: o basico nao segura nada, o reforcado e a armadura de
   // estrela anulam. O fator vem do config — se ele deixar de ser 0, o teste
   // cobra o corte proporcional em vez da anulacao.
   for (const p of [bare, basic, suited, starred]) {
@@ -309,27 +309,27 @@ const spaceLoc = (body, d, axis = 'x') => ({
 
 // --- 7b-bis. O que cada traje resolve, e o que nao resolve ------------------
 // A diferenca entre os dois e o que faz o reforcado valer a pena existir: o
-// Apollo resolve o AR, o AxEMU resolve o FRIO e a PRESSAO.
+// o basico resolve o AR, o reforcado resolve o FRIO e a PRESSAO.
 {
   __reset();
   const longe = { x: 5000, y: 100, z: 5000 };       // longe de qualquer corpo
   const nu = world.__addPlayer({ id: 'n2', dimensionId: DIMENSION_ID, location: longe });
-  const apollo = world.__addPlayer({ id: 'a2', dimensionId: DIMENSION_ID, location: longe });
-  const axemu = world.__addPlayer({ id: 'x2', dimensionId: DIMENSION_ID, location: longe });
-  for (const x of BASIC_SUIT_PIECES) apollo.__wear(x.slot, x.item);
-  for (const x of REINFORCED_SUIT_PIECES) axemu.__wear(x.slot, x.item);
+  const basico = world.__addPlayer({ id: 'a2', dimensionId: DIMENSION_ID, location: longe });
+  const reforcado = world.__addPlayer({ id: 'x2', dimensionId: DIMENSION_ID, location: longe });
+  for (const x of BASIC_SUIT_PIECES) basico.__wear(x.slot, x.item);
+  for (const x of REINFORCED_SUIT_PIECES) reforcado.__wear(x.slot, x.item);
 
   check('sem traje o jogador não respira no espaço', !canBreathe(nu));
-  check('o traje Apollo sozinho já deixa respirar', canBreathe(apollo));
-  check('o reforçado também, sem depender de mochila', canBreathe(axemu));
+  check('o traje básico sozinho já deixa respirar', canBreathe(basico));
+  check('o reforçado também, sem depender de mochila', canBreathe(reforcado));
 
   check('sem traje o jogador congela', !isWarm(nu));
-  check('o traje Apollo NÃO isola do frio', !isWarm(apollo));
-  check('o traje reforçado isola do frio', isWarm(axemu));
+  check('o traje básico NÃO isola do frio', !isWarm(basico));
+  check('o traje reforçado isola do frio', isWarm(reforcado));
 
   check('só o reforçado anula a pressão',
-        pressureMultiplier(nu) === 1 && pressureMultiplier(apollo) === 1
-        && pressureMultiplier(axemu) === REINFORCED_SUIT_PRESSURE_FACTOR);
+        pressureMultiplier(nu) === 1 && pressureMultiplier(basico) === 1
+        && pressureMultiplier(reforcado) === REINFORCED_SUIT_PRESSURE_FACTOR);
 }
 
 // --- 7c. O traje segura o calor da aproximacao, nao o de dentro -------------

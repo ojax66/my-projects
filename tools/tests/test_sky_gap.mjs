@@ -10,7 +10,7 @@
  * existir a 80. Quase cem blocos em que a Lua não estava em lugar nenhum.
  */
 import { BODIES, GEN_RADIUS_CHUNKS, SKY_MODEL_HIDE_BELOW,
-         SKY_MODEL_DISTANCE, SKY_MODEL_NEAREST } from './space_dim/config.js';
+         SKY_MODEL_DISTANCE, SKY_MODEL_NEAREST } from './gh/config.js';
 
 // Os testes rodam numa pasta temporária com os scripts copiados; os packs
 // ficam no repositório, então o caminho vem daqui.
@@ -85,7 +85,7 @@ for (const body of BODIES) {
 {
   const fs = await import('node:fs');
   const path = await import('node:path');
-  const BP = path.resolve('space_dim', '..', '..', '..', '..');
+  const BP = path.resolve('gh', '..', '..', '..', '..');
 
   // Os modelos vistos de longe: todos emissivos. Sem luz de céu no espaço, um
   // modelo não-emissivo vira uma silhueta preta e o corpo some.
@@ -97,23 +97,23 @@ for (const body of BODIES) {
     // Duas famílias, e cada uma com o seu material — os dois do addon, nenhum
     // pronto.
     //
-    // Corpo OPACO: `space_dim_sky`, que herda de `entity` (opaco, sem teste de
+    // Corpo OPACO: `gh_sky`, que herda de `entity` (opaco, sem teste de
     // alfa) e liga USE_EMISSIVE. Aqui alfa quer dizer BRILHO, e a textura é
     // toda alfa 0. `entity_emissive_alpha` não serve: nele alfa 0 é
     // TRANSPARENTE, e foi o que deixou todo corpo invisível uma vez.
     //
-    // Corpo VOLUMÉTRICO (o Sol): `space_dim_glow`, que herda justamente de
+    // Corpo VOLUMÉTRICO (o Sol): `gh_glow`, que herda justamente de
     // `entity_emissive_alpha` — porque aqui a mistura é o ponto. São cascas
     // empilhadas: sem misturar, a de fora tapa todas as de dentro.
     // Três famílias, cada uma com o seu material do addon.
     //
-    // Corpo com ANEL de atmosfera: `space_dim_halo`, que é o sky mais
+    // Corpo com ANEL de atmosfera: `gh_halo`, que é o sky mais
     // DisableDepthWrite. Os anéis são cubos maiores que o corpo e ficam na
     // frente dele no buffer de profundidade; sem isso o cubo do corpo é
     // recusado pelo teste e o planeta some atrás do próprio halo.
     const volumetrico = desc.geometry.default.endsWith('sky_glow');
-    const esperado = volumetrico ? 'space_dim_glow'
-      : body.atmosphere ? 'space_dim_halo' : 'space_dim_sky';
+    const esperado = volumetrico ? 'gh_glow'
+      : body.atmosphere ? 'gh_halo' : 'gh_sky';
     check(`${body.id}: o modelo distante usa o material certo do addon`,
           mat === esperado, `(${mat}, esperado ${esperado})`);
   }
@@ -171,18 +171,18 @@ for (const body of BODIES) {
   const star = JSON.parse(fs.readFileSync(
     path.join(RP_DIR, 'entity', 'sky_star.entity.json'), 'utf8'));
   check('a estrela existe e usa o mesmo material',
-        star['minecraft:client_entity'].description.materials.default === 'space_dim_sky');
+        star['minecraft:client_entity'].description.materials.default === 'gh_sky');
 
   // E o material tem que estar definido de verdade, com o define certo.
   const mats = JSON.parse(fs.readFileSync(
     path.join(RP_DIR, 'materials', 'entity.material'), 'utf8')).materials;
-  const key = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_sky');
+  const key = Object.keys(mats).find((k) => k.split(':')[0] === 'gh_sky');
   check('o material do céu existe no RP', !!key, `(${key})`);
   check('  herda de entity (opaco, sem teste de alfa)', key?.endsWith(':entity'));
   check('  e liga USE_EMISSIVE', (mats[key]?.['+defines'] ?? []).includes('USE_EMISSIVE'));
 
   // O do halo: o mesmo do corpo opaco, mais DisableDepthWrite.
-  const hk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_halo');
+  const hk = Object.keys(mats).find((k) => k.split(':')[0] === 'gh_halo');
   check('o material do halo existe no RP', !!hk, `(${hk})`);
   check('  e desliga a escrita de profundidade',
         (mats[hk]?.['+states'] ?? []).includes('DisableDepthWrite'));
@@ -196,7 +196,7 @@ for (const body of BODIES) {
         !(mats[hk]?.['+states'] ?? []).includes('DisableCulling'));
 
   // E o das cascas, que é o oposto: tem que misturar.
-  const gk = Object.keys(mats).find((k) => k.split(':')[0] === 'space_dim_glow');
+  const gk = Object.keys(mats).find((k) => k.split(':')[0] === 'gh_glow');
   check('o material das cascas existe no RP', !!gk, `(${gk})`);
   check('  herda de entity_emissive_alpha (mistura por alfa)',
         gk?.endsWith(':entity_emissive_alpha'));
