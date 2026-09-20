@@ -62,8 +62,20 @@ const CAPTURE_TICKS = 4;
 // sem a entidade.
 const REMOVE_TICKS = 5;
 
-// Meia-aresta da caixa salva, em blocos. 1 = caixa 3x3x3 em volta do veículo.
-const SAVE_HALF = 1;
+// A CAIXA QUE SALVA O VEÍCULO.
+//
+// Era 1 (caixa 3x3x3) e não cabia a Nave Level 1: a colisão dela é 3,8 de
+// largura por 2,8 de altura. Um veículo que não cabe na caixa não entra na
+// estrutura, e a estrutura sai VAZIA sem erro nenhum — o jeito mais silencioso
+// de perder a nave. Era isso que fazia "a nave não teleporta com a gente".
+//
+// Agora a caixa é medida pelo maior veículo que o addon leva, com folga:
+// 5x5 em x/z cobre os 3,8 de largura, e a altura vai de um bloco ABAIXO do pé
+// da entidade até três acima, porque a posição de uma entidade é o pé dela e a
+// caixa de colisão sobe a partir dali.
+const SAVE_HALF = 2;
+const SAVE_BELOW = 1;
+const SAVE_ABOVE = 3;
 
 // Folga até o teto da dimensão. O OVNI tem collision_box de 3 de altura, e o
 // Spacecraft desce os passageiros dele pra `max - 30` pelo mesmo motivo.
@@ -130,6 +142,19 @@ function ejectFrom(mount, player) {
   try {
     mount?.getComponent("rideable")?.ejectRider?.(player);
   } catch { }
+}
+
+/**
+ * O id que o veículo tem HOJE no pack.
+ *
+ * A Nave Level 1 era `nave:level_1_spaceship` até o addon inteiro passar pra
+ * `gh:`. Uma nave criada antes disso continua no mundo com o id velho, e
+ * `spawnEntity` com um id que o pack não declara mais estoura — ou seja, quem
+ * já tinha nave ficava a pé justamente por ter jogado antes.
+ */
+function idDeHoje(typeId) {
+  if (typeof typeId !== "string") return typeId;
+  return typeId.startsWith("nave:") ? "gh:" + typeId.slice("nave:".length) : typeId;
 }
 
 function structureNameFor(player) {
@@ -304,12 +329,12 @@ export function capture(player, onReady) {
       const cy = Math.floor(l.y);
       from = {
         x: Math.floor(l.x) - SAVE_HALF,
-        y: Math.max(hr.min, cy - SAVE_HALF),
+        y: Math.max(hr.min, cy - SAVE_BELOW),
         z: Math.floor(l.z) - SAVE_HALF,
       };
       to = {
         x: Math.floor(l.x) + SAVE_HALF,
-        y: Math.min(hr.max, cy + SAVE_HALF),
+        y: Math.min(hr.max, cy + SAVE_ABOVE),
         z: Math.floor(l.z) + SAVE_HALF,
       };
     } catch {
@@ -376,7 +401,7 @@ export function restore(player, dimension, loc, capsule) {
       try {
         world.structureManager.place(capsule.name, dimension, {
           x: Math.floor(here.x) - SAVE_HALF,
-          y: Math.floor(here.y) - SAVE_HALF,
+          y: Math.floor(here.y) - SAVE_BELOW,
           z: Math.floor(here.z) - SAVE_HALF,
         });
       } catch (e) {
@@ -386,7 +411,7 @@ export function restore(player, dimension, loc, capsule) {
 
       try {
         vehicle = dimension.getEntities({
-          type: capsule.typeId,
+          type: idDeHoje(capsule.typeId),
           location: here,
           // 24 e não 12: se o OVNI já tiver levado o empurrão de 19 blocos
           // pra cima, ele ainda é achado — e reaproveitado em vez de virar um
@@ -401,7 +426,7 @@ export function restore(player, dimension, loc, capsule) {
     // certo — ninguém fica a pé no vácuo por causa de um erro de estrutura.
     if (!vehicle) {
       try {
-        vehicle = dimension.spawnEntity(capsule.typeId, here);
+        vehicle = dimension.spawnEntity(idDeHoje(capsule.typeId), here);
       } catch (e) {
         console.warn("[gh] não deu pra recriar o veículo: " + e);
         try {
@@ -429,11 +454,87 @@ export function restore(player, dimension, loc, capsule) {
     if (flight) flight.vehicle = vehicle;
 
     seat(player, vehicle);
+    conferirDepois(player, dimension, capsule.typeId, flight, vehicle);
   };
 
   // Alguns ticks depois do teleporte do jogador: aí a chunk do destino já
   // está carregada e a estrutura tem onde ser colocada.
   system.runTimeout(place, 6);
+}
+
+// Quando conferir, em ticks DEPOIS da conferida anterior: 1 s, 2 s, 3 s, 5 s e
+// 8 s depois da chegada.
+//
+// Três conferidas de 1 em 1 segundo não bastavam. O `minecraft:despawn` da nave
+// volta a ser avaliado de 0,1 em 0,1 s enquanto ela estiver sem a tag de
+// capturada e com o jogador a 6+ blocos — uma janela que continua aberta bem
+// depois dos três primeiros segundos, justamente enquanto o jogador ainda está
+// carregando o mundo novo. Por isso as conferidas se espaçam em vez de pararem.
+const CONFERIDAS = [20, 20, 20, 40, 60];
+
+/**
+ * A REDE: um segundo depois, o veículo ainda está lá?
+ *
+ * O caminho até aqui tem muitas beiradas — a estrutura pode sair vazia, a
+ * entidade recolocada pode não aparecer na busca do mesmo tick, e a própria
+ * nave tem um `minecraft:despawn` que a apaga enquanto ela estiver sem a tag
+ * de capturada e o jogador a 6+ blocos. Cada uma dessas tem o seu cuidado no
+ * código, e mesmo assim o jogador chegava sem nave.
+ *
+ * Então, em vez de confiar que todas deram certo, aqui se CONFERE por oito
+ * segundos: se não há veículo do tipo certo por perto, cria um e senta o
+ * jogador. Perde a cor e a vida da nave antiga; é muito melhor que ficar a pé
+ * no meio do espaço.
+ *
+ * O que a rede NÃO faz é sentar à força quem desceu porque quis. Por isso ela
+ * carrega o veículo em que o jogador foi posto: se ele não está montado mas o
+ * veículo continua válido ali do lado, foi o jogador que desceu — e a rede sai
+ * de cena. Só some do mapa o veículo que realmente sumiu.
+ *
+ * @param veiculo o veículo em que o jogador já foi posto, se houve algum
+ * @param passo   índice em CONFERIDAS
+ */
+function conferirDepois(player, dimension, typeId, flight, veiculo = null, passo = 0) {
+  if (passo >= CONFERIDAS.length) return;
+  system.runTimeout(() => {
+    if (!player?.isValid) return;
+    if (player.dimension?.id !== dimension.id) return;    // já foi embora
+
+    let montado = null;
+    try { montado = player.getComponent("riding")?.entityRidingOn ?? null; } catch { }
+
+    // Montado: nada a fazer agora, mas a conferida continua — a nave ainda
+    // pode sumir debaixo dele nos segundos seguintes.
+    if (montado?.isValid) {
+      conferirDepois(player, dimension, typeId, flight, montado, passo + 1);
+      return;
+    }
+
+    // Desceu por vontade própria: o veículo em que ele foi posto continua ali.
+    if (veiculo?.isValid) return;
+
+    const tipo = idDeHoje(typeId);
+    let perto = null;
+    try {
+      perto = dimension.getEntities({
+        type: tipo, location: player.location, maxDistance: 24, closest: 1,
+      })[0] ?? null;
+    } catch { }
+
+    if (!perto) {
+      try {
+        perto = dimension.spawnEntity(tipo, player.location);
+        console.warn("[gh] a nave não chegou; repondo uma no destino");
+      } catch (e) {
+        console.warn("[gh] não deu pra repor o veículo: " + e);
+        return;
+      }
+    }
+    keepAlive(perto);
+    if (flight) flight.vehicle = perto;
+    seat(player, perto);
+    conferirDepois(player, dimension, typeId, flight, perto, passo + 1);
+  }, CONFERIDAS[passo]);
 }
 
 /**

@@ -40,6 +40,7 @@ async function loadTravel() {
 }
 
 const UFO = 'dlb_van:ufo';
+const NAVE = 'gh:level_1_spaceship';
 
 function makePlayer(dimensionId, loc) {
   return world.__addPlayer({ id: 'p1', dimensionId, location: loc });
@@ -221,6 +222,10 @@ function makePlayer(dimensionId, loc) {
     ['moon', 'gh:moon'],
     ['mars', 'gh:mars'],
   ];
+  // OS DOIS VEÍCULOS. Antes só o OVNI passava por aqui, e a Nave Level 1 —
+  // que é a que ele usa — nunca tinha rodado o caminho inteiro num teste.
+  // "A nave não teleporta com a gente" era isso: um veículo testado e outro não.
+  for (const VEICULO of [UFO, NAVE]) {
   for (const [bodyId, expectDim] of rotas) {
     __reset();
     const travel = await loadTravel();
@@ -228,7 +233,7 @@ function makePlayer(dimensionId, loc) {
     const p = makePlayer(DIMENSION_ID, {
       x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
     });
-    const ufo = world.__spawn(DIMENSION_ID, UFO, p.location);
+    const ufo = world.__spawn(DIMENSION_ID, VEICULO, p.location);
     p.__mountOn(ufo);
 
     travel.checkBodyPortals(p);
@@ -238,18 +243,19 @@ function makePlayer(dimensionId, loc) {
 
     const dest = world.getDimension(expectDim);
     const espaco = world.getDimension(DIMENSION_ID);
-    check(`entrar em ${bodyId} leva pra ${expectDim}`, p.dimension.id === expectDim,
+    check(`${VEICULO.split(':')[1]}: entrar em ${bodyId} leva pra ${expectDim}`, p.dimension.id === expectDim,
           `(foi pra ${p.dimension.id})`);
-    check(`  a nave vai junto`, dest.getEntities({ type: UFO }).length === 1,
-          `(${dest.getEntities({ type: UFO }).length} no destino)`);
-    check(`  e não fica uma pra trás`, espaco.getEntities({ type: UFO }).length === 0,
-          `(${espaco.getEntities({ type: UFO }).length} no espaço)`);
-    check(`  o jogador chega MONTADO nela`, p.__ridingOn?.typeId === UFO,
+    check(`  a nave vai junto`, dest.getEntities({ type: VEICULO }).length === 1,
+          `(${dest.getEntities({ type: VEICULO }).length} no destino)`);
+    check(`  e não fica uma pra trás`, espaco.getEntities({ type: VEICULO }).length === 0,
+          `(${espaco.getEntities({ type: VEICULO }).length} no espaço)`);
+    check(`  o jogador chega MONTADO nela`, p.__ridingOn?.typeId === VEICULO,
           `(montado em ${p.__ridingOn?.typeId ?? 'nada'})`);
     check(`  nenhuma estrutura de veículo ficou guardada`,
           __state().structures.size === 0,
           `(sobraram: ${[...__state().structures.keys()].join(', ') || 'nenhuma'})`);
   }
+}
 }
 
 // --- 7. O foguete do Spacecraft NÃO é sequestrado --------------------------
@@ -370,6 +376,131 @@ function makePlayer(dimensionId, loc) {
   const sobraram = [...__state().structures.keys()].filter((k) => k.startsWith('gh:veh_'));
   check('  sem estrutura de veículo sobrando', sobraram.length === 0,
         `(${sobraram.join(', ') || 'nenhuma'})`);
+}
+
+// --- 10. A CAIXA TEM QUE CABER O VEÍCULO -----------------------------------
+//
+// A caixa que salva o veículo na estrutura era 3x3x3, e a colisão da Nave
+// Level 1 é 3,8 x 2,8: ela NÃO CABIA. Veículo que não cabe não entra na
+// estrutura, e a estrutura sai vazia sem erro nenhum. Este teste lê a colisão
+// do JSON da entidade de verdade, então mexer no modelo dela sem mexer na
+// caixa reprova aqui.
+{
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const raiz = process.env.DH_REPO;
+  const bp = path.join(raiz, 'packs', 'Galactic Horizons BP');
+
+  const veh = fs.readFileSync(
+    path.join(raiz, 'packs', 'Galactic Horizons BP', 'scripts', 'gh', 'vehicle.js'), 'utf8');
+  const num = (nome) => Number(veh.match(new RegExp(`const ${nome} = (\\d+)`))?.[1]);
+  const meia = num('SAVE_HALF'), abaixo = num('SAVE_BELOW'), acima = num('SAVE_ABOVE');
+  const larguraCaixa = meia * 2 + 1;
+  const alturaCaixa = abaixo + acima + 1;
+
+  for (const arq of ['level_1_spaceship.json']) {
+    const doc = JSON.parse(fs.readFileSync(path.join(bp, 'entities', arq), 'utf8'));
+    const cb = doc['minecraft:entity'].components['minecraft:collision_box'];
+    if (!cb) continue;
+    check(`a caixa de captura cabe ${arq.replace('.json', '')} na largura`,
+          larguraCaixa >= cb.width, `(caixa ${larguraCaixa}, veículo ${cb.width})`);
+    check(`  e na altura`, alturaCaixa >= cb.height,
+          `(caixa ${alturaCaixa}, veículo ${cb.height})`);
+  }
+}
+
+// --- 11. A REDE: se a nave sumir na chegada, vem outra ----------------------
+//
+// O caminho tem muitas beiradas (estrutura vazia, busca no mesmo tick, o
+// temporizador de despawn de 0,1 s da própria nave). Em vez de confiar que
+// todas deram certo, o código CONFERE um segundo depois. Aqui a nave é
+// apagada de propósito logo depois da chegada.
+{
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === 'moon');
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const nave = world.__spawn(DIMENSION_ID, NAVE, p.location);
+  p.__mountOn(nave);
+
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(60);
+
+  const lua = world.getDimension('gh:moon');
+  // O sabotador: some com tudo que é nave no destino, como o despawn faria.
+  for (const e of lua.getEntities({ type: NAVE })) e.remove();
+  check('a nave foi apagada de propósito', lua.getEntities({ type: NAVE }).length === 0);
+
+  __advance(80);
+  const depois = lua.getEntities({ type: NAVE });
+  check('a rede repõe a nave que sumiu', depois.length >= 1, `(${depois.length})`);
+  check('  e o jogador volta a ficar montado',
+        p.__ridingOn?.typeId === NAVE, `(${p.__ridingOn?.typeId ?? 'nada'})`);
+}
+
+// --- 12. Nave criada antes da troca de namespace ---------------------------
+//
+// A Nave Level 1 era `nave:level_1_spaceship`. Quem já tinha uma no mundo
+// continua com o id velho, e `spawnEntity` com id que o pack não declara mais
+// estoura — quem jogava antes ficaria a pé justamente por isso.
+{
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === 'moon');
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const velha = world.__spawn(DIMENSION_ID, 'nave:level_1_spaceship', p.location);
+  p.__mountOn(velha);
+
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(100);
+
+  const lua = world.getDimension('gh:moon');
+  check('com a nave de id antigo o jogador chega na Lua',
+        p.dimension.id === 'gh:moon', `(${p.dimension.id})`);
+  check('  e chega com uma nave do id de hoje',
+        lua.getEntities({ type: NAVE }).length >= 1,
+        `(${lua.getEntities({ type: NAVE }).length})`);
+}
+
+// --- 13. A rede não senta à força quem desceu porque quis -------------------
+//
+// A rede confere por oito segundos, e nesse tempo o jogador pode muito bem
+// descer da nave pra olhar o chão da Lua. Se ela tratasse "não está montado"
+// como "a nave sumiu", ele seria puxado de volta pro banco — ou pior, ganharia
+// uma segunda nave do lado da primeira.
+{
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === 'moon');
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const nave = world.__spawn(DIMENSION_ID, NAVE, p.location);
+  p.__mountOn(nave);
+
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(40);
+
+  const lua = world.getDimension('gh:moon');
+  const chegou = lua.getEntities({ type: NAVE })[0];
+  check('o jogador chegou montado na Lua', p.__ridingOn?.id === chegou?.id);
+
+  // Desce por vontade própria, com a nave inteira ali do lado.
+  chegou.getComponent('rideable').ejectRider(p);
+  __advance(200);
+
+  check('quem desce por vontade própria continua a pé', p.__ridingOn === null,
+        `(${p.__ridingOn?.typeId ?? 'a pé'})`);
+  check('  e não aparece uma segunda nave do lado',
+        lua.getEntities({ type: NAVE }).length === 1,
+        `(${lua.getEntities({ type: NAVE }).length})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

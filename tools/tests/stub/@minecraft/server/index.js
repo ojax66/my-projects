@@ -95,6 +95,15 @@ class Entity {
   remove() {
     this.dimension.__entities.delete(this);
     this.isValid = false;
+    // No jogo, apagar uma entidade DESCE quem estava montado nela. Sem isto o
+    // jogador continuava "montado" numa nave que não existe mais, e todo teste
+    // que pergunta "ele ficou a pé?" respondia que não.
+    for (const r of this.__riders) { if (r.__ridingOn === this) r.__ridingOn = null; }
+    this.__riders = [];
+    if (this.__ridingOn) {
+      this.__ridingOn.__riders = this.__ridingOn.__riders.filter((x) => x !== this);
+      this.__ridingOn = null;
+    }
   }
 
   applyImpulse(v) {
