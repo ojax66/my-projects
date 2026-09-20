@@ -525,11 +525,8 @@ export const SKY_MODELS_ENABLED = true;
 // observador — e em multijogador cada um tinha o seu conjunto, então todo mundo
 // via os cubos dos outros flutuando no lugar errado. Era o que estava "bugado".
 //
-// Não tem como esconder uma entidade de um jogador só no Bedrock. O que dá pra
-// fazer é: quem está junto (mesma nave, mesmo canto) recebe UM conjunto só, e o
-// erro de paralaxe entre eles é o ângulo entre a posição de cada um e o modelo
-// — a 2 blocos de distância num degrau de 24, dá menos de 5 graus.
-export const SKY_SHARE_RADIUS = 16;
+// Não tem como esconder uma entidade de um jogador só no Bedrock. A regra que
+// resolve está logo abaixo, junto de SKY_SHARE_RADIUS.
 
 // Até esta distância o modelo vai pra posição REAL do corpo, no tamanho real.
 //
@@ -574,6 +571,37 @@ export const SKY_MODEL_REAL_BELOW = 40;
 // 40 fica do lado seguro, e é o mesmo número do limite global.
 export const SKY_MODEL_NEAREST = 20;
 export const SKY_MODEL_DISTANCE = 40;
+
+// ---------------------------------------------------------------------------
+// NUNCA DOIS PLANETAS NA TELA
+// ---------------------------------------------------------------------------
+// Até onde o cliente recebe e desenha uma entidade. Não é chute: está medido
+// duas vezes neste arquivo — modelo a 28 blocos aparece, entidade a 86 não.
+//
+// É a DISTÂNCIA DE SIMULAÇÃO que manda nisso, e não a de renderização. Aumentar
+// o slider de chunks (que é o que os packs de "render distance" fazem, e eles
+// nem são pack: são arquivos trocados dentro do app) não move este número, e é
+// por isso que modelo fixo na posição real continua fora de alcance: o Sol está
+// a 500 blocos e Marte a 520.
+export const SKY_ENTITY_RANGE = 86;
+
+// A regra do compartilhamento: dois jogadores dividem UM conjunto sempre que um
+// deles PUDER VER o conjunto do outro.
+//
+// O conjunto do outro fica no máximo a SKY_MODEL_DISTANCE dele, e é visível
+// até SKY_ENTITY_RANGE de quem olha — logo, a soma dos dois é a distância a
+// partir da qual ninguém vê o conjunto de ninguém. Abaixo dela, o grupo é um
+// só e existe um conjunto só. É o que faz "dois planetas na tela" deixar de
+// existir, e não só ficar mais raro.
+//
+// E o agrupamento é TRANSITIVO: A com B, B com C, junta os três. Sem isso, B
+// no meio do caminho veria o conjunto de A e o de C.
+//
+// O preço, que é real e assumido: num grupo esparramado o céu é montado no
+// CENTRO do grupo, então quem está na ponta vê os corpos numa direção um pouco
+// torta. Ele escolheu assim — um céu só, nem que não seja perfeito pra quem
+// está na borda, em vez de dois planetas na tela.
+export const SKY_SHARE_RADIUS = SKY_ENTITY_RANGE + SKY_MODEL_DISTANCE;
 
 // A que distância DA CASCA o modelo sai e o corpo de blocos assume.
 //

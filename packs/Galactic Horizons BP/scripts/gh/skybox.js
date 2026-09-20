@@ -360,36 +360,74 @@ export function updateSkyAll(players) {
   if (!SKY_MODELS_ENABLED) return;
   if (system.currentTick % SKY_MODEL_INTERVAL !== 0) return;
 
-  // Agrupamento guloso, na ordem do id: o primeiro de cada grupo é a âncora, e
-  // a ordem do id é estável, então o grupo não fica trocando de dono a cada
-  // tick (o que faria os modelos nascerem e morrerem sem parar).
+  // AGRUPAMENTO TRANSITIVO, pra nunca haver dois conjuntos visíveis ao mesmo
+  // tempo.
+  //
+  // A regra: dois jogadores caem no mesmo grupo se um pudesse VER o conjunto do
+  // outro (SKY_SHARE_RADIUS, que é o alcance da entidade mais a distância do
+  // modelo ao dono). Transitivo porque quem está no meio do caminho vê os dois:
+  // A junta com B, B junta com C, os três viram um grupo só.
+  //
+  // O guloso de antes agrupava por proximidade simples e num raio de 16 blocos.
+  // Dois jogadores a 50 blocos ficavam em grupos diferentes, cada um com o seu
+  // conjunto — e cada um via o do outro flutuando torto. Era o "dupe" dele.
   const vivos = players.filter((p) => p?.isValid);
   vivos.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  const ancoras = [];
-  const donoDe = new Map();
-  for (const p of vivos) {
-    let grupo = null;
-    for (const a of ancoras) {
-      const d = distXZY(p.location, a.location);
-      if (d <= SKY_SHARE_RADIUS) { grupo = a; break; }
+  const dono = vivos.map((_, i) => i);
+  const raiz = (i) => {
+    while (dono[i] !== i) { dono[i] = dono[dono[i]]; i = dono[i]; }
+    return i;
+  };
+  for (let i = 0; i < vivos.length; i++) {
+    for (let j = i + 1; j < vivos.length; j++) {
+      if (distXZY(vivos[i].location, vivos[j].location) <= SKY_SHARE_RADIUS) {
+        const a = raiz(i), b = raiz(j);
+        if (a !== b) dono[a] = b;
+      }
     }
-    if (grupo) donoDe.set(p.id, grupo.id);
-    else { ancoras.push(p); donoDe.set(p.id, p.id); }
   }
 
-  // Quem deixou de ser âncora larga os modelos dele; senão eles ficariam
-  // parados no mundo, sem ninguém pra mover.
-  for (const p of vivos) {
-    if (donoDe.get(p.id) !== p.id) clearModels(p.id);
+  const grupos = new Map();
+  for (let i = 0; i < vivos.length; i++) {
+    const r = raiz(i);
+    if (!grupos.has(r)) grupos.set(r, []);
+    grupos.get(r).push(vivos[i]);
+  }
+
+  // O conjunto é montado no CENTRO do grupo, não na cabeça de quem o carrega.
+  //
+  // Assim ele não salta quando o dono muda (alguém sai, alguém entra): o centro
+  // é contínuo, o id do dono não. E o erro de direção fica repartido entre
+  // todos em vez de zero pra um e o dobro pro outro.
+  // { dona, olho } — o olho é null quando o grupo tem um jogador só.
+  //
+  // A lista existe em vez de guardar o ponto no próprio jogador: objeto de
+  // Player vem do jogo, e pendurar campo nosso nele é coisa que funciona por
+  // acidente até o dia em que o jogo devolve outro objeto.
+  const ancoras = [];
+  for (const membros of grupos.values()) {
+    membros.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const dona = membros[0];
+    // Quem não é dono larga o que tiver: só o dono carrega o conjunto do grupo.
+    for (const p of membros) if (p.id !== dona.id) clearModels(p.id);
+
+    let cx = 0, cy = 0, cz = 0;
+    for (const p of membros) {
+      let olho;
+      try { olho = p.getHeadLocation(); } catch { olho = p.location; }
+      cx += olho.x; cy += olho.y; cz += olho.z;
+    }
+    const centro = { x: cx / membros.length, y: cy / membros.length, z: cz / membros.length };
+    ancoras.push({ dona, olho: membros.length > 1 ? centro : null });
   }
 
   // Os corpos perto o bastante viram um só no mundo, antes dos modelos por
-  // jogador: assim quem é global já entra desligado no laço de cada âncora.
+  // grupo: assim quem é global já entra desligado no laço de cada dono.
   try { updateGlobals(vivos[0]?.dimension, vivos); }
   catch (e) { warnOnce("corpos globais", e); }
 
-  for (const a of ancoras) updateSky(a);
+  for (const a of ancoras) updateSky(a.dona, a.olho);
 }
 
 function distXZY(a, b) {
@@ -399,7 +437,13 @@ function distXZY(a, b) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-export function updateSky(player) {
+/**
+ * Monta o céu de um dono de conjunto.
+ *
+ * `olhoDoGrupo` é o ponto de vista: o CENTRO do grupo quando há mais de um
+ * jogador compartilhando, e a cabeça do próprio dono quando ele está sozinho.
+ */
+export function updateSky(player, olhoDoGrupo) {
   if (!SKY_MODELS_ENABLED) return;
   if (system.currentTick % SKY_MODEL_INTERVAL !== 0) return;
 
@@ -416,6 +460,7 @@ export function updateSky(player) {
   // que ele deveria estar substituindo.
   let eye;
   try { eye = player.getHeadLocation(); } catch { eye = player.location; }
+  if (olhoDoGrupo) eye = olhoDoGrupo;
 
   // Dentro de um corpo o céu some — MENOS a casca só-modelo do corpo em que se
   // está.

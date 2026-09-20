@@ -624,7 +624,10 @@ const mk = (id = 'p1') =>
 
   // Os dois estão longe do Sol: aquele continua no truque, um por jogador —
   // e não tem problema, porque o modelo de cada um está do lado dele.
-  check('  e o Sol, longe, continua um por jogador', conta('sun').length === 2,
+  // O Sol continua no truque do modelo perto — mas UM só, porque os dois
+  // jogadores estão dentro do raio de compartilhamento. Era aqui que nascia o
+  // "dois planetas na tela": cada um tinha o seu e via o do outro.
+  check('  e o Sol, longe, é um só pros dois', conta('sun').length === 1,
         `(${conta('sun').length})`);
 
   // Afastando os dois, a Terra global sai de cena.
@@ -641,6 +644,80 @@ const mk = (id = 'p1') =>
                                        e.location.z - terra.center.z) > 1));
 
   clearGlobals();
+}
+
+// --- NUNCA DOIS CONJUNTOS VISÍVEIS ------------------------------------------
+//
+// O bug que ele via em multijogador: cada jogador com o seu conjunto de
+// modelos, e cada um enxergando o do outro flutuando no lugar errado — dois
+// Sóis, duas Terras. O invariante que mata isso: de onde qualquer jogador
+// estiver, o que está dentro do alcance em que o cliente desenha entidade
+// nunca é mais do que UM conjunto.
+{
+  const { updateSkyAll, clearGlobals } = await import('./gh/skybox.js');
+  const { SKY_ENTITY_RANGE, SKY_SHARE_RADIUS } = await import('./gh/config.js');
+
+  const modelos = () => world.getDimension(DIMENSION_ID).getEntities()
+    .filter((e) => e.typeId.startsWith('gh:sky_'));
+  const noAlcance = (jogador) => modelos().filter((e) => Math.hypot(
+    e.location.x - jogador.location.x,
+    e.location.y - jogador.location.y,
+    e.location.z - jogador.location.z) <= SKY_ENTITY_RANGE).length;
+
+  // Quanto é UM conjunto: o que um jogador sozinho recebe.
+  __reset();
+  clearGlobals();
+  const sozinho = mk('inv_solo');
+  sozinho.teleport({ x: 9000, y: 128, z: 9000 });
+  __advance(2); updateSkyAll([sozinho]);
+  const UM = modelos().length;
+  check('um jogador sozinho tem um conjunto', UM > 0, `(${UM} modelos)`);
+
+  for (const separacao of [0, 24, 60, 100, 125, 130, 200, 400]) {
+    __reset();
+    clearGlobals();
+    const a = mk(`inv_a_${separacao}`);
+    const b = mk(`inv_b_${separacao}`);
+    // Longe de qualquer corpo, pra ninguém virar global e o teste medir só o
+    // truque do modelo perto.
+    a.teleport({ x: 9000, y: 128, z: 9000 });
+    b.teleport({ x: 9000 + separacao, y: 128, z: 9000 });
+    __advance(2); updateSkyAll([a, b]);
+
+    const pior = Math.max(noAlcance(a), noAlcance(b));
+    check(`a ${separacao} blocos, ninguém vê mais que um conjunto`, pior <= UM,
+          `(${pior} modelos no alcance, um conjunto são ${UM})`);
+  }
+
+  // A regra transitiva: três em fila, cada um a 100 do vizinho. A e C não se
+  // veem, mas B vê os dois — sem transitividade sobrariam dois conjuntos no
+  // alcance de B.
+  __reset();
+  clearGlobals();
+  const [a, b, c] = ['fila_a', 'fila_b', 'fila_c'].map(mk);
+  a.teleport({ x: 9000, y: 128, z: 9000 });
+  b.teleport({ x: 9100, y: 128, z: 9000 });
+  c.teleport({ x: 9200, y: 128, z: 9000 });
+  __advance(2); updateSkyAll([a, b, c]);
+  check('três em fila viram um grupo só (transitivo)', modelos().length === UM,
+        `(${modelos().length} modelos, um conjunto são ${UM})`);
+  check('  e o raio de compartilhamento cobre o alcance da entidade',
+        SKY_SHARE_RADIUS > SKY_ENTITY_RANGE,
+        `(${SKY_SHARE_RADIUS} > ${SKY_ENTITY_RANGE})`);
+
+  // Afastados de verdade, cada um volta a ter o seu — e ninguém vê o do outro.
+  __reset();
+  clearGlobals();
+  const longe1 = mk('longe_1');
+  const longe2 = mk('longe_2');
+  longe1.teleport({ x: 9000, y: 128, z: 9000 });
+  longe2.teleport({ x: 9600, y: 128, z: 9000 });
+  __advance(2); updateSkyAll([longe1, longe2]);
+  check('longe um do outro, cada um tem o seu conjunto',
+        modelos().length === UM * 2, `(${modelos().length})`);
+  check('  e nenhum dos dois vê o conjunto do outro',
+        noAlcance(longe1) <= UM && noAlcance(longe2) <= UM,
+        `(${noAlcance(longe1)} e ${noAlcance(longe2)})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
