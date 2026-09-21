@@ -503,5 +503,53 @@ function makePlayer(dimensionId, loc) {
         `(${lua.getEntities({ type: NAVE }).length})`);
 }
 
+// --- 14. A chunk do destino ainda carregando -------------------------------
+//
+// O bug da foto na Lua: "The vehicle could not be brought along". Criar a
+// entidade num ponto cuja chunk ainda não terminou de carregar estoura, e seis
+// ticks depois do teleporte ela às vezes ainda não terminou. Existia a rede que
+// confere por oito segundos — mas o caminho da falha dava `return` antes de
+// ligá-la, e ainda avisava o jogador que a nave tinha ficado pra trás.
+{
+  __reset();
+  const travel = await loadTravel();
+  const body = BODIES.find(b => b.id === 'moon');
+  const p = makePlayer(DIMENSION_ID, {
+    x: body.center.x, y: body.center.y + body.radius + 1, z: body.center.z,
+  });
+  const nave = world.__spawn(DIMENSION_ID, NAVE, p.location);
+  p.__mountOn(nave);
+
+  // A Lua recusa criar entidade até a chunk terminar — como o jogo faz.
+  const lua = world.getDimension('gh:moon');
+  const spawnDeVerdade = lua.spawnEntity.bind(lua);
+  let recusas = 0;
+  lua.spawnEntity = (...args) => {
+    if (recusas < 2) { recusas++; throw new Error('chunk ainda carregando (teste)'); }
+    return spawnDeVerdade(...args);
+  };
+  // E a estrutura vem vazia, que é o que leva o código até o spawnEntity.
+  const structureManager = world.structureManager;
+  const placeDeVerdade = structureManager.place.bind(structureManager);
+  structureManager.place = () => { throw new Error('estrutura vazia (teste)'); };
+
+  p.__messages = [];
+  const sendDeVerdade = p.sendMessage.bind(p);
+  p.sendMessage = (m) => { p.__messages.push(String(m)); return sendDeVerdade(m); };
+
+  travel.checkBodyPortals(p);
+  await settle();
+  __advance(240);
+  structureManager.place = placeDeVerdade;
+
+  check('a chunk recusou a nave duas vezes', recusas === 2, `(${recusas})`);
+  check('  mas a rede insistiu e a nave chegou',
+        lua.getEntities({ type: NAVE }).length >= 1,
+        `(${lua.getEntities({ type: NAVE }).length})`);
+  check('  e o jogador não foi avisado de que ela ficou pra trás',
+        !p.__messages.some((m) => /could not be brought|não pôde ser trazid/i.test(m)),
+        `(${p.__messages.join(' | ') || 'nenhuma mensagem'})`);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

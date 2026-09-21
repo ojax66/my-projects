@@ -26,12 +26,19 @@ RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 
 # (pasta, nome no seletor, idioma de origem)
 #
-# O inglês vem PRIMEIRO de propósito: é ele que o jogo deixa marcado pra quem
-# nunca mexeu no seletor, e é o padrão do addon inteiro (ver IDIOMA_PADRAO).
+# O inglês vem POR ÚLTIMO de propósito, e isso é medido, não chutado.
+#
+# Os três têm `memory_tier` 0 (eles são idiomas, não níveis de qualidade), e com
+# o tier empatado o jogo escolhe sozinho qual fica marcado pra quem nunca mexeu
+# no seletor. Duas ordens já foram testadas no jogo — (pt, en, es) e
+# (en, pt, es) — e as duas deixaram o ESPANHOL marcado. O que elas têm em comum
+# é o espanhol na última posição: quem o jogo escolhe é o último da lista.
+#
+# Então o padrão do seletor combina com IDIOMA_PADRAO botando o inglês no fim.
 VARIANTES = [
-    ("en", "English", "en_US"),
     ("pt", "Português", "pt_BR"),
     ("es", "Español", "es_ES"),
+    ("en", "English", "en_US"),
 ]
 # Os arquivos que cada variante sobrescreve.
 DESTINOS = ["pt_BR", "en_US", "en_GB", "es_ES", "es_MX"]

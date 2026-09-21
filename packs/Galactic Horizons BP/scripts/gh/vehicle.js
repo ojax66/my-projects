@@ -157,6 +157,11 @@ function idDeHoje(typeId) {
   return typeId.startsWith("nave:") ? "gh:" + typeId.slice("nave:".length) : typeId;
 }
 
+/** O voo do grupo desta cápsula, se ainda houver um. */
+function flightDe(capsule) {
+  return capsule?.vid !== undefined ? (flights.get(capsule.vid) ?? null) : null;
+}
+
 function structureNameFor(player) {
   return "gh:veh_" + String(player.id).replace(/[^a-zA-Z0-9]/g, "_");
 }
@@ -427,14 +432,20 @@ export function restore(player, dimension, loc, capsule) {
     if (!vehicle) {
       try {
         vehicle = dimension.spawnEntity(idDeHoje(capsule.typeId), here);
+        console.warn("[gh] veículo recriado do zero: a estrutura veio vazia");
       } catch (e) {
-        console.warn("[gh] não deu pra recriar o veículo: " + e);
-        try {
-          player.sendMessage(t(player, "veiculo.nao_trazido"));
-        } catch { }
+        // NÃO desiste aqui. Este era o buraco que fazia aparecer no chat
+        // "o veículo não pôde ser trazido" ao pousar na Lua: criar uma
+        // entidade num ponto cuja chunk ainda não terminou de carregar
+        // estoura, e seis ticks depois do teleporte do jogador ela às vezes
+        // ainda não terminou. A rede que confere de novo por oito segundos
+        // resolveria — só que o `return` daqui era justamente o caminho que
+        // nunca a ligava. Agora ela é ligada, e a desistência só é anunciada
+        // se ela também falhar.
+        console.warn("[gh] não deu pra recriar o veículo agora: " + e);
+        conferirDepois(player, dimension, capsule.typeId, flightDe(capsule), null, 0, true);
         return;
       }
-      console.warn("[gh] veículo recriado do zero: a estrutura veio vazia");
     }
 
     keepAlive(vehicle);
@@ -450,7 +461,7 @@ export function restore(player, dimension, loc, capsule) {
     } catch { }
 
     // A partir daqui os caroneiros têm onde montar.
-    const flight = capsule.vid !== undefined ? flights.get(capsule.vid) : null;
+    const flight = flightDe(capsule);
     if (flight) flight.vehicle = vehicle;
 
     seat(player, vehicle);
@@ -494,8 +505,18 @@ const CONFERIDAS = [20, 20, 20, 40, 60];
  * @param veiculo o veículo em que o jogador já foi posto, se houve algum
  * @param passo   índice em CONFERIDAS
  */
-function conferirDepois(player, dimension, typeId, flight, veiculo = null, passo = 0) {
-  if (passo >= CONFERIDAS.length) return;
+function conferirDepois(player, dimension, typeId, flight, veiculo = null,
+                        passo = 0, avisar = false) {
+  if (passo >= CONFERIDAS.length) {
+    // Oito segundos e nada: aí sim vale avisar. Antes disso avisar é mentira —
+    // na maioria das vezes o veículo chega no segundo seguinte.
+    if (avisar && !veiculo?.isValid) {
+      try {
+        if (player?.isValid) player.sendMessage(t(player, "veiculo.nao_trazido"));
+      } catch { }
+    }
+    return;
+  }
   system.runTimeout(() => {
     if (!player?.isValid) return;
     if (player.dimension?.id !== dimension.id) return;    // já foi embora
@@ -506,7 +527,7 @@ function conferirDepois(player, dimension, typeId, flight, veiculo = null, passo
     // Montado: nada a fazer agora, mas a conferida continua — a nave ainda
     // pode sumir debaixo dele nos segundos seguintes.
     if (montado?.isValid) {
-      conferirDepois(player, dimension, typeId, flight, montado, passo + 1);
+      conferirDepois(player, dimension, typeId, flight, montado, passo + 1, false);
       return;
     }
 
@@ -526,14 +547,17 @@ function conferirDepois(player, dimension, typeId, flight, veiculo = null, passo
         perto = dimension.spawnEntity(tipo, player.location);
         console.warn("[gh] a nave não chegou; repondo uma no destino");
       } catch (e) {
-        console.warn("[gh] não deu pra repor o veículo: " + e);
+        // A chunk do destino ainda não terminou de carregar. Não é motivo pra
+        // desistir: é motivo pra tentar de novo na conferida seguinte.
+        console.warn("[gh] ainda não dá pra repor o veículo: " + e);
+        conferirDepois(player, dimension, typeId, flight, null, passo + 1, avisar);
         return;
       }
     }
     keepAlive(perto);
     if (flight) flight.vehicle = perto;
     seat(player, perto);
-    conferirDepois(player, dimension, typeId, flight, perto, passo + 1);
+    conferirDepois(player, dimension, typeId, flight, perto, passo + 1, false);
   }, CONFERIDAS[passo]);
 }
 

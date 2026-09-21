@@ -131,9 +131,12 @@ const jogador = (id) => world.__addPlayer({
   // os NOMES de bloco e item, que script nenhum alcança.
   const manifesto = JSON.parse(fs.readFileSync(
     path.join(process.env.DH_REPO ?? '.', 'packs/Galactic Horizons RP/manifest.json'), 'utf8'));
-  check('  e o primeiro subpacote do seletor também é o inglês',
-        manifesto.subpacks?.[0]?.folder_name === 'en',
-        `(${manifesto.subpacks?.[0]?.folder_name})`);
+  // O ÚLTIMO, não o primeiro: com o memory_tier empatado é o último da lista
+  // que o jogo deixa marcado — medido no jogo, ver tools/make_subpacks.py.
+  const subs = manifesto.subpacks ?? [];
+  check('  e o subpacote que o jogo marca sozinho também é o inglês',
+        subs[subs.length - 1]?.folder_name === 'en',
+        `(${subs.map((x) => x.folder_name).join(', ')})`);
 }
 
 // --- 6. A engrenagem abre de verdade ---------------------------------------
