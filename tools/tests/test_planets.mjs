@@ -11,8 +11,9 @@
 import { PLANETS, planetOfDimension, planetOfBody, PLANET_BOUNDS, PLANET_EXIT_Y }
   from './gh/planets.js';
 import { terrainAt, columnRunsAt, heightAt, biomeAt } from './gh/planetTerrain.js';
-import { BODIES, BLOCK_BUDGET_PER_TICK, GEN_RADIUS_CHUNKS, SPACE_ENTRY_Y }
-  from './gh/config.js';
+import { BODIES, BLOCK_BUDGET_PER_TICK, GEN_RADIUS_CHUNKS, SPACE_ENTRY_Y,
+         DIMENSION_ID } from './gh/config.js';
+import { world } from '@minecraft/server';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -363,8 +364,20 @@ for (const planet of PLANETS) {
   for (const planet of PLANETS) {
     const body = BODIES.find((b) => b.id === planet.bodyId);
     const hint = compassHintFor(body);
+    // Sem jogador vale o idioma padrão, que é o inglês.
     check(`  a bússola diz o que fazer ao chegar em ${planet.id}`,
-          typeof hint === 'string' && hint.includes('pousar'), `(${hint})`);
+          typeof hint === 'string' && hint.includes('land'), `(${hint})`);
+  }
+  // E com um jogador, no idioma dele.
+  {
+    const { definirIdioma } = await import('./gh/i18n.js');
+    const p = world.__addPlayer({
+      id: 'bussola_pt', dimensionId: DIMENSION_ID, location: { x: 0, y: 100, z: 0 },
+    });
+    definirIdioma(p, 'pt');
+    const body = BODIES.find((b) => b.id === PLANETS[0].bodyId);
+    const hint = compassHintFor(body, p);
+    check('  e no idioma do jogador', (hint ?? '').includes('pousar'), `(${hint})`);
   }
   const terra = BODIES.find((b) => b.id === 'earth');
   check('  e a da Terra continua falando em voltar',

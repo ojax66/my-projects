@@ -25,9 +25,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 
 # (pasta, nome no seletor, idioma de origem)
+#
+# O inglês vem PRIMEIRO de propósito: é ele que o jogo deixa marcado pra quem
+# nunca mexeu no seletor, e é o padrão do addon inteiro (ver IDIOMA_PADRAO).
 VARIANTES = [
-    ("pt", "Português", "pt_BR"),
     ("en", "English", "en_US"),
+    ("pt", "Português", "pt_BR"),
     ("es", "Español", "es_ES"),
 ]
 # Os arquivos que cada variante sobrescreve.

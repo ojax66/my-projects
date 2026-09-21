@@ -3,7 +3,7 @@
   "header": {
     "name": "pack.name",
     "description": "pack.description",
-    "uuid": "41c46c5e-83ce-4753-bf4c-57c3af5b8552",
+    "uuid": "7239b87c-6a7b-40d6-9948-f04bdb613f91",
     "version": [
       1,
       2,
@@ -19,7 +19,7 @@
   "modules": [
     {
       "type": "resources",
-      "uuid": "97991843-11f5-43c2-be97-a650d232529a",
+      "uuid": "a7c9a9d5-254b-421b-ba39-b6f21f0eca07",
       "version": [
         1,
         2,
@@ -29,7 +29,7 @@
   ],
   "dependencies": [
     {
-      "uuid": "2429db6e-43d6-4f16-b082-4150b02ed8c7",
+      "uuid": "110756aa-afc9-4aa0-8403-c323ba7c3f6e",
       "version": [
         1,
         2,
@@ -42,13 +42,13 @@
   },
   "subpacks": [
     {
-      "folder_name": "pt",
-      "name": "Português",
+      "folder_name": "en",
+      "name": "English",
       "memory_tier": 0
     },
     {
-      "folder_name": "en",
-      "name": "English",
+      "folder_name": "pt",
+      "name": "Português",
       "memory_tier": 0
     },
     {

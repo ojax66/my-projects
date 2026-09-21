@@ -42,8 +42,8 @@ export function definirIdioma(player, lang) {
 // O dicionário
 // ---------------------------------------------------------------------------
 // `{nome}` no texto é trocado pelo valor passado em `t()`. Chave que falta num
-// idioma cai no português — é melhor uma linha em português no meio do inglês
-// do que um buraco na tela.
+// idioma cai no inglês, que é o padrão — é melhor uma linha em inglês no meio
+// do espanhol do que um buraco na tela.
 const TEXTOS = {
   // --- avisos da barra de ação ---
   "hud.sem_oxigenio": {
@@ -337,7 +337,7 @@ const NOMES = {
 export function t(player, chave, valores) {
   const linha = TEXTOS[chave];
   if (!linha) return `[${chave}]`;
-  let texto = linha[idiomaDe(player)] ?? linha.pt;
+  let texto = linha[idiomaDe(player)] ?? linha.en ?? linha.pt;
   if (valores) {
     for (const k of Object.keys(valores)) {
       texto = texto.split(`{${k}}`).join(String(valores[k]));
@@ -355,7 +355,7 @@ export function t(player, chave, valores) {
 export function nome(player, id, cru) {
   const linha = NOMES[id];
   if (!linha) return cru ?? id;
-  return linha[idiomaDe(player)] ?? linha.pt ?? cru ?? id;
+  return linha[idiomaDe(player)] ?? linha.en ?? linha.pt ?? cru ?? id;
 }
 
 /** Tira os códigos de cor — pra quando o nome entra no meio de outra frase. */

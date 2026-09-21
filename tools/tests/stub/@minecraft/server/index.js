@@ -461,11 +461,12 @@ export const world = {
     playerDimensionChange: realEvent(),
     playerSpawn: realEvent(),
     entityHurt: realEvent(),
-    itemUse: noopEvent(),
+    itemUse: realEvent(),
   },
   beforeEvents: {
     playerLeave: noopEvent(),
     playerInteractWithBlock: realEvent(),
+    playerInteractWithEntity: realEvent(),
   },
   tickingAreaManager: {
     createTickingArea: async () => { },

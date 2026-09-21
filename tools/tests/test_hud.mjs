@@ -13,6 +13,7 @@ import { world, system, __reset, __state, __advance } from '@minecraft/server';
 import { DIMENSION_ID, HUD_CHANNEL_DEFAULT, HUD_OBJECTIVE, HUD_INTERVAL_TICKS } from './gh/config.js';
 import { hudChannel, cycleHudChannel, CHANNELS } from './gh/tracker.js';
 import { showCompass, clearSidebar } from './gh/ambience.js';
+import { definirIdioma } from './gh/i18n.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -53,9 +54,21 @@ const sidebarLines = () => {
   check('  sem escrever na barra de ação',
         (p.__actionBars ?? []).length === 0,
         `(${(p.__actionBars ?? []).length} escritas)`);
+  // Em inglês, que é o padrão de quem nunca mexeu na engrenagem.
   check('  com um corpo por linha',
-        lines.some((l) => l.includes('Terra')) && lines.some((l) => l.includes('Sol')),
+        lines.some((l) => l.includes('Earth')) && lines.some((l) => l.includes('Sun')),
         `(${lines.join(' | ')})`);
+
+  // E o nome sai no idioma DAQUELE jogador: o rastreador é um dos caminhos em
+  // que o texto do script passa pelo i18n sem quem o chama saber disso.
+  definirIdioma(p, 'pt');
+  clearSidebar();
+  system.currentTick = HUD_INTERVAL_TICKS;
+  showCompass(p, null);
+  const emPt = sidebarLines();
+  check('  e no idioma do jogador',
+        emPt.some((l) => l.includes('Terra')) && emPt.some((l) => l.includes('Sol')),
+        `(${emPt.join(' | ')})`);
 }
 
 // --- 3. Trocar de canal no menu ---------------------------------------------

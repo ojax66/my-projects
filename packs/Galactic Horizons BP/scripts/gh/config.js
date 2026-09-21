@@ -317,7 +317,10 @@ export const OXYGEN_BACKPACK = "nv_sc:oxygen_backpack";
 //
 // Isto é só o PADRÃO de quem nunca escolheu. Cada jogador troca o dele na
 // engrenagem que ganha ao entrar — ver i18n.js e gear.js... (settings.js).
-export const IDIOMA_PADRAO = "pt";
+//
+// Inglês, e não português: é a língua que mais gente que baixa o addon lê, e
+// quem fala outra troca no primeiro toque da engrenagem.
+export const IDIOMA_PADRAO = "en";
 // A engrenagem: o item que abre a tela de idioma.
 export const SETTINGS_ITEM = "gh:settings_gear";
 // Marca de que este jogador já ganhou a dele. Sem isto ele ganharia uma a cada
