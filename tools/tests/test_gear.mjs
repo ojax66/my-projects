@@ -8,6 +8,8 @@
  *   - os destroços aparecem em terreno aberto, com o molde no baú, e nunca
  *     por cima de construção de alguém
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { world, system, __reset, __advance, __state, ItemStack } from '@minecraft/server';
 import { BODIES, DIMENSION_ID, STAR_ARMOR_PIECES, BASIC_SUIT_PIECES,
          REINFORCED_SUIT_PIECES, REINFORCED_SUIT_PRESSURE_FACTOR,
@@ -24,7 +26,7 @@ import { applyStarArmorPowers, onEntityHurt } from './gh/starPowers.js';
 import { startTrashCan } from './gh/trashCan.js';
 startTrashCan();
 import { buildWreckAt } from './gh/wreck.js';
-import { rememberSpawn, enforceSpawn } from './gh/spawnGuard.js';
+import { rememberSpawn, enforceSpawn, sendHomeIfHere } from './gh/spawnGuard.js';
 
 let failures = 0;
 const check = (name, ok, extra = '') => {
@@ -520,6 +522,88 @@ const spaceLoc = (body, d, axis = 'x') => ({
   check('uma segunda viagem não grava o spawn ruim por cima do bom',
         twice.getSpawnPoint()?.x === 9 && twice.getSpawnPoint()?.dimension.id === 'minecraft:overworld',
         `(${twice.getSpawnPoint()?.dimension?.id} ${twice.getSpawnPoint()?.x})`);
+}
+
+// --- 9b. Os dois buracos que faziam "todo mundo renasce no espaco" ----------
+{
+  // (e) a conferencia e de TODO jogador, nao so de quem esta no espaco.
+  //
+  // Era o buraco maior, e ele nao estava no spawnGuard: estava na LIGACAO.
+  // `guardSpawnTick` vivia dentro do ramo "este jogador esta no espaco" do laco
+  // do main.js. Mas o jogo quebra o renascimento ao ENTRAR aqui, e quem sobe e
+  // volta leva o estrago pro Overworld — justamente onde ninguem mais conferia.
+  // Morria em casa, dias depois, e acordava no espaco.
+  //
+  // Nao da pra rodar o laco do main.js aqui (ele e o ponto de entrada, cheio de
+  // efeito colateral), entao o que se trava e a posicao da chamada: ela tem que
+  // vir ANTES de o laco se dividir entre "esta no espaco" e "nao esta".
+  {
+    const fonte = fs.readFileSync(
+      path.join(process.env.DH_REPO ?? '.', 'packs/Galactic Horizons BP/scripts/gh/main.js'),
+      'utf8');
+    const chamadas = [...fonte.matchAll(/guardSpawnTick\(player\)/g)].map(m => m.index);
+    const divisao = fonte.indexOf('const here = inSpace(player);');
+    check('a conferência do renascimento é de todo jogador, não só de quem está no espaço',
+          chamadas.length === 1 && divisao > 0 && chamadas[0] < divisao,
+          `(${chamadas.length} chamada(s), ${chamadas[0] < divisao ? 'antes' : 'depois'} da divisão)`);
+  }
+
+  // (f) a troca de dimensao no sentido de SAIDA tambem conserta, na hora.
+  __reset();
+  const saindo = world.__addPlayer({ id: 'saindo', dimensionId: DIMENSION_ID, location: { x: 0, y: 800, z: 0 } });
+  saindo.__setSpawn('minecraft:overworld', { x: 7, y: 70, z: 7 });
+  rememberSpawn(saindo);
+  saindo.__setSpawn(DIMENSION_ID, { x: 0, y: 800, z: 0 });
+  world.afterEvents.playerDimensionChange.__fire({
+    player: saindo,
+    fromDimension: world.getDimension(DIMENSION_ID),
+    toDimension: world.getDimension('minecraft:overworld'),
+  });
+  check('  e sair do espaço já conserta na hora, sem esperar o tique',
+        saindo.getSpawnPoint()?.dimension?.id === 'minecraft:overworld',
+        `(${saindo.getSpawnPoint()?.dimension?.id})`);
+
+  // (g) quem RENASCEU no espaco e trazido de volta.
+  //
+  // Consertar o ponto de renascimento nao desfaz um renascimento que ja
+  // aconteceu: morrer entre duas conferencias ainda jogava o jogador la em
+  // cima. Esta e a ultima linha.
+  __reset();
+  const morto = world.__addPlayer({ id: 'morto', dimensionId: 'minecraft:overworld', location: { x: 0, y: 64, z: 0 } });
+  morto.__setSpawn('minecraft:overworld', { x: 44, y: 71, z: -12 });
+  rememberSpawn(morto);
+  // Morreu e acordou no espaco.
+  morto.teleport({ x: 0, y: 800, z: 0 }, { dimension: world.getDimension(DIMENSION_ID) });
+  world.afterEvents.playerSpawn.__fire({ player: morto, initialSpawn: false });
+  check('quem renasce no espaço é trazido de volta na hora',
+        morto.dimension.id === 'minecraft:overworld', `(${morto.dimension.id})`);
+  check('  e volta pra cama dele', morto.location.x === 44 && morto.location.z === -12,
+        `(${morto.location.x},${morto.location.z})`);
+
+  // (h) sem cama, volta pro spawn do mundo.
+  __reset();
+  const semCama = world.__addPlayer({ id: 'semcama', dimensionId: DIMENSION_ID, location: { x: 0, y: 800, z: 0 } });
+  world.afterEvents.playerSpawn.__fire({ player: semCama, initialSpawn: false });
+  check('sem cama, renascer no espaço leva pro spawn do mundo',
+        semCama.dimension.id === 'minecraft:overworld', `(${semCama.dimension.id})`);
+
+  // (i) mas ENTRAR no mundo estando no espaco nao teleporta ninguem.
+  //
+  // Quem sai do jogo no espaco tem que voltar no espaco. Se a volta pra casa
+  // valesse tambem no `initialSpawn`, ninguem conseguiria dormir la em cima
+  // sem ser cuspido pra Terra no login seguinte.
+  __reset();
+  const logou = world.__addPlayer({ id: 'logou', dimensionId: DIMENSION_ID, location: { x: 0, y: 800, z: 0 } });
+  world.afterEvents.playerSpawn.__fire({ player: logou, initialSpawn: true });
+  check('quem só entrou no mundo estando no espaço continua no espaço',
+        logou.dimension.id === DIMENSION_ID, `(${logou.dimension.id})`);
+
+  // (j) e quem esta no Overworld nao e teleportado por nada.
+  __reset();
+  const emCasa = world.__addPlayer({ id: 'emcasa', dimensionId: 'minecraft:overworld', location: { x: 3, y: 64, z: 3 } });
+  const mexeu = sendHomeIfHere(emCasa);
+  check('quem nunca saiu da Terra não é teleportado',
+        !mexeu && emCasa.location.x === 3);
 }
 
 // --- 10. A lixeira ----------------------------------------------------------

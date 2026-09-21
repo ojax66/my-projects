@@ -141,6 +141,12 @@ system.runInterval(() => {
       // Fica antes de tudo, fora do `if` do espaço, de propósito.
       applyStarArmorPowers(player);
 
+      // O renascimento nunca fica numa dimensão nossa — e a conferência é de
+      // TODO jogador, em toda dimensão, não só de quem está no espaço agora.
+      // O estrago é feito ao entrar aqui, mas quem o descobre é quem já voltou
+      // pra Terra e morreu lá. Ver spawnGuard.js.
+      guardSpawnTick(player);
+
       const here = inSpace(player);
 
       if (!here) {
@@ -191,8 +197,6 @@ system.runInterval(() => {
       // estão juntos dividem um conjunto de modelos só. Um conjunto por jogador
       // fazia cada um ver os cubos dos outros flutuando no lugar errado.
       noEspaco.push(player);
-      // O renascimento nunca fica aqui: se o jogo mexeu, é devolvido.
-      guardSpawnTick(player);
 
       // No meio de uma viagem: nada de física nem de dano até assentar.
       if (isTravelling(player)) continue;

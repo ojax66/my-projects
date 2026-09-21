@@ -456,8 +456,10 @@ export const world = {
   getDefaultSpawnLocation() { return { x: 0, y: 64, z: 0 }; },
 
   afterEvents: {
-    playerDimensionChange: noopEvent(),
-    playerSpawn: noopEvent(),
+    // Eventos de verdade: o guarda do renascimento vive nestes dois, e com
+    // noopEvent nada do que ele faz era exercitado.
+    playerDimensionChange: realEvent(),
+    playerSpawn: realEvent(),
     entityHurt: realEvent(),
     itemUse: noopEvent(),
   },

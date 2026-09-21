@@ -32,7 +32,6 @@ import { makePlanetGenerator, terrainAt, heightAt } from "./planetTerrain.js";
 import { isBudgetError } from "./budget.js";
 import { applyLifeSupport } from "./lifeSupport.js";
 import { pushFog, popFog } from "./ambience.js";
-import { guardSpawnTick } from "./spawnGuard.js";
 import { applyPlanetGravity, forgetPlayer as forgetGravity } from "./planetGravity.js";
 import {
   worldTime,
@@ -184,9 +183,6 @@ export function applyPlanetTick(player) {
   let planet;
   try { planet = planetOfDimension(player.dimension?.id); } catch { return false; }
   if (!planet) return false;
-
-  // Este planeta não pode virar o ponto de renascimento dele.
-  guardSpawnTick(player);
 
   const now = system.currentTick;
 
