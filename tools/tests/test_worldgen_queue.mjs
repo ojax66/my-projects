@@ -210,5 +210,31 @@ const ordemDasChunks = (colunas) => {
         completas === esperadas, `(${completas}/${esperadas})`);
 }
 
+// --- Chunk pronta não volta pra mesa ---------------------------------------
+//
+// É assim que a geração fica lenta sem dar erro nenhum: nada falha, ela só
+// refaz o que já estava feito. Uma chunk refeita custa o mesmo que uma nova e
+// não adianta nada, e sem contar não dá pra ver — por isso o contador existe,
+// e por isso ele aparece em /scriptevent gh:geracao.
+{
+  const { gen, p } = monta();     // monta() já faz o __reset
+  __tickIntervals(400);
+
+  const st = gen.estatisticas();
+  check('a geração terminou as chunks do raio', st.chunks > 0, `(${st.chunks})`);
+  check('  e nenhuma foi refeita', st.refeitas === 0,
+        `(${st.refeitas} refeita(s) de ${st.chunks})`);
+  check('  e a fila esvaziou', st.fila === 0, `(${st.fila})`);
+
+  // Andar não pode fazer o mundo ser gerado de novo por trás.
+  const antes = gen.estatisticas().chunks;
+  p.location = { x: 8 + 16 * 3, y: 64, z: 8 };
+  __tickIntervals(400);
+  const depois = gen.estatisticas();
+  check('andando, só o que é novo é gerado',
+        depois.chunks > antes && depois.refeitas === 0,
+        `(${antes} → ${depois.chunks} chunks, ${depois.refeitas} refeita(s))`);
+}
+
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');
 process.exit(failures ? 1 : 0);

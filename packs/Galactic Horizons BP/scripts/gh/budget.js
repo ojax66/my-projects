@@ -161,7 +161,15 @@ export function makeChunkCursor() {
  * Mora aqui, junto do orçamento, porque é exatamente isto que o orçamento
  * conta — e as três dimensões escrevem do mesmo jeito.
  */
+/** Quantos blocos já foram escritos, por dimensão. Só pra diagnóstico. */
+const escritos = new Map();
+export function blocosEscritos(owner) { return escritos.get(owner) ?? 0; }
+
 export function writeRun(dim, x, z, y0, y1, id) {
+  try {
+    const k = dim?.id ?? "?";
+    escritos.set(k, (escritos.get(k) ?? 0) + (y1 - y0 + 1));
+  } catch { }
   if (y1 === y0) {
     dim.setBlockType({ x, y: y0, z }, id);
     return;

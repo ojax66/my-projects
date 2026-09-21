@@ -102,6 +102,21 @@ function generatorFor(planet) {
   return gen;
 }
 
+/**
+ * Os números da geração daquele planeta, pro diagnóstico do jogo.
+ *
+ * `refeitas` é o que importa: chunk que volta pra mesa depois de pronta é
+ * trabalho jogado fora, e é assim que a geração fica lenta sem dar erro nenhum.
+ */
+export function estatisticasDaGeracao(dimensionId) {
+  for (const planet of PLANETS) {
+    if (planet.dimensionId !== dimensionId) continue;
+    const gen = generators.get(dimensionId);
+    return gen?.estatisticas?.() ?? null;
+  }
+  return null;
+}
+
 export function startPlanetWorlds() {
   for (let i = 0; i < PLANETS.length; i++) generatorFor(PLANETS[i]).start();
 }

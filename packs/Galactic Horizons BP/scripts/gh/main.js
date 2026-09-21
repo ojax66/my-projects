@@ -40,7 +40,9 @@ import { startTrashCan } from "./trashCan.js";
 import { startSettings } from "./settings.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
-import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet } from "./planetWorlds.js";
+import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet,
+         estatisticasDaGeracao } from "./planetWorlds.js";
+import { blocosEscritos } from "./budget.js";
 import { updateSkyAll, clearModels, clearGlobals, sweepOrphans, describeSky, SWEEP_INTERVAL } from "./skybox.js";
 // Só de importar já liga o item do rastreador e os mapas estelares.
 import "./starCharts.js";
@@ -301,6 +303,35 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
   if (data.id === "gh:sky") {
     if (player?.typeId !== "minecraft:player") return;
     try { player.sendMessage("§7céu:\n§f" + describeSky(player)); } catch { }
+    return;
+  }
+
+  // /scriptevent gh:geracao — quanto a geração deste mundo trabalhou.
+  //
+  // "A geração está lenta" não aparece em log nenhum, porque nada nela é erro:
+  // é trabalho REPETIDO. Uma chunk que volta pra mesa depois de pronta custa o
+  // mesmo que uma nova e não adianta nada, e a única forma de ver isso é contar.
+  if (data.id === "gh:geracao") {
+    if (player?.typeId !== "minecraft:player") return;
+    try {
+      const st = estatisticasDaGeracao(player.dimension?.id);
+      if (!st) {
+        player.sendMessage("§7geração: esta dimensão não é gerada por script.");
+        return;
+      }
+      const desperdicio = st.chunks ? Math.round((100 * st.refeitas) / st.chunks) : 0;
+      player.sendMessage(
+        "§7geração de §f" + player.dimension.id + "\n"
+        + "§7chunks prontas: §f" + st.chunks + "\n"
+        + "§7refeitas: §f" + st.refeitas + " §7(" + desperdicio + "% de trabalho repetido)\n"
+        + "§7marcador gravado: §f" + st.marcadorOk + " §7/ falhou: §f" + st.marcadorFalhou + "\n"
+        + "§7blocos escritos: §f" + blocosEscritos(player.dimension.id) + "\n"
+        + "§7fila agora: §f" + st.fila + " chunk(s)\n"
+        + "§7raio: §f" + st.raio + " chunks §7· §f" + st.chunksPorTick + " chunk(s)/tick"
+      );
+    } catch (e) {
+      player.sendMessage("§cgeração: " + e);
+    }
     return;
   }
 

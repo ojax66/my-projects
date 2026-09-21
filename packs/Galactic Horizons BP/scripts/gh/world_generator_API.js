@@ -104,6 +104,20 @@ export function createTerrainGenerator(config) {
     return hrCache;
   }
 
+  // --- contadores de diagnóstico -------------------------------------------
+  // Quanto a geração REALMENTE trabalhou. Sem isto, "a geração está lenta" só
+  // dá pra responder por palpite: o que trava a geração de um mundo por script
+  // não aparece em log nenhum, porque nada nela é erro — é trabalho repetido.
+  const stats = {
+    chunks: 0,        // chunks terminadas
+    refeitas: 0,      // chunks geradas MAIS DE UMA VEZ (o sintoma de lentidão)
+    blocos: 0,        // blocos escritos
+    marcadorOk: 0,    // marcadores de "chunk pronta" gravados
+    marcadorFalhou: 0, // e os que não foram
+    orcamento: 0,     // ticks em que o orçamento de blocos acabou
+  };
+  const jaGerada = new Set();
+
   const markerLoc = (cx, cz, hr) => ({ x: cx * chunkSize, y: hr.min, z: cz * chunkSize });
 
   function hasMarker(dim, cx, cz, hr) {
@@ -119,6 +133,15 @@ export function createTerrainGenerator(config) {
     const heights = [];
     let hadError = false;
 
+    // Uma chunk que volta pra mesa DEPOIS DE PRONTA é trabalho jogado fora, e
+    // é assim que a geração fica lenta sem nunca dar erro.
+    //
+    // Só conta a que já tinha terminado. Chunk que volta por falta de orçamento
+    // do tick não é retrabalho: o cursor guarda onde ela parou e ela retoma dali
+    // — contá-la aqui faria o número parecer catástrofe quando é o normal.
+    const kk = key(cx, cz);
+    if (jaGerada.has(kk)) stats.refeitas++;
+
     for (let x = sx; x < sx + chunkSize; x++) {
       for (let z = sz; z < sz + chunkSize; z++) {
         try {
@@ -131,9 +154,14 @@ export function createTerrainGenerator(config) {
     }
 
     if (!hadError) {
+      stats.chunks++;
+      jaGerada.add(kk);
       try {
-        dim.getBlock(markerLoc(cx, cz, getHeightRangeOf(dim)))?.setPermutation(markerPerm());
+        const b = dim.getBlock(markerLoc(cx, cz, getHeightRangeOf(dim)));
+        if (b) { b.setPermutation(markerPerm()); stats.marcadorOk++; }
+        else stats.marcadorFalhou++;   // chunk do marcador não carregada
       } catch (e) {
+        stats.marcadorFalhou++;
         onError("marcador " + cx + "," + cz, e);
       }
     }
@@ -434,5 +462,12 @@ export function createTerrainGenerator(config) {
     return done.has(key(Math.floor(x / chunkSize), Math.floor(z / chunkSize)));
   }
 
-  return { start, findValidSpot, isChunkReady, getHeightRangeOf, dimensionId };
+  /** Os contadores, mais o tamanho da fila de quem está esperando agora. */
+  function estatisticas() {
+    let fila = 0;
+    for (const q of queues.values()) fila += q.length;
+    return { ...stats, fila, raio: genRadiusChunks, chunksPorTick: chunksPerTick };
+  }
+
+  return { start, findValidSpot, isChunkReady, getHeightRangeOf, dimensionId, estatisticas };
 }
