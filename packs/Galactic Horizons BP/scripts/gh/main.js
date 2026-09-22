@@ -39,7 +39,7 @@ import { applyStarArmorPowers, startStarArmor } from "./starPowers.js";
 import { startTrashCan } from "./trashCan.js";
 import { startSettings } from "./settings.js";
 import { startShipPickup } from "./shipPickup.js";
-import { startAcid, applyAcid } from "./acid.js";
+import { startAcid, applyAcid, acidFogOn } from "./acid.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet,
@@ -198,12 +198,18 @@ system.runInterval(() => {
       // um corpo (o Sol por dentro), congelando, e o vácuo comum. A do frio é a
       // única que conta uma coisa sobre o JOGADOR e não sobre o lugar — e é por
       // isso que ela vem antes: quando ela aparece, é o que importa.
-      pushFog(
-        player,
-        insideBlocksOf(player.location) ? FOG_INSIDE_ID
-          : heatReserveOf(player.id) < COLD_FOG_AT ? FOG_COLD_ID
-            : FOG_ID
-      );
+      // Quatro, na verdade: a do ÁCIDO vem antes de todas, e não está neste
+      // `if` porque quem a empurra é o próprio acid.js. Aqui basta não passar
+      // por cima dela — as duas dividem o mesmo rótulo de `fog`, e empurrar as
+      // duas faria a tela piscar a cada tique.
+      if (!acidFogOn(player.id)) {
+        pushFog(
+          player,
+          insideBlocksOf(player.location) ? FOG_INSIDE_ID
+            : heatReserveOf(player.id) < COLD_FOG_AT ? FOG_COLD_ID
+              : FOG_ID
+        );
+      }
       spawnAmbience(player);
       // O céu é resolvido de uma vez pra todos, depois do laço: jogadores que
       // estão juntos dividem um conjunto de modelos só. Um conjunto por jogador

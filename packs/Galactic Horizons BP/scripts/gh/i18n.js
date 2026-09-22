@@ -56,6 +56,16 @@ const TEXTOS = {
     en: "§e§lSULFURIC ACID §r§7— get out of the pool",
     es: "§e§lÁCIDO SULFÚRICO §r§7— sal del charco",
   },
+  "hud.acido_folego": {
+    pt: "§e§lÁCIDO §r§7— afundado, {s}s de ar",
+    en: "§e§lACID §r§7— submerged, {s}s of air",
+    es: "§e§lÁCIDO §r§7— sumergido, {s}s de aire",
+  },
+  "hud.acido_afogando": {
+    pt: "§4§lAFOGANDO NO ÁCIDO §r§7— suba",
+    en: "§4§lDROWNING IN ACID §r§7— get up",
+    es: "§4§lAHOGÁNDOTE EN ÁCIDO §r§7— sube",
+  },
   "acido.balde_errado": {
     pt: "§eO ácido comeria esse balde — ferro vira sulfato de ferro. Só o de titânio aguenta.",
     en: "§eThe acid would eat that bucket — iron turns into iron sulfate. Only titanium holds it.",

@@ -1502,6 +1502,27 @@ for p, d in docs.items():
     if not any(os.path.isfile(os.path.join(RP, tex + ext)) for ext in (".png", ".tga", ".jpg")):
         err(f"partícula {os.path.basename(p)} usa textura inexistente: {tex}")
 
+# --- O balde de acido NAO e bebida --------------------------------------------
+#
+# Ele pediu isso com todas as letras: "ele nao pode ser bebivel". O addon que
+# serviu de base tem cinco baldes, e TODOS sao bebida — cada um com
+# `minecraft:food` e `minecraft:use_animation: drink`. Copiar o padrao de la
+# sem pensar traria os dois junto.
+#
+# Beber acido sulfurico concentrado nao e um efeito de pocao. Aqui o balde e
+# CARGA: ele enche, despeja e nada mais. A regra existe porque a diferenca
+# entre carga e bebida e a AUSENCIA de dois componentes, e ausencia e
+# exatamente o tipo de coisa que volta sem ninguem notar.
+_bebida_proibida = ("minecraft:food", "minecraft:use_animation",
+                    "minecraft:use_duration")
+for _iid, (_p, _doc) in sorted(declared_items.items()):
+    if "acid" not in _iid:
+        continue
+    _c = _doc["minecraft:item"]["components"]
+    for _comp in _bebida_proibida:
+        if _comp in _c:
+            err(f"{_iid} tem {_comp} — o balde de acido NAO pode ser bebivel")
+
 # --- Ovo de entidade: a chave de nome dele é OUTRA -----------------------------
 #
 # Um ovo de spawn NÃO se chama pelo id do item. O Bedrock nomeia ovo pela
@@ -1857,6 +1878,11 @@ for nome, valor in re.findall(
     # FOG_LABEL nao e uma nevoa: e o rotulo da PILHA de nevoas do comando
     # `fog push`, que nao aponta pra arquivo nenhum.
     if nome.endswith("_LABEL"):
+        continue
+    # Particula e nevoa da MOJANG nao moram no pack: `minecraft:` ja existe no
+    # jogo. A regra e sobre as NOSSAS, que podem ser citadas e nunca escritas —
+    # cobrar arquivo pra uma da Mojang e reprovar o addon por usar o jogo.
+    if valor.startswith("minecraft:"):
         continue
     if "fog" in valor:
         if fog_ids and valor not in fog_ids:

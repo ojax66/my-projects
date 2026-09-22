@@ -15,7 +15,8 @@ import { world, system, __reset, __advance, ItemStack } from '@minecraft/server'
 import { BODIES, BASIC_SUIT_PIECES, REINFORCED_SUIT_PIECES, STAR_ARMOR_PIECES,
          VENUS_CRUSH_SECONDS, TIER1_SHIP, TIER2_SHIP,
          VENUS_WALK_CAP, VENUS_JUMP_SPEED,
-         ACID_BLOCK, ACID_BUCKET, TITANIUM_BUCKET } from './gh/config.js';
+         ACID_BLOCK, ACID_BUCKET, TITANIUM_BUCKET,
+         ACID_AIR_SECONDS, ACID_SINK, ACID_SWIM_CAP } from './gh/config.js';
 import { columnRunsAt, terrainAt } from './gh/planetTerrain.js';
 import { EARTH_G } from './gh/planetGravity.js';
 import { inPressurizedVehicle } from './gh/lifeSupport.js';
@@ -24,7 +25,8 @@ import { applyVenus, applyVenusToShips, survivesVenus,
 import { isWarm } from './gh/cold.js';
 import { canBreathe } from './gh/lifeSupport.js';
 import { pickUp, eggFor, startShipPickup } from './gh/shipPickup.js';
-import { encher, despejar, applyAcid } from './gh/acid.js';
+import { encher, despejar, applyAcid, feetInAcid, headInAcid,
+         acidFogOn, airOf } from './gh/acid.js';
 import { PLANETS } from './gh/planets.js';
 import { heightAt, biomeAt } from './gh/planetTerrain.js';
 startShipPickup();
@@ -574,6 +576,139 @@ const emVenus = (id) => world.__addPlayer({
     check('  e o bloco de ácido fica por cima do chão, no topo da coluna',
           topo.id === ACID_BLOCK, `(${topo.id})`);
   }
+}
+
+// --- 16. Dentro do ácido: névoa, nado, fôlego e itens --------------------
+//
+// Bedrock não deixa um pacote fazer fluido de verdade, então cada coisa que a
+// água faz sozinha é montada à mão aqui. Estes testes são o contrato de cada
+// uma delas.
+{
+  __reset();
+  const dim = world.getDimension('gh:venus');
+  // Uma poça de 3 de fundo: o jogador cabe inteiro dentro.
+  for (let y = 68; y <= 71; y++) dim.setBlockType({ x: 0, y, z: 0 }, ACID_BLOCK);
+
+  const dentro = (y) => {
+    const q = world.__addPlayer({ id: 'm' + Math.random(), dimensionId: 'gh:venus',
+                                  location: { x: 0.5, y, z: 0.5 } });
+    return q;
+  };
+
+  // --- a névoa segue a CABEÇA, não o pé ---------------------------------
+  const afundado = dentro(69.0);      // cabeça a ~70.6, dentro
+  const raso = dentro(71.0);          // pé em 71 (ácido), cabeça a 72.6 (ar)
+  check('afundado, o pé e a cabeça estão no ácido',
+        feetInAcid(afundado) && headInAcid(afundado));
+  check('  na parte rasa o pé está dentro e a cabeça fora',
+        feetInAcid(raso) && !headInAcid(raso));
+
+  applyAcid(afundado);
+  applyAcid(raso);
+  check('a névoa do ácido liga pra quem afundou', acidFogOn(afundado.id));
+  check('  e NÃO liga pra quem só molhou o pé', !acidFogOn(raso.id));
+
+  // Saindo, a névoa sai junto — senão a tela fica amarela pra sempre.
+  afundado.location = { x: 40.5, y: 80, z: 40.5 };
+  applyAcid(afundado);
+  check('  e desliga ao sair', !acidFogOn(afundado.id));
+}
+
+// --- 17. Nadar: não se despenca pela poça --------------------------------
+//
+// O bloco não tem colisão. Sem controlador o jogador atravessaria a poça como
+// se ela fosse ar, que é o contrário de líquido.
+{
+  __reset();
+  const dim = world.getDimension('gh:venus');
+  for (let y = 60; y <= 71; y++) dim.setBlockType({ x: 0, y, z: 0 }, ACID_BLOCK);
+  const p = world.__addPlayer({ id: 'nada', dimensionId: 'gh:venus',
+                               location: { x: 0.5, y: 69, z: 0.5 } });
+
+  // Caindo rápido, como quem pulou dentro.
+  p.__setVelocity({ x: 0, y: -0.8, z: 0 });
+  applyAcid(p);
+  const umTique = p.getVelocity().y;
+  check('caindo no ácido, a queda é freada', umTique > -0.8,
+        `(${umTique.toFixed(3)})`);
+
+  // E o freio é LIMITADO POR TIQUE de propósito: devolver os 0,75 de uma vez
+  // seria um empurrão que catapulta. Ele converge em alguns tiques, como o
+  // controlador de gravidade dos planetas.
+  for (let i = 0; i < 8; i++) { applyAcid(p); __advance(1); }
+  const vy = p.getVelocity().y;
+  check('  e em alguns tiques chega no afundamento lento',
+        Math.abs(vy - ACID_SINK) < 0.02, `(${vy.toFixed(3)}, alvo ${ACID_SINK})`);
+
+  // Nadar é mais lento que andar.
+  p.__setVelocity({ x: 0.25, y: ACID_SINK, z: 0 });
+  applyAcid(p);
+  const h = Math.hypot(p.getVelocity().x, p.getVelocity().z);
+  check('  e nadar é mais lento que andar',
+        Math.abs(h - ACID_SWIM_CAP) < 0.002, `(${h.toFixed(3)})`);
+}
+
+// --- 18. O fôlego, igual ao da água --------------------------------------
+{
+  __reset();
+  const dim = world.getDimension('gh:venus');
+  for (let y = 68; y <= 71; y++) dim.setBlockType({ x: 0, y, z: 0 }, ACID_BLOCK);
+  const p = world.__addPlayer({ id: 'folego', dimensionId: 'gh:venus',
+                               location: { x: 0.5, y: 69, z: 0.5 } });
+
+  check('começa com o fôlego cheio', airOf(p.id) === ACID_AIR_SECONDS,
+        `(${airOf(p.id)})`);
+
+  let aviso = null;
+  for (let i = 0; i < 100; i++) { aviso = applyAcid(p) ?? aviso; __advance(1); }
+  const depois = airOf(p.id);
+  check('afundado, o fôlego cai', depois < ACID_AIR_SECONDS, `(${depois.toFixed(1)}s)`);
+  check('  e o aviso diz quanto falta', /\d+s/.test(aviso ?? ''), `(${aviso})`);
+
+  // Acaba o ar: dano de afogamento.
+  p.__health = 20;
+  for (let i = 0; i < ACID_AIR_SECONDS * 20 + 80; i++) { applyAcid(p); __advance(1); }
+  check('  e quando acaba, afoga', p.__health < 20, `(${p.__health} de 20)`);
+  check('    com o aviso de afogamento',
+        /AFOGANDO|DROWNING|AHOGÁ/i.test(applyAcid(p) ?? ''),
+        `(${applyAcid(p)})`);
+
+  // Fora, o fôlego volta — como na água.
+  p.location = { x: 40.5, y: 80, z: 40.5 };
+  for (let i = 0; i < 400; i++) { applyAcid(p); __advance(1); }
+  check('  e fora dele o fôlego enche de volta', airOf(p.id) === ACID_AIR_SECONDS,
+        `(${airOf(p.id)})`);
+}
+
+// --- 19. Item que cai no ácido é destruído -------------------------------
+{
+  __reset();
+  const dim = world.getDimension('gh:venus');
+  for (let y = 68; y <= 71; y++) dim.setBlockType({ x: 0, y, z: 0 }, ACID_BLOCK);
+  const p = world.__addPlayer({ id: 'dono', dimensionId: 'gh:venus',
+                               location: { x: 0.5, y: 69, z: 0.5 } });
+
+  const naPoca = world.__spawn('gh:venus', 'minecraft:item', { x: 0.5, y: 70, z: 0.5 });
+  const seco = world.__spawn('gh:venus', 'minecraft:item', { x: 8.5, y: 70, z: 8.5 });
+
+  for (let i = 0; i < 40; i++) { applyAcid(p); __advance(1); }
+  check('item que cai no ácido some', !naPoca.isValid);
+  check('  e o que está no seco continua lá', seco.isValid);
+}
+
+// --- 20. E o balde NÃO é bebível -----------------------------------------
+//
+// Ele pediu com todas as letras. O addon que serviu de base tem cinco baldes e
+// TODOS são bebida — `minecraft:food` mais `use_animation: drink`. A diferença
+// entre carga e bebida é a AUSÊNCIA desses componentes, e ausência é o tipo de
+// coisa que volta sem ninguém notar.
+{
+  const doc = JSON.parse(fs.readFileSync(path.join(REPO,
+    'packs/Galactic Horizons BP/items/sulfuric_acid_bucket.json'), 'utf8'));
+  const c = doc['minecraft:item'].components;
+  check('o balde de ácido não é comida', !('minecraft:food' in c));
+  check('  nem tem animação de beber', !('minecraft:use_animation' in c));
+  check('  nem duração de uso', !('minecraft:use_duration' in c));
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

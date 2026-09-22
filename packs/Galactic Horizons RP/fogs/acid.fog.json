@@ -1,0 +1,16 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "gh:fog_acid"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 0.2,
+        "fog_end": 3.5,
+        "fog_color": "#B6B23E",
+        "render_distance_type": "fixed"
+      }
+    }
+  }
+}

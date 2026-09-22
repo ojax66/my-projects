@@ -568,6 +568,38 @@ export const ACID_DAMAGE = 4;
 export const ACID_DAMAGE_INTERVAL = 10;
 export const ACID_BURN_SECONDS = 3;
 
+// --- estar DENTRO dele ------------------------------------------------------
+// A poça não é decoração: dá pra entrar, e lá dentro ela se comporta como
+// líquido. Bedrock não deixa um pacote fazer fluido de verdade, então cada
+// parte disso é montada à mão:
+//
+//   a névoa    o jogo só põe névoa de água dentro de água. Aqui ela é empurrada
+//              pelo script quando a CABEÇA entra, e tirada quando sai.
+//   nadar      sem colisão o jogador despencaria. O controlador persegue uma
+//              velocidade de afundamento lenta, que é o que faz parecer líquido.
+//   fôlego     o mesmo contador da água: enche fora, esvazia dentro, e quando
+//              acaba vem o dano de afogamento.
+export const ACID_FOG = "gh:fog_acid";
+
+// Velocidade de afundamento perseguida, em blocos por tick. Negativa: afunda.
+// Devagar o bastante pra dar pra reagir, e não tão devagar que pareça voar.
+export const ACID_SINK = -0.045;
+// Teto da velocidade horizontal lá dentro: nadar é mais lento que andar.
+export const ACID_SWIM_CAP = 0.075;
+
+// O FÔLEGO, igual ao da água: 15 segundos na água do jogo; aqui 12, porque o
+// ar de Vênus já não é respirável e o traje está gastando reserva.
+export const ACID_AIR_SECONDS = 12;
+// Dano por segundo quando o fôlego acaba. A água do jogo dá 2.
+export const ACID_DROWN_DAMAGE = 2;
+
+// Item que cai no ácido é DESTRUÍDO, com a mesma partícula e o mesmo som da
+// lixeira — é o mesmo gesto: a coisa some e o mundo avisa que sumiu.
+export const ACID_DESTROYS_ITEMS = true;
+export const ACID_ITEM_SCAN = 20;
+export const ACID_PARTICLE = "minecraft:basic_smoke_particle";
+export const ACID_SOUND = "random.fizz";
+
 // ANDAR EM VÊNUS: sem correr, e com pulo de um bloco só.
 //
 // Não é capricho de dificuldade — é o que 92 atmosferas fazem. O ar lá tem

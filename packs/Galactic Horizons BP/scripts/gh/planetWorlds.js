@@ -42,6 +42,7 @@ import {
 } from "./marsStorm.js";
 import { t as txt, nome } from "./i18n.js";
 import { applyVenus, applyVenusToShips, applyVenusMovement } from "./venus.js";
+import { acidFogOn } from "./acid.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -222,7 +223,12 @@ export function applyPlanetTick(player) {
       const t = terrainAt(planet, Math.floor(loc.x), Math.floor(loc.z));
       // A névoa da tempestade passa por cima da do bioma: quando ela fecha, o
       // que o jogador vê é a tempestade, não o lugar onde ele está.
-      pushFog(player, stormFog(tempestade) ?? t.biome.fog ?? planet.fog);
+      // A névoa do ácido MANDA enquanto a cabeça está dentro dele. As duas
+      // dividem o mesmo rótulo de `fog`, então empurrar a do bioma por cima
+      // faria as duas brigarem a cada tique e a tela piscar.
+      if (!acidFogOn(player.id)) {
+        pushFog(player, stormFog(tempestade) ?? t.biome.fog ?? planet.fog);
+      }
       if (lastBiome.get(player.id) !== t.biome.id) {
         lastBiome.set(player.id, t.biome.id);
         actionBar(player, nome(player, planet.id, planet.name) + " §8· §r"
