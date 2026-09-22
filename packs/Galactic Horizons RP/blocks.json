@@ -235,5 +235,9 @@
   "gh:venus_diamond_ore_deep": {
     "textures": "gh_venus_diamond_ore_deep",
     "sound": "stone"
+  },
+  "gh:sulfuric_acid": {
+    "textures": "gh_sulfuric_acid",
+    "sound": "slime"
   }
 }

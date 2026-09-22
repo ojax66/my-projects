@@ -117,6 +117,46 @@ function craterField(x, z, spec) {
   return dh;
 }
 
+// ---------------------------------------------------------------------------
+// Poças de ácido
+//
+// Mesma grade das crateras, e pelo mesmo motivo: sorteio por célula é puro
+// hash das coordenadas, então o campo inteiro é determinístico e não precisa
+// guardar nada.
+//
+// A diferença é o PERFIL. Cratera tem borda levantada e manto de ejeção; poça
+// não tem nada disso — é só uma tigela rasa. E o que sai daqui não é altura, é
+// QUANTO da tigela aquele ponto tem: 1 no meio, 0 na borda.
+// ---------------------------------------------------------------------------
+function poolField(x, z, spec) {
+  const cx0 = Math.floor(x / spec.cell);
+  const cz0 = Math.floor(z / spec.cell);
+  // A poça VENCEDORA, com o centro dela: é do centro que sai o nível do
+  // espelho, e todas as colunas da mesma poça precisam chegar no mesmo centro.
+  let melhor = { tigela: 0, px: 0, pz: 0 };
+
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      const cx = cx0 + i;
+      const cz = cz0 + j;
+      if (hash2(cx * 8419 + 31, cz * 7103 - 17) > spec.chance) continue;
+
+      const ox = hash2(cx * 157 + 11, cz * 613 + 5);
+      const oz = hash2(cx * 389 - 7, cz * 271 + 53);
+      const px = (cx + ox) * spec.cell;
+      const pz = (cz + oz) * spec.cell;
+      const R = lerp(spec.rMin, spec.rMax, hash2(cx * 97 + 3, cz * 131 + 29));
+
+      const d = Math.sqrt((x - px) * (x - px) + (z - pz) * (z - pz));
+      if (d >= R) continue;
+      const t = d / R;
+      const tigela = 1 - t * t;
+      if (tigela > melhor.tigela) melhor = { tigela, px, pz };
+    }
+  }
+  return melhor;
+}
+
 /** Quanto a coluna afundou por cratera, sem contar borda nem ejeção. */
 function craterDepthOnly(x, z, specs, scale) {
   let deep = 0;
@@ -262,7 +302,7 @@ function marsWeights(f, canyon, volcW) {
  * Tudo que se sabe sobre (x, z): altura, pesos dos biomas, bioma dominante e
  * as camadas de cima pra baixo. É uma função pura — os testes a chamam direto.
  */
-export function terrainAt(planet, x, z) {
+export function terrainAt(planet, x, z, semPoca = false) {
   const f = fieldsAt(x, z);
   f.z = z;
 
@@ -349,6 +389,36 @@ export function terrainAt(planet, x, z) {
     }
   }
 
+  // POÇAS DE ÁCIDO SULFÚRICO. Só onde o planeta tem, e só na PLANÍCIE.
+  //
+  // Poça em encosta não existe: líquido escorre. O peso do bioma de planície
+  // (índice 0) é o que decide — nas tesserae, nos domos e no Maxwell não há
+  // nenhuma, que é o que faz elas serem uma coisa que se ENCONTRA andando pela
+  // planície, e não um enfeite espalhado por toda parte.
+  //
+  // A superfície do ácido é UM NÍVEL SÓ, calculado do terreno ANTES de cavar:
+  // é isso que faz a poça ter espelho plano em vez de degraus descendo a
+  // tigela. Ela fica um bloco abaixo da borda, então não transborda.
+  let acido = null;
+  if (planet.acidPools && !semPoca && w[0] > planet.acidPools.minPlain) {
+    const poca = poolField(x, z, planet.acidPools);
+    if (poca.tigela > 0) {
+      h -= planet.acidPools.depth * poca.tigela;
+      // O NÍVEL VEM DO CENTRO DA POÇA, não desta coluna.
+      //
+      // Tirar o nível da coluna local foi a primeira versão, e dava degrau: o
+      // terreno varia dentro da poça, então `Math.round` da altura mudava de 1
+      // no meio dela e o espelho descia em escada. Líquido não faz isso — ele
+      // acha UM nível e fica nele. Do centro, todas as colunas da mesma poça
+      // chegam no mesmo número.
+      //
+      // `semPoca` corta a recursão: o centro está dentro da poça, e sem esse
+      // corte a chamada aqui se chamaria pra sempre. Custa uma avaliação extra
+      // por coluna de poça, e poça é 0,13% da superfície.
+      acido = terrainAt(planet, poca.px, poca.pz, true).height - 1;
+    }
+  }
+
   // Os limites da dimensão, com folga pra a crosta caber embaixo da superfície
   // e pra sobrar céu em cima.
   h = Math.round(clamp(h, PLANET_BOUNDS.min + planet.crust + 2, PLANET_BOUNDS.max - 8));
@@ -419,7 +489,8 @@ export function terrainAt(planet, x, z) {
     layers.push({ id: planet.blocks.stone, t: stoneT });
   }
 
-  return { height: h, weights: w, biome, layers, craterScale, fundo, topoDePedra };
+  return { height: h, weights: w, biome, layers, craterScale, fundo, topoDePedra,
+           acido };
 }
 
 /** Só a altura — é o que `findValidSpot` do gerador precisa. */
@@ -578,6 +649,16 @@ export function columnRunsAt(planet, x, z) {
       if (ore) id = oreBlock(planet, ore, base);
     }
     empurra(y, id);
+  }
+
+  // O ÁCIDO, por cima do chão cavado da poça.
+  //
+  // Vem depois da crosta inteira de propósito: ele não substitui pedra, ele
+  // ENCHE o buraco que a tigela abriu. Onde a tigela é rasa demais (a borda),
+  // `acido` fica abaixo da altura do terreno e não entra nenhum bloco — que é
+  // o que dá a margem seca em volta da poça.
+  if (t.acido !== null && t.acido !== undefined && planet.blocks.acid) {
+    for (let y = t.height + 1; y <= t.acido; y++) empurra(y, planet.blocks.acid);
   }
 
   return runs;

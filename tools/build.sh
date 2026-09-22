@@ -29,6 +29,7 @@ python3 "$ROOT/tools/make_settings_item.py"
 python3 "$ROOT/tools/make_tracker.py"
 python3 "$ROOT/tools/make_tier2.py"
 python3 "$ROOT/tools/make_sky_venus.py"
+python3 "$ROOT/tools/make_acid.py"
 python3 "$ROOT/tools/make_planet_worlds.py"
 node "$ROOT/tools/make_sky_bodies.mjs"
 # Por último: os subpacotes copiam os .lang já prontos de todos os geradores.

@@ -54,13 +54,19 @@ for (const planet of PLANETS) {
           }
         }
         if (temCaverna) colunasComCaverna++;
-        if (runs[runs.length - 1].y1 !== h) topoErrado++;
+        // O topo da coluna é a superfície — OU o espelho do ácido, onde há
+        // poça. A poça enche o buraco por cima do chão, então lá o último
+        // trecho termina acima de `h`, e isso é o certo.
+        const t = terrainAt(planet, x, z);
+        const topoEsperado = (t.acido !== null && t.acido !== undefined
+                              && t.acido > h) ? t.acido : h;
+        if (runs[runs.length - 1].y1 !== topoEsperado) topoErrado++;
         if (runs[0].y0 < PLANET_BOUNDS.min || h > PLANET_BOUNDS.max) foraDosLimites++;
         n++;
       }
     }
     check(`${planet.id}: nenhum trecho sobreposto`, sobrepostos === 0, `(${sobrepostos})`);
-    check(`  o topo do último trecho é a superfície`, topoErrado === 0, `(${topoErrado})`);
+    check(`  o topo do último trecho é a superfície (ou o ácido)`, topoErrado === 0, `(${topoErrado})`);
     check(`  tudo dentro dos limites da dimensão`, foraDosLimites === 0, `(${foraDosLimites})`);
     check(`  existem cavernas`, colunasComCaverna > n * 0.05,
           `(${colunasComCaverna} de ${n} colunas, ${vaos} vãos)`);

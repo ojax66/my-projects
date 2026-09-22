@@ -502,8 +502,24 @@ const VENUS = {
     stone: "gh:venus_rock",
     deep: "gh:venus_basalt",
     ice: null,                 // não há gelo em Vênus. Em lugar nenhum.
+    acid: "gh:sulfuric_acid",
     floor: "minecraft:bedrock",
   },
+
+  // --- Poças de ácido sulfúrico --------------------------------------------
+  // A nuvem de Vênus É ácido sulfúrico — 60 km dela, e é o que faz o planeta
+  // brilhar tanto no céu. Chove ácido lá, e a chuva EVAPORA antes de chegar ao
+  // chão, a uns 25 km de altura: é a virga mais famosa do Sistema Solar.
+  //
+  // Então poça de ácido na superfície de Vênus é licença poética, e assumida.
+  // O que ela conserva é de onde a substância vem e o que ela faz: ácido
+  // sulfúrico concentrado come ferro, e não come titânio — que é exatamente a
+  // regra do balde.
+  //
+  // PEQUENAS, como ele pediu: raio de 3 a 7 blocos e 3 de fundo, numa grade de
+  // 90. E só na planície — poça em encosta não existe, o líquido escorre.
+  acidPools: { cell: 90, chance: 0.26, rMin: 3, rMax: 7, depth: 4,
+               minPlain: 0.55 },
 
   // --- Cavernas ------------------------------------------------------------
   // Tubos de lava, como na Lua e em Marte, mas mais apertados: com 0,9 g e

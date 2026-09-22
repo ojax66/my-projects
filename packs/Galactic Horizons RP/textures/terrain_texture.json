@@ -177,6 +177,9 @@
     },
     "gh_venus_diamond_ore_deep": {
       "textures": "textures/gh/blocks/venus_diamond_ore_deep"
+    },
+    "gh_sulfuric_acid": {
+      "textures": "textures/gh/blocks/sulfuric_acid"
     }
   }
 }

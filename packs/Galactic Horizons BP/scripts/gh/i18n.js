@@ -51,6 +51,16 @@ const TEXTOS = {
     en: "§4§lNO OXYGEN §r§7— full suit + backpack, or get in the UFO",
     es: "§4§lSIN OXÍGENO §r§7— traje completo + mochila, o entra en el OVNI",
   },
+  "hud.acido": {
+    pt: "§e§lÁCIDO SULFÚRICO §r§7— saia da poça",
+    en: "§e§lSULFURIC ACID §r§7— get out of the pool",
+    es: "§e§lÁCIDO SULFÚRICO §r§7— sal del charco",
+  },
+  "acido.balde_errado": {
+    pt: "§eO ácido comeria esse balde — ferro vira sulfato de ferro. Só o de titânio aguenta.",
+    en: "§eThe acid would eat that bucket — iron turns into iron sulfate. Only titanium holds it.",
+    es: "§eEl ácido se comería ese cubo — el hierro se vuelve sulfato de hierro. Solo el de titanio aguanta.",
+  },
   "hud.venus_esmagando": {
     pt: "§4§lVÊNUS ESMAGANDO §r§7— 92 atm a 464 °C: só o traje reforçado",
     en: "§4§lVENUS IS CRUSHING YOU §r§7— 92 atm at 464 °C: reinforced suit only",

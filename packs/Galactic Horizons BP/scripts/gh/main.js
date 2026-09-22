@@ -39,6 +39,7 @@ import { applyStarArmorPowers, startStarArmor } from "./starPowers.js";
 import { startTrashCan } from "./trashCan.js";
 import { startSettings } from "./settings.js";
 import { startShipPickup } from "./shipPickup.js";
+import { startAcid, applyAcid } from "./acid.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet,
@@ -150,6 +151,14 @@ system.runInterval(() => {
       // pra Terra e morreu lá. Ver spawnGuard.js.
       guardSpawnTick(player);
 
+      // O ÁCIDO queima em qualquer dimensão: quem levou um balde pra casa e
+      // despejou no quintal se queima igual. Vem antes do resto porque estar
+      // derretendo é o que importa naquele instante.
+      const aviso = applyAcid(player);
+      if (aviso && system.currentTick % 10 === 0) {
+        try { player.onScreenDisplay.setActionBar(aviso); } catch { }
+      }
+
       const here = inSpace(player);
 
       if (!here) {
@@ -248,6 +257,7 @@ startTrashCan();
 // A engrenagem de idioma, e a entrega dela a quem entra pela primeira vez.
 startSettings();
 startShipPickup();
+startAcid();
 
 // ---------------------------------------------------------------------------
 // Limpeza

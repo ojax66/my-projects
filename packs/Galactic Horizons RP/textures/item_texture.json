@@ -88,6 +88,12 @@
     },
     "gh_ship2_spawn_egg": {
       "textures": "textures/gh/items/ship2_spawn_egg"
+    },
+    "gh_titanium_bucket": {
+      "textures": "textures/gh/items/titanium_bucket"
+    },
+    "gh_sulfuric_acid_bucket": {
+      "textures": "textures/gh/items/sulfuric_acid_bucket"
     }
   }
 }

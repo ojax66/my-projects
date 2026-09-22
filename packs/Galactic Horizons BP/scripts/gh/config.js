@@ -540,6 +540,34 @@ export const VENUS_DAMAGE_INTERVAL = 20;
 // E pega fogo, porque 464 °C é acima do ponto de fulgor de quase tudo.
 export const VENUS_BURN_SECONDS = 4;
 
+// ---------------------------------------------------------------------------
+// Ácido sulfúrico
+// ---------------------------------------------------------------------------
+// A nuvem de Vênus É ácido sulfúrico — 60 km dela. Aqui ele aparece em poças
+// pequenas na planície (ver `acidPools` em planets.js).
+//
+// SÓ O BALDE DE TITÂNIO enche, e o motivo é químico: ácido sulfúrico
+// concentrado come ferro (dá sulfato de ferro e gás hidrogênio) e não come
+// titânio, que se protege com uma casca de óxido. O balde de ferro do jogo
+// seria comido — quem tentar recebe a explicação, não um "não" seco.
+export const ACID_ENABLED = true;
+export const ACID_BLOCK = "gh:sulfuric_acid";
+export const ACID_BUCKET = "gh:sulfuric_acid_bucket";
+export const TITANIUM_BUCKET = "gh:titanium_bucket";
+// Os baldes que o ácido comeria. Leite e água contam: é o mesmo ferro.
+export const VANILLA_BUCKETS = [
+  "minecraft:bucket", "minecraft:water_bucket", "minecraft:milk_bucket",
+  "minecraft:lava_bucket", "minecraft:powder_snow_bucket",
+];
+// Dano por intervalo pra quem está DENTRO da poça, e de quanto em quanto.
+// O traje reforçado corta pela metade e a armadura de estrela pra um quarto —
+// nenhum dos dois zera. Um traje que anulasse o ácido faria a poça deixar de
+// ser perigo pra todo mundo que consegue chegar em Vênus, que é todo mundo que
+// tem o traje.
+export const ACID_DAMAGE = 4;
+export const ACID_DAMAGE_INTERVAL = 10;
+export const ACID_BURN_SECONDS = 3;
+
 // ANDAR EM VÊNUS: sem correr, e com pulo de um bloco só.
 //
 // Não é capricho de dificuldade — é o que 92 atmosferas fazem. O ar lá tem

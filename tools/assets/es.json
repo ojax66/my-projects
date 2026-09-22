@@ -4,6 +4,8 @@
   "Ardósia de Ferrita": "Pizarra de Ferrita",
   "Ardósia de Regolito": "Pizarra de Regolito",
   "Bacia de Impacto": "Cuenca de Impacto",
+  "Balde de Titânio": "Cubo de Titanio",
+  "Balde de Ácido Sulfúrico": "Cubo de Ácido Sulfúrico",
   "Borda Solar": "Borde Solar",
   "Botas Espaciais Básicas": "Botas Espaciales Básicas",
   "Botas Espaciais Reforçadas": "Botas Espaciales Reforzadas",
@@ -123,5 +125,6 @@
   ],
   "§aAgache ou pule para sair!": "§a¡Agáchate o salta para salir!",
   "§bGerar Nave Level 2§r": "§bGenerar Nave Nivel 2§r",
-  "§bNave Level 2§r": "§bNave Nivel 2§r"
+  "§bNave Level 2§r": "§bNave Nivel 2§r",
+  "Ácido Sulfúrico": "Ácido Sulfúrico"
 }

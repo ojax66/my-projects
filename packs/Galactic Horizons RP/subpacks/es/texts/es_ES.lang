@@ -139,3 +139,8 @@ item.gh:flight_computer=Computadora de a Bordo
 item.spawn_egg.entity.gh:level_2_spaceship.name=§bGenerar Nave Nivel 2§r
 entity.gh:level_2_spaceship.name=§bNave Nivel 2§r
 action.hint.exit.gh:level_2_spaceship=§a¡Agáchate o salta para salir!
+
+## o ácido sulfúrico de Vênus (gerado por tools/make_acid.py)
+tile.gh:sulfuric_acid.name=Ácido Sulfúrico
+item.gh:titanium_bucket=Cubo de Titanio
+item.gh:sulfuric_acid_bucket=Cubo de Ácido Sulfúrico

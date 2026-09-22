@@ -1,0 +1,24 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:titanium_bucket"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "T T",
+      " T "
+    ],
+    "key": {
+      "T": {
+        "item": "gh:titanium"
+      }
+    },
+    "result": {
+      "item": "gh:titanium_bucket",
+      "count": 1
+    }
+  }
+}

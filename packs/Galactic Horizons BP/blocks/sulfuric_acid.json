@@ -1,0 +1,36 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:block": {
+    "description": {
+      "identifier": "gh:sulfuric_acid"
+    },
+    "components": {
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "gh_sulfuric_acid",
+          "render_method": "blend",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          16,
+          16
+        ]
+      },
+      "minecraft:destructible_by_mining": false,
+      "minecraft:destructible_by_explosion": false,
+      "minecraft:light_emission": 3,
+      "minecraft:light_dampening": 1,
+      "minecraft:map_color": "#B6B23E"
+    }
+  }
+}

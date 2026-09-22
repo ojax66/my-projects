@@ -14,7 +14,9 @@ import path from 'node:path';
 import { world, system, __reset, __advance, ItemStack } from '@minecraft/server';
 import { BODIES, BASIC_SUIT_PIECES, REINFORCED_SUIT_PIECES, STAR_ARMOR_PIECES,
          VENUS_CRUSH_SECONDS, TIER1_SHIP, TIER2_SHIP,
-         VENUS_WALK_CAP, VENUS_JUMP_SPEED } from './gh/config.js';
+         VENUS_WALK_CAP, VENUS_JUMP_SPEED,
+         ACID_BLOCK, ACID_BUCKET, TITANIUM_BUCKET } from './gh/config.js';
+import { columnRunsAt, terrainAt } from './gh/planetTerrain.js';
 import { EARTH_G } from './gh/planetGravity.js';
 import { inPressurizedVehicle } from './gh/lifeSupport.js';
 import { applyVenus, applyVenusToShips, survivesVenus,
@@ -22,6 +24,7 @@ import { applyVenus, applyVenusToShips, survivesVenus,
 import { isWarm } from './gh/cold.js';
 import { canBreathe } from './gh/lifeSupport.js';
 import { pickUp, eggFor, startShipPickup } from './gh/shipPickup.js';
+import { encher, despejar, applyAcid } from './gh/acid.js';
 import { PLANETS } from './gh/planets.js';
 import { heightAt, biomeAt } from './gh/planetTerrain.js';
 startShipPickup();
@@ -399,6 +402,178 @@ const emVenus = (id) => world.__addPlayer({
         d.materials.default === 'gh_halo', `(${d.materials.default})`);
   check('    e a geometria própria dela',
         d.geometry.default === 'geometry.gh.sky_venus', `(${d.geometry.default})`);
+}
+
+// --- 13. O ácido sulfúrico: só o balde de titânio -------------------------
+//
+// O bloco é indestrutível de propósito, então o balde é o ÚNICO jeito de tirar
+// ácido do mundo. Se um balde de ferro funcionasse, a regra não existiria.
+{
+  __reset();
+  const p = emVenus('quimico');
+  const dim = world.getDimension('gh:venus');
+  const poca = { x: 3, y: 70, z: 3 };
+  const inv = p.getComponent('inventory').container;
+
+  // (a) com o balde de titânio: enche e a poça some.
+  dim.setBlockType(poca, ACID_BLOCK);
+  inv.setItem(0, new ItemStack(TITANIUM_BUCKET, 1));
+  p.selectedSlotIndex = 0;
+  const r = encher(p, dim.getBlock(poca));
+  check('o balde de titânio enche na poça', r === 'ok', `(${r})`);
+  check('  e sai com ácido na mão', inv.getItem(0)?.typeId === ACID_BUCKET,
+        `(${inv.getItem(0)?.typeId})`);
+  check('  e a poça some', dim.getBlock(poca)?.typeId === 'minecraft:air',
+        `(${dim.getBlock(poca)?.typeId})`);
+
+  // (b) com balde de ferro: recusa, e diz por quê.
+  dim.setBlockType(poca, ACID_BLOCK);
+  inv.setItem(0, new ItemStack('minecraft:bucket', 1));
+  const r2 = encher(p, dim.getBlock(poca));
+  check('o balde de ferro NÃO enche', r2 === 'errado', `(${r2})`);
+  check('  e a poça continua lá', dim.getBlock(poca)?.typeId === ACID_BLOCK);
+  check('  e o balde de ferro continua na mão',
+        inv.getItem(0)?.typeId === 'minecraft:bucket');
+
+  // (c) de mão vazia também não.
+  inv.setItem(0, undefined);
+  check('de mão vazia não enche', encher(p, dim.getBlock(poca)) === 'nao');
+
+  // (d) despejar devolve o balde vazio.
+  const chao = { x: 9, y: 70, z: 9 };
+  dim.setBlockType(chao, 'gh:venus_rock');
+  dim.setBlockType({ x: 9, y: 71, z: 9 }, 'minecraft:air');
+  inv.setItem(0, new ItemStack(ACID_BUCKET, 1));
+  const ok = despejar(p, dim.getBlock(chao), 'Up');
+  check('despejar põe ácido em cima do bloco mirado', ok
+        && dim.getBlock({ x: 9, y: 71, z: 9 })?.typeId === ACID_BLOCK,
+        `(${dim.getBlock({ x: 9, y: 71, z: 9 })?.typeId})`);
+  check('  e devolve o balde vazio',
+        inv.getItem(0)?.typeId === TITANIUM_BUCKET, `(${inv.getItem(0)?.typeId})`);
+}
+
+// --- 14. Dentro da poça, o ácido queima ----------------------------------
+//
+// O traje ajuda e NÃO salva: em Vênus só entra quem tem o reforçado, então um
+// traje que anulasse o ácido faria a poça não ser perigo pra ninguém que
+// consegue chegar lá.
+{
+  __reset();
+  const dim = world.getDimension('gh:venus');
+  const medir = (equipar) => {
+    const q = world.__addPlayer({ id: 'a' + Math.random(), dimensionId: 'gh:venus',
+                                  location: { x: 0.5, y: 70.5, z: 0.5 } });
+    if (equipar) for (const x of equipar) q.__wear(x.slot, x.item);
+    dim.setBlockType({ x: 0, y: 70, z: 0 }, ACID_BLOCK);
+    q.__health = 20;
+    let av = null;
+    for (let i = 0; i < 40; i++) { av = applyAcid(q) ?? av; __advance(1); }
+    return { perdeu: 20 - q.__health, aviso: av };
+  };
+  const nu = medir(null);
+  const suit = medir(REINFORCED_SUIT_PIECES);
+  const star = medir(STAR_ARMOR_PIECES);
+
+  check('dentro da poça o ácido queima', nu.perdeu > 0, `(${nu.perdeu} de vida)`);
+  check('  e avisa o que é', /ÁCIDO|ACID/i.test(nu.aviso ?? ''), `(${nu.aviso})`);
+  check('  o traje reforçado ajuda', suit.perdeu < nu.perdeu,
+        `(${suit.perdeu} contra ${nu.perdeu})`);
+  check('  a armadura de estrela ajuda mais', star.perdeu < suit.perdeu,
+        `(${star.perdeu})`);
+  check('  mas NENHUM dos dois zera', star.perdeu > 0, `(${star.perdeu})`);
+
+  // Fora da poça, nada.
+  const fora = world.__addPlayer({ id: 'seco', dimensionId: 'gh:venus',
+                                   location: { x: 40.5, y: 70.5, z: 40.5 } });
+  fora.__health = 20;
+  for (let i = 0; i < 40; i++) { applyAcid(fora); __advance(1); }
+  check('  e fora da poça ninguém se queima', fora.__health === 20,
+        `(${fora.__health} de 20)`);
+}
+
+// --- 15. As poças estão no mundo, e só na planície -----------------------
+{
+  const venus = PLANETS.find((x) => x.id === 'venus');
+  check('Vênus tem poças de ácido', !!venus.acidPools);
+  check('  e um bloco de ácido declarado',
+        venus.blocks.acid === ACID_BLOCK, `(${venus.blocks.acid})`);
+
+  let colunas = 0, comAcido = 0, maisFundo = 0;
+  const biomas = new Set();
+  const semente = [];
+  for (let x = -900; x <= 900; x += 2) {
+    for (let z = -900; z <= 900; z += 2) {
+      colunas++;
+      const t = terrainAt(venus, x, z);
+      if (t.acido === null || t.acido <= t.height) continue;
+      comAcido++;
+      biomas.add(t.biome.id);
+      const fundo = t.acido - t.height;
+      if (fundo > maisFundo) maisFundo = fundo;
+      if (semente.length < 12) semente.push([x, z]);
+    }
+  }
+  check('  e elas existem de verdade no terreno', comAcido > 0,
+        `(${comAcido} colunas de ${colunas})`);
+  // PEQUENAS: uma fração mínima da superfície, como ele pediu.
+  const frac = (100 * comAcido) / colunas;
+  check('  pequenas: menos de 1% da superfície', frac < 1,
+        `(${frac.toFixed(3)}%)`);
+  check('  mas fundas o bastante pra entrar nelas', maisFundo >= 2,
+        `(${maisFundo} blocos)`);
+  // SÓ NA PLANÍCIE: poça em encosta não existe, o líquido escorre.
+  check('  e só na planície de lava',
+        biomas.size === 1 && biomas.has('planicies_de_lava'),
+        `(${[...biomas].join(', ')})`);
+
+  // O ESPELHO É PLANO — medido por POÇA, achada por alastramento.
+  //
+  // A primeira versão deste teste agrupava por célula da grade de sorteio, e
+  // reprovava um terreno certo: uma célula de 90 blocos pode conter mais de
+  // uma poça, e cada uma tem o espelho dela. Poça é o conjunto CONECTADO de
+  // colunas com ácido, e é isso que tem que ter um nível só.
+  const pocaDe = (sx, sz) => {
+    const vistos = new Set();
+    const niveis = new Set();
+    const fila = [[sx, sz]];
+    while (fila.length && vistos.size < 4000) {
+      const [x, z] = fila.pop();
+      const k = x + ',' + z;
+      if (vistos.has(k)) continue;
+      vistos.add(k);
+      const t = terrainAt(venus, x, z);
+      if (t.acido === null || t.acido <= t.height) continue;
+      niveis.add(t.acido);
+      fila.push([x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]);
+    }
+    return niveis;
+  };
+  const tortas = [];
+  let medidas = 0;
+  for (const [sx, sz] of semente) {
+    const niveis = pocaDe(sx, sz);
+    if (!niveis.size) continue;
+    medidas++;
+    if (niveis.size !== 1) tortas.push(`${sx},${sz}: ${[...niveis].join('/')}`);
+  }
+  check('  com o espelho plano, um nível por poça',
+        medidas > 0 && tortas.length === 0,
+        `(${medidas} poça(s) medida(s)${tortas.length ? ', tortas: ' + tortas.join(' | ') : ''})`);
+
+  // E o ácido entra na coluna como bloco, por cima do chão.
+  let achou = null;
+  for (let x = -900; x <= 900 && !achou; x++) {
+    for (let z = -900; z <= 900; z++) {
+      const t = terrainAt(venus, x, z);
+      if (t.acido !== null && t.acido - t.height >= 2) { achou = [x, z]; break; }
+    }
+  }
+  if (achou) {
+    const runs = columnRunsAt(venus, achou[0], achou[1]);
+    const topo = runs[runs.length - 1];
+    check('  e o bloco de ácido fica por cima do chão, no topo da coluna',
+          topo.id === ACID_BLOCK, `(${topo.id})`);
+  }
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

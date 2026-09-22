@@ -321,15 +321,35 @@ class Dimension {
     const typeId = y > ground ? "minecraft:air"
       : y === ground ? "minecraft:grass_block"
       : "minecraft:stone";
+    return this.__face(typeId, Math.floor(x), Math.floor(y), Math.floor(z), k);
+  }
+
+  /** Um bloco como o jogo entrega: com vizinhos, `isAir` e `setType`.
+   *
+   * Sem isto um bloco do stub era só `{typeId}`, e nada que MEXE em bloco
+   * podia ser testado — encher um balde numa poça é ler o vizinho e trocar o
+   * tipo, e as duas coisas não existiam aqui. */
+  __face(typeId, x, y, z, k) {
     const dim = this;
-    return {
+    const b = {
       typeId,
-      x: Math.floor(x), y: Math.floor(y), z: Math.floor(z),
+      x, y, z,
+      get isAir() { return this.typeId === "minecraft:air"; },
+      setType(id) { dim.setBlockType({ x, y, z }, id); b.typeId = id; },
       getComponent(name) {
         if (name !== "minecraft:inventory") return undefined;
-        return { container: dim.__containerAt(k) };
+        return { container: dim.__containerAt(k ?? dim.__key(x, y, z)) };
       },
+      above: (n = 1) => dim.getBlock({ x, y: y + n, z }),
+      below: (n = 1) => dim.getBlock({ x, y: y - n, z }),
+      north: (n = 1) => dim.getBlock({ x, y, z: z - n }),
+      south: (n = 1) => dim.getBlock({ x, y, z: z + n }),
+      west: (n = 1) => dim.getBlock({ x: x - n, y, z }),
+      east: (n = 1) => dim.getBlock({ x: x + n, y, z }),
+      up: (n = 1) => dim.getBlock({ x, y: y + n, z }),
+      down: (n = 1) => dim.getBlock({ x, y: y - n, z }),
     };
+    return b;
   }
 
   __containerAt(k) {
@@ -349,15 +369,8 @@ class Dimension {
   setBlockType(loc, typeId) {
     this.__blocks ??= new Map();
     const k = this.__key(loc.x, loc.y, loc.z);
-    const dim = this;
-    this.__blocks.set(k, {
-      typeId,
-      x: Math.floor(loc.x), y: Math.floor(loc.y), z: Math.floor(loc.z),
-      getComponent(name) {
-        if (name !== "minecraft:inventory") return undefined;
-        return { container: dim.__containerAt(k) };
-      },
-    });
+    this.__blocks.set(k, this.__face(
+      typeId, Math.floor(loc.x), Math.floor(loc.y), Math.floor(loc.z), k));
   }
 
   getTopmostBlock(loc) {
