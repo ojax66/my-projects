@@ -283,10 +283,22 @@ def main():
     # jogo simplesmente ignora a linha e mostra o id cru, sem reclamar de nada.
     pt = [f"item.gh:{i}={p}" for i, _, _, p, _ in ITENS]
     en = [f"item.gh:{i}={e}" for i, _, _, _, e in ITENS]
-    pt.append("item.gh:level_2_spaceship_spawn_egg=Nave Level 2")
-    en.append("item.gh:level_2_spaceship_spawn_egg=Level 2 Spaceship")
-    pt.append("entity.gh:level_2_spaceship.name=Nave Level 2")
-    en.append("entity.gh:level_2_spaceship.name=Level 2 Spaceship")
+
+    # O OVO DE UMA ENTIDADE É A EXCEÇÃO, e foi o que saiu com o nome bugado.
+    #
+    # Ele NÃO se chama pelo id do item (`item.gh:..._spawn_egg`): o Bedrock
+    # nomeia ovo pela ENTIDADE que ele gera, com
+    # `item.spawn_egg.entity.<id da entidade>.name`. Escrito da outra forma o
+    # jogo ignora a linha em silêncio e mostra o id cru no inventário — que é
+    # exatamente o que apareceu. A Level 1 sempre esteve certa; eu é que copiei
+    # o padrão dos itens comuns pra um item que não é comum.
+    pt.append("item.spawn_egg.entity.gh:level_2_spaceship.name=§bGerar Nave Level 2§r")
+    en.append("item.spawn_egg.entity.gh:level_2_spaceship.name=§bSpawn Level 2 Spaceship§r")
+    pt.append("entity.gh:level_2_spaceship.name=§bNave Level 2§r")
+    en.append("entity.gh:level_2_spaceship.name=§bLevel 2 Spaceship§r")
+    # A dica de saída, igual à da Level 1.
+    pt.append("action.hint.exit.gh:level_2_spaceship=§aAgache ou pule para sair!")
+    en.append("action.hint.exit.gh:level_2_spaceship=§aSneak or jump to exit!")
     escreve_idiomas(RP, MARK, pt, en)
 
     print(f"Nave Level 2: colisão {COLISAO['width']}x{COLISAO['height']}, "

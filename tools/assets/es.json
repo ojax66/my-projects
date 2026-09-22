@@ -76,7 +76,6 @@
   "Minério de Titânio em Ardósia Venusiano": "Mena de Titanio en Pizarra Venusiana",
   "Molde de Ferraria de Upgrade Espacial": "Plantilla de Herrería de Mejora Espacial",
   "Montes Maxwell": "Montes Maxwell",
-  "Nave Level 2": "Nave Level 2",
   "Núcleo Solar": "Núcleo Solar",
   "Núcleo de Navegação": "Núcleo de Navegación",
   "Panquecas Vulcânicas": "Panquecas Vulcânicas",
@@ -121,5 +120,8 @@
     "",
     "'Mena' e não 'Mineral' pra minério: é a palavra que o próprio Minecraft",
     "em espanhol usa (Mena de Hierro, Mena de Diamante)."
-  ]
+  ],
+  "§aAgache ou pule para sair!": "§a¡Agáchate o salta para salir!",
+  "§bGerar Nave Level 2§r": "§bGenerar Nave Nivel 2§r",
+  "§bNave Level 2§r": "§bNave Nivel 2§r"
 }

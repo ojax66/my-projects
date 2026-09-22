@@ -1502,6 +1502,37 @@ for p, d in docs.items():
     if not any(os.path.isfile(os.path.join(RP, tex + ext)) for ext in (".png", ".tga", ".jpg")):
         err(f"partícula {os.path.basename(p)} usa textura inexistente: {tex}")
 
+# --- Ovo de entidade: a chave de nome dele é OUTRA -----------------------------
+#
+# Um ovo de spawn NÃO se chama pelo id do item. O Bedrock nomeia ovo pela
+# ENTIDADE que ele gera:
+#
+#     item.spawn_egg.entity.<id da entidade>.name=...
+#
+# Escrito como item comum (`item.<id do ovo>=`) o jogo IGNORA a linha em
+# silêncio e mostra o id cru no inventário. Foi o que aconteceu com a Nave
+# Level 2, e não havia nada que pegasse — o .lang tinha uma linha pro ovo, só
+# que na chave errada.
+_egg_lang = ""
+_egg_lang_path = os.path.join(RP, "texts", "en_US.lang")
+if os.path.isfile(_egg_lang_path):
+    with open(_egg_lang_path, encoding="utf-8") as f:
+        _egg_lang = f.read()
+
+for _p, _d in docs.items():
+    if not isinstance(_d, dict):
+        continue
+    _desc = _d.get("minecraft:client_entity", {}).get("description", {})
+    if not _desc.get("spawn_egg"):
+        continue
+    _eid = _desc.get("identifier", "")
+    if not _eid.startswith("gh:"):
+        continue
+    if f"item.spawn_egg.entity.{_eid}.name=" not in _egg_lang:
+        err(f"o ovo de {_eid} sem nome em RP/texts/en_US.lang — a chave de ovo e "
+            f"`item.spawn_egg.entity.{_eid}.name=`, e nao o id do item; escrita "
+            f"errada o jogo ignora calado e mostra o id cru")
+
 # --- 5c. As dimensões de superfície: Lua e Marte -------------------------------
 #
 # A fonte da verdade é planets.js, e tudo aqui é conferência de que o PACOTE
