@@ -1,0 +1,2363 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "gh:sky_venus",
+      "is_spawnable": false,
+      "is_summonable": true
+    },
+    "components": {
+      "minecraft:tick_world": {
+        "never_despawn": true,
+        "radius": 2
+      },
+      "minecraft:physics": {
+        "has_collision": false,
+        "has_gravity": false
+      },
+      "minecraft:collision_box": {
+        "width": 0,
+        "height": 0
+      },
+      "minecraft:custom_hit_test": {
+        "hitboxes": [
+          {
+            "width": 0,
+            "height": 0,
+            "pivot": [
+              0,
+              999,
+              0
+            ]
+          }
+        ]
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "cause": "all",
+            "deals_damage": "no"
+          }
+        ]
+      },
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": false
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1000
+      },
+      "minecraft:health": {
+        "value": 1,
+        "max": 1
+      },
+      "minecraft:fire_immune": true,
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:type_family": {
+        "family": [
+          "gh_sky"
+        ]
+      }
+    },
+    "component_groups": {
+      "gh:size_0": {
+        "minecraft:scale": {
+          "value": 0.05
+        }
+      },
+      "gh:size_1": {
+        "minecraft:scale": {
+          "value": 0.0625
+        }
+      },
+      "gh:size_2": {
+        "minecraft:scale": {
+          "value": 0.07813
+        }
+      },
+      "gh:size_3": {
+        "minecraft:scale": {
+          "value": 0.09766
+        }
+      },
+      "gh:size_4": {
+        "minecraft:scale": {
+          "value": 0.1221
+        }
+      },
+      "gh:size_5": {
+        "minecraft:scale": {
+          "value": 0.1526
+        }
+      },
+      "gh:size_6": {
+        "minecraft:scale": {
+          "value": 0.1907
+        }
+      },
+      "gh:size_7": {
+        "minecraft:scale": {
+          "value": 0.2384
+        }
+      },
+      "gh:size_8": {
+        "minecraft:scale": {
+          "value": 0.298
+        }
+      },
+      "gh:size_9": {
+        "minecraft:scale": {
+          "value": 0.3725
+        }
+      },
+      "gh:size_10": {
+        "minecraft:scale": {
+          "value": 0.4657
+        }
+      },
+      "gh:size_11": {
+        "minecraft:scale": {
+          "value": 0.5821
+        }
+      },
+      "gh:size_12": {
+        "minecraft:scale": {
+          "value": 0.7276
+        }
+      },
+      "gh:size_13": {
+        "minecraft:scale": {
+          "value": 0.9095
+        }
+      },
+      "gh:size_14": {
+        "minecraft:scale": {
+          "value": 1.137
+        }
+      },
+      "gh:size_15": {
+        "minecraft:scale": {
+          "value": 1.421
+        }
+      },
+      "gh:size_16": {
+        "minecraft:scale": {
+          "value": 1.776
+        }
+      },
+      "gh:size_17": {
+        "minecraft:scale": {
+          "value": 2.22
+        }
+      },
+      "gh:size_18": {
+        "minecraft:scale": {
+          "value": 2.776
+        }
+      },
+      "gh:size_19": {
+        "minecraft:scale": {
+          "value": 3.469
+        }
+      },
+      "gh:size_20": {
+        "minecraft:scale": {
+          "value": 4.337
+        }
+      },
+      "gh:size_21": {
+        "minecraft:scale": {
+          "value": 5.421
+        }
+      },
+      "gh:size_22": {
+        "minecraft:scale": {
+          "value": 6.776
+        }
+      },
+      "gh:size_23": {
+        "minecraft:scale": {
+          "value": 8.47
+        }
+      },
+      "gh:size_24": {
+        "minecraft:scale": {
+          "value": 10.59
+        }
+      },
+      "gh:size_25": {
+        "minecraft:scale": {
+          "value": 13.23
+        }
+      },
+      "gh:size_26": {
+        "minecraft:scale": {
+          "value": 16.54
+        }
+      },
+      "gh:size_27": {
+        "minecraft:scale": {
+          "value": 20.68
+        }
+      },
+      "gh:size_28": {
+        "minecraft:scale": {
+          "value": 25.85
+        }
+      },
+      "gh:size_29": {
+        "minecraft:scale": {
+          "value": 32.31
+        }
+      },
+      "gh:size_30": {
+        "minecraft:scale": {
+          "value": 40.39
+        }
+      },
+      "gh:size_31": {
+        "minecraft:scale": {
+          "value": 50.49
+        }
+      },
+      "gh:size_32": {
+        "minecraft:scale": {
+          "value": 63.11
+        }
+      },
+      "gh:size_33": {
+        "minecraft:scale": {
+          "value": 78.89
+        }
+      },
+      "gh:size_34": {
+        "minecraft:scale": {
+          "value": 98.61
+        }
+      },
+      "gh:size_35": {
+        "minecraft:scale": {
+          "value": 123.3
+        }
+      },
+      "gh:size_36": {
+        "minecraft:scale": {
+          "value": 154.1
+        }
+      },
+      "gh:size_37": {
+        "minecraft:scale": {
+          "value": 192.6
+        }
+      },
+      "gh:size_38": {
+        "minecraft:scale": {
+          "value": 240.7
+        }
+      },
+      "gh:size_39": {
+        "minecraft:scale": {
+          "value": 300.9
+        }
+      },
+      "gh:size_40": {
+        "minecraft:scale": {
+          "value": 376.2
+        }
+      }
+    },
+    "events": {
+      "gh:set_size_0": {
+        "add": {
+          "component_groups": [
+            "gh:size_0"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_1": {
+        "add": {
+          "component_groups": [
+            "gh:size_1"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_2": {
+        "add": {
+          "component_groups": [
+            "gh:size_2"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_3": {
+        "add": {
+          "component_groups": [
+            "gh:size_3"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_4": {
+        "add": {
+          "component_groups": [
+            "gh:size_4"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_5": {
+        "add": {
+          "component_groups": [
+            "gh:size_5"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_6": {
+        "add": {
+          "component_groups": [
+            "gh:size_6"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_7": {
+        "add": {
+          "component_groups": [
+            "gh:size_7"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_8": {
+        "add": {
+          "component_groups": [
+            "gh:size_8"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_9": {
+        "add": {
+          "component_groups": [
+            "gh:size_9"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_10": {
+        "add": {
+          "component_groups": [
+            "gh:size_10"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_11": {
+        "add": {
+          "component_groups": [
+            "gh:size_11"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_12": {
+        "add": {
+          "component_groups": [
+            "gh:size_12"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_13": {
+        "add": {
+          "component_groups": [
+            "gh:size_13"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_14": {
+        "add": {
+          "component_groups": [
+            "gh:size_14"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_15": {
+        "add": {
+          "component_groups": [
+            "gh:size_15"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_16": {
+        "add": {
+          "component_groups": [
+            "gh:size_16"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_17": {
+        "add": {
+          "component_groups": [
+            "gh:size_17"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_18": {
+        "add": {
+          "component_groups": [
+            "gh:size_18"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_19": {
+        "add": {
+          "component_groups": [
+            "gh:size_19"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_20": {
+        "add": {
+          "component_groups": [
+            "gh:size_20"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_21": {
+        "add": {
+          "component_groups": [
+            "gh:size_21"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_22": {
+        "add": {
+          "component_groups": [
+            "gh:size_22"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_23": {
+        "add": {
+          "component_groups": [
+            "gh:size_23"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_24": {
+        "add": {
+          "component_groups": [
+            "gh:size_24"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_25": {
+        "add": {
+          "component_groups": [
+            "gh:size_25"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_26": {
+        "add": {
+          "component_groups": [
+            "gh:size_26"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_27": {
+        "add": {
+          "component_groups": [
+            "gh:size_27"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_28": {
+        "add": {
+          "component_groups": [
+            "gh:size_28"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_29": {
+        "add": {
+          "component_groups": [
+            "gh:size_29"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_30": {
+        "add": {
+          "component_groups": [
+            "gh:size_30"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_31": {
+        "add": {
+          "component_groups": [
+            "gh:size_31"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_32": {
+        "add": {
+          "component_groups": [
+            "gh:size_32"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_33": {
+        "add": {
+          "component_groups": [
+            "gh:size_33"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_34": {
+        "add": {
+          "component_groups": [
+            "gh:size_34"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_35": {
+        "add": {
+          "component_groups": [
+            "gh:size_35"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_36": {
+        "add": {
+          "component_groups": [
+            "gh:size_36"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_37": {
+        "add": {
+          "component_groups": [
+            "gh:size_37"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_38",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_38": {
+        "add": {
+          "component_groups": [
+            "gh:size_38"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_39",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_39": {
+        "add": {
+          "component_groups": [
+            "gh:size_39"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_40"
+          ]
+        }
+      },
+      "gh:set_size_40": {
+        "add": {
+          "component_groups": [
+            "gh:size_40"
+          ]
+        },
+        "remove": {
+          "component_groups": [
+            "gh:size_0",
+            "gh:size_1",
+            "gh:size_2",
+            "gh:size_3",
+            "gh:size_4",
+            "gh:size_5",
+            "gh:size_6",
+            "gh:size_7",
+            "gh:size_8",
+            "gh:size_9",
+            "gh:size_10",
+            "gh:size_11",
+            "gh:size_12",
+            "gh:size_13",
+            "gh:size_14",
+            "gh:size_15",
+            "gh:size_16",
+            "gh:size_17",
+            "gh:size_18",
+            "gh:size_19",
+            "gh:size_20",
+            "gh:size_21",
+            "gh:size_22",
+            "gh:size_23",
+            "gh:size_24",
+            "gh:size_25",
+            "gh:size_26",
+            "gh:size_27",
+            "gh:size_28",
+            "gh:size_29",
+            "gh:size_30",
+            "gh:size_31",
+            "gh:size_32",
+            "gh:size_33",
+            "gh:size_34",
+            "gh:size_35",
+            "gh:size_36",
+            "gh:size_37",
+            "gh:size_38",
+            "gh:size_39"
+          ]
+        }
+      }
+    }
+  }
+}

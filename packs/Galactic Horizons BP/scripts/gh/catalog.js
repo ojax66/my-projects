@@ -30,6 +30,9 @@ export const SYSTEMS = [
     unlockedByDefault: true,
     bodies: [
       { ref: "sun" },
+      // Na ordem de quem está mais perto do Sol, que é como o Sistema Solar é
+      // desenhado em qualquer lugar: Vênus antes da Terra.
+      { ref: "venus" },
       { ref: "earth" },
       { ref: "moon" },
       { ref: "mars" },

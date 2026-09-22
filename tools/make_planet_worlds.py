@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gera as dimensões, os biomas e os nomes da Lua e de Marte.
+"""Gera as dimensões, os biomas e os nomes dos planetas de superfície.
 
 A fonte da verdade é UMA: `scripts/gh/planets.js`. Quem quiser mudar um
 bioma de nome, trocar a cor do céu ou acrescentar um bioma mexe lá e roda isto —
@@ -26,13 +26,17 @@ BP = os.path.join(ROOT, "packs", "Galactic Horizons BP")
 RP = os.path.join(ROOT, "packs", "Galactic Horizons RP")
 PLANETS_JS = os.path.join(BP, "scripts", "gh", "planets.js")
 
-MARK = "## dimensões da Lua e de Marte (gerado por tools/make_planet_worlds.py)"
+MARK = "## dimensões dos planetas (gerado por tools/make_planet_worlds.py)"
 
 # Tags de bioma por planeta. Não saem do script porque não são usadas por ele —
 # são pra quem for escrever regras de spawn ou de estrutura depois.
 TAGS = {
     "moon": ["lua", "moon", "regolito", "sem_atmosfera", "no_legacy_worldgen"],
     "mars": ["marte", "mars", "ferrita", "sem_atmosfera", "no_legacy_worldgen"],
+    # "sem_atmosfera" em Vênus quer dizer o que ela quer dizer no addon inteiro:
+    # ar que não serve pra pulmão nenhum. Vênus tem 92 atmosferas de gás
+    # carbônico — é o contrário de vácuo, e mata igual.
+    "venus": ["venus", "venera", "basalto", "sem_atmosfera", "no_legacy_worldgen"],
 }
 
 # Nome em inglês de cada bioma. O português vem do próprio planets.js (é o que o
@@ -48,10 +52,15 @@ EN = {
     "tharsis": "Tharsis Plateau",
     "campo_de_dunas": "Dune Field",
     "calota_polar": "Polar Cap",
+    "planicies_de_lava": "Lava Plains",
+    "tesserae": "Tesserae",
+    "domos_panqueca": "Pancake Domes",
+    "chasmata": "Chasmata",
+    "montes_maxwell": "Maxwell Montes",
 }
 
 # O nome do planeta, sem os códigos de cor do Minecraft.
-PLANET_EN = {"moon": "Moon", "mars": "Mars"}
+PLANET_EN = {"moon": "Moon", "mars": "Mars", "venus": "Venus"}
 
 
 def strip_colors(text):
@@ -81,7 +90,15 @@ def read_exit_y(src):
 def read_planets():
     src = open(PLANETS_JS, encoding="utf-8").read()
     out = []
-    for m in re.finditer(r"\nconst (?:MOON|MARS) = \{(.*?)\n\};", src, re.S):
+    # Os nomes saem da própria lista exportada: planeta novo entra aqui
+    # sozinho. Era `(?:MOON|MARS)` cravado, e um planeta novo simplesmente não
+    # ganhava dimensão nem bioma — sem erro nenhum, só faltando.
+    lista = re.search(r"^export const PLANETS = \[([^\]]*)\];", src, re.M)
+    nomes = [n.strip() for n in lista.group(1).split(",") if n.strip()] if lista else []
+    for nome in nomes:
+        m = re.search(r"\nconst " + re.escape(nome) + r" = \{(.*?)\n\};", src, re.S)
+        if not m:
+            raise SystemExit("planets.js: PLANETS cita %s, que não existe" % nome)
         body = m.group(1)
 
         def field(name):
@@ -114,8 +131,9 @@ def read_planets():
             })
         out.append(planet)
 
-    if len(out) != 2:
-        raise SystemExit("planets.js: esperava 2 planetas, achei %d" % len(out))
+    if len(out) != len(nomes):
+        raise SystemExit("planets.js: PLANETS exporta %d, li %d"
+                         % (len(nomes), len(out)))
     for p in out:
         missing = [k for k, v in p.items() if v is None]
         if missing:

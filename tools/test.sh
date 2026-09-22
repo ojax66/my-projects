@@ -101,6 +101,10 @@ echo "--- idioma e a engrenagem ---"
 node test_idioma.mjs
 
 echo
+echo "--- Vênus e a Nave Level 2 ---"
+node test_venus_tier2.mjs
+
+echo
 echo "--- custo de geração (informativo) ---"
 node cost.mjs
 node caps.mjs

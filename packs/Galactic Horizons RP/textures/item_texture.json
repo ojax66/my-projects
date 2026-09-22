@@ -67,6 +67,27 @@
     },
     "gh_settings_gear": {
       "textures": "textures/gh/items/settings_gear"
+    },
+    "gh_gold_shielding": {
+      "textures": "textures/gh/items/gold_shielding"
+    },
+    "gh_heat_sink": {
+      "textures": "textures/gh/items/heat_sink"
+    },
+    "gh_hull_ring": {
+      "textures": "textures/gh/items/hull_ring"
+    },
+    "gh_energy_cell": {
+      "textures": "textures/gh/items/energy_cell"
+    },
+    "gh_nav_core": {
+      "textures": "textures/gh/items/nav_core"
+    },
+    "gh_flight_computer": {
+      "textures": "textures/gh/items/flight_computer"
+    },
+    "gh_ship2_spawn_egg": {
+      "textures": "textures/gh/items/ship2_spawn_egg"
     }
   }
 }

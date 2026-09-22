@@ -25,6 +25,9 @@ tile.gh:mars_dust.name=Polvo de Ferrita
 tile.gh:mars_rock.name=Piedra de Ferrita
 tile.gh:mars_rock_dark.name=Pizarra de Ferrita
 tile.gh:mars_ice.name=Hielo Marciano
+tile.gh:venus_regolith.name=Polvo Basáltico
+tile.gh:venus_rock.name=Piedra Basáltica
+tile.gh:venus_basalt.name=Pizarra Basáltica
 tile.gh:moon_silicon_ore.name=Mena de Silicio Lunar
 tile.gh:moon_silicon_ore_deep.name=Mena de Silicio en Pizarra Lunar
 tile.gh:moon_titanium_ore.name=Mena de Titanio Lunar
@@ -51,6 +54,20 @@ tile.gh:mars_gold_ore.name=Mena de Oro Marciana
 tile.gh:mars_gold_ore_deep.name=Mena de Oro en Pizarra Marciana
 tile.gh:mars_diamond_ore.name=Mena de Diamante Marciana
 tile.gh:mars_diamond_ore_deep.name=Mena de Diamante en Pizarra Marciana
+tile.gh:venus_silicon_ore.name=Mena de Silicio Venusiana
+tile.gh:venus_silicon_ore_deep.name=Mena de Silicio en Pizarra Venusiana
+tile.gh:venus_titanium_ore.name=Mena de Titanio Venusiana
+tile.gh:venus_titanium_ore_deep.name=Mena de Titanio en Pizarra Venusiana
+tile.gh:venus_copper_ore.name=Mena de Cobre Venusiana
+tile.gh:venus_copper_ore_deep.name=Mena de Cobre en Pizarra Venusiana
+tile.gh:venus_iron_ore.name=Mena de Hierro Venusiana
+tile.gh:venus_iron_ore_deep.name=Mena de Hierro en Pizarra Venusiana
+tile.gh:venus_gold_ore.name=Mena de Oro Venusiana
+tile.gh:venus_gold_ore_deep.name=Mena de Oro en Pizarra Venusiana
+tile.gh:venus_redstone_ore.name=Minério de Redstone Venusiano
+tile.gh:venus_redstone_ore_deep.name=Minério de Redstone em Ardósia Venusiano
+tile.gh:venus_diamond_ore.name=Mena de Diamante Venusiana
+tile.gh:venus_diamond_ore_deep.name=Mena de Diamante en Pizarra Venusiana
 
 ## materiais dos planetas (gerado por tools/make_materials.py)
 item.gh:silicon=Silicio
@@ -94,3 +111,30 @@ biome.gh.marte_valles.name=Valles Marineris
 biome.gh.marte_tharsis.name=Meseta de Tharsis
 biome.gh.marte_campo_de_dunas.name=Campo de Dunas
 biome.gh.marte_calota_polar.name=Casquete Polar
+
+## dimensões dos planetas (gerado por tools/make_planet_worlds.py)
+biome.gh.lua_mar_de_basalto.name=Mar de Basalto
+biome.gh.lua_terras_altas.name=Tierras Altas
+biome.gh.lua_bacia_de_impacto.name=Cuenca de Impacto
+biome.gh.lua_polo_sombrio.name=Polo Oscuro
+biome.gh.marte_planicie_boreal.name=Llanura Boreal
+biome.gh.marte_terras_altas_do_sul.name=Tierras Altas del Sur
+biome.gh.marte_valles.name=Valles Marineris
+biome.gh.marte_tharsis.name=Meseta de Tharsis
+biome.gh.marte_campo_de_dunas.name=Campo de Dunas
+biome.gh.marte_calota_polar.name=Casquete Polar
+biome.gh.venus_planicies_de_lava.name=Planícies de Lava
+biome.gh.venus_tesserae.name=Tesserae
+biome.gh.venus_domos_panqueca.name=Panquecas Vulcânicas
+biome.gh.venus_chasmata.name=Chasmata
+biome.gh.venus_montes_maxwell.name=Montes Maxwell
+
+## a Nave Level 2 e o kit dela (gerado por tools/make_tier2.py)
+item.gh:gold_shielding=Blindaje Dorado
+item.gh:heat_sink=Disipador Térmico
+item.gh:hull_ring=Anillo de Casco
+item.gh:energy_cell=Célula de Energía
+item.gh:nav_core=Núcleo de Navegación
+item.gh:flight_computer=Computadora de a Bordo
+item.gh:level_2_spaceship_spawn_egg=Nave Level 2
+entity.gh:level_2_spaceship.name=Nave Level 2

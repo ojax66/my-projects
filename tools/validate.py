@@ -1515,21 +1515,42 @@ if os.path.isfile(planets_path):
         planets_src = f.read()
 
 
-def planet_blocks(src):
+def planet_names(src):
+    """Os `const` que a lista `export const PLANETS = [...]` exporta.
+
+    Lido da lista e não fixo no código: quando um planeta novo entra, ele passa
+    a ser conferido sozinho — antes era `(MOON|MARS)` cravado aqui, e um
+    planeta novo simplesmente não era olhado por nenhuma das regras abaixo.
+    """
+    m = re.search(r"^export const PLANETS = \[([^\]]*)\];", src, re.M)
+    if not m:
+        return []
+    return [n.strip() for n in m.group(1).split(",") if n.strip()]
+
+
+def planet_blocks(src, nomes):
     """O trecho de cada planeta, do `const MOON = {` até o `};` dele."""
     out = {}
-    for m in re.finditer(r"\nconst (MOON|MARS) = \{(.*?)\n\};", src, re.S):
-        body = m.group(2)
+    for nome in nomes:
+        m = re.search(r"\nconst " + re.escape(nome) + r" = \{(.*?)\n\};", src, re.S)
+        if not m:
+            err(f"planets.js: PLANETS cita {nome}, mas nao ha `const {nome} = {{`")
+            continue
+        body = m.group(1)
         pid = re.search(r'\n  id: "(\w+)"', body)
         if pid:
             out[pid.group(1)] = body
+        else:
+            err(f"planets.js: o planeta {nome} nao tem `id:`")
     return out
 
 
-PLANET_SRC = planet_blocks(planets_src)
+PLANET_NAMES = planet_names(planets_src)
+PLANET_SRC = planet_blocks(planets_src, PLANET_NAMES)
 
-if planets_src and len(PLANET_SRC) != 2:
-    err(f"planets.js: li {len(PLANET_SRC)} planeta(s), esperado 2 (Lua e Marte)")
+if planets_src and len(PLANET_SRC) != len(PLANET_NAMES):
+    err(f"planets.js: li {len(PLANET_SRC)} planeta(s) de "
+        f"{len(PLANET_NAMES)} exportado(s) em PLANETS")
 
 # A altitude que devolve pro espaço tem que caber DENTRO da dimensão. Se ela
 # passar do teto, a porta de volta não abre nunca e o jogador fica preso lá.
@@ -1742,8 +1763,19 @@ for pid, src in PLANET_SRC.items():
 
     # 3. Os blocos do terreno existem...
     blocos = dict(re.findall(r'\n    (\w+): "([^"]+)",', src))
+    # `ice: null` é uma resposta VÁLIDA, e não um esquecimento: Vênus tem 464 °C
+    # em toda a superfície, do equador ao polo, e não há gelo nenhum nela. Um
+    # planeta que declara `ice: null` está dizendo isso de propósito — o que
+    # continua sendo erro é o campo simplesmente não existir.
+    sem_gelo = re.search(r'\n    ice: null,', src) is not None
     for papel in ("dust", "stone", "deep", "ice", "floor"):
         bid = blocos.get(papel)
+        if papel == "ice" and not bid and sem_gelo:
+            # e aí nenhum bioma pode pedir gelo, senão o gerador procuraria um
+            # bloco que o planeta declarou não ter
+            if re.search(r'\n      ice: \{', src):
+                err(f"planeta {pid} tem `ice: null` mas um bioma dele pede gelo")
+            continue
         if not bid:
             err(f"planeta {pid} sem o bloco de '{papel}'")
         elif not block_exists(bid):

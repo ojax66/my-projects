@@ -1,0 +1,31 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:flight_computer"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "ISI",
+      "SRS",
+      "ISI"
+    ],
+    "key": {
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "S": {
+        "item": "gh:silicon"
+      },
+      "R": {
+        "item": "minecraft:redstone"
+      }
+    },
+    "result": {
+      "item": "gh:flight_computer",
+      "count": 1
+    }
+  }
+}

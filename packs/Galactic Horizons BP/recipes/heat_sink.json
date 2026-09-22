@@ -1,0 +1,28 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:heat_sink"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "TCT",
+      "TCT",
+      "TCT"
+    ],
+    "key": {
+      "T": {
+        "item": "gh:titanium"
+      },
+      "C": {
+        "item": "minecraft:copper_ingot"
+      }
+    },
+    "result": {
+      "item": "gh:heat_sink",
+      "count": 2
+    }
+  }
+}

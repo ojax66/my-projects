@@ -445,7 +445,165 @@ const MARS = {
   ],
 };
 
-export const PLANETS = [MOON, MARS];
+// ---------------------------------------------------------------------------
+// Vênus
+// ---------------------------------------------------------------------------
+// O que define Vênus de verdade, e o que o gerador reproduz:
+//
+//  - CRATERA QUASE NÃO EXISTE, e as que existem são GRANDES. A atmosfera tem
+//    92 atmosferas de pressão: qualquer coisa menor que ~1 km queima antes de
+//    chegar ao chão. É o oposto exato da Lua, e é a assinatura do planeta —
+//    por isso aqui há UMA escala de cratera, rara e enorme, em vez das três da
+//    Lua.
+//  - A superfície é JOVEM (~500 milhões de anos, contra 4 bilhões da Lua):
+//    vulcanismo refez tudo. Daí pouca cratera e muita planície lisa.
+//  - Mais de 80% são PLANÍCIES DE LAVA basáltica, baixas e lisas.
+//  - As TESSERAE são o resto do terreno antigo: cristas cruzadas em duas
+//    direções, o lugar mais acidentado do planeta. Aqui elas são duas famílias
+//    de cristas se cruzando, que é literalmente o que a palavra descreve.
+//  - Os DOMOS PANQUECA são vulcões de topo chato e lado íngreme, largos e
+//    baixos — nada a ver com o cone do Olympus Mons.
+//  - Nenhum gelo, em lugar nenhum. A superfície inteira tem 464 °C, do equador
+//    ao polo, e o eixo é quase reto. Não há calota — é a única dos três
+//    planetas daqui sem ela.
+const VENUS = {
+  id: "venus",
+  bodyId: "venus",
+  dimensionId: "gh:venus",
+  name: "§eVênus",
+  defaultBiome: "gh:venus_planicies_de_lava",
+  fog: "gh:fog_venus",
+  // O céu visto do chão de Vênus é alaranjado e fechado — é a cor que as
+  // Venera fotografaram, filtrada por 60 km de nuvem de ácido sulfúrico.
+  skyColor: "#C98A3C",
+
+  baseY: 74,
+  crust: 30,
+
+  // 0,904 da gravidade da Terra: quase a mesma. Vênus é a gêmea da Terra em
+  // tamanho e massa, e aqui não há pulo de astronauta — anda-se normal.
+  gravity: { factor: 0.904 },
+
+  // Relevo menor que o da Lua e o de Marte: Vênus é o planeta mais LISO dos
+  // rochosos. Dois terços da superfície ficam dentro de 500 m da altitude
+  // média — o desnível todo cabe em pouca coisa, e o que sobressai são as
+  // tesserae e o Maxwell.
+  elevAmp: 26,
+  // As CRISTAS ENRUGADAS (wrinkle ridges) são a marca das planícies de Vênus:
+  // dobras longas e baixas, espalhadas por quase todo o planeta, que o radar
+  // da Magalhães viu em toda planície que mapeou. Vênus é lisa na escala do
+  // planeta e enrugada na escala de quem anda nela — as duas coisas ao mesmo
+  // tempo, e é por isso que o relevo REGIONAL é pequeno e o de DETALHE não.
+  detailAmp: 9,
+  grainAmp: 1.5,
+
+  blocks: {
+    dust: "gh:venus_regolith",
+    stone: "gh:venus_rock",
+    deep: "gh:venus_basalt",
+    ice: null,                 // não há gelo em Vênus. Em lugar nenhum.
+    floor: "minecraft:bedrock",
+  },
+
+  // --- Cavernas ------------------------------------------------------------
+  // Tubos de lava, como na Lua e em Marte, mas mais apertados: com 0,9 g e
+  // rocha a 464 °C, que amolece, um vão largo não se sustenta. São os menores
+  // dos três.
+  caves: { scale: 18, threshold: 0.625, fromSurface: 8, aboveFloor: 2 },
+
+  // --- Minérios ------------------------------------------------------------
+  // Vênus é basáltica e DIFERENCIADA, com vulcanismo recente: ferro e cobre de
+  // verdade, não óxido espalhado como em Marte. Nada de hélio-3 — aquilo é
+  // vento solar batendo em mundo sem atmosfera, e aqui a atmosfera é o que
+  // mais tem.
+  ores: {
+    vein: 7.0,
+    rarity: 0.13,
+    threshold: 0.57,
+    list: [
+      { ore: "silicon", from: 2, to: 28, weight: 34 },
+      { ore: "copper", from: 3, to: 28, weight: 26 },
+      { ore: "titanium", from: 6, to: 28, weight: 18 },
+      { ore: "iron", from: 2, to: 28, weight: 14 },
+      { ore: "redstone", from: 10, to: 28, weight: 6 },
+      { ore: "gold", from: 12, to: 28, weight: 1.6 },
+      { ore: "diamond", from: 20, to: 28, weight: 0.4 },
+    ],
+  },
+
+  // UMA escala só, rara e grande. Ver o cabeçalho: em Vênus não existe cratera
+  // pequena, porque a atmosfera queima o que a faria. `chance` 0.18 contra os
+  // 0.55 da Lua é o que faz encontrar uma ser raro.
+  craters: [
+    { cell: 420, chance: 0.18, rMin: 55, rMax: 110, depth: 0.16, rim: 0.030 },
+  ],
+
+  // Domos panqueca: largos, baixos e de lado íngreme. O campo de vulcão é o
+  // mesmo de Marte, com os números invertidos — raio grande, altura pequena.
+  volcanoes: { cell: 520, chance: 0.30, rMin: 90, rMax: 170, hMin: 18, hMax: 34 },
+
+  // Chasmata: os rifts de Vênus são mais largos e menos fundos que o Valles
+  // Marineris, e existem aos montes.
+  canyon: { width: 0.062, depth: 54, floor: 8 },
+
+  // As cristas das tesserae: DUAS famílias cruzadas, que é o que a palavra
+  // quer dizer (do mosaico romano). Só aparecem onde o peso do bioma tesserae
+  // manda — índice 1 na lista de biomas abaixo.
+  ridges: { biome: 1, wl: 130, amp: 16 },
+
+  biomes: [
+    {
+      id: "planicies_de_lava",
+      biomeId: "gh:venus_planicies_de_lava",
+      name: "§6Planícies de Lava",
+      // Basalto quase exposto sob um véu de poeira: é lava que esfriou, não
+      // rocha que se desfez em regolito.
+      dust: [1, 2],
+      stone: [7, 12],
+      craterScale: 0.7,
+      // Baltis Vallis, o canal de lava mais longo do Sistema Solar: 6800 km,
+      // mais que o Nilo. Ele existe aqui, e só aqui.
+      rille: { width: 0.013, depth: 6 },
+    },
+    {
+      id: "tesserae",
+      biomeId: "gh:venus_tesserae",
+      name: "§8Tesserae",
+      dust: [1, 2],
+      stone: [9, 15],
+      craterScale: 1.0,
+    },
+    {
+      id: "domos_panqueca",
+      biomeId: "gh:venus_domos_panqueca",
+      name: "§ePanquecas Vulcânicas",
+      dust: [2, 4],
+      stone: [6, 10],
+      craterScale: 0.2,
+    },
+    {
+      id: "chasmata",
+      biomeId: "gh:venus_chasmata",
+      name: "§4Chasmata",
+      dust: [1, 2],
+      stone: [5, 9],
+      craterScale: 0.25,
+    },
+    {
+      id: "montes_maxwell",
+      biomeId: "gh:venus_montes_maxwell",
+      name: "§fMontes Maxwell",
+      // O ponto mais alto de Vênus, 11 km. O topo dele tem uma "neve" que é
+      // sulfeto de chumbo condensado — mas é um brilho metálico na rocha, não
+      // um bloco de gelo, então aqui é a ardósia aparecendo.
+      dust: [1, 1],
+      stone: [4, 8],
+      craterScale: 0.8,
+    },
+  ],
+};
+
+export const PLANETS = [MOON, MARS, VENUS];
 
 export function planetOfDimension(dimensionId) {
   for (let i = 0; i < PLANETS.length; i++) {

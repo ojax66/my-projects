@@ -1,0 +1,28 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:gold_shielding"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "GGG",
+      "GTG",
+      "GGG"
+    ],
+    "key": {
+      "G": {
+        "item": "minecraft:gold_ingot"
+      },
+      "T": {
+        "item": "gh:titanium"
+      }
+    },
+    "result": {
+      "item": "gh:gold_shielding",
+      "count": 2
+    }
+  }
+}

@@ -218,6 +218,23 @@ function moonWeights(f) {
   ];
 }
 
+// Vênus. Sem polo: o eixo dela é quase reto e a superfície inteira tem 464 °C
+// do equador ao polo — não há calota pra repartir peso com ninguém. É a única
+// das três em que `f.polar` não entra na conta.
+function venusWeights(f, canyon, volcW) {
+  let rest = 1;
+  const wChasma = canyon * rest; rest -= wChasma;
+  // Os domos panqueca: onde o campo de vulcão levantou o chão.
+  const wDomos = volcW * rest; rest -= wDomos;
+  // Maxwell: só o teto do campo de elevação, que é o que faz dele raro.
+  const wMaxwell = sstep(0.80, 0.92, f.elev) * rest; rest -= wMaxwell;
+  // Tesserae: o terreno antigo e deformado, onde a aspereza é alta.
+  const wTesserae = sstep(0.60, 0.76, f.rough) * rest; rest -= wTesserae;
+  // E o que sobra é planície de lava — que em Vênus é a maior parte, como tem
+  // que ser: mais de 80% do planeta.
+  return [rest, wTesserae, wDomos, wChasma, wMaxwell];
+}
+
 function marsWeights(f, canyon, volcW) {
   let rest = 1;
   const wPolar = f.polar; rest -= wPolar;
@@ -255,7 +272,9 @@ export function terrainAt(planet, x, z) {
   const volc = planet.volcanoes ? volcanoField(x, z, planet.volcanoes) : 0;
   const volcW = volc > 0 ? sstep(0, 12, volc) : 0;
 
-  const w = planet.id === "moon" ? moonWeights(f) : marsWeights(f, canyon, volcW);
+  const w = planet.id === "moon" ? moonWeights(f)
+    : planet.id === "venus" ? venusWeights(f, canyon, volcW)
+      : marsWeights(f, canyon, volcW);
 
   // --- a altura ------------------------------------------------------------
   let h = planet.baseY
@@ -284,6 +303,26 @@ export function terrainAt(planet, x, z) {
   // O vulcão inteiro, sem gate nenhum: quem o corta é que teria que virar
   // degrau. Ele não segue Tharsis — ele DEFINE Tharsis (ver marsWeights).
   h += volc;
+
+  // TESSERAE: duas famílias de crista se CRUZANDO.
+  //
+  // A palavra vem do mosaico romano, e é exatamente o que as imagens de radar
+  // mostram: dois conjuntos de dobras em direções diferentes, um por cima do
+  // outro. Uma família só daria um terreno ondulado comum — o que faz aquilo
+  // parecer tesserae é o cruzamento.
+  //
+  // `1 - |2n - 1|` transforma ruído macio em CRISTA: o valor sobe até o meio e
+  // desce depois, então o topo vira uma quina em vez de uma colina. É a mesma
+  // conta que dá as cordilheiras afiadas de qualquer gerador de terreno.
+  if (planet.ridges) {
+    const wR = w[planet.ridges.biome] ?? 0;
+    if (wR > 0) {
+      const a = 1 - Math.abs(2 * fbm(x + 5000, z - 5000, 3, 0.5, 1 / planet.ridges.wl) - 1);
+      const b = 1 - Math.abs(2 * fbm(x - 5000, z + 5000, 3, 0.5,
+                                     1 / (planet.ridges.wl * 0.62)) - 1);
+      h += planet.ridges.amp * (a * 0.58 + b * 0.42) * wR;
+    }
+  }
 
   // O cânion: parede íngreme, fundo chato. A potência 0.35 é o que faz a parede
   // — a queda quase toda acontece nos primeiros metros a partir da borda.

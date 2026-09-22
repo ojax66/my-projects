@@ -1,0 +1,43 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:level_2_spaceship"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "BHB",
+      "C1D",
+      "FNF"
+    ],
+    "key": {
+      "B": {
+        "item": "gh:gold_shielding"
+      },
+      "H": {
+        "item": "gh:hull_ring"
+      },
+      "C": {
+        "item": "gh:energy_cell"
+      },
+      "1": {
+        "item": "gh:level_1_spaceship_spawn_egg"
+      },
+      "D": {
+        "item": "gh:heat_sink"
+      },
+      "F": {
+        "item": "gh:flight_computer"
+      },
+      "N": {
+        "item": "gh:nav_core"
+      }
+    },
+    "result": {
+      "item": "gh:level_2_spaceship_spawn_egg",
+      "count": 1
+    }
+  }
+}

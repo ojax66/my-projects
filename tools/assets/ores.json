@@ -159,6 +159,21 @@
         "gold",
         "diamond"
       ]
+    },
+    "venus": {
+      "stone": "venus_rock",
+      "deep": "venus_basalt",
+      "pt": "Venusiano",
+      "en": "Venusian",
+      "ores": [
+        "silicon",
+        "titanium",
+        "copper",
+        "iron",
+        "gold",
+        "redstone",
+        "diamond"
+      ]
     }
   }
 }

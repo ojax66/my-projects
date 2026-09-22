@@ -38,6 +38,7 @@ import { sustainInSpacecraftWorlds } from "./gear.js";
 import { applyStarArmorPowers, startStarArmor } from "./starPowers.js";
 import { startTrashCan } from "./trashCan.js";
 import { startSettings } from "./settings.js";
+import { startShipPickup } from "./shipPickup.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet,
@@ -246,6 +247,7 @@ startStarArmor();
 startTrashCan();
 // A engrenagem de idioma, e a entrega dela a quem entra pela primeira vez.
 startSettings();
+startShipPickup();
 
 // ---------------------------------------------------------------------------
 // Limpeza

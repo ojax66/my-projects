@@ -1,0 +1,29 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:block": {
+    "description": {
+      "identifier": "gh:venus_rock",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "gh_venus_rock",
+          "render_method": "opaque",
+          "ambient_occlusion": false,
+          "face_dimming": true
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.5
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 15
+      },
+      "minecraft:map_color": "#5E554C"
+    }
+  }
+}

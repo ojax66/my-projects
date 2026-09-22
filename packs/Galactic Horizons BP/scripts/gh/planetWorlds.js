@@ -41,6 +41,7 @@ import {
   stormNotice,
 } from "./marsStorm.js";
 import { t as txt, nome } from "./i18n.js";
+import { applyVenus, applyVenusToShips } from "./venus.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -235,6 +236,17 @@ export function applyPlanetTick(player) {
   // Gravidade do planeta, por controlador próprio — todo tick, porque ela é
   // uma correção de aceleração e não um efeito com duração.
   applyPlanetGravity(player, planet);
+
+  // VÊNUS vem antes de tudo: lá o que mata não é falta de ar, é ter ar demais,
+  // e avisar "sem oxigênio" a alguém sendo esmagado por 92 atmosferas seria
+  // mandá-lo procurar a solução errada.
+  const aVenus = applyVenus(player);
+  const aNave = applyVenusToShips(player);
+  if (aVenus) {
+    if (now % 10 === 0) actionBar(player, aVenus);
+    return true;
+  }
+  if (aNave && now % 20 === 0) actionBar(player, aNave);
 
   if (PLANET_VACUUM) {
     const breathing = applyLifeSupport(player);

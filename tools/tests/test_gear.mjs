@@ -326,7 +326,11 @@ const spaceLoc = (body, d, axis = 'x') => ({
   check('o reforçado também, sem depender de mochila', canBreathe(reforcado));
 
   check('sem traje o jogador congela', !isWarm(nu));
-  check('o traje básico NÃO isola do frio', !isWarm(basico));
+  // O básico ISOLA. Um traje espacial de verdade não é uma roupa grossa: o
+  // vácuo não conduz calor, e o serviço mais simples que um traje presta é
+  // justamente o isolamento — quem não presta esse serviço não é traje.
+  // O que separa o básico do reforçado é a PRESSÃO, não o frio.
+  check('o traje básico isola do frio do espaço', isWarm(basico));
   check('o traje reforçado isola do frio', isWarm(reforcado));
 
   check('só o reforçado anula a pressão',

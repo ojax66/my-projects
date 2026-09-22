@@ -167,5 +167,73 @@
   "gh:trash_can": {
     "textures": "gh_trash_can",
     "sound": "metal"
+  },
+  "gh:venus_regolith": {
+    "textures": "gh_venus_regolith",
+    "sound": "stone"
+  },
+  "gh:venus_rock": {
+    "textures": "gh_venus_rock",
+    "sound": "stone"
+  },
+  "gh:venus_basalt": {
+    "textures": "gh_venus_basalt",
+    "sound": "stone"
+  },
+  "gh:venus_silicon_ore": {
+    "textures": "gh_venus_silicon_ore",
+    "sound": "stone"
+  },
+  "gh:venus_silicon_ore_deep": {
+    "textures": "gh_venus_silicon_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_titanium_ore": {
+    "textures": "gh_venus_titanium_ore",
+    "sound": "stone"
+  },
+  "gh:venus_titanium_ore_deep": {
+    "textures": "gh_venus_titanium_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_copper_ore": {
+    "textures": "gh_venus_copper_ore",
+    "sound": "stone"
+  },
+  "gh:venus_copper_ore_deep": {
+    "textures": "gh_venus_copper_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_iron_ore": {
+    "textures": "gh_venus_iron_ore",
+    "sound": "stone"
+  },
+  "gh:venus_iron_ore_deep": {
+    "textures": "gh_venus_iron_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_gold_ore": {
+    "textures": "gh_venus_gold_ore",
+    "sound": "stone"
+  },
+  "gh:venus_gold_ore_deep": {
+    "textures": "gh_venus_gold_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_redstone_ore": {
+    "textures": "gh_venus_redstone_ore",
+    "sound": "stone"
+  },
+  "gh:venus_redstone_ore_deep": {
+    "textures": "gh_venus_redstone_ore_deep",
+    "sound": "stone"
+  },
+  "gh:venus_diamond_ore": {
+    "textures": "gh_venus_diamond_ore",
+    "sound": "stone"
+  },
+  "gh:venus_diamond_ore_deep": {
+    "textures": "gh_venus_diamond_ore_deep",
+    "sound": "stone"
   }
 }

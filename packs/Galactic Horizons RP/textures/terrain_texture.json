@@ -126,6 +126,57 @@
     },
     "gh_trash_can": {
       "textures": "textures/gh/blocks/trash_can"
+    },
+    "gh_venus_regolith": {
+      "textures": "textures/gh/blocks/venus_regolith"
+    },
+    "gh_venus_rock": {
+      "textures": "textures/gh/blocks/venus_rock"
+    },
+    "gh_venus_basalt": {
+      "textures": "textures/gh/blocks/venus_basalt"
+    },
+    "gh_venus_silicon_ore": {
+      "textures": "textures/gh/blocks/venus_silicon_ore"
+    },
+    "gh_venus_silicon_ore_deep": {
+      "textures": "textures/gh/blocks/venus_silicon_ore_deep"
+    },
+    "gh_venus_titanium_ore": {
+      "textures": "textures/gh/blocks/venus_titanium_ore"
+    },
+    "gh_venus_titanium_ore_deep": {
+      "textures": "textures/gh/blocks/venus_titanium_ore_deep"
+    },
+    "gh_venus_copper_ore": {
+      "textures": "textures/gh/blocks/venus_copper_ore"
+    },
+    "gh_venus_copper_ore_deep": {
+      "textures": "textures/gh/blocks/venus_copper_ore_deep"
+    },
+    "gh_venus_iron_ore": {
+      "textures": "textures/gh/blocks/venus_iron_ore"
+    },
+    "gh_venus_iron_ore_deep": {
+      "textures": "textures/gh/blocks/venus_iron_ore_deep"
+    },
+    "gh_venus_gold_ore": {
+      "textures": "textures/gh/blocks/venus_gold_ore"
+    },
+    "gh_venus_gold_ore_deep": {
+      "textures": "textures/gh/blocks/venus_gold_ore_deep"
+    },
+    "gh_venus_redstone_ore": {
+      "textures": "textures/gh/blocks/venus_redstone_ore"
+    },
+    "gh_venus_redstone_ore_deep": {
+      "textures": "textures/gh/blocks/venus_redstone_ore_deep"
+    },
+    "gh_venus_diamond_ore": {
+      "textures": "textures/gh/blocks/venus_diamond_ore"
+    },
+    "gh_venus_diamond_ore_deep": {
+      "textures": "textures/gh/blocks/venus_diamond_ore_deep"
     }
   }
 }

@@ -73,9 +73,18 @@ export function isWarm(player) {
 
   if (inPressurizedVehicle(player)) return true;
 
-  // O traje comum NÃO entra aqui: ele resolve o ar, não o isolamento.
+  // Os TRÊS seguram o frio: armadura de estrela, traje reforçado e o básico.
+  //
+  // O básico não entrava, e isso era errado sobre o que ele é. Um traje
+  // espacial de verdade não é uma roupa grossa: o vácuo não conduz calor, e o
+  // problema de quem está nele é justamente não conseguir se livrar do próprio
+  // calor. O isolamento é o serviço mais simples que um traje presta — quem
+  // não presta esse serviço não é traje.
+  //
+  // O que separa o básico do reforçado é a PRESSÃO: esmagamento no Sol e as 92
+  // atmosferas de Vênus. Isso continua sendo só do reforçado pra cima.
   const tier = protectionTier(player);
-  return tier === "star" || tier === "suit";
+  return tier === "star" || tier === "suit" || tier === "basic";
 }
 
 /**

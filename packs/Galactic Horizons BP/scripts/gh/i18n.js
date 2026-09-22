@@ -51,6 +51,26 @@ const TEXTOS = {
     en: "§4§lNO OXYGEN §r§7— full suit + backpack, or get in the UFO",
     es: "§4§lSIN OXÍGENO §r§7— traje completo + mochila, o entra en el OVNI",
   },
+  "hud.venus_esmagando": {
+    pt: "§4§lVÊNUS ESMAGANDO §r§7— 92 atm a 464 °C: só o traje reforçado",
+    en: "§4§lVENUS IS CRUSHING YOU §r§7— 92 atm at 464 °C: reinforced suit only",
+    es: "§4§lVENUS TE APLASTA §r§7— 92 atm a 464 °C: solo el traje reforzado",
+  },
+  "hud.venus_nave_cedendo": {
+    pt: "§c§lO CASCO ESTÁ CEDENDO §r§7— a Level 1 não aguenta Vênus ({s}s)",
+    en: "§c§lTHE HULL IS BUCKLING §r§7— the Level 1 cannot take Venus ({s}s)",
+    es: "§c§lEL CASCO CEDE §r§7— la Level 1 no aguanta Venus ({s}s)",
+  },
+  "nave.guardar_ocupada": {
+    pt: "§eTem gente dentro — todo mundo precisa descer primeiro.",
+    en: "§eSomeone is aboard — everyone has to get out first.",
+    es: "§eHay alguien dentro — todos tienen que bajar primero.",
+  },
+  "nave.guardar_cheio": {
+    pt: "§eInventário cheio — a nave continua onde está.",
+    en: "§eInventory full — the ship stays where it is.",
+    es: "§eInventario lleno — la nave se queda donde está.",
+  },
   "hud.rastreador": { pt: "§lRASTREADOR", en: "§lTRACKER", es: "§lRASTREADOR" },
   "hud.nada_ligado": {
     pt: "§8rastreador sem nada ligado",
@@ -302,6 +322,15 @@ const TEXTOS = {
 // Os NOMES dos corpos e biomas. Ficam aqui e não nas tabelas de dados porque
 // só existem pra ser LIDOS na tela — o gerador usa o id, nunca o nome.
 const NOMES = {
+  venus: { pt: "§eVênus", en: "§eVenus", es: "§eVenus" },
+  venus_planicies_de_lava: {
+    pt: "§6Planícies de Lava", en: "§6Lava Plains", es: "§6Llanuras de Lava" },
+  venus_tesserae: { pt: "§8Tesserae", en: "§8Tesserae", es: "§8Tesserae" },
+  venus_domos_panqueca: {
+    pt: "§ePanquecas Vulcânicas", en: "§ePancake Domes", es: "§eDomos Panqueque" },
+  venus_chasmata: { pt: "§4Chasmata", en: "§4Chasmata", es: "§4Chasmata" },
+  venus_montes_maxwell: {
+    pt: "§fMontes Maxwell", en: "§fMaxwell Montes", es: "§fMontes Maxwell" },
   sun: { pt: "§6Sol", en: "§6Sun", es: "§6Sol" },
   earth: { pt: "§bTerra", en: "§bEarth", es: "§bTierra" },
   moon: { pt: "§7Lua", en: "§7Moon", es: "§7Luna" },

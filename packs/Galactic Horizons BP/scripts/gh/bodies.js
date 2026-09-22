@@ -234,6 +234,20 @@ const PALETTES = {
     if (n >= 0.538) return "gh:mars_rock";
     return "gh:mars_dust";
   },
+
+  // Vênus: planície de lava por quase toda parte, com as terras deformadas
+  // (tesserae) como mancha minoritária e nada de calota — o eixo dela é quase
+  // reto e a superfície toda tem a mesma temperatura, 464 °C do equador ao
+  // polo. Por isso esta é a única paleta sem `polarness`.
+  //
+  // As proporções são as de verdade: ~80% planície, o resto dividido entre
+  // terreno alto deformado e basalto exposto.
+  venus(x, y, z) {
+    const n = surfaceNoise(x, y, z, 0.065);
+    if (n >= 0.780) return "gh:venus_basalt";
+    if (n >= 0.585) return "gh:venus_rock";
+    return "gh:venus_regolith";
+  },
 };
 
 // ---------------------------------------------------------------------------

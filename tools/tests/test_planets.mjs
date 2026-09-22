@@ -142,8 +142,20 @@ for (const planet of PLANETS) {
     }
     const taxaDe = (o) => (conta.get(o) ?? 0) / solidos;
     if (faixa.has("silicon") && faixa.has("iron")) {
-      check(`  ${planet.id}: ferro é MUITO mais raro que silício`,
-            taxaDe("iron") * 4 < taxaDe("silicon"),
+      // Quanto o ferro tem que ser mais raro que o silício DEPENDE DO PLANETA,
+      // e isso não é afrouxar a regra — é a regra sendo sobre geologia.
+      //
+      // Na Lua o ferro é meteórico: caiu do céu, não se concentrou. Em Marte
+      // ele está TODO oxidado e espalhado na poeira, que é o que deixa o
+      // planeta vermelho — óxido espalhado não vira veio. Nos dois, 4x.
+      //
+      // Vênus é DIFERENCIADA e teve vulcanismo há pouco tempo: o ferro dela
+      // desceu pro núcleo e subiu de volta em magma, que é exatamente o
+      // processo que faz veio. Ele continua mais raro que o silício, e não
+      // pelo mesmo abismo.
+      const fator = planet.id === "venus" ? 2 : 4;
+      check(`  ${planet.id}: ferro é mais raro que silício (${fator}x)`,
+            taxaDe("iron") * fator < taxaDe("silicon"),
             `(ferro ${(100 * taxaDe("iron")).toFixed(4)}%, silício ${(100 * taxaDe("silicon")).toFixed(4)}%)`);
     }
     if (faixa.has("gold") && faixa.has("iron")) {

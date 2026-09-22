@@ -1,0 +1,23 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "gh:sky_venus",
+      "materials": {
+        "default": "gh_sky"
+      },
+      "textures": {
+        "default": "textures/gh/sky/venus"
+      },
+      "geometry": {
+        "default": "geometry.gh.sky_body"
+      },
+      "scripts": {
+        "should_update_bones_and_effects_offscreen": true
+      },
+      "render_controllers": [
+        "controller.render.gh.sky_body"
+      ]
+    }
+  }
+}

@@ -61,6 +61,9 @@ GROUND_BLOCKS = {
     # marcada.
     "moon_iron_ore", "moon_gold_ore", "moon_redstone_ore", "moon_diamond_ore",
     "mars_iron_ore", "mars_copper_ore", "mars_gold_ore", "mars_diamond_ore",
+    "venus_regolith", "venus_rock", "venus_basalt",
+    "venus_iron_ore", "venus_copper_ore", "venus_gold_ore", "venus_diamond_ore",
+    "venus_redstone_ore",
 }
 
 def block(texture, map_color, pt, en, light=BODY_LIGHT, hardness=1.2, solid=True, dampening=None):
@@ -135,6 +138,25 @@ BLOCKS = {
                             light=GROUND_LIGHT, hardness=1.8),
     "mars_ice":       block("mars_ice", "#E2D7CF", "Gelo Marciano", "Martian Ice",
                             light=GROUND_LIGHT, hardness=1.0),
+
+    # --- Vênus ---------------------------------------------------------------
+    # AS TRÊS TEXTURAS SÃO DELE, e entram pixel a pixel (ver VENUS_SOURCES em
+    # make_block_textures.py). Ele as fez já na ordem certa: luminância medida
+    # 153, 87 e 45 — poeira, pedra, ardósia, a mesma escada da Lua e de Marte.
+    #
+    # A família é BASALTO porque é isso que Vênus é: mais de 80% da superfície
+    # são planícies de lava basáltica, e não há óxido de ferro solto como em
+    # Marte nem regolito de impacto como na Lua — há atmosfera demais pra um e
+    # vulcanismo recente demais pro outro.
+    "venus_regolith": block("venus_regolith", "#AB9673",
+                            "Poeira Basáltica", "Basaltic Dust",
+                            light=GROUND_LIGHT, hardness=1.0),
+    "venus_rock":     block("venus_rock", "#5E554C",
+                            "Pedra Basáltica", "Basaltic Stone",
+                            light=GROUND_LIGHT, hardness=1.5),
+    "venus_basalt":   block("venus_basalt", "#2E2C2B",
+                            "Ardósia Basáltica", "Basaltic Slate",
+                            light=GROUND_LIGHT, hardness=2.0),
 }
 
 # --- Minérios ----------------------------------------------------------------
@@ -160,6 +182,7 @@ with open(os.path.join(ROOT, "tools", "assets", "ores.json"), encoding="utf-8") 
 MAP_COLOR = {
     "moon_regolith": "#8A8E9C", "moon_regolith_dark": "#4F4B52",
     "mars_rock": "#95432A", "mars_rock_dark": "#50281A",
+    "venus_rock": "#5E554C", "venus_basalt": "#2E2C2B",
 }
 
 ORES = []

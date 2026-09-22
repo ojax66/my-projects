@@ -1,0 +1,31 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:energy_cell"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "GHG",
+      "HRH",
+      "GHG"
+    ],
+    "key": {
+      "G": {
+        "item": "minecraft:glass"
+      },
+      "H": {
+        "item": "gh:helium3"
+      },
+      "R": {
+        "item": "minecraft:redstone_block"
+      }
+    },
+    "result": {
+      "item": "gh:energy_cell",
+      "count": 1
+    }
+  }
+}

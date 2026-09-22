@@ -1,0 +1,29 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:block": {
+    "description": {
+      "identifier": "gh:venus_regolith",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "gh_venus_regolith",
+          "render_method": "opaque",
+          "ambient_occlusion": false,
+          "face_dimming": true
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 15
+      },
+      "minecraft:map_color": "#AB9673"
+    }
+  }
+}

@@ -160,6 +160,9 @@ for (const body of BODIES) {
     'gh:earth_forest','gh:earth_ice',
     'gh:moon_regolith_light','gh:moon_regolith','gh:moon_regolith_dark',
     'gh:mars_dust','gh:mars_rock','gh:mars_rock_dark','gh:mars_ice',
+    // Venus nao tem gelo: 464 graus na superficie inteira, do equador ao polo.
+    // E a unica dos tres corpos de superficie sem um bloco de gelo na paleta.
+    'gh:venus_regolith','gh:venus_rock','gh:venus_basalt',
   ]);
   const used = new Set();
   for (const body of BODIES) {

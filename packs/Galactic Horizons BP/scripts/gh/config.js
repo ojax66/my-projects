@@ -202,6 +202,29 @@ export const BODIES = [
     arrival: { x: 56, y: ORBIT_Y, z: 190 },
   },
   {
+    id: "venus",
+    name: "§eVênus",
+    // Entre o Sol e a Terra, que é onde ela está de verdade: a segunda órbita.
+    center: { x: -270, y: ORBIT_Y, z: -60 },
+    // Vênus tem 95% do diâmetro da Terra — é a gêmea dela em tamanho. A Terra
+    // aqui tem raio 26, então 25.
+    radius: 25,
+    built: false,
+    solid: true,
+    layers: [{ radius: 25, shell: 4, palette: "venus" }],
+    portal: { kind: "planet", dimension: "gh:venus" },
+    // 0,90 da gravidade da Terra: o campo é mais forte que o de Marte, e o
+    // alcance acompanha o raio maior.
+    gravity: { reach: 44, strength: 0.030 },
+    // A chegada fica do lado de FORA, na direção oposta ao Sol.
+    //
+    // Direto entre Vênus e o Sol não dá: o campo de calor do Sol vai até 250
+    // do centro dele, e Vênus inteira está a 308 — uma chegada a 85 blocos de
+    // Vênus voltada pro Sol cairia a 227, ou seja, dentro do forno. Do outro
+    // lado ela fica a 393, com folga.
+    arrival: { x: -189, y: ORBIT_Y, z: -118 },
+  },
+  {
     id: "mars",
     name: "§cMarte",
     center: { x: 520, y: ORBIT_Y, z: -120 },
@@ -473,6 +496,52 @@ export const WRECK_LOOT = [
   { item: "minecraft:redstone", chance: 0.6, min: 3, max: 9 },
   { item: "minecraft:amethyst_shard", chance: 0.4, min: 1, max: 4 },
 ];
+
+// ---------------------------------------------------------------------------
+// Vênus
+// ---------------------------------------------------------------------------
+// O que mata em Vênus não é falta de ar: é ter ar DEMAIS. São 92 atmosferas de
+// gás carbônico a 464 °C — mais pressão que a 900 m de profundidade no oceano,
+// e quente o bastante pra derreter chumbo. As sondas soviéticas Venera
+// aguentaram entre 23 minutos e 2 horas lá embaixo, e foram as que duraram
+// mais; as primeiras foram esmagadas antes de pousar.
+//
+// No addon isso vira uma regra só: SÓ O TRAJE REFORÇADO (ou a armadura de
+// estrela, que é melhor que ele em tudo) segura Vênus. O traje básico resolve
+// ar e frio, e nenhum dos dois é o problema aqui.
+export const VENUS_ENABLED = true;
+// Dano por intervalo pra quem está lá sem o traje certo, e de quanto em quanto.
+// 4 de dano a cada segundo mata um jogador com vida cheia em 5 segundos: é
+// tempo de entender o que está acontecendo e de voltar pra nave, e não é tempo
+// de explorar nada.
+export const VENUS_DAMAGE = 4;
+export const VENUS_DAMAGE_INTERVAL = 20;
+// E pega fogo, porque 464 °C é acima do ponto de fulgor de quase tudo.
+export const VENUS_BURN_SECONDS = 4;
+
+// A Nave Level 1 NÃO sobrevive a Vênus.
+//
+// Ela é uma casca de vidro e ferro montada numa lixeira: aguenta vácuo, que é
+// ausência de pressão, e não aguenta 92 atmosferas empurrando pra dentro. A
+// Level 2 aguenta — é pra isso que existe o kit que a transforma.
+//
+// Os segundos são o tempo entre chegar e o casco ceder: dá pra ver a nave
+// rangendo e sair de dentro dela antes.
+export const VENUS_CRUSHES_TIER1 = true;
+export const VENUS_CRUSH_SECONDS = 6;
+export const TIER1_SHIP = "gh:level_1_spaceship";
+export const TIER2_SHIP = "gh:level_2_spaceship";
+
+// Agachar e clicar na nave guarda ela no inventário, como ovo.
+//
+// Sem isto uma nave só se perde: ela fica onde pousou, e voltar a pé de outro
+// planeta pra buscá-la não é jogo, é castigo. O `crouching_skip_interact` da
+// nave já faz o agachar não montar, então o gesto estava livre.
+export const SHIP_PICKUP_ON_SNEAK = true;
+export const SHIP_EGGS = {
+  "gh:level_1_spaceship": "gh:level_1_spaceship_spawn_egg",
+  "gh:level_2_spaceship": "gh:level_2_spaceship_spawn_egg",
+};
 
 // ---------------------------------------------------------------------------
 // Ponto de renascimento

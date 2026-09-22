@@ -1,0 +1,25 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:hull_ring"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "TTT",
+      "T T",
+      "TTT"
+    ],
+    "key": {
+      "T": {
+        "item": "gh:titanium"
+      }
+    },
+    "result": {
+      "item": "gh:hull_ring",
+      "count": 2
+    }
+  }
+}

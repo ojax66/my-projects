@@ -1,0 +1,31 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "gh:nav_core"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "SAS",
+      "ADA",
+      "SAS"
+    ],
+    "key": {
+      "S": {
+        "item": "gh:silicon"
+      },
+      "A": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "D": {
+        "item": "minecraft:diamond"
+      }
+    },
+    "result": {
+      "item": "gh:nav_core",
+      "count": 1
+    }
+  }
+}

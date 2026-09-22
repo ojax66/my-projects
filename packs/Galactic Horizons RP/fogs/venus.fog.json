@@ -1,0 +1,16 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "gh:fog_venus"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 8.0,
+        "fog_end": 46.0,
+        "fog_color": "#C97B33",
+        "render_distance_type": "fixed"
+      }
+    }
+  }
+}

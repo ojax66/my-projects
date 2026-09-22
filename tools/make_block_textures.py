@@ -570,6 +570,20 @@ ORES = ore_blocks()
 #
 # Os fatores vêm da rampa original da Lua: pedra 0,733 e ardósia 0,419 do tom
 # claro (154/210 e 88/210 nos centros de antes).
+# --- Vênus ------------------------------------------------------------------
+# AS TRÊS SÃO DELE, e entram pixel a pixel.
+#
+# Marte e a Lua são reconstruídos por paleta — os `ref_*.png` daquelas duas são
+# só conferência. Aqui não: ele mandou três texturas prontas de 32x32, que é
+# exatamente o tamanho que o pack usa, e reconstruí-las por paleta seria
+# aproximar o que já está certo. Elas são copiadas e, a partir daí, servem de
+# PEDRA DE BASE pros minérios de Vênus como qualquer outra.
+VENUS_SOURCES = {
+    "venus_regolith": "venus/ref_venus_regolith.png",
+    "venus_rock": "venus/ref_venus_rock.png",
+    "venus_basalt": "venus/ref_venus_basalt.png",
+}
+
 MOON_SOURCE = "ref_moon_regolith_light.png"
 MOON_LAYERS = {
     "moon_regolith_light": 1.0,
@@ -606,10 +620,20 @@ def moon_from_source(rows, fator):
 
 
 def read_png(path):
-    """Lê um PNG RGBA de 8 bits como lista de linhas de tuplas."""
+    """Lê um PNG de 8 bits (RGB ou RGBA) como lista de linhas de tuplas RGBA.
+
+    RGB e não só RGBA porque a arte que ele manda vem do editor dele, e
+    editor de textura salva sem canal alfa quando a imagem é opaca — que é o
+    caso de qualquer bloco. Ler só RGBA fazia o gerador estourar num
+    IndexError sem dizer por quê, e o motivo seria "faltou um byte por pixel".
+    """
     with open(path, "rb") as f:
         raw = f.read()
-    w, h = struct.unpack(">II", raw[16:24])
+    w, h, depth, color = struct.unpack(">IIBB", raw[16:26])
+    if depth != 8 or color not in (2, 6):
+        raise ValueError(f"{path}: PNG tem que ser 8 bits RGB ou RGBA "
+                         f"(depth={depth}, colortype={color})")
+    canais = 4 if color == 6 else 3
     idat = b""
     i = 8
     while i < len(raw):
@@ -618,7 +642,7 @@ def read_png(path):
             idat += raw[i + 8:i + 8 + ln]
         i += 12 + ln
     data = zlib.decompress(idat)
-    stride = w * 4
+    stride = w * canais
     out = []
     prev = bytearray(stride)
     pos = 0
@@ -626,9 +650,9 @@ def read_png(path):
         f_ = data[pos]; pos += 1
         line = bytearray(data[pos:pos + stride]); pos += stride
         for x in range(stride):
-            a = line[x - 4] if x >= 4 else 0
+            a = line[x - canais] if x >= canais else 0
             b = prev[x]
-            c = prev[x - 4] if x >= 4 else 0
+            c = prev[x - canais] if x >= canais else 0
             if f_ == 1: line[x] = (line[x] + a) & 255
             elif f_ == 2: line[x] = (line[x] + b) & 255
             elif f_ == 3: line[x] = (line[x] + (a + b) // 2) & 255
@@ -636,7 +660,10 @@ def read_png(path):
                 pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
                 pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
                 line[x] = (line[x] + pr) & 255
-        out.append([tuple(line[x:x + 4]) for x in range(0, stride, 4)])
+        if canais == 4:
+            out.append([tuple(line[x:x + 4]) for x in range(0, stride, 4)])
+        else:
+            out.append([tuple(line[x:x + 3]) + (255,) for x in range(0, stride, 3)])
         prev = line
     return out
 
@@ -652,10 +679,14 @@ if __name__ == "__main__":
 
     todos = ([(n, "corpo") for n in TEXTURES]
              + [(n, "lua") for n in MOON_LAYERS]
+             + [(n, "vênus") for n in VENUS_SOURCES]
              + [(n, "minério") for n in ORES])
     for name, tipo in todos:
         if tipo == "lua":
             rows = moon_from_source(fonte_lua, MOON_LAYERS[name])
+        elif tipo == "vênus":
+            # A arte dele, sem passar por paleta nenhuma.
+            rows = read_png(os.path.join(REF_DIR, VENUS_SOURCES[name]))
         elif tipo == "minério":
             if crystal is None:
                 crystal, degraus = extract_crystal(ore_ref, built[ORE_REF_OVER])
@@ -681,6 +712,13 @@ if __name__ == "__main__":
             write_png(os.path.join(OUT, f"{name}.png"), rows)
 
         nc = distinct_colors(rows)
+        if tipo == "vênus":
+            # Não passa pelas regras de paleta: essas regras existem pra julgar
+            # o que o GERADOR inventa, e isto aqui não foi inventado.
+            print(f"  {name:22s} {nc:5d} {luma_range(rows):6.0f} "
+                  f"{average_color(rows):>8s}   (dele)")
+            built[name] = rows
+            continue
         bias = center_bias(rows)
         rng = luma_range(rows)
         built[name] = rows
