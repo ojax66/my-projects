@@ -211,6 +211,23 @@ export const BODIES = [
     radius: 25,
     built: false,
     solid: true,
+    // AS QUATRO CAMADAS DE ATMOSFERA, que são as de verdade, de fora pra
+    // dentro: névoa superior (70–90 km), nuvem superior (57–70 km), nuvem
+    // média/baixa (48–57 km) e névoa inferior (30–48 km).
+    //
+    // As escalas são dramatizadas, como já são na Terra (atmosfera real de
+    // 1,002 desenhada a 1,14): na escala certa a nuvem de Vênus daria 1,012 e
+    // não se veria nada. O que se mantém é a proporção entre elas e a ordem
+    // das cores — clara por fora, laranja por dentro.
+    //
+    // E o disco NÃO é a superfície: é o topo da nuvem, a 70 km. Ninguém jamais
+    // viu o chão de Vênus de fora — foi preciso pousar ou usar radar.
+    // Ver tools/make_sky_venus.py.
+    atmosphere: {
+      reach: 1.26,
+      rings: ["#E8DCC4", "#E0CFA0", "#D4B678", "#C09A55"],
+      haze: { color: "#C9A05A", alpha: 10, passes: 2 },
+    },
     layers: [{ radius: 25, shell: 4, palette: "venus" }],
     portal: { kind: "planet", dimension: "gh:venus" },
     // 0,90 da gravidade da Terra: o campo é mais forte que o de Marte, e o
@@ -374,7 +391,11 @@ export const BASIC_SUIT_PIECES = [
 // Dentro de qualquer um destes o jogador respira normal — e não congela, que é
 // o outro eixo (ver cold.js). A Nave Level 1 é dele, e agora mora aqui dentro:
 // o addon dela foi juntado a este, pra não ficarem dois pacotes separados.
-export const PRESSURIZED_VEHICLES = ["dlb_van:ufo", "gh:level_1_spaceship"];
+// A Level 2 entra junto: ela é a Level 1 reforçada, e seria absurdo a nave que
+// aguenta 92 atmosferas de Vênus não pressurizar a cabine no vácuo.
+export const PRESSURIZED_VEHICLES = [
+  "dlb_van:ufo", "gh:level_1_spaceship", "gh:level_2_spaceship",
+];
 // Trechos de typeId que também contam como veículo pressurizado (foguete/mech
 // do Spacecraft, que já tratam oxigênio por conta própria).
 export const PRESSURIZED_VEHICLE_MATCHES = ["_rocket", "space_mech"];
@@ -518,6 +539,28 @@ export const VENUS_DAMAGE = 4;
 export const VENUS_DAMAGE_INTERVAL = 20;
 // E pega fogo, porque 464 °C é acima do ponto de fulgor de quase tudo.
 export const VENUS_BURN_SECONDS = 4;
+
+// ANDAR EM VÊNUS: sem correr, e com pulo de um bloco só.
+//
+// Não é capricho de dificuldade — é o que 92 atmosferas fazem. O ar lá tem
+// densidade de 65 kg/m³, cerca de 6,5% da água: andar na superfície de Vênus
+// é mais parecido com andar no fundo de uma piscina do que com andar na Terra.
+// Correr é impossível, e sair do chão custa caro.
+export const VENUS_HEAVY_MOVEMENT = true;
+
+// Teto da velocidade horizontal, em blocos por tick. Andar no Minecraft é
+// ~0,10 e correr é ~0,13; o teto fica logo acima do andar, pra o controlador
+// não brigar com quem só está caminhando.
+export const VENUS_WALK_CAP = 0.105;
+
+// Velocidade vertical máxima ao sair do chão.
+//
+// Medido no modelo do próprio jogo (v -= g todo tick, y += v) com o g de
+// Vênus: 0,36 dá um ápice de ~1,1 bloco. É o suficiente pra subir UM bloco e
+// não é suficiente pra dois — que é exatamente o que ele pediu. Sem isto o
+// pulo em Vênus seria de 1,44, mais alto que o da Terra, porque a gravidade
+// daqui é um pouco menor que a de lá.
+export const VENUS_JUMP_SPEED = 0.36;
 
 // A Nave Level 1 NÃO sobrevive a Vênus.
 //

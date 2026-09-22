@@ -9,7 +9,7 @@ mudado:
 
   - o identificador e a geometria;
   - a caixa de colisão, medida no modelo novo;
-  - os assentos: três, em fila, na parte de trás;
+  - o assento: um só, no meio, pra o piloto ficar dentro do modelo;
   - mais vida, porque é a nave que aguenta Vênus.
 
 O que ela herda de graça: a captura pela tag, o transporte entre dimensões
@@ -71,15 +71,17 @@ ITENS = [
 # (SAVE_HALF em vehicle.js). Se um dia crescer, o teste reclama antes do jogo.
 COLISAO = {"height": 2.7, "width": 3.9}
 
-# Três lugares, em fila, na parte de trás — é o que ele pediu.
+# UM lugar só, no meio.
 #
-# z positivo é a traseira (a Level 1 põe os assentos dela em z negativo, que é
-# a frente). y 2.1 é a altura do piso da cúpula: mais baixo e a cabeça fica
-# dentro do casco, mais alto e ela atravessa o teto.
+# Eram três em fila, e a fila não cabia: a cúpula da Level 2 tem 2,3 blocos de
+# largura útil, e os assentos das pontas jogavam o jogador PRA FORA do casco —
+# ele aparecia sentado no ar, do lado da nave. Um assento centrado é o único
+# que fica dentro do modelo em qualquer ângulo de câmera.
+#
+# y 2.1 é a altura do piso da cúpula: mais baixo e a cabeça fica dentro do
+# casco, mais alto e ela atravessa o teto. z 0.15 é o miolo dela.
 ASSENTOS = [
-    {"position": [-0.9, 2.1, 0.45]},
-    {"position": [0.0, 2.1, 0.45]},
-    {"position": [0.9, 2.1, 0.45]},
+    {"position": [0.0, 2.1, 0.15]},
 ]
 
 VIDA = 140          # o dobro da Level 1: é a que aguenta Vênus

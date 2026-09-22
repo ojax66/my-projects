@@ -13,9 +13,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { world, system, __reset, __advance, ItemStack } from '@minecraft/server';
 import { BODIES, BASIC_SUIT_PIECES, REINFORCED_SUIT_PIECES, STAR_ARMOR_PIECES,
-         VENUS_CRUSH_SECONDS, TIER1_SHIP, TIER2_SHIP } from './gh/config.js';
-import { applyVenus, applyVenusToShips, survivesVenus } from './gh/venus.js';
+         VENUS_CRUSH_SECONDS, TIER1_SHIP, TIER2_SHIP,
+         VENUS_WALK_CAP, VENUS_JUMP_SPEED } from './gh/config.js';
+import { EARTH_G } from './gh/planetGravity.js';
+import { inPressurizedVehicle } from './gh/lifeSupport.js';
+import { applyVenus, applyVenusToShips, survivesVenus,
+         applyVenusMovement } from './gh/venus.js';
 import { isWarm } from './gh/cold.js';
+import { canBreathe } from './gh/lifeSupport.js';
 import { pickUp, eggFor, startShipPickup } from './gh/shipPickup.js';
 import { PLANETS } from './gh/planets.js';
 import { heightAt, biomeAt } from './gh/planetTerrain.js';
@@ -166,9 +171,16 @@ const emVenus = (id) => world.__addPlayer({
         `(caixa ${abaixo + acima + 1}, nave ${cb.height})`);
 
   const rid = doc['minecraft:entity'].components['minecraft:rideable'];
-  check('  e leva três pessoas', rid.seat_count === 3, `(${rid.seat_count})`);
-  check('  com os assentos atrás', rid.seats.every((s) => s.position[2] > 0),
-        `(z: ${rid.seats.map((s) => s.position[2]).join(', ')})`);
+  // UM assento, no MEIO. Eram três em fila e a fila não cabia na cúpula: os
+  // das pontas jogavam o jogador pra fora do casco, sentado no ar.
+  check('  e leva uma pessoa, no assento do meio', rid.seat_count === 1,
+        `(${rid.seat_count})`);
+  check('    centrado no eixo da nave', rid.seats[0].position[0] === 0,
+        `(x ${rid.seats[0].position[0]})`);
+  // E dentro do modelo: meia largura do casco é 6,07/2 = 3,03 blocos.
+  check('    e dentro do casco', Math.abs(rid.seats[0].position[2]) < 3
+        && Math.abs(rid.seats[0].position[0]) < 3,
+        `(x ${rid.seats[0].position[0]}, z ${rid.seats[0].position[2]})`);
 }
 
 // --- 7. Vênus é Vênus: as proporções do planeta de verdade ----------------
@@ -248,6 +260,134 @@ const emVenus = (id) => world.__addPlayer({
   const d = (a, b) => Math.hypot(a.center.x - b.center.x, a.center.z - b.center.z);
   check('  e entre o Sol e a Terra', d(venus, sol) < d(terra, sol),
         `(Vênus a ${d(venus, sol).toFixed(0)} do Sol, Terra a ${d(terra, sol).toFixed(0)})`);
+}
+
+// --- 9. Em Vênus não se corre ---------------------------------------------
+//
+// O ar lá tem 65 kg/m³, 6,5% da densidade da água: andar na superfície de
+// Vênus está mais perto de andar no fundo de uma piscina.
+{
+  __reset();
+  const p = emVenus('corredor');
+  p.isOnGround = true;
+
+  // Correndo: 0,13 bloco por tick é a velocidade de corrida do Minecraft.
+  p.__setVelocity({ x: 0.13, y: 0, z: 0 });
+  const r = applyVenusMovement(p);
+  check('correndo, Vênus freia', r.correu > 0, `(freou ${r.correu.toFixed(3)})`);
+  const depois = Math.hypot(p.getVelocity().x, p.getVelocity().z);
+  check('  e a velocidade cai pro teto de andar',
+        Math.abs(depois - VENUS_WALK_CAP) < 0.002,
+        `(${depois.toFixed(3)}, teto ${VENUS_WALK_CAP})`);
+
+  // Andando: não é freado. Brigar com quem caminha seria travar o jogo.
+  __reset();
+  const q = emVenus('andarilho');
+  q.isOnGround = true;
+  q.__setVelocity({ x: 0.10, y: 0, z: 0 });
+  const r2 = applyVenusMovement(q);
+  check('  mas quem só anda não é freado', r2.correu === 0,
+        `(freou ${r2.correu})`);
+
+  // E fora de Vênus nada disso acontece.
+  __reset();
+  const t = world.__addPlayer({ id: 'terra', dimensionId: 'minecraft:overworld',
+                                location: { x: 0, y: 64, z: 0 } });
+  t.isOnGround = true;
+  t.__setVelocity({ x: 0.13, y: 0, z: 0 });
+  check('  e na Terra ninguém é freado', applyVenusMovement(t).correu === 0);
+}
+
+// --- 10. O pulo em Vênus sobe UM bloco ------------------------------------
+{
+  __reset();
+  const p = emVenus('saltador');
+  p.isOnGround = true;
+  applyVenusMovement(p);            // primeiro tick: ainda no chão
+
+  // Pulou: o jogo dá 0,42 de velocidade vertical.
+  p.isOnGround = false;
+  p.__setVelocity({ x: 0, y: 0.42, z: 0 });
+  const r = applyVenusMovement(p);
+  check('o pulo em Vênus é freado na decolagem', r.pulou > 0,
+        `(freou ${r.pulou.toFixed(3)})`);
+  const vy = p.getVelocity().y;
+  check('  até a velocidade que sobe um bloco',
+        Math.abs(vy - VENUS_JUMP_SPEED) < 0.001,
+        `(${vy.toFixed(3)}, alvo ${VENUS_JUMP_SPEED})`);
+
+  // E a altura que isso dá, no modelo do próprio jogo.
+  const venus = PLANETS.find((x) => x.id === 'venus');
+  const g = EARTH_G * venus.gravity.factor;
+  const apice = (v0) => { let v = v0, y = 0; while (v > 0) { y += v; v -= g; } return y; };
+  const h = apice(VENUS_JUMP_SPEED);
+  check('  que é um bloco: sobe em cima de um, não de dois',
+        h >= 1.0 && h < 1.5, `(${h.toFixed(2)} blocos)`);
+  check('  e sem o freio seria mais alto que na Terra',
+        apice(0.42) > 1.32, `(${apice(0.42).toFixed(2)} vs 1.32 da Terra)`);
+
+  // Já no ar, o freio não age de novo: clampar tick a tick daria velocidade
+  // constante pra cima, ou seja, um pulo MAIOR.
+  p.__setVelocity({ x: 0, y: 0.42, z: 0 });
+  check('  e o freio é só na decolagem, não o voo todo',
+        applyVenusMovement(p).pulou === 0);
+}
+
+// --- 11. A Level 2 protege no espaço igual à Level 1 ----------------------
+{
+  __reset();
+  const p = world.__addPlayer({ id: 'piloto2', dimensionId: 'gh:outer_space',
+                                location: { x: 5000, y: 100, z: 5000 } });
+  const t1 = world.__spawn('gh:outer_space', TIER1_SHIP, p.location);
+  p.__mountOn(t1);
+  check('dentro da Level 1 a cabine é pressurizada', inPressurizedVehicle(p));
+
+  __reset();
+  const q = world.__addPlayer({ id: 'piloto3', dimensionId: 'gh:outer_space',
+                                location: { x: 5000, y: 100, z: 5000 } });
+  const t2 = world.__spawn('gh:outer_space', TIER2_SHIP, q.location);
+  q.__mountOn(t2);
+  check('  e dentro da Level 2 também', inPressurizedVehicle(q));
+  // O que seria absurdo: a nave que aguenta 92 atmosferas de Vênus não
+  // pressurizar a cabine no vácuo.
+  check('  logo ela respira no espaço igual', canBreathe(q));
+}
+
+// --- 12. As quatro camadas de atmosfera de Vênus --------------------------
+//
+// Elas são cubos concêntricos NO MESMO modelo do corpo, com o cubo do corpo
+// POR ÚLTIMO — casca em entidade separada vira um quadrado tapando o planeta.
+{
+  const venus = BODIES.find((b) => b.id === 'venus');
+  check('Vênus tem atmosfera desenhada', !!venus.atmosphere);
+  check('  com quatro camadas, como a de verdade',
+        venus.atmosphere.rings.length === 4,
+        `(${venus.atmosphere.rings.length})`);
+  check('  e alcance maior que o corpo',
+        venus.atmosphere.reach > 1, `(${venus.atmosphere.reach})`);
+
+  const geo = JSON.parse(fs.readFileSync(path.join(REPO,
+    'packs/Galactic Horizons RP/models/entity/sky_venus.geo.json'), 'utf8'));
+  const cubos = geo['minecraft:geometry'][0].bones[0].cubes;
+  check('  o modelo tem as quatro mais o corpo',
+        cubos.length === venus.atmosphere.rings.length + 1, `(${cubos.length})`);
+
+  // De fora pra dentro, e o corpo por último: é essa ordem que faz o planeta
+  // tapar o miolo dos anéis em vez de o contrário.
+  const tamanhos = cubos.map((c) => c.size[0]);
+  const decrescente = tamanhos.every((t, i) => i === 0 || t < tamanhos[i - 1]);
+  check('    em ordem, de fora pra dentro', decrescente,
+        `(${tamanhos.join(' > ')})`);
+  check('    e o corpo por último, no tamanho do corpo',
+        tamanhos[tamanhos.length - 1] === 16, `(${tamanhos[tamanhos.length - 1]})`);
+
+  const ent = JSON.parse(fs.readFileSync(path.join(REPO,
+    'packs/Galactic Horizons RP/entity/sky_venus.entity.json'), 'utf8'));
+  const d = ent['minecraft:client_entity'].description;
+  check('  com o material que deixa o corpo aparecer atrás dos anéis',
+        d.materials.default === 'gh_halo', `(${d.materials.default})`);
+  check('    e a geometria própria dela',
+        d.geometry.default === 'geometry.gh.sky_venus', `(${d.geometry.default})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

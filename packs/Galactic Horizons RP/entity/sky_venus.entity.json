@@ -4,13 +4,13 @@
     "description": {
       "identifier": "gh:sky_venus",
       "materials": {
-        "default": "gh_sky"
+        "default": "gh_halo"
       },
       "textures": {
         "default": "textures/gh/sky/venus"
       },
       "geometry": {
-        "default": "geometry.gh.sky_body"
+        "default": "geometry.gh.sky_venus"
       },
       "scripts": {
         "should_update_bones_and_effects_offscreen": true

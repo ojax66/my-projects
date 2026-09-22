@@ -116,10 +116,17 @@ class Entity {
   applyKnockback(dir, strength) {
     this.__knockbacks ??= [];
     this.__knockbacks.push({ ...dir, strength });
-    // O empurrão entra na velocidade vertical, que é o que o controlador de
-    // gravidade mede no tick seguinte.
+    // O empurrão entra na velocidade. O VERTICAL vem de `strength`, e é o que
+    // o controlador de gravidade mede no tick seguinte.
+    //
+    // O HORIZONTAL vem de `dir`, e estava sendo ignorado: o freio de correr em
+    // Vênus empurra só na horizontal, e sem isto o stub dizia que ele não
+    // fazia nada. `applyKnockback(vetorXZ, forçaVertical)` é a assinatura de
+    // verdade do @minecraft/server 2.x.
     this.__velocity = { ...(this.__velocity ?? { x: 0, y: 0, z: 0 }) };
     this.__velocity.y += strength;
+    this.__velocity.x += dir?.x ?? 0;
+    this.__velocity.z += dir?.z ?? 0;
   }
   getVelocity() { return this.__velocity ?? { x: 0, y: 0, z: 0 }; }
   /** Atalho de teste: põe a velocidade na mão. */

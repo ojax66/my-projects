@@ -32,6 +32,7 @@ import * as mc from "@minecraft/server";
 import {
   VENUS_ENABLED, VENUS_DAMAGE, VENUS_DAMAGE_INTERVAL, VENUS_BURN_SECONDS,
   VENUS_CRUSHES_TIER1, VENUS_CRUSH_SECONDS, TIER1_SHIP,
+  VENUS_HEAVY_MOVEMENT, VENUS_WALK_CAP, VENUS_JUMP_SPEED,
 } from "./config.js";
 import { protectionTier } from "./gear.js";
 import { inPressurizedVehicle } from "./lifeSupport.js";
@@ -94,6 +95,72 @@ export function applyVenus(player) {
     }
   }
   return t(player, "hud.venus_esmagando");
+}
+
+// ---------------------------------------------------------------------------
+// Andar no fundo de uma piscina
+// ---------------------------------------------------------------------------
+// O ar de Vênus tem 65 kg/m³ — 6,5% da densidade da água. Andar na superfície
+// dela está mais perto de andar no fundo de uma piscina do que de andar na
+// Terra: correr é impossível, e sair do chão custa caro.
+//
+// Isto NÃO é feito com efeito de poção, pelo mesmo motivo que a gravidade dos
+// planetas não é: efeito aparece na lista do jogador, briga com poção de
+// verdade, some com leite e dá sempre o mesmo valor. Aqui o controlador mede a
+// velocidade e devolve o excesso, que é a mesma ideia do planetGravity.
+//
+// playerId → estava no chão no tick passado. É o que faz o freio do pulo ser
+// UMA vez, na decolagem, e não todo tick enquanto sobe: clampar a subida tick
+// a tick daria velocidade constante pra cima, ou seja, um pulo MAIOR.
+const noChaoAntes = new Map();
+
+/**
+ * Um tick do peso da atmosfera de Vênus sobre um jogador.
+ * @returns {{correu: number, pulou: number}} quanto foi freado (pros testes)
+ */
+export function applyVenusMovement(player) {
+  const nada = { correu: 0, pulou: 0 };
+  if (!VENUS_ENABLED || !VENUS_HEAVY_MOVEMENT) return nada;
+  if (!inVenus(player)) return nada;
+
+  // Pilotando: a física é do veículo, e é justamente por isso que vale a pena
+  // ter trazido uma nave até aqui.
+  try {
+    if (player.getComponent("riding")?.entityRidingOn?.isValid) return nada;
+  } catch { }
+
+  let v;
+  try { v = player.getVelocity(); } catch { return nada; }
+
+  let noChao = false;
+  try { noChao = player.isOnGround; } catch { }
+  const antes = noChaoAntes.get(player.id) ?? true;
+  noChaoAntes.set(player.id, noChao);
+
+  const saida = { correu: 0, pulou: 0 };
+
+  // --- correr ------------------------------------------------------------
+  // Teto contínuo: passou do limite, o excesso é devolvido na direção
+  // contrária. Só o excesso — tirar mais que isso seria travar quem anda.
+  const horiz = Math.hypot(v.x, v.z);
+  if (horiz > VENUS_WALK_CAP) {
+    const fracao = (horiz - VENUS_WALK_CAP) / horiz;
+    try {
+      player.applyKnockback({ x: -v.x * fracao, z: -v.z * fracao }, 0);
+      saida.correu = horiz - VENUS_WALK_CAP;
+    } catch { }
+  }
+
+  // --- pular -------------------------------------------------------------
+  // Uma vez só, no tick em que o pé sai do chão.
+  if (antes && !noChao && v.y > VENUS_JUMP_SPEED) {
+    try {
+      player.applyKnockback({ x: 0, z: 0 }, VENUS_JUMP_SPEED - v.y);
+      saida.pulou = v.y - VENUS_JUMP_SPEED;
+    } catch { }
+  }
+
+  return saida;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,4 +261,9 @@ export function applyVenusToShips(player) {
 /** Esquece uma nave que já não interessa (saiu de Vênus, ou morreu). */
 export function forgetShip(entityId) {
   rangendo.delete(entityId);
+}
+
+/** Esquece um jogador que saiu. */
+export function forgetPlayer(playerId) {
+  noChaoAntes.delete(playerId);
 }

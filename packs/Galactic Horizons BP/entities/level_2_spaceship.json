@@ -128,7 +128,7 @@
         "controlling_seat": 0,
         "crouching_skip_interact": true,
         "pull_in_entities": true,
-        "seat_count": 3,
+        "seat_count": 1,
         "rider_can_interact": true,
         "family_types": [
           "player"
@@ -137,23 +137,9 @@
         "seats": [
           {
             "position": [
-              -0.9,
-              2.1,
-              0.45
-            ]
-          },
-          {
-            "position": [
               0.0,
               2.1,
-              0.45
-            ]
-          },
-          {
-            "position": [
-              0.9,
-              2.1,
-              0.45
+              0.15
             ]
           }
         ],

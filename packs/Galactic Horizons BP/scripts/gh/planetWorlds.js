@@ -41,7 +41,7 @@ import {
   stormNotice,
 } from "./marsStorm.js";
 import { t as txt, nome } from "./i18n.js";
-import { applyVenus, applyVenusToShips } from "./venus.js";
+import { applyVenus, applyVenusToShips, applyVenusMovement } from "./venus.js";
 
 const world = mc.world;
 const system = mc.system;
@@ -242,6 +242,10 @@ export function applyPlanetTick(player) {
   // mandá-lo procurar a solução errada.
   const aVenus = applyVenus(player);
   const aNave = applyVenusToShips(player);
+  // O peso da atmosfera vale pra TODO MUNDO que pisa em Vênus, inclusive quem
+  // está com o traje certo: 92 atmosferas não ficam mais leves porque o
+  // jogador se vestiu bem.
+  applyVenusMovement(player);
   if (aVenus) {
     if (now % 10 === 0) actionBar(player, aVenus);
     return true;
