@@ -130,7 +130,7 @@ biome.gh.venus_chasmata.name=Chasmata
 biome.gh.venus_montes_maxwell.name=Montes Maxwell
 
 ## a Nave Level 2 e o kit dela (gerado por tools/make_tier2.py)
-item.gh:gold_shielding=Blindaje Dorado
+item.gh:gold_shielding=Placa de Blindaje
 item.gh:heat_sink=Disipador Térmico
 item.gh:hull_ring=Anillo de Casco
 item.gh:energy_cell=Célula de Energía

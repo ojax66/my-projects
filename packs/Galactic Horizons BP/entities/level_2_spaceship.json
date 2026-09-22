@@ -63,8 +63,8 @@
         "value": 1
       },
       "minecraft:collision_box": {
-        "height": 2.7,
-        "width": 3.9
+        "height": 3.0,
+        "width": 3.7
       },
       "minecraft:health": {
         "value": 140
@@ -128,7 +128,7 @@
         "controlling_seat": 0,
         "crouching_skip_interact": true,
         "pull_in_entities": true,
-        "seat_count": 1,
+        "seat_count": 3,
         "rider_can_interact": true,
         "family_types": [
           "player"
@@ -138,8 +138,22 @@
           {
             "position": [
               0.0,
-              2.1,
-              0.15
+              2.25,
+              0.03
+            ]
+          },
+          {
+            "position": [
+              -0.81,
+              2.25,
+              -0.03
+            ]
+          },
+          {
+            "position": [
+              0.81,
+              2.25,
+              -0.03
             ]
           }
         ],
@@ -253,8 +267,8 @@
       },
       "gh:collision_restart": {
         "minecraft:collision_box": {
-          "height": 2.7,
-          "width": 3.9
+          "height": 3.0,
+          "width": 3.7
         }
       },
       "gh:damaged": {

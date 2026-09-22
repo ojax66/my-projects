@@ -171,16 +171,27 @@ const emVenus = (id) => world.__addPlayer({
         `(caixa ${abaixo + acima + 1}, nave ${cb.height})`);
 
   const rid = doc['minecraft:entity'].components['minecraft:rideable'];
-  // UM assento, no MEIO. Eram três em fila e a fila não cabia na cúpula: os
-  // das pontas jogavam o jogador pra fora do casco, sentado no ar.
-  check('  e leva uma pessoa, no assento do meio', rid.seat_count === 1,
-        `(${rid.seat_count})`);
-  check('    centrado no eixo da nave', rid.seats[0].position[0] === 0,
-        `(x ${rid.seats[0].position[0]})`);
-  // E dentro do modelo: meia largura do casco é 6,07/2 = 3,03 blocos.
-  check('    e dentro do casco', Math.abs(rid.seats[0].position[2]) < 3
-        && Math.abs(rid.seats[0].position[0]) < 3,
-        `(x ${rid.seats[0].position[0]}, z ${rid.seats[0].position[2]})`);
+  // TRÊS assentos, e o DO MEIO é o do piloto.
+  //
+  // O modelo novo tem três bancos desenhados (os ossos seat/seat2/seat3), e as
+  // posições saem deles — o jogador senta em cima do banco que se vê na tela.
+  check('  e leva três pessoas', rid.seat_count === 3, `(${rid.seat_count})`);
+  const piloto = rid.seats[rid.controlling_seat ?? 0];
+  check('    com o assento do meio pilotando', piloto.position[0] === 0,
+        `(x ${piloto.position[0]}, índice ${rid.controlling_seat})`);
+  // Quem monta primeiro cai no índice 0: se o do meio não for o 0, o primeiro
+  // a entrar senta na lateral e não pilota nada.
+  check('    e ele é o índice 0, que é onde o primeiro a entrar senta',
+        (rid.controlling_seat ?? 0) === 0, `(${rid.controlling_seat})`);
+  // Os três dentro do casco: meia largura do modelo é 5,75/2 = 2,88 blocos.
+  check('    e os três dentro do casco',
+        rid.seats.every((s) => Math.abs(s.position[0]) < 2.88
+                            && Math.abs(s.position[2]) < 2.88),
+        `(x: ${rid.seats.map((s) => s.position[0]).join(', ')})`);
+  // Um de cada lado do piloto, e não dois empilhados no mesmo lugar.
+  const xs = rid.seats.map((s) => s.position[0]).sort((a, b) => a - b);
+  check('    um de cada lado do piloto', xs[0] < 0 && xs[1] === 0 && xs[2] > 0,
+        `(${xs.join(', ')})`);
 }
 
 // --- 7. Vênus é Vênus: as proporções do planeta de verdade ----------------

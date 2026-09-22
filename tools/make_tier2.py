@@ -9,7 +9,7 @@ mudado:
 
   - o identificador e a geometria;
   - a caixa de colisão, medida no modelo novo;
-  - o assento: um só, no meio, pra o piloto ficar dentro do modelo;
+  - os assentos: os três do modelo dele, com o do meio pilotando;
   - mais vida, porque é a nave que aguenta Vênus.
 
 O que ela herda de graça: a captura pela tag, o transporte entre dimensões
@@ -40,16 +40,18 @@ SRC = os.path.join(ROOT, "tools", "assets", "tier2")
 # Os seis saem das artes que ele mandou, e cada um existe por um motivo que a
 # nave de verdade teria — não são seis pedras com nome diferente:
 #
-#   blindagem dourada   a folha de ouro que envolve sonda de verdade; é o que
-#                       reflete o calor de Vênus em vez de absorvê-lo
+#   placa de blindagem  a couraça que fica entre o casco e os 464 °C de fora
 #   dissipador térmico  as aletas que jogam pra fora o calor que entrou
 #   anel de casco       o reforço que segura 92 atmosferas de pressão
 #   célula de energia   energia pra aguentar sem Sol sob a nuvem permanente
 #   núcleo de navegação o cristal que enxerga através da nuvem
 #   computador de bordo quem pilota quando não dá pra ver nada lá fora
 ITENS = [
-    ("gold_shielding", "gold_shielding.png", "yellow",
-     "Blindagem Dourada", "Gold Shielding"),
+    # O id continua `gold_shielding` de propósito: trocá-lo quebraria a receita
+    # e apagaria o item do inventário de quem já tem um. O NOME mudou porque a
+    # arte mudou — a peça nova é uma placa escura, não uma folha de ouro.
+    ("gold_shielding", "gold_shielding.png", "gray",
+     "Placa de Blindagem", "Shield Plating"),
     ("heat_sink", "heat_sink.png", "aqua",
      "Dissipador Térmico", "Heat Sink"),
     ("hull_ring", "hull_ring.png", "gray",
@@ -62,27 +64,43 @@ ITENS = [
      "Computador de Bordo", "Flight Computer"),
 ]
 
-# Medido em tools/tests/test_tier2.mjs a partir da própria geometria: o modelo
-# tem 6,07 blocos de largura e 3,69 de altura. A colisão é a mesma proporção
-# que a Level 1 usa (3,8 de colisão pra 5,98 de modelo), arredondada pra baixo
-# — colisão maior que o modelo empurra o jogador no ar sem nada visível ali.
+# Medido no modelo NOVO dele: 5,75 blocos de largura por 4,71 de altura.
 #
-# E ela continua cabendo na caixa 5x5 que salva o veículo na troca de dimensão
-# (SAVE_HALF em vehicle.js). Se um dia crescer, o teste reclama antes do jogo.
-COLISAO = {"height": 2.7, "width": 3.9}
+# A largura segue a mesma proporção que a Level 1 usa (3,8 de colisão pra 5,98
+# de modelo): colisão maior que o modelo empurra o jogador no ar sem nada
+# visível ali.
+#
+# A ALTURA é 3,0 e não a proporção cheia (3,3), e isso é uma escolha: a caixa
+# que salva o veículo na troca de dimensão vai de um bloco abaixo do pé até
+# TRÊS acima (SAVE_BELOW/SAVE_ABOVE em vehicle.js). Uma colisão de 3,3 passaria
+# do teto dessa caixa. Colisão menor que o modelo é o normal — a Level 1 tem
+# 2,8 pra um modelo de 4,0.
+COLISAO = {"height": 3.0, "width": 3.7}
 
-# UM lugar só, no meio.
+# TRÊS lugares, e o DO MEIO é o do piloto.
 #
-# Eram três em fila, e a fila não cabia: a cúpula da Level 2 tem 2,3 blocos de
-# largura útil, e os assentos das pontas jogavam o jogador PRA FORA do casco —
-# ele aparecia sentado no ar, do lado da nave. Um assento centrado é o único
-# que fica dentro do modelo em qualquer ângulo de câmera.
+# Eles não são chutados: o modelo novo tem três ossos de assento desenhados —
+# `seat`, `seat2` e `seat3` — e estas posições são o centro da almofada de cada
+# um, lidas do próprio arquivo dele. O jogador senta em cima do banco que se vê
+# na tela, não do lado dele.
 #
-# y 2.1 é a altura do piso da cúpula: mais baixo e a cabeça fica dentro do
-# casco, mais alto e ela atravessa o teto. z 0.15 é o miolo dela.
+#   seat3   x  0.00   o do MEIO
+#   seat2   x -0.81   esquerda
+#   seat    x +0.81   direita
+#
+# A almofada fica a y 36 unidades = 2,25 blocos, e o encosto começa em z 4,
+# então o corpo do jogador vai um pouco à frente dele.
+#
+# A ORDEM IMPORTA: o Bedrock põe quem monta primeiro no assento de índice 0, e
+# `controlling_seat` é um índice nesta lista. Com o do meio em primeiro e
+# `controlling_seat: 0`, quem entra primeiro senta no meio e pilota — que é
+# exatamente o que ele pediu.
 ASSENTOS = [
-    {"position": [0.0, 2.1, 0.15]},
+    {"position": [0.0, 2.25, 0.03]},     # meio — o piloto
+    {"position": [-0.81, 2.25, -0.03]},  # esquerda
+    {"position": [0.81, 2.25, -0.03]},   # direita
 ]
+ASSENTO_DO_PILOTO = 0
 
 VIDA = 140          # o dobro da Level 1: é a que aguenta Vênus
 
@@ -198,6 +216,8 @@ def main():
     rid = c["minecraft:rideable"]
     rid["seat_count"] = len(ASSENTOS)
     rid["seats"] = [dict(s) for s in ASSENTOS]
+    # Índice nesta lista — e a lista começa pelo do meio.
+    rid["controlling_seat"] = ASSENTO_DO_PILOTO
 
     # O grupo que devolve a colisão depois de alguém desmontar tem que devolver
     # a colisão DESTA nave, não a da Level 1 — senão ela encolhe pra sempre no
@@ -270,7 +290,7 @@ def main():
     escreve_idiomas(RP, MARK, pt, en)
 
     print(f"Nave Level 2: colisão {COLISAO['width']}x{COLISAO['height']}, "
-          f"{len(ASSENTOS)} assentos em fila atrás, {VIDA} de vida")
+          f"{len(ASSENTOS)} assentos, piloto no do meio, {VIDA} de vida")
     print(f"  kit de {len(ITENS)} itens: " + ", ".join(i for i, _, _, _, _ in ITENS))
 
 
