@@ -39,7 +39,7 @@ import { applyStarArmorPowers, startStarArmor } from "./starPowers.js";
 import { startTrashCan } from "./trashCan.js";
 import { startSettings } from "./settings.js";
 import { startShipPickup } from "./shipPickup.js";
-import { startAcid, applyAcid, acidFogOn } from "./acid.js";
+import { startAcid, applyAcid, acidFogOn, acidReport } from "./acid.js";
 import { guardSpawnTick } from "./spawnGuard.js";
 import { maybeDropWreck } from "./wreck.js";
 import { startPlanetWorlds, applyPlanetTick, forgetPlayer as forgetPlanet,
@@ -373,6 +373,24 @@ system.afterEvents.scriptEventReceive.subscribe((data) => {
         `§7camadas: §f${t.layers.map((l) => l.id.split(":")[1] + " x" + l.t).join(", ")}`
       );
     } catch { }
+    return;
+  }
+
+  // /scriptevent gh:acido — por que o ácido "não existe".
+  //
+  // A frase cobre três coisas diferentes e o jogo não distingue nenhuma: o
+  // bloco pode não ter sido registrado, pode não haver poça por perto, ou pode
+  // haver uma a 200 blocos e ele nunca ter passado por lá. As três aparecem
+  // aqui, e a terceira vem com a coordenada — lida do GERADOR, que responde
+  // mesmo por chunk que ainda não foi escrita.
+  if (data.id === "gh:acido") {
+    if (player?.typeId !== "minecraft:player") return;
+    try {
+      const planet = planetOfDimension(player.dimension.id);
+      player.sendMessage("§7ácido:\n" + acidReport(player, planet, terrainAt));
+    } catch (e) {
+      player.sendMessage("§cácido: " + e);
+    }
     return;
   }
 

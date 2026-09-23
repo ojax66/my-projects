@@ -516,9 +516,24 @@ const VENUS = {
   // sulfúrico concentrado come ferro, e não come titânio — que é exatamente a
   // regra do balde.
   //
-  // PEQUENAS, como ele pediu: raio de 3 a 7 blocos e 3 de fundo, numa grade de
-  // 90. E só na planície — poça em encosta não existe, o líquido escorre.
-  acidPools: { cell: 90, chance: 0.26, rMin: 3, rMax: 7, depth: 4,
+  // PEQUENAS, como ele pediu — mas a primeira medida era 0,13% da superfície, e
+  // dessas a poça mais próxima ficava a 77 blocos em média e a 192 no pior
+  // caso. Com a névoa de Vênus fechando a 46 blocos e sem poder correr, isso é
+  // uma poça que nunca entra no campo de visão: na prática o ácido não existia,
+  // que foi exatamente o que ele relatou.
+  //
+  // Medido de novo com a grade a 60 e o raio de 4 a 8: 0,76% da superfície, a
+  // poça mais próxima a 43 blocos em média e 106 no pior caso — dentro da
+  // névoa quase sempre. Continuam pequenas (8 de raio é uma piscina) e
+  // continuam raras; só deixaram de ser invisíveis.
+  //
+  // O fundo foi de 3 pra 6 porque poça de 1 bloco não dá pra mergulhar, e
+  // mergulhar — com fôlego, névoa e nado — é metade do que ele pediu.
+  //
+  // E só na planície, com o mesmo `minPlain` de antes: poça em encosta não
+  // existe, o líquido escorre. Baixar esse número era o caminho fácil pra
+  // frequência e espalhava poça por tesserae e domo de panqueca.
+  acidPools: { cell: 60, chance: 0.34, rMin: 4, rMax: 8, depth: 6,
                minPlain: 0.55 },
 
   // --- Cavernas ------------------------------------------------------------

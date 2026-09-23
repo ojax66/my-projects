@@ -3,7 +3,7 @@
   "header": {
     "name": "pack.name",
     "description": "pack.description",
-    "uuid": "db68b47b-dc3d-4bef-8273-3505afc4bdee",
+    "uuid": "a65bbc05-e500-46b3-899a-ac9b20127225",
     "version": [
       1,
       2,
@@ -19,7 +19,7 @@
   "modules": [
     {
       "type": "data",
-      "uuid": "3c4c9e15-f65d-4132-951f-69d077b351c8",
+      "uuid": "61935cd0-aeb2-4aa0-ad01-0c24f9852a19",
       "version": [
         1,
         2,
@@ -29,7 +29,7 @@
     {
       "type": "script",
       "language": "javascript",
-      "uuid": "a19bc60e-5548-4153-9143-30a99adf7d5e",
+      "uuid": "a2c418f6-3736-483e-abbe-47a895c8d4ea",
       "entry": "scripts/gh/main.js",
       "version": [
         1,
@@ -40,7 +40,7 @@
   ],
   "dependencies": [
     {
-      "uuid": "49c518a4-749c-407a-9f11-fb9241fb4059",
+      "uuid": "4864eed5-5f9c-4b5a-ba84-3514ae2ea98d",
       "version": [
         1,
         2,

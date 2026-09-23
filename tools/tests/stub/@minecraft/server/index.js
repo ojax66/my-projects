@@ -245,6 +245,38 @@ class Player extends Entity {
   }
   /** Pra onde ele está olhando. Normalizado, como no jogo. */
   getViewDirection() { return this.__view ?? { x: 0, y: 0, z: 1 }; }
+
+  /**
+   * O raio de visão — e a regra que faltava: bloco PASSÁVEL (sem colisão) só
+   * entra no resultado com `includePassableBlocks`.
+   *
+   * É essa regra que quebrava o balde no jogo: o ácido não tem colisão, então
+   * mirar a poça devolvia a rocha DEBAIXO dela. Sem isto no stub, o teste
+   * dizia que estava tudo certo.
+   */
+  getBlockFromViewDirection(opts) {
+    const passaveis = new Set(["gh:sulfuric_acid"]);
+    const dir = this.getViewDirection();
+    const olho = this.getHeadLocation();
+    const max = opts?.maxDistance ?? 6;
+    let ultimo = null;
+    for (let d = 0; d <= max; d += 0.2) {
+      const x = Math.floor(olho.x + dir.x * d);
+      const y = Math.floor(olho.y + dir.y * d);
+      const z = Math.floor(olho.z + dir.z * d);
+      const chave = `${x},${y},${z}`;
+      if (chave === ultimo) continue;
+      ultimo = chave;
+      const b = this.dimension.getBlock({ x, y, z });
+      if (!b || b.isAir) continue;
+      if (passaveis.has(b.typeId) && !opts?.includePassableBlocks) continue;
+      // A face é a do eixo em que o raio entrou; pro que os testes medem basta
+      // o vertical, que é como se mira uma poça no chão.
+      const face = dir.y < 0 ? "Up" : dir.y > 0 ? "Down" : "North";
+      return { block: b, face };
+    }
+    return undefined;
+  }
   /** Atalho de teste: vira o rosto. */
   __lookAt(x, z) {
     const len = Math.sqrt(x * x + z * z) || 1;
@@ -346,8 +378,10 @@ class Dimension {
       south: (n = 1) => dim.getBlock({ x, y, z: z + n }),
       west: (n = 1) => dim.getBlock({ x: x - n, y, z }),
       east: (n = 1) => dim.getBlock({ x: x + n, y, z }),
-      up: (n = 1) => dim.getBlock({ x, y: y + n, z }),
-      down: (n = 1) => dim.getBlock({ x, y: y - n, z }),
+      // NÃO existe `up()` nem `down()`, e o stub tinha os dois. Isso escondeu
+      // um erro de verdade: o código lia a face mirada ("Up"/"Down") e chamava
+      // `bloco[face.toLowerCase()]()`, o que no jogo cai no catch e aqui
+      // funcionava. `Block` tem `above()` e `below()` — e só.
     };
     return b;
   }
@@ -533,6 +567,10 @@ export const system = {
 };
 
 export const BlockPermutation = { resolve: () => ({}) };
+// Os tipos de bloco registrados. O stub não lê os packs, então tudo que o
+// addon pede existe — o que importa é a CHAMADA existir, porque é ela que o
+// relatório do /scriptevent usa pra dizer se o bloco foi registrado.
+export const BlockTypes = { get: (id) => (id ? { id } : undefined) };
 // As causas de dano que o addon cita pelo nome. O jogo tem dezenas; aqui só
 // precisam existir as que o código usa, com o mesmo valor de string.
 export const EntityDamageCause = { freezing: "freezing", fire: "fire", lava: "lava" };
@@ -543,4 +581,4 @@ export class BlockVolume {
 
 __reset();
 
-export default { world, system, BlockPermutation, BlockVolume, TicksPerSecond, ItemStack, EquipmentSlot, EntityDamageCause };
+export default { world, system, BlockPermutation, BlockTypes, BlockVolume, TicksPerSecond, ItemStack, EquipmentSlot, EntityDamageCause };

@@ -201,7 +201,17 @@ def main():
     escreve(os.path.join(BP, "blocks", "sulfuric_acid.json"), {
         "format_version": "1.21.80",
         "minecraft:block": {
-            "description": {"identifier": "gh:sulfuric_acid"},
+            "description": {
+                "identifier": "gh:sulfuric_acid",
+                # NO MENU CRIATIVO, e esta linha é a correção do "o ácido não
+                # existe". Sem `menu_category` o Bedrock registra o bloco e não
+                # o mostra em lugar nenhum: ele só existiria nas poças que a
+                # geração faz, e chunk de Vênus já visitada NUNCA é refeita —
+                # quem já tinha base lá nunca veria uma poça, e o balde não
+                # teria o que encher. Com a categoria, o ácido está na aba de
+                # natureza como qualquer outro bloco do addon.
+                "menu_category": {"category": "nature"},
+            },
             "components": {
                 "minecraft:material_instances": {
                     "*": {
@@ -286,7 +296,7 @@ def main():
     ]
     escreve_idiomas(RP, MARK, pt, en)
 
-    print("Ácido sulfúrico: 1 bloco (sem colisão, indestrutível) + 2 baldes")
+    print("Ácido sulfúrico: 1 bloco (sem colisão, indestrutível, na aba de natureza) + 2 baldes")
     print("  poças na planície de Vênus; só o balde de titânio enche")
 
 

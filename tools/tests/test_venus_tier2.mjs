@@ -26,9 +26,9 @@ import { isWarm } from './gh/cold.js';
 import { canBreathe } from './gh/lifeSupport.js';
 import { pickUp, eggFor, startShipPickup } from './gh/shipPickup.js';
 import { encher, despejar, applyAcid, feetInAcid, headInAcid,
-         acidFogOn, airOf } from './gh/acid.js';
+         acidFogOn, airOf, startAcid, acidReport } from './gh/acid.js';
 import { PLANETS } from './gh/planets.js';
-import { heightAt, biomeAt } from './gh/planetTerrain.js';
+import { heightAt, biomeAt, terrainAt as terrenoEm } from './gh/planetTerrain.js';
 startShipPickup();
 
 let failures = 0;
@@ -709,6 +709,106 @@ const emVenus = (id) => world.__addPlayer({
   check('o balde de ácido não é comida', !('minecraft:food' in c));
   check('  nem tem animação de beber', !('minecraft:use_animation' in c));
   check('  nem duração de uso', !('minecraft:use_duration' in c));
+}
+
+// --- 21. "Não está funcionando o balde e o ácido não existe" -------------
+//
+// Os dois eram o mesmo defeito, em três pedaços, e nenhum aparecia em log.
+{
+  // (a) O BLOCO PRECISA ESTAR NO MENU CRIATIVO.
+  //
+  // Sem `menu_category` o Bedrock registra o bloco e não o mostra em lugar
+  // nenhum: ele só existiria nas poças que a geração faz, e chunk de Vênus já
+  // visitada NUNCA é refeita — quem já tinha base lá nunca veria uma poça.
+  // "O ácido não existe" era literalmente verdade pra ele.
+  const bloco = JSON.parse(fs.readFileSync(path.join(REPO,
+    'packs/Galactic Horizons BP/blocks/sulfuric_acid.json'), 'utf8'));
+  const desc = bloco['minecraft:block'].description;
+  check('o ácido está no menu criativo', !!desc.menu_category,
+        `(${JSON.stringify(desc.menu_category)})`);
+
+  // (b) ACHÁVEL ANDANDO.
+  //
+  // A primeira medida era 0,13% da superfície: a poça mais próxima a 77 blocos
+  // em média e 192 no pior caso. A névoa de Vênus fecha a 46 e lá não se corre,
+  // então ela nunca entrava no campo de visão. Este teste mede a DISTÂNCIA, que
+  // é o que o jogador sente — a porcentagem sozinha não diz nada.
+  const venus = PLANETS.find((x) => x.id === 'venus');
+  const pocas = [];
+  for (let x = -500; x <= 500; x += 2) {
+    for (let z = -500; z <= 500; z += 2) {
+      const t = terrenoEm(venus, x, z);
+      if (t.acido !== null && t.acido !== undefined && t.acido > t.height) {
+        pocas.push([x, z]);
+      }
+    }
+  }
+  let pior = 0;
+  for (let x = -200; x <= 200; x += 40) {
+    for (let z = -200; z <= 200; z += 40) {
+      let d = Infinity;
+      for (const [px, pz] of pocas) {
+        const dd = Math.hypot(px - x, pz - z);
+        if (dd < d) d = dd;
+      }
+      if (d > pior) pior = d;
+    }
+  }
+  check('  e de qualquer ponto há uma poça a menos de 140 blocos', pior < 140,
+        `(pior caso ${Math.round(pior)})`);
+
+  // (c) O BALDE ENCHE DE DENTRO DA POÇA.
+  //
+  // Quem está nadando não tem como mirar a poça de fora, e o bloco não tem
+  // colisão — o raio de visão passa reto por ele e entrega a rocha de baixo.
+  // Era por isso que o balde "não funcionava": o gesto nunca chegava no ácido.
+  // Aqui o caminho testado é o `itemUse`, que é o que sobra quando o jogo não
+  // reconhece interação com bloco nenhum.
+  __reset();
+  startAcid();
+  const mergulhador = world.__addPlayer({
+    id: 'mergulhador', dimensionId: 'gh:venus',
+    location: { x: 0.5, y: 70.5, z: 0.5 },
+  });
+  const dim = world.getDimension('gh:venus');
+  dim.setBlockType({ x: 0, y: 70, z: 0 }, ACID_BLOCK);
+  dim.setBlockType({ x: 0, y: 71, z: 0 }, ACID_BLOCK);
+  const mochila = mergulhador.getComponent('inventory').container;
+  mochila.setItem(0, new ItemStack(TITANIUM_BUCKET, 1));
+  mergulhador.selectedSlotIndex = 0;
+
+  world.afterEvents.itemUse.__fire({
+    source: mergulhador, itemStack: new ItemStack(TITANIUM_BUCKET, 1),
+  });
+  __advance(2);
+  check('  e o balde enche de dentro da poça, sem mirar em nada',
+        mochila.getItem(0)?.typeId === ACID_BUCKET,
+        `(${mochila.getItem(0)?.typeId})`);
+
+  // (d) DESPEJAR PELA FACE DE BAIXO VAI PRA BAIXO.
+  //
+  // `Block` tem `above()` e `below()`, não `up()` e `down()`. O código lia a
+  // face mirada e chamava `bloco[face.toLowerCase()]()`, que no jogo cai no
+  // catch: mirar a face de BAIXO despejava o ácido ACIMA do bloco, do lado
+  // oposto ao que o jogador apontou. O stub tinha `up`/`down` e escondia isso.
+  const teto = { x: 20, y: 70, z: 20 };
+  dim.setBlockType(teto, 'gh:venus_rock');
+  dim.setBlockType({ x: 20, y: 69, z: 20 }, 'minecraft:air');
+  dim.setBlockType({ x: 20, y: 71, z: 20 }, 'minecraft:air');
+  mochila.setItem(0, new ItemStack(ACID_BUCKET, 1));
+  despejar(mergulhador, dim.getBlock(teto), 'Down');
+  check('  e despejar na face de baixo põe o ácido EMBAIXO',
+        dim.getBlock({ x: 20, y: 69, z: 20 })?.typeId === ACID_BLOCK,
+        `(${dim.getBlock({ x: 20, y: 69, z: 20 })?.typeId})`);
+  check('    e não em cima',
+        dim.getBlock({ x: 20, y: 71, z: 20 })?.typeId !== ACID_BLOCK);
+
+  // (e) O RELATÓRIO responde "por que o ácido não existe".
+  const relato = acidReport(mergulhador, venus, terrenoEm);
+  check('  o /scriptevent gh:acido diz se o bloco foi registrado',
+        /registrado/.test(relato));
+  check('    e onde está a poça mais próxima',
+        /poça mais próxima/.test(relato), `(${relato.split('\n').pop()})`);
 }
 
 console.log(failures ? `\n${failures} FALHA(S)` : '\nTodos os testes passaram.');

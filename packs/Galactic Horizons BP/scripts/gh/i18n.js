@@ -66,6 +66,11 @@ const TEXTOS = {
     en: "§4§lDROWNING IN ACID §r§7— get up",
     es: "§4§lAHOGÁNDOTE EN ÁCIDO §r§7— sube",
   },
+  "acido.encheu": {
+    pt: "§eBalde de titânio cheio de ácido sulfúrico",
+    en: "§eTitanium bucket filled with sulfuric acid",
+    es: "§eCubo de titanio lleno de ácido sulfúrico",
+  },
   "acido.balde_errado": {
     pt: "§eO ácido comeria esse balde — ferro vira sulfato de ferro. Só o de titânio aguenta.",
     en: "§eThe acid would eat that bucket — iron turns into iron sulfate. Only titanium holds it.",

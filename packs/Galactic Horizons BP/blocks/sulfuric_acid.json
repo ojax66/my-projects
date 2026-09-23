@@ -2,7 +2,10 @@
   "format_version": "1.21.80",
   "minecraft:block": {
     "description": {
-      "identifier": "gh:sulfuric_acid"
+      "identifier": "gh:sulfuric_acid",
+      "menu_category": {
+        "category": "nature"
+      }
     },
     "components": {
       "minecraft:material_instances": {
