@@ -71,6 +71,11 @@ const TEXTOS = {
     en: "§eTitanium bucket filled with sulfuric acid",
     es: "§eCubo de titanio lleno de ácido sulfúrico",
   },
+  "acido.nao_cabe": {
+    pt: "§eNão cabe ácido aí — mire um espaço vazio",
+    en: "§eNo room for acid there — aim at an empty space",
+    es: "§eNo cabe ácido ahí — apunta a un espacio vacío",
+  },
   "acido.balde_errado": {
     pt: "§eO ácido comeria esse balde — ferro vira sulfato de ferro. Só o de titânio aguenta.",
     en: "§eThe acid would eat that bucket — iron turns into iron sulfate. Only titanium holds it.",

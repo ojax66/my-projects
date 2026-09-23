@@ -211,8 +211,20 @@ class Entity {
       return {
         container: {
           get size() { return 36; },
-          getItem: (i) => slots[i],
-          setItem: (i, item) => { slots[i] = item; },
+          getItem: (i) => {
+            if (__somenteLeitura.on) {
+              throw new Error(
+                "Container.getItem: This function can not be called in read-only mode.");
+            }
+            return slots[i];
+          },
+          setItem: (i, item) => {
+            if (__somenteLeitura.on) {
+              throw new Error(
+                "Container.setItem: This function can not be called in read-only mode.");
+            }
+            slots[i] = item;
+          },
           addItem: (item) => {
             for (let i = 0; i < 36; i++) {
               if (!slots[i]) { slots[i] = item; return item; }
@@ -465,6 +477,28 @@ function realEvent() {
   };
 }
 
+/**
+ * O mesmo evento, mas disparado em MODO SOMENTE LEITURA — que é como o jogo
+ * roda todo `beforeEvent`.
+ *
+ * Nesse modo o Bedrock RECUSA as funções que mexem no mundo, e o container do
+ * inventário é uma delas: `container.getItem` lança. Sem isto aqui, o stub
+ * deixava passar um erro de verdade — o código lia a mão pelo inventário
+ * dentro de um beforeEvent, ouvia "nada na mão", e descartava o gesto calado.
+ * Era por isso que o balde não colocava o ácido.
+ */
+function readOnlyEvent() {
+  const e = realEvent();
+  const fire = e.__fire;
+  e.__fire = (ev) => {
+    __somenteLeitura.on = true;
+    try { fire(ev); } finally { __somenteLeitura.on = false; }
+  };
+  return e;
+}
+
+export const __somenteLeitura = { on: false };
+
 // --- placar ------------------------------------------------------------------
 // O canal do rastreador que sobrevive a `hud @s hide all`.
 class Objective {
@@ -519,8 +553,8 @@ export const world = {
   },
   beforeEvents: {
     playerLeave: noopEvent(),
-    playerInteractWithBlock: realEvent(),
-    playerInteractWithEntity: realEvent(),
+    playerInteractWithBlock: readOnlyEvent(),
+    playerInteractWithEntity: readOnlyEvent(),
   },
   tickingAreaManager: {
     createTickingArea: async () => { },

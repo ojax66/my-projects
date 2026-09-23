@@ -785,6 +785,56 @@ const emVenus = (id) => world.__addPlayer({
         mochila.getItem(0)?.typeId === ACID_BUCKET,
         `(${mochila.getItem(0)?.typeId})`);
 
+  // (c2) O BALDE COLOCA O ÁCIDO — pelo gesto de verdade, no modo de verdade.
+  //
+  // Este é o defeito que ele relatou: o balde cheio na mão, o toque no chão, e
+  // nada acontecia. `beforeEvent` roda em modo SOMENTE LEITURA e o Bedrock
+  // recusa `container.getItem` lá; o código lia a mão pelo inventário, ouvia
+  // "nada na mão" e descartava o gesto calado. Agora o item vem do evento.
+  const chao2 = { x: 30, y: 70, z: 30 };
+  dim.setBlockType(chao2, 'gh:venus_rock');
+  dim.setBlockType({ x: 30, y: 71, z: 30 }, 'minecraft:air');
+  mochila.setItem(0, new ItemStack(ACID_BUCKET, 1));
+  mergulhador.selectedSlotIndex = 0;
+  world.beforeEvents.playerInteractWithBlock.__fire({
+    player: mergulhador,
+    block: dim.getBlock(chao2),
+    blockFace: 'Up',
+    itemStack: new ItemStack(ACID_BUCKET, 1),
+    set cancel(v) { this.__cancel = v; },
+    get cancel() { return this.__cancel; },
+  });
+  __advance(2);
+  check('  o balde COLOCA o ácido no toque, em modo somente leitura',
+        dim.getBlock({ x: 30, y: 71, z: 30 })?.typeId === ACID_BLOCK,
+        `(${dim.getBlock({ x: 30, y: 71, z: 30 })?.typeId})`);
+  check('    e devolve o balde de titânio',
+        mochila.getItem(0)?.typeId === TITANIUM_BUCKET,
+        `(${mochila.getItem(0)?.typeId})`);
+
+  // (c3) E se não couber, ele DIZ. Cinco saídas caladas eram o que fazia
+  // "não acontece nada" ser indistinguível de "o gesto nem chegou".
+  const entupido = { x: 34, y: 70, z: 34 };
+  dim.setBlockType(entupido, 'gh:venus_rock');
+  dim.setBlockType({ x: 34, y: 71, z: 34 }, 'gh:venus_rock');
+  mochila.setItem(0, new ItemStack(ACID_BUCKET, 1));
+  mergulhador.__actionBar = undefined;
+  world.beforeEvents.playerInteractWithBlock.__fire({
+    player: mergulhador,
+    block: dim.getBlock(entupido),
+    blockFace: 'Up',
+    itemStack: new ItemStack(ACID_BUCKET, 1),
+    set cancel(v) { this.__cancel = v; },
+    get cancel() { return this.__cancel; },
+  });
+  __advance(2);
+  check('  e quando não cabe, avisa em vez de não fazer nada',
+        /cabe|room|Não cabe/i.test(mergulhador.__actionBar ?? ''),
+        `(${mergulhador.__actionBar})`);
+  check('    e o balde continua cheio',
+        mochila.getItem(0)?.typeId === ACID_BUCKET,
+        `(${mochila.getItem(0)?.typeId})`);
+
   // (d) DESPEJAR PELA FACE DE BAIXO VAI PRA BAIXO.
   //
   // `Block` tem `above()` e `below()`, não `up()` e `down()`. O código lia a

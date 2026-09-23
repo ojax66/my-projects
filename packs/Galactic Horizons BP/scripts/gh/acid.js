@@ -103,6 +103,17 @@ export function headInAcid(player) {
 // Encher e despejar
 // ---------------------------------------------------------------------------
 
+/**
+ * O que está na mão — LENDO O INVENTÁRIO, que só pode ser feito em tique de
+ * escrita.
+ *
+ * Num `beforeEvent` o jogo está em modo SOMENTE LEITURA, e `container.getItem`
+ * é das funções que ele recusa lá: a chamada lança, o catch devolve null, e
+ * quem perguntou "o que ele tem na mão?" ouve "nada". Era isto que fazia o
+ * balde não colocar o ácido — o gesto era descartado antes de virar gesto,
+ * sem erro, sem mensagem, sem nada. Quem está num `beforeEvent` usa
+ * `event.itemStack`, que o próprio evento entrega pronto.
+ */
 function naMao(player) {
   try {
     const inv = player.getComponent("inventory")?.container;
@@ -112,11 +123,29 @@ function naMao(player) {
   }
 }
 
-function trocarMao(player, typeId) {
+/**
+ * Troca o balde da mão pelo outro.
+ *
+ * Escreve no slot selecionado — mas confere ANTES que ele é mesmo o que se
+ * espera. Se não for (slot trocado no meio do gesto, mão cheia de outra
+ * coisa), procura o balde certo no inventário em vez de sobrescrever o que
+ * estiver ali. Perder um item por causa de um índice errado é pior que o
+ * gesto não funcionar.
+ */
+function trocarMao(player, typeId, esperado) {
   try {
     const inv = player.getComponent("inventory")?.container;
     if (!inv) return false;
-    inv.setItem(player.selectedSlotIndex, new mc.ItemStack(typeId, 1));
+
+    let slot = player.selectedSlotIndex;
+    if (esperado && inv.getItem(slot)?.typeId !== esperado) {
+      slot = -1;
+      for (let i = 0; i < inv.size; i++) {
+        if (inv.getItem(i)?.typeId === esperado) { slot = i; break; }
+      }
+      if (slot < 0) return false;
+    }
+    inv.setItem(slot, new mc.ItemStack(typeId, 1));
     return true;
   } catch {
     return false;
@@ -127,21 +156,24 @@ function trocarMao(player, typeId) {
  * Enche o balde de titânio na poça.
  * @returns "ok" | "errado" | "nao" — `errado` é balde que o ácido comeria
  */
-export function encher(player, bloco) {
+export function encher(player, bloco, idNaMao) {
   if (!ACID_ENABLED) return "nao";
   if (bloco?.typeId !== ACID_BLOCK) return "nao";
 
-  const id = naMao(player)?.typeId;
+  // `idNaMao` vem do evento quando quem chamou está num `beforeEvent`, onde
+  // ler o inventário é proibido. Sem ele, lê — que é o caso dos testes e de
+  // quem chama de um tique normal.
+  const id = idNaMao ?? naMao(player)?.typeId;
   if (VANILLA_BUCKETS.includes(id)) return "errado";
   if (id !== TITANIUM_BUCKET) return "nao";
 
   // O item entra ANTES de o bloco sair. Se a troca falhar, a poça continua
   // lá — muito melhor que o ácido evaporar sem virar item.
-  if (!trocarMao(player, ACID_BUCKET)) return "nao";
+  if (!trocarMao(player, ACID_BUCKET, TITANIUM_BUCKET)) return "nao";
   try {
     bloco.setType("minecraft:air");
   } catch {
-    trocarMao(player, TITANIUM_BUCKET);   // senão o ácido duplica
+    trocarMao(player, TITANIUM_BUCKET, ACID_BUCKET);   // senão o ácido duplica
     return "nao";
   }
   return "ok";
@@ -165,10 +197,20 @@ const VIZINHO = {
   west: (b) => b.west(),
 };
 
-/** Despeja o balde cheio no espaço vazio que o jogador está mirando. */
-export function despejar(player, bloco, face) {
-  if (!ACID_ENABLED) return false;
-  if (naMao(player)?.typeId !== ACID_BUCKET) return false;
+/**
+ * Despeja o balde cheio.
+ *
+ * Toda recusa daqui FALA. A versão anterior tinha cinco saídas silenciosas, e
+ * "não acontece nada" foi exatamente o que ele relatou: sem resposta não dá
+ * pra saber se o gesto não chegou, se o lugar não serve, ou se o balde não é
+ * o certo.
+ *
+ * @returns "ok" | "cheio" | "nao"
+ */
+export function despejar(player, bloco, face, idNaMao) {
+  if (!ACID_ENABLED) return "nao";
+  const id = idNaMao ?? naMao(player)?.typeId;
+  if (id !== ACID_BUCKET) return "nao";
 
   // Sem bloco: o gesto veio do `itemUse`, que não diz o que foi mirado. O raio
   // de visão responde — e atravessando o que é passável, senão uma poça que já
@@ -181,27 +223,27 @@ export function despejar(player, bloco, face) {
       if (hit?.block) { bloco = hit.block; face = hit.face ?? face; }
     } catch { }
   }
-  if (!bloco) return false;
+  if (!bloco) return "nao";
 
-  let alvo = null;
+  // Os candidatos, em ordem: o vizinho pela face mirada, o próprio bloco (raio
+  // que parou no vazio) e o de cima, que é onde líquido cai. Três, porque um
+  // só falhava calado sempre que o primeiro estava ocupado.
   const chave = String(face ?? "").toLowerCase();
-  try { alvo = VIZINHO[chave]?.(bloco) ?? null; } catch { alvo = null; }
-  // Plano B: o próprio bloco mirado, se ele for ar (raio que parou no vazio),
-  // e senão o de cima, que é onde líquido cai.
-  if (!alvo) {
-    try { alvo = bloco.isAir ? bloco : bloco.above(); } catch { }
-  }
-  if (!alvo) return false;
-  try {
-    if (!alvo.isAir) return false;
-  } catch {
-    return false;
-  }
+  const candidatos = [];
+  try { const v = VIZINHO[chave]?.(bloco); if (v) candidatos.push(v); } catch { }
+  try { if (bloco.isAir) candidatos.push(bloco); } catch { }
+  try { const a = bloco.above(); if (a) candidatos.push(a); } catch { }
 
-  try { alvo.setType(ACID_BLOCK); } catch { return false; }
-  trocarMao(player, TITANIUM_BUCKET);
-  try { player.playSound("bucket.empty_lava", { volume: 0.7, pitch: 1.2 }); } catch { }
-  return true;
+  for (const alvo of candidatos) {
+    let vazio = false;
+    try { vazio = alvo.isAir; } catch { continue; }
+    if (!vazio) continue;
+    try { alvo.setType(ACID_BLOCK); } catch { continue; }
+    trocarMao(player, TITANIUM_BUCKET, ACID_BUCKET);
+    try { player.playSound("bucket.empty_lava", { volume: 0.7, pitch: 1.2 }); } catch { }
+    return "ok";
+  }
+  return "cheio";
 }
 
 /**
@@ -451,12 +493,19 @@ function gestoNovo(player) {
   return true;
 }
 
-/** Um toque com balde na mão. Devolve true se era gesto nosso. */
-function usarBalde(player, bloco, face) {
-  const id = naMao(player)?.typeId;
+/** Um toque com balde na mão. `id` vem do evento, nunca do inventário. */
+function usarBalde(player, bloco, face, id) {
   if (!id) return false;
 
-  if (id === ACID_BUCKET) return despejar(player, bloco, face);
+  if (id === ACID_BUCKET) {
+    const r = despejar(player, bloco, face, id);
+    if (r === "cheio") {
+      try {
+        player.onScreenDisplay?.setActionBar(t(player, "acido.nao_cabe"));
+      } catch { }
+    }
+    return r !== "nao";
+  }
 
   if (id !== TITANIUM_BUCKET && !VANILLA_BUCKETS.includes(id)) return false;
 
@@ -468,7 +517,7 @@ function usarBalde(player, bloco, face) {
     return true;
   }
 
-  if (encher(player, poca) !== "ok") return false;
+  if (encher(player, poca, id) !== "ok") return false;
   try { player.playSound("bucket.fill_lava", { volume: 0.7, pitch: 1.1 }); } catch { }
   try {
     player.onScreenDisplay?.setActionBar(t(player, "acido.encheu"));
@@ -479,24 +528,28 @@ function usarBalde(player, bloco, face) {
 export function startAcid() {
   if (!ACID_ENABLED) return;
 
-  // Caminho 1: o jogo reconheceu o bloco. Só CANCELA quando o gesto é nosso de
-  // certeza — cancelar por via das dúvidas tiraria do jogador o direito de
-  // colocar blocos com o balde na mão.
+  // Caminho 1: o jogo reconheceu a interação com um bloco.
+  //
+  // O item vem de `event.itemStack` e NÃO do inventário. Aqui é modo somente
+  // leitura, e `container.getItem` é recusado nele — era essa leitura que
+  // devolvia "nada na mão" e fazia o balde não colocar o ácido, calada.
   world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     try {
       const player = event.player;
       const bloco = event.block;
       if (!player) return;
 
-      const id = naMao(player)?.typeId;
+      const id = event.itemStack?.typeId;
       if (id !== TITANIUM_BUCKET && id !== ACID_BUCKET
           && !VANILLA_BUCKETS.includes(id)) return;
 
+      // Só CANCELA com balde nosso na mão: cancelar por via das dúvidas
+      // tiraria do jogador o direito de usar qualquer outra coisa.
       event.cancel = true;
       const face = event.blockFace;
       system.run(() => {
         if (!player?.isValid) return;
-        if (gestoNovo(player)) usarBalde(player, bloco, face);
+        if (gestoNovo(player)) usarBalde(player, bloco, face, id);
       });
     } catch { }
   });
@@ -512,7 +565,7 @@ export function startAcid() {
         if (id !== TITANIUM_BUCKET && id !== ACID_BUCKET
             && !VANILLA_BUCKETS.includes(id)) return;
         if (!gestoNovo(player)) return;
-        usarBalde(player, null, null);
+        usarBalde(player, null, null, id);
       } catch { }
     });
   } catch { }
