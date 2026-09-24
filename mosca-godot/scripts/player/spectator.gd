@@ -20,7 +20,7 @@ var world: GardenWorld
 var speed := 220.0
 var yaw := 0.0
 var pitch := -0.35
-var follow: Fly = null
+var follow: Node3D = null
 var follow_dist := 16.0
 var held: Object = null
 var hold_dist := 100.0
@@ -111,9 +111,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		air_puff()
 	elif event.is_action_pressed("follow"):
 		cycle_follow()
+	elif event.is_action_pressed("teleport"):
+		teleport_to_fly()
 	elif event.is_action_pressed("delete_held"):
 		delete_held()
-	for i in 6:
+	for i in 7:
 		if event.is_action_pressed("spawn_%d" % (i + 1)):
 			spawn(i + 1)
 
@@ -167,8 +169,14 @@ func _follow_update(dt: float, mv: Vector3, mult: float) -> void:
 	look_at(target, Vector3.UP)
 
 
+static func _label(n: Node) -> String:
+	if n is Fly:
+		return (n as Fly).fly_name
+	return n.call("describe") if n.has_method("describe") else str(n.name)
+
+
 func cycle_follow() -> void:
-	var flies := get_tree().get_nodes_in_group("flies")
+	var flies := get_tree().get_nodes_in_group("creatures")
 	if flies.is_empty():
 		return
 	if follow == null:
@@ -182,10 +190,37 @@ func cycle_follow() -> void:
 		follow = flies[i + 1]
 	yaw = rotation.y
 	pitch = clampf(rotation.x, -1.4, 0.5)
-	message.emit("Seguindo %s (roda do mouse = zoom)" % follow.fly_name)
+	message.emit("Seguindo %s (roda do mouse = zoom)" % _label(follow))
 
 
-func follow_fly(f: Fly) -> void:
+## Teleporta a camera para perto da mosca (a que voce segue, ou a viva mais
+## proxima) e passa a segui-la.
+func teleport_to_fly(target: Node3D = null) -> void:
+	if target == null:
+		if follow is Fly and not (follow as Fly).dead:
+			target = follow
+		else:
+			var best_d := INF
+			for n in get_tree().get_nodes_in_group("flies"):
+				var f := n as Fly
+				if f.dead:
+					continue
+				var d := f.global_position.distance_to(global_position)
+				if d < best_d:
+					best_d = d
+					target = f
+	if target == null:
+		message.emit("Nenhuma mosca viva")
+		return
+	follow = target
+	follow_dist = 16.0
+	var b := Basis.from_euler(Vector3(pitch, yaw, 0.0))
+	position = target.global_position + target.global_basis.y * 1.2 + b * Vector3(0, 0, follow_dist)
+	_vel = Vector3.ZERO
+	message.emit("Teleportado ate %s" % _label(target))
+
+
+func follow_fly(f: Node3D) -> void:
 	follow = f
 	yaw = rotation.y
 	pitch = clampf(rotation.x, -1.4, 0.5)
@@ -212,6 +247,8 @@ func _update_hover(screen_pos: Vector2) -> void:
 		if c is Area3D and (c as Area3D).has_meta("fly"):
 			var f: Fly = (c as Area3D).get_meta("fly")
 			text = "%s — %s (clique para pegar)" % [f.fly_name, f.behavior]
+		elif c is Area3D and (c as Area3D).has_meta("creature"):
+			text = "%s (clique para pegar)" % _label((c as Area3D).get_meta("creature"))
 		elif c.has_method("describe"):
 			text = "%s (clique para pegar)" % c.call("describe")
 	if text != _hover_text:
@@ -228,6 +265,10 @@ func _try_grab(screen_pos: Vector2) -> void:
 		var f: Fly = (c as Area3D).get_meta("fly")
 		held = f
 		f.grab()
+	elif c is Area3D and (c as Area3D).has_meta("creature"):
+		var cr: Node = (c as Area3D).get_meta("creature")
+		held = cr
+		cr.call("grab")
 	elif c is RigidBody3D and (c as Node).is_in_group("grabbable"):
 		var rb := c as RigidBody3D
 		if rb is Fruit and (rb as Fruit).hanging:
@@ -255,10 +296,9 @@ func _update_held(_dt: float) -> void:
 		held = null
 		return
 	var target := _hold_point()
-	if held is Fly:
-		var f := held as Fly
+	if held is Fly or held is Larva:
 		var b := Fly._basis_from(Vector3.UP, (target - global_position).cross(Vector3.UP))
-		f.carry_to(Transform3D(b, target))
+		held.call("carry_to", Transform3D(b, target))
 	elif held is RigidBody3D:
 		var rb := held as RigidBody3D
 		var v := (target - rb.global_position) * 14.0
@@ -272,16 +312,16 @@ func _release() -> void:
 	if held == null:
 		return
 	if is_instance_valid(held):
-		if held is Fly:
-			var f := held as Fly
-			f.release((_hold_point() - f.global_position) * 10.0 + cam_velocity * 0.5)
+		if held is Fly or held is Larva:
+			var n := held as Node3D
+			n.call("release", (_hold_point() - n.global_position) * 10.0 + cam_velocity * 0.5)
 		elif held is RigidBody3D:
 			(held as RigidBody3D).linear_velocity += cam_velocity * 0.3
 	held = null
 
 
 func delete_held() -> void:
-	if held and is_instance_valid(held) and not (held is Fly):
+	if held and is_instance_valid(held) and not (held is Fly) and not (held is Larva):
 		(held as Node).queue_free()
 		message.emit("Objeto removido")
 	held = null
@@ -335,4 +375,13 @@ func spawn(item: int, use_center := false) -> void:
 		6:
 			var main := get_tree().current_scene
 			if main.has_method("spawn_fly"):
-				main.call("spawn_fly", hit.position if hit else p)
+				var f: Fly = main.call("spawn_fly", hit.position if hit else p)
+				message.emit("%s criada" % f.fly_name)
+		7:
+			var l := Larva.new()
+			if LifeManager.instance:
+				LifeManager.instance.add_child(l)
+			else:
+				get_tree().current_scene.add_child(l)
+			l.place(hit.position if hit else p, hit.normal if hit else Vector3.UP, hit.collider if hit else null)
+			message.emit("Larva criada")

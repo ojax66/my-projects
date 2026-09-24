@@ -1,25 +1,329 @@
 {
-  "_comentario": "Expressoes regulares sobre o tipo celular (coluna cell_type/type). 'lateral': separa em _L/_R pelo lado do soma. Pode listar IDs em 'ids'. A nomenclatura muda entre FlyWire, MANC e MCNS: rode o extrator e ajuste o que vier vazio.",
-  "inputs": {
-    "odor":    {"lateral": true,  "types": ["^ORN_(DM1|DM2|DM3|DM4|VM2|VA2|VC3|DL1)$"]},
-    "sugar":   {"lateral": true,  "types": ["(?i)sugar", "(?i)^Gr5a", "(?i)^Gr64", "(?i)^GRN.*sweet"]},
-    "bitter":  {"lateral": true,  "types": ["(?i)bitter", "(?i)^Gr66a", "(?i)^Gr33a"]},
-    "loom":    {"lateral": true,  "types": ["^LPLC2$"]},
-    "mechano": {"lateral": false, "types": ["^JO-(C|E|CE|CA|CM|EDM|EDP|EV)"]},
-    "hunger":  {"lateral": false, "types": ["^ISN$", "(?i)^DH44"]}
+ "_comentario": "Grupos do subcircuito (regex sobre o tipo celular). lateral: separa _L/_R pelo lado do soma. cap: maximo por lado (amostra; sinapses de saida sao reescaladas). upstream_of: neuronios da 'class' que mais fazem sinapse nos tipos-alvo. Testado com o MCNS (Codex); para FlyWire alguns nomes mudam.",
+ "inputs": {
+  "odor_DM1": {
+   "lateral": true,
+   "types": [
+    "^ORN_DM1$"
+   ],
+   "cap": 6
   },
-  "outputs": {
-    "forward":   {"lateral": true,  "types": ["^DNp09$", "^oDN1$"]},
-    "turn":      {"lateral": true,  "types": ["^DNa02$"]},
-    "backward":  {"lateral": false, "types": ["^MDN$", "(?i)moonwalker"]},
-    "escape":    {"lateral": false, "types": ["^DNp01$", "(?i)^giant.?fiber", "^GF$"]},
-    "proboscis": {"lateral": false, "types": ["^MN9$"]},
-    "groom":     {"lateral": false, "types": ["^aDN1$", "^aDN2$", "^DNg12$"]}
+  "odor_DM2": {
+   "lateral": true,
+   "types": [
+    "^ORN_DM2$"
+   ],
+   "cap": 6
   },
-  "explore": {
-    "explore_fwd": ["forward_L", "forward_R"],
-    "explore_L": ["turn_L"],
-    "explore_R": ["turn_R"],
-    "explore_back": ["backward"]
+  "odor_DM3": {
+   "lateral": true,
+   "types": [
+    "^ORN_DM3$"
+   ],
+   "cap": 6
+  },
+  "odor_DM4": {
+   "lateral": true,
+   "types": [
+    "^ORN_DM4$"
+   ],
+   "cap": 6
+  },
+  "odor_DL1": {
+   "lateral": true,
+   "types": [
+    "^ORN_DL1$"
+   ],
+   "cap": 6
+  },
+  "odor_VA2": {
+   "lateral": true,
+   "types": [
+    "^ORN_VA2$"
+   ],
+   "cap": 6
+  },
+  "sugar": {
+   "lateral": false,
+   "class": "gustatory",
+   "upstream_of": [
+    "^GNG540$",
+    "^GNG550$",
+    "^GNG056$"
+   ],
+   "min_syn": 10,
+   "cap": 12,
+   "_nota": "GRNs que mais alimentam os 'Sugar SEL PN/LN' de Yao & Scott 2022"
+  },
+  "bitter": {
+   "lateral": false,
+   "class": "gustatory",
+   "upstream_of": [
+    "^DNg28$"
+   ],
+   "hops": 2,
+   "min_syn": 10,
+   "cap": 12,
+   "_nota": "GRNs que mais alimentam o 'Bitter-SEL' (DNg28) de Yao & Scott 2022"
+  },
+  "loom": {
+   "lateral": true,
+   "types": [
+    "^LPLC2$"
+   ],
+   "cap": 10
+  },
+  "mechano": {
+   "lateral": false,
+   "types": [
+    "^JO-(CA1|CA2|CL|CM|ED1|ED2_a|EV1|EV2)$"
+   ],
+   "cap": 14
+  },
+  "hunger": {
+   "lateral": false,
+   "types": [
+    "^ISN$",
+    "^DH44$"
+   ]
+  },
+  "glucose": {
+   "lateral": false,
+   "types": [
+    "^IPC$"
+   ]
+  },
+  "reward": {
+   "lateral": false,
+   "types": [
+    "^PAM0[1-8]$"
+   ],
+   "cap": 40,
+   "_nota": "dopaminergicos de recompensa (acucar ingerido)"
+  },
+  "punish": {
+   "lateral": false,
+   "types": [
+    "^PPL10[1-8]$"
+   ],
+   "_nota": "dopaminergicos de punicao (amargo, dor, susto)"
+  },
+  "courtship_cue": {
+   "lateral": false,
+   "types": [
+    "^pC1_"
+   ],
+   "cap": 16
   }
+ },
+ "outputs": {
+  "forward": {
+   "lateral": true,
+   "types": [
+    "^DNp09$"
+   ]
+  },
+  "turn": {
+   "lateral": true,
+   "types": [
+    "^DNa02$"
+   ]
+  },
+  "backward": {
+   "lateral": false,
+   "types": [
+    "^MDN$"
+   ]
+  },
+  "escape": {
+   "lateral": false,
+   "types": [
+    "^DNp01$"
+   ]
+  },
+  "proboscis": {
+   "lateral": false,
+   "types": [
+    "^MN9$"
+   ]
+  },
+  "groom": {
+   "lateral": false,
+   "types": [
+    "^DNg12_(a|b|c)$"
+   ],
+   "cap": 8
+  },
+  "octopamine": {
+   "lateral": false,
+   "types": [
+    "^OA-(VUMa|VPM|ASM)"
+   ]
+  },
+  "serotonin": {
+   "lateral": false,
+   "types": [
+    "^5-HT",
+    "^CSD$"
+   ]
+  },
+  "leucokinin": {
+   "lateral": false,
+   "types": [
+    "^LK$"
+   ]
+  }
+ },
+ "keep": {
+  "PN": {
+   "lateral": true,
+   "types": [
+    "^(DM1|DM2|DM3|DM4|DL1|VA2)_[a-z]*PN$"
+   ]
+  },
+  "KC": {
+   "lateral": true,
+   "types": [
+    "^KC(ab|g)-(c|m|s|d)$"
+   ],
+   "cap": 50,
+   "max_scale": 3,
+   "balance_by": [
+    "PN_L",
+    "PN_R"
+   ]
+  },
+  "MBON": {
+   "lateral": false,
+   "types": [
+    "^MBON"
+   ],
+   "cap": 60
+  },
+  "APL": {
+   "lateral": false,
+   "types": [
+    "^APL$"
+   ],
+   "out_gain": 0.55,
+   "_nota": "APL e um neuronio sem spikes (graduado); no LIF ele satura, entao reduzimos o ganho"
+  },
+  "pre_MN9": {
+   "lateral": false,
+   "upstream_of": [
+    "^MN9$"
+   ],
+   "hops": 2,
+   "min_syn": 15,
+   "cap": 24,
+   "_nota": "entradas mais fortes do MN9 (probocide)"
+  },
+  "pre_DNa02": {
+   "lateral": false,
+   "upstream_of": [
+    "^DNa02$"
+   ],
+   "min_syn": 15,
+   "cap": 16
+  },
+  "pre_DNp09": {
+   "lateral": false,
+   "upstream_of": [
+    "^DNp09$"
+   ],
+   "min_syn": 15,
+   "cap": 16
+  },
+  "pre_MDN": {
+   "lateral": false,
+   "upstream_of": [
+    "^MDN$"
+   ],
+   "min_syn": 15,
+   "cap": 12
+  },
+  "post_sugar": {
+   "lateral": false,
+   "downstream_of": "sugar",
+   "min_syn": 10,
+   "cap": 20
+  }
+ },
+ "aliases_in": {
+  "explore_fwd": [
+   "forward_L",
+   "forward_R"
+  ],
+  "explore_L": [
+   "turn_L"
+  ],
+  "explore_R": [
+   "turn_R"
+  ],
+  "explore_back": [
+   "backward"
+  ]
+ },
+ "aliases_out": {
+  "insulin": [
+   "glucose"
+  ],
+  "dh44": [
+   "hunger"
+  ],
+  "reward_da": [
+   "reward"
+  ],
+  "punish_da": [
+   "punish"
+  ],
+  "courtship": [
+   "courtship_cue"
+  ]
+ },
+ "plasticity": {
+  "_regra": "KC->MBON: depressao quando a KC esteve ativa e chega dopamina ao MBON (Hige et al. 2015); recupera devagar (esquecimento)",
+  "pre": "^KC",
+  "post": "^MBON",
+  "dan": "^(PAM|PPL1)",
+  "punish_dan": "^PPL1",
+  "rate": 0.25,
+  "recovery_s": 240.0,
+  "trace_s": 1.5
+ },
+ "bridges": {
+  "_comentario": "Atalhos para vias funcionais conhecidas cujos intermediarios ficaram fora da amostra de 650 neuronios. [origem, destino, sinapses por par]. Ficam marcados no JSON (campo bridge) e aparecem separados no painel.",
+  "list": [
+   [
+    "sugar",
+    "proboscis",
+    16.0
+   ],
+   [
+    "sugar",
+    "reward",
+    6.0
+   ],
+   [
+    "bitter",
+    "punish",
+    7.0
+   ],
+   [
+    "bitter",
+    "backward",
+    10.0
+   ],
+   [
+    "bitter",
+    "proboscis",
+    -24.0
+   ]
+  ]
+ },
+ "exclude_middle": [
+  "^(l|il|v|d)[0-9]*LN",
+  "^mALD",
+  "^LN[0-9]"
+ ]
 }

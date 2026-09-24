@@ -13,6 +13,20 @@ const INFO := {
 	Kind.PEAR: {"name": "Pera", "radius": 34.0, "a": Color(0.62, 0.72, 0.18), "b": Color(0.9, 0.78, 0.3), "sugar": 1.0, "bitter": 0.0, "odor": 0.9},
 }
 
+## glomerulos do lobo antenal usados no jogo (ORNs do conectoma)
+const GLOMS := ["DM1", "DM2", "DM3", "DM4", "DL1", "VA2"]
+## perfil de odor de cada fruta sobre esses glomerulos (DM1/DM2 ~ esteres
+## frutados, DL1/VA2 ~ notas citricas/verdes). Fermentacao soma acetato de
+## etila e etanol, que ativam fortemente DM1/DM2.
+const PROFILE := {
+	Kind.APPLE: [0.8, 1.0, 0.3, 0.3, 0.1, 0.3],
+	Kind.CHERRY: [0.5, 0.4, 0.9, 0.4, 0.1, 0.2],
+	Kind.ORANGE: [0.3, 0.3, 0.3, 0.2, 0.9, 0.7],
+	Kind.LEMON: [0.1, 0.1, 0.2, 0.1, 1.0, 0.9],
+	Kind.PEAR: [0.6, 0.8, 0.2, 0.8, 0.1, 0.3],
+}
+const FERMENT := [1.0, 0.7, 0.2, 0.3, 0.0, 0.1]
+
 static var _shader: Shader
 
 @export var kind: Kind = Kind.APPLE
@@ -22,7 +36,13 @@ var radius := 30.0
 var display_name := "Fruta"
 var ground_time := 0.0   # tempo parada no chao (fermentacao)
 var fall_timer := -1.0
+var flesh := 1.0         # fracao de polpa que resta
+var capacity := 1.0      # unidades de comida
 var _stem: Node3D
+var _mesh: MeshInstance3D
+var _col_shape: Shape3D
+var _mat: ShaderMaterial
+var _last_scale := 1.0
 
 
 static func create(k: Kind, hang := false) -> Fruit:
@@ -36,6 +56,7 @@ func _ready() -> void:
 	var info: Dictionary = INFO[kind]
 	radius = info["radius"] * randf_range(0.85, 1.15)
 	display_name = info["name"]
+	capacity = pow(radius / 10.0, 3.0) * 0.08
 	add_to_group("odor_source")
 	add_to_group("loomer")
 	add_to_group("grabbable")
@@ -61,6 +82,7 @@ func _ready() -> void:
 		var sp := SphereShape3D.new()
 		sp.radius = radius
 		cs.shape = sp
+	_col_shape = cs.shape
 	add_child(cs)
 	if hanging:
 		freeze = true
@@ -99,7 +121,39 @@ func odor_strength() -> float:
 
 
 func taste() -> Dictionary:
+	if flesh <= 0.0:
+		return {"sugar": 0.0, "bitter": 0.0}
 	return {"sugar": INFO[kind]["sugar"], "bitter": INFO[kind]["bitter"]}
+
+
+## Perfil de odor (6 glomerulos) ja multiplicado pela intensidade.
+func odor_profile() -> PackedFloat32Array:
+	var k := odor_strength()
+	var ferment := clampf(ground_time / 60.0, 0.0, 1.0) * (0.5 + (1.0 - flesh)) if not hanging else 0.0
+	var base: Array = PROFILE[kind]
+	var out := PackedFloat32Array()
+	out.resize(GLOMS.size())
+	for i in GLOMS.size():
+		out[i] = k * (float(base[i]) + ferment * float(FERMENT[i]))
+	return out
+
+
+## Uma mosca ou larva come: tira polpa e devolve quanto conseguiu (unidades).
+func consume(amount: float) -> float:
+	var got := minf(amount, flesh * capacity)
+	flesh -= got / capacity
+	var sc := 0.45 + 0.55 * pow(maxf(flesh, 0.0), 0.5)
+	if absf(sc - _last_scale) > 0.03:
+		_last_scale = sc
+		if _mesh:
+			_mesh.scale = Vector3.ONE * sc
+		if _col_shape is SphereShape3D:
+			(_col_shape as SphereShape3D).radius = radius * sc
+		if _mat:
+			_mat.set_shader_parameter("rot", 1.0 - flesh)
+	if flesh <= 0.01:
+		queue_free.call_deferred()
+	return got
 
 
 func loom_radius() -> float:
@@ -110,6 +164,8 @@ func describe() -> String:
 	var s := display_name
 	if hanging:
 		s += " (no galho)"
+	if flesh < 0.97:
+		s += " — %d%% comida" % int((1.0 - flesh) * 100)
 	elif ground_time > 30.0:
 		s += " (fermentando)"
 	return s
@@ -139,6 +195,7 @@ func _build_mesh(info: Dictionary) -> void:
 	st.index()
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
+	_mesh = mi
 	mi.mesh = st.commit()
 	if _shader == null:
 		_shader = load("res://shaders/fruit.gdshader")
@@ -150,6 +207,7 @@ func _build_mesh(info: Dictionary) -> void:
 	mat.set_shader_parameter("dimples", 1.0 if kind in [Kind.ORANGE, Kind.LEMON] else 0.0)
 	mat.set_shader_parameter("radius", radius)
 	mi.material_override = mat
+	_mat = mat
 	add_child(mi)
 	# cabinho
 	if kind != Kind.LEMON and kind != Kind.ORANGE or hanging:

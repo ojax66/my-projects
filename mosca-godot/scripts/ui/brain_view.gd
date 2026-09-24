@@ -9,7 +9,7 @@ const C_SENS := Color(0.35, 0.7, 1.0)
 const C_INTER := Color(0.45, 0.9, 0.45)
 const C_OUT := Color(1.0, 0.6, 0.2)
 
-var fly: Fly
+var fly: Node   # qualquer criatura com a propriedade `brain` (mosca ou larva)
 var _brain: FlyBrain
 var _img: Image
 var _tex: ImageTexture
@@ -24,7 +24,7 @@ var _font: Font
 
 func _ready() -> void:
 	_font = get_theme_default_font()
-	custom_minimum_size = Vector2(430, 560)
+	custom_minimum_size = Vector2(430, 470)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -32,8 +32,11 @@ func _ready() -> void:
 func _process(_dt: float) -> void:
 	if not visible or fly == null or not is_instance_valid(fly):
 		return
-	if fly.brain != _brain:
-		_setup(fly.brain)
+	var b: FlyBrain = fly.get("brain")
+	if b == null:
+		return
+	if b != _brain:
+		_setup(b)
 	# raster: uma coluna por quadro num buffer circular
 	_col = (_col + 1) % COLS
 	for y in _img.get_height():

@@ -17,6 +17,11 @@ var _panel_normal: StyleBoxTexture
 var _panel_hover: StyleBoxTexture
 var _panel_pressed: StyleBoxTexture
 var _time_btn: Button
+var _inherit_btn: Button
+var _life: Label
+var _chem_view: Control
+var _life_panel: PanelContainer
+var _chem_fly: Fly
 
 
 func _ready() -> void:
@@ -55,21 +60,50 @@ func _process(dt: float) -> void:
 	_toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
 	_crosshair.visible = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	var fly := _current_fly()
-	brain_view.fly = fly
+	var fol: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
+	brain_view.fly = fly if fly else (fol if fol and fol.get("brain") != null else brain_view.fly)
+	_chem_fly = fly
+	var followed: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
 	if fly:
-		var st: String = ["andando", "voando", "carregada"][fly.state]
-		_status.text = "%s  |  %s  |  %s\nfome %d%%   velocidade %.1f mm/s\nodor E/D %.0f/%.0f Hz   acucar %.0f   amargo %.0f   looming %.0f/%.0f   vento %.0f\nDNp09 E/D %.2f/%.2f   DNa02 %+.2f   MDN %.2f   MN9 %.2f   aDN %.2f   GF %.2f" % [
-			fly.fly_name, st, fly.behavior, int(fly.hunger * 100), absf(fly.speed),
+		var st: String = ["andando", "voando", "carregada", "morta"][fly.state]
+		_status.text = "%s  |  %s  |  %s\nenergia %d%%   papo %d%%   velocidade %.1f mm/s   cerebro: %s\nodor E/D %.0f/%.0f Hz   acucar %.0f   amargo %.0f   looming %.0f/%.0f   vento %.0f\nDNp09 E/D %.2f/%.2f   DNa02 %+.2f   MDN %.2f   MN9 %.2f   groom %.2f   GF %.2f   corte %.2f" % [
+			fly.fly_name, st, fly.behavior, int(fly.energy * 100), int(fly.gut * 200), absf(fly.speed),
+			"spikes (LIF)" if fly.brain.mode == FlyBrain.Mode.SPIKE else "campo medio",
 			fly.sense["odor_L"], fly.sense["odor_R"], fly.sense["sugar"], fly.sense["bitter"],
 			fly.sense["loom_L"], fly.sense["loom_R"], fly.sense["mechano"],
-			fly.m_fwd_l, fly.m_fwd_r, fly.m_turn, fly.m_back, fly.m_prob, fly.m_groom, fly.brain.output("escape")]
+			fly.m_fwd_l, fly.m_fwd_r, fly.m_turn, fly.m_back, fly.m_prob, fly.m_groom, fly.brain.output("escape"), fly.courtship]
+		var repro := ""
+		if fly.sex == "F":
+			repro = "fecundada, %d ovos para botar (%d postos)" % [fly.eggs_to_lay, fly.eggs_laid] if fly.mated else ("madura" if fly.age > LifeManager.ADULT_MATURE else "imatura")
+		else:
+			repro = "maduro" if fly.age > LifeManager.ADULT_MATURE else "imaturo"
+		_life.text = "%s  geracao %d  linhagem %d  idade %ds / %ds  %s\nmemoria: %.1f%% das sinapses KC->MBON alteradas   valencia do cheiro atual %+.2f\ngenes: %s" % [
+			"femea" if fly.sex == "F" else "macho", fly.generation, fly.lineage, int(fly.age), int(fly.genome.get_gene("lifespan")), repro,
+			fly.brain.memory_strength() * 100.0, fly.valence, fly.genome.summary()]
+	elif followed:
+		_status.text = Spectator._label(followed)
+		if followed is Larva:
+			var l := followed as Larva
+			_status.text += "\ncomida %d%%  idade %ds  cerebro: conectoma da larva (%d neuronios)\nodor E/D %.0f/%.0f  paladar %.0f  luz %.0f   DN-VNC E/D %.2f/%.2f  DN-SEZ %.2f" % [
+				int(l.food / LifeManager.LARVA_FOOD * 100), int(l.age), l.brain.n, l.sense["odor_L"], l.sense["odor_R"], l.sense["taste"], l.sense["light"], l.m_crawl_l, l.m_crawl_r, l.m_feed]
+		_life.text = ""
+	var lm := LifeManager.instance
+	if lm:
+		var d := ""
+		for k: String in lm.deaths:
+			d += "%s %d  " % [k, lm.deaths[k]]
+		_life.text += "\npopulacao: %d adultos  %d larvas  %d pupas  %d ovos   nascimentos %d   geracao max %d\nmortes: %s" % [
+			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.births, lm.max_generation, d if d != "" else "nenhuma"]
+		_inherit_btn.text = "Heranca do aprendizado: %s" % ("SIM" if lm.inherit_learning else "NAO")
+	_chem_view.visible = fly != null and _life.visible
+	_chem_view.queue_redraw()
 	var ts := Engine.time_scale
 	_time_btn.text = "Tempo x%s" % (str(ts) if ts < 1.0 else "1")
 
 
 func _current_fly() -> Fly:
 	if spectator and spectator.follow and is_instance_valid(spectator.follow):
-		return spectator.follow
+		return spectator.follow as Fly
 	var flies := get_tree().get_nodes_in_group("flies")
 	return flies[0] if not flies.is_empty() else null
 
@@ -77,6 +111,9 @@ func _current_fly() -> Fly:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_brain"):
 		brain_view.get_parent().visible = not brain_view.get_parent().visible
+	elif event.is_action_pressed("toggle_life"):
+		_life.visible = not _life.visible
+		_chem_view.visible = _life.visible
 	elif event.is_action_pressed("toggle_help"):
 		_help.visible = not _help.visible
 	elif event.is_action_pressed("time_scale"):
@@ -96,6 +133,23 @@ func toggle_brain_source() -> void:
 	for f: Fly in flies:
 		f.reload_brain(use)
 	toast("Cerebro: " + (flies[0] as Fly).brain.name)
+
+
+## Barras de hormonios/neuromoduladores da mosca atual.
+func _draw_chem() -> void:
+	if _chem_fly == null or not is_instance_valid(_chem_fly):
+		return
+	var font := _chem_view.get_theme_default_font()
+	var names := ["insulina", "DH44", "AKH", "octopamina", "serotonina", "leucocinina", "dopamina+", "dopamina-"]
+	var cols := [Color(0.4, 0.8, 1.0), Color(1.0, 0.6, 0.3), Color(1.0, 0.4, 0.3), Color(1.0, 0.9, 0.3), Color(0.7, 0.5, 1.0), Color(0.5, 1.0, 0.8), Color(0.4, 1.0, 0.4), Color(1.0, 0.35, 0.5)]
+	var w := 128.0
+	for i in names.size():
+		var x := (i % 4) * (w + 4.0)
+		var y := (i / 4) * 28.0
+		var lv := clampf(_chem_fly.chem.get_level(names[i]), 0.0, 1.5) / 1.5
+		_chem_view.draw_string(font, Vector2(x, y + 11), names[i], HORIZONTAL_ALIGNMENT_LEFT, w, 11, Color(0.85, 0.9, 0.85))
+		_chem_view.draw_rect(Rect2(x, y + 14, w, 8), Color(1, 1, 1, 0.08))
+		_chem_view.draw_rect(Rect2(x, y + 14, w * lv, 8), cols[i])
 
 
 func cycle_time() -> void:
@@ -199,9 +253,9 @@ func _build_action_bar() -> void:
 	bar.anchor_right = 1.0
 	bar.anchor_top = 1.0
 	bar.anchor_bottom = 1.0
-	bar.offset_left = -640
+	bar.offset_left = -760
 	bar.offset_right = -16
-	bar.offset_top = -126
+	bar.offset_top = -180
 	bar.offset_bottom = -16
 	bar.alignment = FlowContainer.ALIGNMENT_END
 	bar.add_theme_constant_override("h_separation", 6)
@@ -212,6 +266,8 @@ func _build_action_bar() -> void:
 	bar.add_child(_text_button("Limao", func(): _spawn(4), "Criar limao amargo (4)"))
 	bar.add_child(_text_button("Pedra", func(): _spawn(5), "Criar pedrinha (5)"))
 	bar.add_child(_text_button("+ Mosca", func(): _spawn(6), "Criar outra mosca (6)"))
+	bar.add_child(_text_button("+ Larva", func(): _spawn(7), "Criar uma larva (7)"))
+	bar.add_child(_text_button("Ir ate a mosca", func(): spectator.teleport_to_fly(), "Teleportar para perto da mosca e segui-la (I)"))
 	bar.add_child(_text_button("Soprar", func(): spectator.air_puff(), "Sopro de ar (F / botao do meio)"))
 	bar.add_child(_text_button("Seguir", func(): spectator.cycle_follow(), "Seguir mosca / camera livre (C)"))
 	_time_btn = _text_button("Tempo x1", cycle_time, "Camera lenta (T)")
@@ -219,6 +275,9 @@ func _build_action_bar() -> void:
 	bar.add_child(_text_button("Cerebro", func(): brain_view.get_parent().visible = not brain_view.get_parent().visible, "Mostrar/ocultar cerebro (B)"))
 	if FileAccess.file_exists("res://brain/connectome.json"):
 		bar.add_child(_text_button("Trocar cerebro", toggle_brain_source, "Circuito padrao <-> conectoma extraido (N)"))
+	_inherit_btn = _text_button("Heranca do aprendizado: SIM", func():
+		LifeManager.instance.inherit_learning = not LifeManager.instance.inherit_learning, "Filhotes nascem com parte da memoria dos pais (lamarckiano). Na biologia real so os genes passam.")
+	bar.add_child(_inherit_btn)
 	bar.add_child(_text_button("Ajuda", func(): _help.visible = not _help.visible, "Ajuda (H)"))
 	add_child(bar)
 
@@ -249,6 +308,14 @@ func _build_status() -> void:
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 13)
 	v.add_child(_status)
+	_life = Label.new()
+	_life.add_theme_font_size_override("font_size", 12)
+	_life.add_theme_color_override("font_color", Color(0.85, 0.95, 0.8))
+	v.add_child(_life)
+	_chem_view = Control.new()
+	_chem_view.custom_minimum_size = Vector2(520, 58)
+	_chem_view.draw.connect(_draw_chem)
+	v.add_child(_chem_view)
 	pc.add_child(v)
 	add_child(pc)
 
@@ -312,19 +379,27 @@ func _build_help() -> void:
 MOVIMENTO   W A S D ou botoes verdes  |  E / Espaco sobe, Q / Ctrl desce
             setas esq/dir ou Z/X giram  |  Shift rapido, Alt lento
             roda do mouse = velocidade  |  botao direito segurado = olhar  |  Tab prende o mouse
-SEGUIR      C (ou botao Seguir): orbita a mosca; W/S zoom, A/D orbita, E/Q inclina
+SEGUIR      C (ou botao Seguir): orbita mosca/larva/pupa; W/S zoom, A/D orbita, E/Q inclina
+            I (ou "Ir ate a mosca"): teleporta ate a mosca  |  L painel de vida
 
 MUNDO       botao esquerdo: pegar e arrastar frutas, pedras e a propria mosca
             solte com o mouse em movimento para arremessar | roda = distancia
             F ou botao do meio: soprar (empurra objetos e a mosca sente o vento)
-            1 maca  2 cereja  3 laranja  4 limao amargo  5 pedra  6 outra mosca
+            1 maca  2 cereja  3 laranja  4 limao amargo  5 pedra  6 mosca  7 larva
             Del apaga o objeto segurado  |  T camera lenta  |  B cerebro  |  N troca cerebro  |  H ajuda
 
 A MOSCA     Anda com passadas reais gravadas (flygym), coordenadas por um CPG.
             Cheiro de fruta (fermentada atrai mais) -> vira e caminha ate ela.
             Pisar em acucar -> estende a probocide e come ate saciar.
             Amargo (limao) -> anda para tras. Algo vindo rapido -> Giant Fiber -> foge voando.
-            Sopro -> limpa as antenas. Com fome e sem cheiro, voa ate uma fruta."""
+            Sopro -> limpa as antenas. Com fome e sem cheiro, voa ate uma fruta.
+
+VIDA        Cerebro real (MCNS): hormonios (insulina, DH44, octopamina, serotonina...)
+            saem dos neuronios neuroendocrinos. Dopamina PAM/PPL1 altera as sinapses
+            KC->MBON: ela lembra quais cheiros deram comida e quais deram susto.
+            Come a polpa (a fruta encolhe), excreta, envelhece e morre.
+            Machos cortejam femeas (pC1), femeas fecundadas botam ovos nas frutas:
+            ovo -> larva (conectoma da larva) -> pupa -> adulto com genes misturados."""
 	_help.add_child(l)
 	_help.visible = false
 	add_child(_help)

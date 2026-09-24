@@ -6,6 +6,7 @@ uniform vec4 color_b : source_color = vec4(0.95, 0.7, 0.2, 1.0);
 uniform float seed = 0.0;
 uniform float dimples = 0.0;
 uniform float radius = 30.0;
+uniform float rot = 0.0;
 varying vec3 obj_pos;
 
 float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
@@ -27,6 +28,9 @@ void fragment() {
 	vec3 col = mix(color_a.rgb, color_b.rgb, t);
 	float speck = step(0.93, noise(p * 38.0));
 	col = mix(col, color_b.rgb * 1.2, speck * 0.5 * (1.0 - dimples));
+	// polpa comida/apodrecendo: manchas marrons
+	float spot = smoothstep(0.55, 0.45, fbm(p * 3.0 + 11.0) - rot * 0.6);
+	col = mix(col, vec3(0.28, 0.17, 0.06), clamp(rot * 1.4, 0.0, 1.0) * (1.0 - spot));
 	ALBEDO = col;
 	float pores = noise(p * 60.0);
 	ROUGHNESS = mix(0.28, 0.5, pores * dimples + m * 0.2);
