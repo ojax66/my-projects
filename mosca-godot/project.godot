@@ -24,6 +24,10 @@ window/stretch/aspect="expand"
 3d/sleep_threshold_linear=2.0
 common/physics_ticks_per_second=90
 
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
 [layer_names]
 
 3d_physics/layer_1="mundo"

@@ -35,7 +35,7 @@ func _init() -> void:
 
 ## energy 0..1; arousal 0..1 e ingest/punish (0..1) sao usados quando o
 ## cerebro nao tem os neuronios correspondentes (circuito padrao).
-func update(dt: float, brain: FlyBrain, energy: float, arousal: float, ingest: float, punish: float) -> void:
+func update(dt: float, brain, energy: float, arousal: float, ingest: float, punish: float) -> void:
 	for k: String in SOURCE:
 		var src: Array = SOURCE[k]
 		var release: float

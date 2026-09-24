@@ -13,7 +13,17 @@ var genome: Genome
 var memory := PackedFloat32Array()
 var generation := 1
 var lineage := 0
-var brain: FlyBrain
+var brain   # GpuBrain (conectoma completo da larva) ou FlyBrain (subcircuito)
+# fisiologia (mesmos orgaos basicos da mosca: papo/intestino, corpo gorduroso, traqueias)
+var energy := 0.5
+var gut := 0.0
+var waste := 0.0
+var health := 1.0
+var pain := 0.0
+var _touch := 0.0
+var _roll_t := 0.0
+var _roll_angle := 0.0
+var _starve_t := 0.0
 var age := 0.0
 var food := 0.0
 var size_mm := 0.7
@@ -45,11 +55,13 @@ func _ready() -> void:
 	add_to_group("creatures")
 	if genome == null:
 		genome = Genome.random_founder(_rng)
-	if FileAccess.file_exists(LARVA_BRAIN):
-		brain = FlyBrain.from_json_file(LARVA_BRAIN)
-	else:
-		brain = FlyBrain.from_dict({"neurons": [], "edges": []})
-	brain.set_mode(FlyBrain.Mode.RATE)
+	brain = GpuBrain.create("larva")
+	if brain == null:
+		if FileAccess.file_exists(LARVA_BRAIN):
+			brain = FlyBrain.from_json_file(LARVA_BRAIN)
+		else:
+			brain = FlyBrain.from_dict({"neurons": [], "edges": []})
+	brain.set_mode(1)
 	brain.learning_gain = genome.get_gene("learning")
 	_build_body()
 	var area := Area3D.new()
@@ -101,6 +113,45 @@ func _build_body() -> void:
 	gut.material_override = _gut_mat
 	gut.name = "gut"
 	_body_root.add_child(gut)
+	# corpo gorduroso (lobos brancos) e traqueias prateadas
+	var fat_mat := StandardMaterial3D.new()
+	fat_mat.albedo_color = Color(1.0, 0.98, 0.9)
+	fat_mat.roughness = 0.5
+	var tr_mat := StandardMaterial3D.new()
+	tr_mat.albedo_color = Color(0.85, 0.88, 0.95)
+	tr_mat.metallic = 0.6
+	tr_mat.roughness = 0.2
+	for s in [-1, 1]:
+		var tr := MeshInstance3D.new()
+		var tc := CapsuleMesh.new()
+		tc.radius = 0.012
+		tc.height = 0.9
+		tr.mesh = tc
+		tr.rotation_degrees = Vector3(90, 0, 0)
+		tr.material_override = tr_mat
+		tr.name = "trachea_%d" % s
+		_body_root.add_child(tr)
+		var fat := MeshInstance3D.new()
+		var fm := SphereMesh.new()
+		fm.radius = 0.05
+		fm.height = 0.1
+		fat.mesh = fm
+		fat.scale = Vector3(1.0, 0.7, 3.5)
+		fat.material_override = fat_mat
+		fat.name = "fat_%d" % s
+		_body_root.add_child(fat)
+	# orgao de Bolwig (olhinhos) na cabeca
+	var eye_mat := StandardMaterial3D.new()
+	eye_mat.albedo_color = Color(0.08, 0.05, 0.04)
+	for s in [-1, 1]:
+		var eye := MeshInstance3D.new()
+		var em := SphereMesh.new()
+		em.radius = 0.013
+		em.height = 0.026
+		eye.mesh = em
+		eye.material_override = eye_mat
+		eye.name = "eye_%d" % s
+		_body_root.add_child(eye)
 	# ganchos da boca
 	for s in [-1, 1]:
 		var hook := MeshInstance3D.new()
@@ -141,6 +192,14 @@ func _physics_process(dt: float) -> void:
 		_up = global_basis.y.normalized()
 	else:
 		surface_body = null
+	var cam := get_viewport().get_camera_3d() as Spectator
+	brain.set_mode(0 if cam and cam.follow == self else 1)
+	_check_crush()
+	if dead:
+		return
+	_physiology(dt)
+	if dead:
+		return
 	_sense()
 	brain.advance(dt)
 	var a := 1.0 - exp(-dt / 0.3)
@@ -153,6 +212,19 @@ func _physics_process(dt: float) -> void:
 	_body_root.scale = Vector3.ONE * size_mm
 
 	var on_food := surface_body is Fruit and (surface_body as Fruit).flesh > 0.0
+	# rolamento nociceptivo (reflexo do cordao ventral: neuronios Goro/Basin,
+	# que nao estao no conectoma do cerebro)
+	if pain > 0.6 and _roll_t <= 0.0:
+		_roll_t = 1.2
+	if _roll_t > 0.0:
+		_roll_t -= dt
+		behavior = "rolando (dor!)"
+		_roll_angle += dt * TAU * 2.5
+		_body_root.rotation.z = _roll_angle
+		_crawl(dt, 0.8 * size_mm, 0.0)
+		_animate(dt, 3.0)
+		return
+	_body_root.rotation.z = lerpf(_body_root.rotation.z, 0.0, 0.2)
 	var ready := food >= LifeManager.LARVA_FOOD and age >= LifeManager.LARVA_MIN_TIME
 	var speed := 0.0
 	var turn := 0.0
@@ -173,6 +245,7 @@ func _physics_process(dt: float) -> void:
 		behavior = "comendo a polpa"
 		var got := (surface_body as Fruit).consume(0.006 * size_mm * dt)
 		food += got
+		gut = minf(gut + got * 3.0, 1.0)
 		speed = 0.1 * size_mm
 		turn = _turn_noise * 0.4
 	else:
@@ -181,12 +254,64 @@ func _physics_process(dt: float) -> void:
 		speed = 0.35 * size_mm * drive * genome.get_gene("speed")
 		# viragem: assimetria dos descendentes do conectoma + quimiotaxia
 		turn = (m_crawl_l - m_crawl_r) * 1.5 + _odor_bias() * 2.0 * genome.get_gene("tropism") + _turn_noise * 0.7
-	# morre se nao conseguir comida
-	if age > LifeManager.LARVA_MIN_TIME * 4.0 and food < LifeManager.LARVA_FOOD * 0.5:
-		_die("fome (larva)")
-		return
+	# toque leve: para e recua um pouco (resposta de Kernell)
+	if _touch > 0.5 and not ready:
+		speed = -0.3 * size_mm
+		behavior = "recuando (tocada)"
 	_crawl(dt, speed, turn)
 	_animate(dt, speed / maxf(size_mm, 0.1))
+
+
+func _physiology(dt: float) -> void:
+	energy -= dt / 400.0
+	var d := minf(gut, 0.02 * dt)
+	gut -= d
+	energy = minf(energy + d * 1.2, 1.0)
+	waste += d * 0.5
+	if waste > 0.06:
+		waste = 0.0
+		if LifeManager.instance:
+			LifeManager.instance.drop_spot(global_position + global_basis.z * size_mm * 0.45, _up, surface_body)
+	pain = maxf(0.0, pain - dt * 0.8)
+	_touch = maxf(0.0, _touch - dt * 1.5)
+	health = minf(1.0, health + dt / 300.0)
+	if energy <= 0.0:
+		energy = 0.0
+		_starve_t += dt
+		if _starve_t > 30.0:
+			_die("fome (larva)")
+	else:
+		_starve_t = 0.0
+
+
+func hurt(amount: float) -> void:
+	pain = clampf(pain + amount, 0.0, 2.0)
+	health -= amount * 0.4
+	_touch = maxf(_touch, amount * 2.0)
+	if health <= 0.0:
+		_die("ferimentos (larva)")
+
+
+func _check_crush() -> void:
+	if Engine.get_physics_frames() < 600:
+		return  # frutas ainda se acomodando no inicio do mundo
+	var p := global_position + _up * size_mm * 0.15
+	for n in get_tree().get_nodes_in_group("grabbable"):
+		var rb := n as RigidBody3D
+		if rb == null or rb == surface_body and rb.linear_velocity.length() < 250.0:
+			continue
+		var r: float = rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0
+		var c := rb.global_position
+		var dist := p.distance_to(c) - r
+		if dist > size_mm * 0.4:
+			continue
+		var towards := -rb.linear_velocity.dot((p - c).normalized())
+		var above := (c - p).dot(_up) > r * 0.25
+		if rb.mass >= Fly.CRUSH_MASS and (towards > 120.0 or (above and dist < 0.2)):
+			crush()
+			return
+		if towards > 40.0:
+			hurt(clampf(towards / 400.0, 0.05, 0.7))
 
 
 func _sense() -> void:
@@ -204,11 +329,23 @@ func _sense() -> void:
 		taste = 150.0 * float((surface_body as Fruit).taste().get("sugar", 0.0))
 	sense["taste"] = taste
 	brain.set_input("taste", taste)
+	brain.set_input("gust_externo", taste)
+	brain.set_input("gust_faringe", taste if behavior == "comendo a polpa" else 0.0)
+	brain.set_input("dor", 200.0 * clampf(pain, 0.0, 1.0))
+	brain.set_input("tato", 20.0 + 150.0 * _touch)
+	brain.set_input("tato_ch", 10.0 + 100.0 * _touch)
+	brain.set_input("proprio", 15.0 + 20.0 * absf(_last_speed))
+	brain.set_input("intestino", 100.0 * gut)
+	brain.set_input("co2", 60.0 * clampf(float(sense["odor_L"]) / 150.0, 0.0, 1.0))
+	brain.set_input("calor", 40.0 * clampf(_up.y, 0.0, 1.0))
+	brain.set_input("frio", 0.0)
 	# larvas fogem da luz: exposta = superficie virada para o ceu
 	var light := clampf(_up.y, 0.0, 1.0) * 80.0
 	sense["light"] = light
 	brain.set_input("light_L", light)
 	brain.set_input("light_R", light)
+	brain.set_input("luz_L", light)
+	brain.set_input("luz_R", light)
 	brain.set_input("explore_L", 25.0)
 	brain.set_input("explore_R", 25.0)
 	brain.set_input("reward", taste * 0.5)
@@ -229,7 +366,11 @@ func _odor_bias() -> float:
 	return (l - r) / (l + r + 1.0)
 
 
+var _last_speed := 0.0
+
+
 func _crawl(dt: float, speed: float, turn: float) -> void:
+	_last_speed = speed
 	var up := _up.normalized()
 	var b := Basis(up, turn * dt) * global_basis.orthonormalized()
 	var fwd := -b.z
@@ -265,8 +406,17 @@ func _animate(dt: float, rel_speed: float) -> void:
 		mi.scale = Vector3(rad * 2.0, rad * 1.9, seg_len * 2.0 + rad)
 		z += seg_len
 	var head: MeshInstance3D = _segs[0]
-	var gut: Node3D = _body_root.get_node("gut")
-	gut.position = Vector3(0, 0.1, -0.5 + z * 0.5)
+	var gut_n: Node3D = _body_root.get_node("gut")
+	gut_n.position = Vector3(0, 0.1, -0.5 + z * 0.5)
+	gut_n.scale = Vector3.ONE * (0.7 + 0.6 * gut)
+	for s in [-1, 1]:
+		var tr: Node3D = _body_root.get_node("trachea_%d" % s)
+		tr.position = Vector3(0.045 * s, 0.16, -0.5 + z * 0.5)
+		var fat: Node3D = _body_root.get_node("fat_%d" % s)
+		fat.position = Vector3(0.05 * s, 0.09, -0.5 + z * 0.6)
+		fat.scale = Vector3(1.0, 0.7, 3.5) * (0.6 + 0.8 * energy)
+		var eye: Node3D = _body_root.get_node("eye_%d" % s)
+		eye.position = _segs[0].position + Vector3(0.03 * s, 0.04, 0.0)
 	for s in [-1, 1]:
 		var hook: Node3D = _body_root.get_node("hook_%d" % s)
 		hook.position = head.position + Vector3(0.02 * s, -0.02, -0.06)
@@ -281,6 +431,8 @@ func _ray(from: Vector3, to: Vector3) -> Dictionary:
 func _die(reason: String) -> void:
 	dead = true
 	behavior = "morta (" + reason + ")"
+	if brain and brain.has_method("free_gpu"):
+		brain.free_gpu()
 	if LifeManager.instance:
 		LifeManager.instance.record_death(reason)
 	_mat_dark()
@@ -296,11 +448,16 @@ func _mat_dark() -> void:
 
 func crush() -> void:
 	if not dead:
-		_die("esmagada")
+		_die("esmagada (larva)")
+		_body_root.scale = Vector3(_body_root.scale.x * 1.3, _body_root.scale.y * 0.25, _body_root.scale.z)
+		if LifeManager.instance:
+			LifeManager.instance.splat(global_position, _up)
 
 
 # manipulacao pelo espectador
 func grab() -> void:
+	_touch = 1.0
+	pain = maxf(pain, 0.3)
 	_carried = true
 	surface_body = null
 	behavior = "sendo carregada!"
@@ -325,3 +482,8 @@ func describe() -> String:
 
 func loom_radius() -> float:
 	return size_mm
+
+
+func _exit_tree() -> void:
+	if brain and brain.has_method("free_gpu"):
+		brain.free_gpu()

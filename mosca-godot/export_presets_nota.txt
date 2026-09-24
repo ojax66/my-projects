@@ -1,0 +1,9 @@
+Ao exportar (Projeto > Exportar), em "Recursos" adicione no campo
+"Filtros para exportar arquivos/pastas que nao sao recursos":
+
+    brain/*.json, brain/full/*
+
+Assim os conectomas (brain/full/mcns.bin.gz, larva.bin.gz e os .json)
+entram no pacote. Para o cerebro completo na GPU use o renderizador
+Forward+ ou Mobile (Vulkan); no Compatibility (OpenGL) o jogo usa os
+subcircuitos em GDScript automaticamente.

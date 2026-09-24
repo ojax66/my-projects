@@ -13,11 +13,10 @@ pega e arremessa frutas e pedras, sopra vento, cria mais frutas e moscas.
 | Corpo (69 segmentos, malhas, cores, hierarquia, pose neutra) | [flygym / NeuroMechFly v2](https://github.com/NeLy-EPFL/flygym), convertido por `tools/convert_flygym.py` |
 | Passadas | recortes **reais** de caminhada do flygym (`single_steps_untethered.pkl`, 7 DOFs por perna) |
 | Coordenação das pernas | CPG de osciladores acoplados em tripé, igual ao `flygym_demo/complex_terrain` |
-| Cérebro do adulto | **subcircuito real do male CNS (MCNS/Codex)**: 650 neurônios e ~6.100 conexões com contagem real de sinapses e sinal pelo neurotransmissor previsto (`brain/connectome.json`, gerado por `tools/extract_connectome.py`) |
-| Cérebro da larva | **conectoma da larva** (Winding et al., *Science* 2023): 393 neurônios (`brain/larva_connectome.json`, `tools/extract_larva.py`) |
-| Desempenho | a mosca seguida roda o LIF com spikes (~20% de um núcleo); as outras usam o campo médio (~1,5% cada). Limite de 14 adultos e 18 larvas |
-| Neurônios | LIF com os parâmetros de Shiu et al. (Nature 2024). A mosca que você segue roda com spikes; as outras, com a aproximação de campo médio do mesmo LIF (mesmos pesos, bem mais barata) |
-| Circuito padrão (reserva) | ~164 neurônios com tipos celulares reais e pesos ilustrativos (`scripts/brain/default_circuit.gd`), usado se não houver `connectome.json` |
+| Cérebro do adulto | **conectoma COMPLETO do male CNS (MCNS)**: todos os 166.700 neurônios e 6,2 milhões de conexões (≥ 5 sinapses), rodando na **GPU** (`brain/full/mcns.bin.gz`, `tools/export_full_brain.py`) |
+| Cérebro da larva | **conectoma COMPLETO da larva** (Winding et al., *Science* 2023): todos os 2.956 neurônios, também na GPU (`brain/full/larva.bin.gz`) |
+| Neurônios | LIF (Shiu et al., Nature 2024) com depressão sináptica de curto prazo. A criatura que você segue roda com **spikes** (1 ms, propagação por eventos); as outras com a aproximação de **campo médio** do mesmo LIF, na mesma GPU |
+| Sem Vulkan | no renderizador Compatibility (ou GPU sem compute) o jogo cai automaticamente para os subcircuitos em GDScript (`brain/connectome.json`, 650 neurônios; `brain/larva_connectome.json`, 393) |
 
 Veja `brain/README.md` para o que está no subcircuito, o que é aproximação e
 como regenerar a partir dos CSVs do Codex.
@@ -55,8 +54,24 @@ como regenerar a partir dos CSVs do Codex.
   (padrão), o filhote também nasce com metade das memórias KC→MBON dos pais —
   isso é lamarckiano (na biologia real só os genes passam), então há um botão
   para desligar.
+- **Sistema nervoso periférico completo** (139 canais do conectoma): ORNs de
+  ~50 glomérulos por lado (inclui cVA dos machos no DA1), GRNs de açúcar,
+  amargo e água na **boca, pernas e asas**, cerdas táteis das pernas, asas,
+  corpo e cabeça, **propriocepção** (pernas, halteres, pescoço), **dor**
+  (multidendríticos do abdome e das pernas), **fotorreceptores** R1–6/R7–8
+  de cada olho (sol x sombra), **termo** e **higrossensores**, órgão de
+  Johnston (vento e o **canto** do macho), LPLC2 (looming).
+- **Dor e saúde**: batidas, ser apertada nos dedos e calor ao sol doem; a dor
+  ativa os nociceptores do conectoma, ensina (PPL1) e tira saúde. **Algo
+  pesado caindo em cima esmaga** a mosca ou a larva (fica achatada, com uma
+  mancha de hemolinfa); coisas leves só machucam.
 - Continua: segue cheiro, come, foge de looming (Giant Fiber), anda para trás
   com amargo, limpa as antenas com vento, anda em qualquer superfície.
+- **Larva**: além do cérebro completo, tem os órgãos visíveis — ganchos da
+  boca, órgão de Bolwig (olhinhos), intestino que enche quando come, corpo
+  gorduroso que cresce com a energia, traqueias — e a mesma fisiologia da
+  mosca (energia, digestão, excremento, dor, morte). Com dor forte faz o
+  **rolamento de fuga**; tocada, recua.
 
 O painel **Cérebro** (B) mostra spikes e taxas por população; o painel de
 **vida** (L) mostra sexo, geração, idade, energia, memória, genes, as barras
@@ -64,26 +79,34 @@ de hormônios e a população.
 
 ## Controles
 
+**Toque / mouse (o botão esquerdo do mouse funciona como um dedo):**
+
 | | |
 |---|---|
-| **W A S D** / botões verdes | mover (setas ↑↓ também) |
-| **E / Espaço**, **Q / Ctrl** | subir / descer |
-| **← → / Z X** | girar |
-| **Shift** / **Alt** | rápido / lento; roda do mouse muda a velocidade |
-| **botão direito** (segurar) | olhar em volta — **Tab** prende o mouse |
-| **C** / botão Seguir | seguir a mosca (W/S zoom, A/D orbita, E/Q inclina) |
-| **botão esquerdo** (segurar) | pegar frutas, pedras, moscas ou larvas; solte em movimento para arremessar; roda = distância (ser agarrada é aversivo: a mosca aprende a evitar o cheiro daquele momento) |
-| **F** / botão do meio | soprar |
-| **1–7** | criar maçã, cereja, laranja, limão, pedra, mosca, larva |
-| **I** / botão "Ir até a mosca" | teleporta até a mosca e passa a segui-la |
-| **L** | painel de vida (hormônios, memória, genes, população) |
-| **Del** | apagar o objeto segurado |
-| **T** | câmera lenta (x1, x0.5, x0.25, x0.1) — a mosca pisa a ~12 Hz |
-| **B / H / N** | cérebro / ajuda / trocar cérebro |
+| arrastar o dedo na tela | girar a câmera |
+| segurar o dedo parado (~0,3 s) em cima de algo | pegar fruta, pedra, mosca ou larva; arraste para mover e solte para largar/arremessar |
+| toque rápido numa mosca/larva | passar a segui-la |
+| dois dedos (pinça) | zoom |
+| botões verdes grandes (canto inferior esquerdo) | andar, subir/descer, girar — funcionam junto com outro dedo na tela |
+| **Ir até a mosca**, **Seguir**, **Soprar**, **Menu** | canto inferior direito; o Menu cria frutas/pedras/moscas/larvas e abre os painéis |
 
-Os botões de movimento na tela funcionam com mouse e toque (segurar = tecla
-pressionada). As texturas estão em `assets/ui/` e são geradas por
-`tools/make_textures.py`.
+**Teclado:** W A S D (setas) andar, E/Espaço sobe, Q/Ctrl desce, Z/X girar,
+Shift/Alt rápido/lento, roda = velocidade, botão direito = olhar, Tab prende
+o mouse, C seguir, I ir até a mosca, F soprar, 1–7 criar itens, Del apagar o
+segurado, T câmera lenta, B cérebro, L vida, N trocar cérebro, H ajuda.
+
+## Desempenho e requisitos
+
+- Cérebro completo: precisa de **Vulkan** (renderizador Forward+ ou Mobile).
+  O conectoma (≈ 50 MB de sinapses) é carregado uma vez; cada mosca guarda só
+  o próprio estado (~5 MB de GPU) e a própria memória KC→MBON.
+- Aqui foi testado com Vulkan emulado na CPU (lavapipe), onde 6 moscas com
+  166.700 neurônios cada custam ~150 ms por tick. Numa GPU de verdade deve ser
+  muitas vezes mais rápido, mas **não pude medir em GPU real**. Se ficar
+  pesado: diminua `LifeManager.MAX_ADULTS` ou use N para trocar para o
+  subcircuito.
+- Para exportar, veja `export_presets_nota.txt` (os conectomas precisam entrar
+  no filtro de arquivos).
 
 ## Escala
 

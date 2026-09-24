@@ -297,6 +297,46 @@ func memory_strength() -> float:
 	return s / maxf(plastic_k.size(), 1)
 
 
+# ---------------------------------------------------------------- painel (mesma API do GpuBrain)
+var raster_frame := PackedInt32Array()
+var _disp_kinds := []
+var _row_groups := PackedInt32Array()
+
+
+func display_names() -> Array:
+	return Array(group_names)
+
+
+func display_kinds() -> Array:
+	if _disp_kinds.size() != group_names.size():
+		_disp_kinds = []
+		_disp_kinds.resize(group_names.size())
+		_disp_kinds.fill(1)
+		for ch: String in input_channels:
+			if ch.begins_with("explore"):
+				continue
+			for i in input_channels[ch]:
+				_disp_kinds[neuron_group[i]] = 0
+		for ch: String in output_channels:
+			for gi in output_channels[ch]:
+				_disp_kinds[gi] = 2
+	return _disp_kinds
+
+
+func display_rates() -> PackedFloat32Array:
+	return group_rate
+
+
+func raster_row_count() -> int:
+	return n
+
+
+func raster_row_groups() -> PackedInt32Array:
+	if _row_groups.size() != n:
+		_row_groups = neuron_group.duplicate()
+	return _row_groups
+
+
 # ---------------------------------------------------------------- simulacao
 func advance(dt_s: float, max_steps := 80) -> void:
 	spikes_this_frame.clear()
@@ -376,6 +416,7 @@ func _step_spike(dt: float) -> void:
 	r = rr
 	elig = el
 	spikes_this_frame.append_array(fired)
+	raster_frame = spikes_this_frame
 	var a := exp(-dt / params["rate_tau"])
 	for gi in group_rate.size():
 		var inst := _group_count[gi] * 1000.0 / dt / group_members[gi].size()

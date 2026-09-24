@@ -1,5 +1,39 @@
 # Cérebros
 
+## Conectomas completos (GPU)
+
+| Arquivo | Conteúdo |
+|---|---|
+| `full/mcns.bin.gz` + `full/mcns.json` | MCNS inteiro: 166.700 neurônios, 6.208.591 conexões ≥ 5 sinapses + 33.494 KC→MBON plásticas, 141 canais sensoriais, 16 saídas |
+| `full/larva.bin.gz` + `full/larva.json` | larva inteira: 2.956 neurônios, 60.772 conexões axônio→dendrito + 2.746 KC→MBON plásticas |
+
+Gerados por `tools/export_full_brain.py mcns` / `larva`. Formato binário
+little-endian (CSR por neurônio pré-sináptico) que vai direto para buffers da
+GPU. Os kernels (`tools/shaders_src/*.glsl`, embutidos em
+`scripts/brain/brain_shaders.gd` por `tools/gen_brain_shaders.py`) fazem:
+integração LIF + spikes (1 ms), propagação por eventos com atômicos,
+campo médio (curva f-I do LIF com ruído e adaptação), dopamina por MBON a
+partir dos DANs reais e a regra de plasticidade KC→MBON.
+
+Calibração e limites (conectoma completo):
+- Parâmetros de Shiu et al. (w_syn 0,275 mV; com 0,4 a rede dispara sozinha).
+- Depressão sináptica de curto prazo (U = 0,06, τ = 300 ms) e rede em repouso
+  sem atividade espontânea nos ORNs; sem isso a rede entra num estado de
+  saturação autossustentado.
+- Com spikes, a rede completa sozinha dá: looming → Giant Fiber; amargo → MDN
+  (ré); vento na antena → DNg12 (grooming) + MDN; açúcar → para de andar.
+  O MN9 (probóscide) responde fraco ao açúcar (~7 Hz), então o jogo soma um
+  reflexo de extensão (paladar × fome) ao MN9 real.
+- O modo de campo médio (moscas fora de foco) é uma aproximação: reproduz
+  locomoção, looming e parada no açúcar, mas perde parte das respostas finas.
+- Dor no adulto: o MCNS não rotula nociceptores; usamos os neurônios
+  multidendríticos sem rótulo do abdome e das pernas. Na larva, o rolamento é
+  um reflexo do cordão ventral (Goro/Basin não estão no conectoma do cérebro).
+- GRNs de açúcar/amargo das pernas: classificados propagando a conectividade
+  (até 3 sinapses) até os interneurônios de Yao & Scott 2022.
+
+## Subcircuitos (reserva sem Vulkan)
+
 | Arquivo | O que é | Gerado por |
 |---|---|---|
 | `connectome.json` | adulto: subcircuito do **male CNS (MCNS)**, 650 neurônios | `tools/extract_connectome.py` + `tools/channel_map.json` |

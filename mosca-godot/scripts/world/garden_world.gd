@@ -56,8 +56,8 @@ func _environment() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 1.05
 	env.ssao_enabled = true
-	env.ssao_radius = 6.0
-	env.ssao_intensity = 1.6
+	env.ssao_radius = 2.5
+	env.ssao_intensity = 0.8
 	env.glow_enabled = true
 	env.glow_intensity = 0.4
 	env.glow_bloom = 0.05
@@ -374,7 +374,7 @@ func _fallen_fruits() -> void:
 		var f := Fruit.create(kinds[i])
 		var x := cos(a) * d
 		var z := sin(a) * d
-		f.position = Vector3(x, height_at(x, z) + 60.0, z)
+		f.position = Vector3(x, height_at(x, z) + float(Fruit.INFO[f.kind]["radius"]) * 1.2 + 2.0, z)
 		add_child(f)
 		f.ground_time = 40.0 if i != 1 else 5.0
 	# e debaixo das arvores
@@ -386,7 +386,7 @@ func _fallen_fruits() -> void:
 				var off := Vector2(_rng.randf_range(-300, 300), _rng.randf_range(-300, 300))
 				var x := t.position.x + off.x
 				var z := t.position.z + off.y
-				f.position = Vector3(x, height_at(x, z) + 60.0, z)
+				f.position = Vector3(x, height_at(x, z) + float(Fruit.INFO[f.kind]["radius"]) * 1.2 + 2.0, z)
 				add_child(f)
 				f.ground_time = _rng.randf_range(0.0, 80.0)
 

@@ -25,6 +25,9 @@ var _lineages := 0
 
 func _ready() -> void:
 	_register_inputs()
+	var engine := BrainEngine.new()
+	engine.name = "CerebrosGPU"
+	add_child(engine)
 	world = GardenWorld.new()
 	world.name = "Jardim"
 	add_child(world)

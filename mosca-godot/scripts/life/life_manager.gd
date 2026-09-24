@@ -82,6 +82,24 @@ func drop_spot(pos: Vector3, normal: Vector3, surface: Node3D) -> void:
 			old.queue_free()
 
 
+## Mancha de hemolinfa quando uma mosca ou larva e esmagada.
+func splat(pos: Vector3, normal: Vector3) -> void:
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 1.6
+	cyl.bottom_radius = 1.8
+	cyl.height = 0.04
+	mi.mesh = cyl
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.55, 0.5, 0.2, 0.75)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.1
+	mi.material_override = m
+	add_child(mi)
+	mi.global_transform = Transform3D(Fly._basis_from(normal, Vector3.FORWARD), pos + normal * 0.03)
+	_spots.append(mi)
+
+
 func child_memory(mother_mem: PackedFloat32Array, father_mem: PackedFloat32Array) -> PackedFloat32Array:
 	if not inherit_learning or mother_mem.is_empty():
 		return PackedFloat32Array()

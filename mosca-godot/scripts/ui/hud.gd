@@ -24,7 +24,11 @@ var _life_panel: PanelContainer
 var _chem_fly: Fly
 
 
+static var instance: Hud
+
+
 func _ready() -> void:
+	instance = self
 	layer = 5
 	_panel_normal = _stylebox("panel_normal.png")
 	_panel_hover = _stylebox("panel_hover.png")
@@ -68,7 +72,7 @@ func _process(dt: float) -> void:
 		var st: String = ["andando", "voando", "carregada", "morta"][fly.state]
 		_status.text = "%s  |  %s  |  %s\nenergia %d%%   papo %d%%   velocidade %.1f mm/s   cerebro: %s\nodor E/D %.0f/%.0f Hz   acucar %.0f   amargo %.0f   looming %.0f/%.0f   vento %.0f\nDNp09 E/D %.2f/%.2f   DNa02 %+.2f   MDN %.2f   MN9 %.2f   groom %.2f   GF %.2f   corte %.2f" % [
 			fly.fly_name, st, fly.behavior, int(fly.energy * 100), int(fly.gut * 200), absf(fly.speed),
-			"spikes (LIF)" if fly.brain.mode == FlyBrain.Mode.SPIKE else "campo medio",
+			fly.brain_label() + (" · spikes" if fly.brain.mode == 0 else " · campo medio"),
 			fly.sense["odor_L"], fly.sense["odor_R"], fly.sense["sugar"], fly.sense["bitter"],
 			fly.sense["loom_L"], fly.sense["loom_R"], fly.sense["mechano"],
 			fly.m_fwd_l, fly.m_fwd_r, fly.m_turn, fly.m_back, fly.m_prob, fly.m_groom, fly.brain.output("escape"), fly.courtship]
@@ -94,7 +98,7 @@ func _process(dt: float) -> void:
 			d += "%s %d  " % [k, lm.deaths[k]]
 		_life.text += "\npopulacao: %d adultos  %d larvas  %d pupas  %d ovos   nascimentos %d   geracao max %d\nmortes: %s" % [
 			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.births, lm.max_generation, d if d != "" else "nenhuma"]
-		_inherit_btn.text = "Heranca do aprendizado: %s" % ("SIM" if lm.inherit_learning else "NAO")
+		_inherit_btn.text = "Heranca: %s" % ("SIM" if lm.inherit_learning else "NAO")
 	_chem_view.visible = fly != null and _life.visible
 	_chem_view.queue_redraw()
 	var ts := Engine.time_scale
@@ -123,16 +127,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func toggle_brain_source() -> void:
-	if not FileAccess.file_exists("res://brain/connectome.json"):
-		toast("Nenhum brain/connectome.json (veja tools/extract_connectome.py)")
-		return
+	var order := ["full", "sub", "default"]
+	Fly.brain_kind = order[(order.find(Fly.brain_kind) + 1) % order.size()]
 	var flies := get_tree().get_nodes_in_group("flies")
-	if flies.is_empty():
-		return
-	var use: bool = not (flies[0] as Fly).using_connectome()
 	for f: Fly in flies:
-		f.reload_brain(use)
-	toast("Cerebro: " + (flies[0] as Fly).brain.name)
+		if not f.dead:
+			f.reload_brain()
+	if not flies.is_empty():
+		toast("Cerebro: " + (flies[0] as Fly).brain_label())
 
 
 ## Barras de hormonios/neuromoduladores da mosca atual.
@@ -200,32 +202,58 @@ func _spacer() -> Control:
 	return c
 
 
+const PAD_BTN := 128.0     # tamanho dos botoes de movimento (px)
+
+var _pad: Node2D
+var _pad_buttons: Array[TouchScreenButton] = []
+
+
+## Direcional com TouchScreenButton: funciona com varios dedos ao mesmo tempo
+## (ex.: segurar "frente" e girar a camera arrastando outro dedo na tela).
 func _build_move_pad() -> void:
-	var root := HBoxContainer.new()
-	root.anchor_top = 1.0
-	root.anchor_bottom = 1.0
-	root.offset_left = 16
-	root.offset_top = -16
-	root.offset_bottom = -16
-	root.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	root.add_theme_constant_override("separation", 14)
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 4)
-	grid.add_child(_tex_button("turn_left", "turn_left", "Girar para a esquerda (seta esquerda / Z)"))
-	grid.add_child(_tex_button("forward", "move_forward", "Frente (W) — seguindo: aproximar"))
-	grid.add_child(_tex_button("turn_right", "turn_right", "Girar para a direita (seta direita / X)"))
-	grid.add_child(_tex_button("left", "move_left", "Esquerda (A) — seguindo: orbitar"))
-	grid.add_child(_tex_button("back", "move_back", "Tras (S) — seguindo: afastar"))
-	grid.add_child(_tex_button("right", "move_right", "Direita (D) — seguindo: orbitar"))
-	root.add_child(grid)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
-	col.add_child(_tex_button("up", "move_up", "Subir (E / Espaco)"))
-	col.add_child(_tex_button("down", "move_down", "Descer (Q / Ctrl)"))
-	root.add_child(col)
-	add_child(root)
+	_pad = Node2D.new()
+	_pad.name = "Direcional"
+	add_child(_pad)
+	var layout := [
+		["turn_left", "turn_left", 0, 0], ["forward", "move_forward", 1, 0], ["turn_right", "turn_right", 2, 0],
+		["left", "move_left", 0, 1], ["back", "move_back", 1, 1], ["right", "move_right", 2, 1],
+		["up", "move_up", 3.25, 0], ["down", "move_down", 3.25, 1],
+	]
+	for item: Array in layout:
+		var tb := TouchScreenButton.new()
+		tb.texture_normal = load(UI + "btn_%s_normal.png" % item[0])
+		tb.texture_pressed = load(UI + "btn_%s_pressed.png" % item[0])
+		tb.action = item[1]
+		tb.passby_press = true
+		var sc := PAD_BTN / 112.0
+		tb.scale = Vector2(sc, sc)
+		tb.set_meta("cell", Vector2(item[2], item[3]))
+		_pad.add_child(tb)
+		_pad_buttons.append(tb)
+	get_viewport().size_changed.connect(_layout_pad)
+	_layout_pad()
+
+
+func _layout_pad() -> void:
+	var vs := get_viewport().get_visible_rect().size
+	var gap := 8.0
+	for tb in _pad_buttons:
+		var c: Vector2 = tb.get_meta("cell")
+		tb.position = Vector2(20.0 + c.x * (PAD_BTN + gap), vs.y - 20.0 - (2.0 - c.y) * (PAD_BTN + gap))
+
+
+## O toque em pos cai sobre algum botao/painel da interface?
+func is_over_ui(pos: Vector2) -> bool:
+	for tb in _pad_buttons:
+		if Rect2(tb.position, Vector2(PAD_BTN, PAD_BTN)).has_point(pos):
+			return true
+	for c: Control in _ui_controls:
+		if is_instance_valid(c) and c.is_visible_in_tree() and c.get_global_rect().has_point(pos):
+			return true
+	return false
+
+
+var _ui_controls: Array[Control] = []
 
 
 func _text_button(text: String, cb: Callable, tip := "") -> Button:
@@ -241,45 +269,87 @@ func _text_button(text: String, cb: Callable, tip := "") -> Button:
 	b.add_theme_color_override("font_hover_color", Color(1, 1, 1))
 	b.add_theme_color_override("font_outline_color", Color(0.05, 0.2, 0.07))
 	b.add_theme_constant_override("outline_size", 4)
-	b.add_theme_font_size_override("font_size", 15)
-	b.custom_minimum_size = Vector2(84, 46)
+	b.add_theme_font_size_override("font_size", 22)
+	b.custom_minimum_size = Vector2(150, 72)
 	b.pressed.connect(cb)
+	_ui_controls.append(b)
 	return b
 
 
+var _menu: PanelContainer
+
+
 func _build_action_bar() -> void:
-	var bar := HFlowContainer.new()
-	bar.anchor_left = 1.0
-	bar.anchor_right = 1.0
-	bar.anchor_top = 1.0
-	bar.anchor_bottom = 1.0
-	bar.offset_left = -760
-	bar.offset_right = -16
-	bar.offset_top = -180
-	bar.offset_bottom = -16
-	bar.alignment = FlowContainer.ALIGNMENT_END
-	bar.add_theme_constant_override("h_separation", 6)
-	bar.add_theme_constant_override("v_separation", 6)
-	bar.add_child(_text_button("Maca", func(): _spawn(1), "Criar maca (1)"))
-	bar.add_child(_text_button("Cereja", func(): _spawn(2), "Criar cereja (2)"))
-	bar.add_child(_text_button("Laranja", func(): _spawn(3), "Criar laranja (3)"))
-	bar.add_child(_text_button("Limao", func(): _spawn(4), "Criar limao amargo (4)"))
-	bar.add_child(_text_button("Pedra", func(): _spawn(5), "Criar pedrinha (5)"))
-	bar.add_child(_text_button("+ Mosca", func(): _spawn(6), "Criar outra mosca (6)"))
-	bar.add_child(_text_button("+ Larva", func(): _spawn(7), "Criar uma larva (7)"))
-	bar.add_child(_text_button("Ir ate a mosca", func(): spectator.teleport_to_fly(), "Teleportar para perto da mosca e segui-la (I)"))
-	bar.add_child(_text_button("Soprar", func(): spectator.air_puff(), "Sopro de ar (F / botao do meio)"))
-	bar.add_child(_text_button("Seguir", func(): spectator.cycle_follow(), "Seguir mosca / camera livre (C)"))
+	# sempre visiveis (canto inferior direito)
+	var quick := HBoxContainer.new()
+	quick.anchor_left = 1.0
+	quick.anchor_right = 1.0
+	quick.anchor_top = 1.0
+	quick.anchor_bottom = 1.0
+	quick.offset_right = -20
+	quick.offset_bottom = -20
+	quick.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	quick.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	quick.add_theme_constant_override("separation", 10)
+	quick.add_child(_text_button("Ir ate a mosca", func(): spectator.teleport_to_fly(), "Teleportar para perto da mosca e segui-la (I)"))
+	quick.add_child(_text_button("Seguir", func(): spectator.cycle_follow(), "Seguir mosca/larva ou camera livre (C)"))
+	quick.add_child(_text_button("Soprar", func(): spectator.air_puff(), "Sopro de ar (F)"))
+	quick.add_child(_text_button("Menu", _toggle_menu, "Criar coisas e opcoes"))
+	add_child(quick)
+
+	_menu = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.03, 0.08, 0.04, 0.88)
+	sb.set_corner_radius_all(18)
+	sb.set_content_margin_all(16)
+	_menu.add_theme_stylebox_override("panel", sb)
+	_menu.anchor_left = 1.0
+	_menu.anchor_right = 1.0
+	_menu.anchor_top = 1.0
+	_menu.anchor_bottom = 1.0
+	_menu.offset_right = -20
+	_menu.offset_bottom = -110
+	_menu.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_menu.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ui_controls.append(_menu)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	grid.add_child(_text_button("Maca", func(): _spawn(1), "Criar maca (1)"))
+	grid.add_child(_text_button("Cereja", func(): _spawn(2), "Criar cereja (2)"))
+	grid.add_child(_text_button("Laranja", func(): _spawn(3), "Criar laranja (3)"))
+	grid.add_child(_text_button("Limao", func(): _spawn(4), "Criar limao amargo (4)"))
+	grid.add_child(_text_button("Pedra", func(): _spawn(5), "Criar pedrinha (5)"))
+	grid.add_child(_text_button("+ Mosca", func(): _spawn(6), "Criar mosca (6)"))
+	grid.add_child(_text_button("+ Larva", func(): _spawn(7), "Criar larva (7)"))
 	_time_btn = _text_button("Tempo x1", cycle_time, "Camera lenta (T)")
-	bar.add_child(_time_btn)
-	bar.add_child(_text_button("Cerebro", func(): brain_view.get_parent().visible = not brain_view.get_parent().visible, "Mostrar/ocultar cerebro (B)"))
-	if FileAccess.file_exists("res://brain/connectome.json"):
-		bar.add_child(_text_button("Trocar cerebro", toggle_brain_source, "Circuito padrao <-> conectoma extraido (N)"))
-	_inherit_btn = _text_button("Heranca do aprendizado: SIM", func():
-		LifeManager.instance.inherit_learning = not LifeManager.instance.inherit_learning, "Filhotes nascem com parte da memoria dos pais (lamarckiano). Na biologia real so os genes passam.")
-	bar.add_child(_inherit_btn)
-	bar.add_child(_text_button("Ajuda", func(): _help.visible = not _help.visible, "Ajuda (H)"))
-	add_child(bar)
+	grid.add_child(_time_btn)
+	grid.add_child(_text_button("Cerebro", func(): brain_view.get_parent().visible = not brain_view.get_parent().visible, "Painel do cerebro (B)"))
+	grid.add_child(_text_button("Vida", func():
+		_life.visible = not _life.visible
+		_chem_view.visible = _life.visible, "Painel de vida (L)"))
+	grid.add_child(_text_button("Trocar cerebro", toggle_brain_source, "Conectoma completo (GPU) / subcircuito / padrao (N)"))
+	_inherit_btn = _text_button("Heranca: SIM", func():
+		LifeManager.instance.inherit_learning = not LifeManager.instance.inherit_learning, "Filhotes nascem com parte da memoria dos pais (lamarckiano)")
+	grid.add_child(_inherit_btn)
+	grid.add_child(_text_button("Ajuda", func(): _help.visible = not _help.visible, "Ajuda (H)"))
+	_menu.add_child(grid)
+	_menu.visible = false
+	add_child(_menu)
+
+
+var _brain_was_visible := true
+
+
+func _toggle_menu() -> void:
+	_menu.visible = not _menu.visible
+	var holder := brain_view.get_parent() as Control
+	if _menu.visible:
+		_brain_was_visible = holder.visible
+		holder.visible = false
+	else:
+		holder.visible = _brain_was_visible
 
 
 func _spawn(i: int) -> void:
@@ -357,6 +427,8 @@ func _build_brain_panel() -> void:
 	brain_view = BrainView.new()
 	holder.add_child(brain_view)
 	add_child(holder)
+	# em telas pequenas (celular) o painel comeca escondido (botao Cerebro / B)
+	holder.visible = get_viewport().get_visible_rect().size.x >= 1500.0
 
 
 func _build_help() -> void:
@@ -376,13 +448,16 @@ func _build_help() -> void:
 	l.add_theme_font_size_override("font_size", 15)
 	l.text = """Voce e um espectador invisivel no jardim (1 unidade = 1 mm; a mosca tem ~2,5 mm).
 
+TOQUE       arraste o dedo na tela para girar | dois dedos: zoom
+            segure o dedo parado num item (ou mosca/larva) para pega-lo e arraste
+            toque rapido numa mosca/larva para segui-la
 MOVIMENTO   W A S D ou botoes verdes  |  E / Espaco sobe, Q / Ctrl desce
             setas esq/dir ou Z/X giram  |  Shift rapido, Alt lento
             roda do mouse = velocidade  |  botao direito segurado = olhar  |  Tab prende o mouse
 SEGUIR      C (ou botao Seguir): orbita mosca/larva/pupa; W/S zoom, A/D orbita, E/Q inclina
             I (ou "Ir ate a mosca"): teleporta ate a mosca  |  L painel de vida
 
-MUNDO       botao esquerdo: pegar e arrastar frutas, pedras e a propria mosca
+MUNDO       mouse esquerdo = dedo (segurar pega, arrastar gira); algo pesado caindo esmaga
             solte com o mouse em movimento para arremessar | roda = distancia
             F ou botao do meio: soprar (empurra objetos e a mosca sente o vento)
             1 maca  2 cereja  3 laranja  4 limao amargo  5 pedra  6 mosca  7 larva

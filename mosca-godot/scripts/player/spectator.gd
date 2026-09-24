@@ -73,6 +73,98 @@ func loom_radius() -> float:
 
 
 # ---------------------------------------------------------------- entrada
+# ---------------------------------------------------------------- toque
+## Toque (e mouse esquerdo, emulado como toque):
+##   arrastar um dedo na tela   -> gira a camera
+##   segurar parado ~0,3 s      -> pega o item/criatura embaixo do dedo
+##   toque rapido numa criatura -> passa a segui-la
+##   dois dedos (pinca)         -> zoom / avancar
+const HOLD_TIME := 0.28
+const MOVE_TOL := 14.0
+
+var _touches := {}
+var _grab_touch := -1
+var _hold_screen := Vector2.ZERO
+var _pinch_d := 0.0
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			var ui := Hud.instance != null and Hud.instance.is_over_ui(st.position)
+			_touches[st.index] = {"start": st.position, "pos": st.position, "t": 0.0, "ui": ui, "moved": false}
+			_pinch_d = 0.0
+		else:
+			var info = _touches.get(st.index)
+			if info != null:
+				if st.index == _grab_touch:
+					_release()
+					_grab_touch = -1
+				elif not info["ui"] and not info["moved"] and info["t"] < HOLD_TIME:
+					_tap(st.position)
+			_touches.erase(st.index)
+	elif event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		var info = _touches.get(sd.index)
+		if info == null or info["ui"]:
+			return
+		info["pos"] = sd.position
+		if (sd.position - info["start"]).length() > MOVE_TOL:
+			info["moved"] = true
+		if sd.index == _grab_touch:
+			_hold_screen = sd.position
+			return
+		var free := _free_touches()
+		if free.size() >= 2:
+			var a: Vector2 = _touches[free[0]]["pos"]
+			var b: Vector2 = _touches[free[1]]["pos"]
+			var d := a.distance_to(b)
+			if _pinch_d > 0.0:
+				var k := d / _pinch_d
+				if follow:
+					follow_dist = clampf(follow_dist / k, 5.0, 600.0)
+				else:
+					position += -global_basis.z * (d - _pinch_d) * speed * 0.004
+			_pinch_d = d
+		elif info["moved"]:
+			yaw -= sd.relative.x * 0.006
+			pitch = clampf(pitch - sd.relative.y * 0.006, -1.5, 1.5)
+
+
+func _free_touches() -> Array:
+	var out := []
+	for k in _touches:
+		if not _touches[k]["ui"] and k != _grab_touch:
+			out.append(k)
+	return out
+
+
+func _update_touches(dt: float) -> void:
+	for k in _touches:
+		var info: Dictionary = _touches[k]
+		info["t"] += dt
+		if held == null and _grab_touch < 0 and not info["ui"] and not info["moved"] and info["t"] >= HOLD_TIME and _free_touches().size() == 1:
+			_hold_screen = info["pos"]
+			_try_grab(info["pos"], true)
+			if held:
+				_grab_touch = k
+				message.emit("Segurando: arraste o dedo para mover, solte para largar")
+			else:
+				info["moved"] = true  # nada para pegar: vira arrasto de camera
+
+
+## Toque rapido: seguir a criatura tocada.
+func _tap(pos: Vector2) -> void:
+	var hit := _mouse_ray(pos, PICK_MASK, 5000.0, true)
+	if hit:
+		var c: Object = hit.collider
+		if c is Area3D and ((c as Area3D).has_meta("fly") or (c as Area3D).has_meta("creature")):
+			var n: Node3D = (c as Area3D).get_meta("fly") if (c as Area3D).has_meta("fly") else (c as Area3D).get_meta("creature")
+			follow_fly(n)
+			message.emit("Seguindo %s" % _label(n))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -81,11 +173,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				_looking = mb.pressed
 				if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or not mb.pressed:
 					pass
-			MOUSE_BUTTON_LEFT:
-				if mb.pressed:
-					_try_grab(mb.position)
-				else:
-					_release()
 			MOUSE_BUTTON_MIDDLE:
 				if mb.pressed:
 					air_puff()
@@ -150,6 +237,7 @@ func _process(delta: float) -> void:
 			var gh := world.height_at(np.x, np.z) + 4.0
 			np.y = maxf(np.y, gh)
 		position = np
+	_update_touches(dt)
 	cam_velocity = (global_position - _last_pos) / maxf(dt, 1e-4)
 	_last_pos = global_position
 	_update_held(dt)
@@ -256,8 +344,8 @@ func _update_hover(screen_pos: Vector2) -> void:
 		hover_changed.emit(text)
 
 
-func _try_grab(screen_pos: Vector2) -> void:
-	var hit := _mouse_ray(screen_pos, PICK_MASK)
+func _try_grab(screen_pos: Vector2, force_pos := false) -> void:
+	var hit := _mouse_ray(screen_pos, PICK_MASK, 5000.0, force_pos)
 	if not hit:
 		return
 	var c: Object = hit.collider
@@ -283,7 +371,7 @@ func _try_grab(screen_pos: Vector2) -> void:
 
 
 func _hold_point() -> Vector3:
-	var sp := get_viewport().get_mouse_position()
+	var sp := _hold_screen
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		sp = get_viewport().get_visible_rect().size * 0.5
 	return project_ray_origin(sp) + project_ray_normal(sp) * hold_dist

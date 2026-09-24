@@ -27,7 +27,8 @@ signal state_changed(fly: Fly, state: int)
 
 var body: FlyBody
 var cpg: FlyCPG
-var brain: FlyBrain
+var brain   # GpuBrain (conectoma completo na GPU) ou FlyBrain (subcircuito em GDScript)
+static var brain_kind := "full"   # "full" | "sub" | "default" (tecla N alterna)
 var chem := NeuroChem.new()
 var state := State.WALK
 var behavior := "explorando"
@@ -63,6 +64,14 @@ var _copula_t := 0.0
 var _last_mate_t := -999.0
 var _courted_until := -1.0
 var courtship := 0.0
+var health := 1.0              # integridade do corpo (0 = morre)
+var pain := 0.0                # dor atual (nociceptores)
+var temperature := 24.0        # temperatura do corpo (°C)
+var sun := 1.0                 # 1 ao sol, ~0.25 na sombra
+var _touch := 0.0              # tato extra (agarrada, batida)
+var _sun_t := 0
+var _crushed := false
+static var _sun_node: DirectionalLight3D
 var valence := 0.0
 var _valence_raw := 0.0
 
@@ -140,8 +149,12 @@ func _ready() -> void:
 	_snap_to_ground.call_deferred()
 
 
-func _load_brain() -> FlyBrain:
-	if brain_path != "" and FileAccess.file_exists(brain_path):
+func _load_brain():
+	if brain_kind == "full":
+		var g := GpuBrain.create("mcns")
+		if g:
+			return g
+	if brain_kind != "default" and brain_path != "" and FileAccess.file_exists(brain_path):
 		var b := FlyBrain.from_json_file(brain_path)
 		if b and b.n > 0:
 			print("[%s] cerebro carregado: %s (%d neuronios, %d conexoes)" % [fly_name, b.name, b.n, b.total_edges])
@@ -149,11 +162,17 @@ func _load_brain() -> FlyBrain:
 	return FlyBrain.from_dict(DefaultCircuit.build())
 
 
-func reload_brain(use_connectome: bool) -> void:
-	var mem := brain.get_memory()
-	brain_path = "res://brain/connectome.json" if use_connectome else ""
+func reload_brain(_use_connectome := true) -> void:
+	var mem: PackedFloat32Array = brain.get_memory()
+	if brain.has_method("free_gpu"):
+		brain.free_gpu()
 	brain = _load_brain()
 	brain.set_memory(mem)
+
+
+func _exit_tree() -> void:
+	if brain and brain.has_method("free_gpu"):
+		brain.free_gpu()
 
 
 ## Genes que aparecem no corpo: tamanho, cor da cuticula e dos olhos; machos
@@ -185,6 +204,12 @@ func using_connectome() -> bool:
 	return brain.source != "DefaultCircuit.gd"
 
 
+func brain_label() -> String:
+	if brain is GpuBrain:
+		return "conectoma completo (GPU, %d neuronios)" % brain.n
+	return "subcircuito %d neuronios" % brain.n if using_connectome() else "circuito padrao"
+
+
 func _snap_to_ground() -> void:
 	var hit := _ray(global_position + Vector3.UP * 500.0, global_position + Vector3.DOWN * 2000.0)
 	if hit:
@@ -204,7 +229,7 @@ func _physics_process(dt: float) -> void:
 	_punish_t = maxf(0.0, _punish_t - dt)
 	# a mosca que voce segue roda o LIF com spikes; as outras, o campo medio
 	var cam := get_viewport().get_camera_3d() as Spectator
-	brain.set_mode(FlyBrain.Mode.SPIKE if cam and cam.follow == self else FlyBrain.Mode.RATE)
+	brain.set_mode(0 if cam and cam.follow == self else 1)  # 0 = spikes, 1 = campo medio
 	_update_internal(dt)
 	_physiology(dt)
 	if dead:
@@ -299,6 +324,10 @@ func die(reason: String) -> void:
 
 func _dead_process(dt: float) -> void:
 	_dead_t += dt
+	if _crushed:
+		if _dead_t > 120.0:
+			queue_free()
+		return
 	# cai ate o chao e fica de pernas encolhidas
 	var hit := _ray(global_position + Vector3.UP * 0.5, global_position + Vector3.DOWN * 3000.0)
 	if hit and global_position.y - hit.position.y > 0.2:
@@ -316,19 +345,52 @@ func _dead_process(dt: float) -> void:
 		queue_free()
 
 
-## Objeto rapido batendo na mosca = esmagada.
+## Contato com objetos fisicos (frutas, pedras): se algo pesado cai ou esta
+## em cima da mosca ela e esmagada; batidas mais leves machucam (dor).
+const CRUSH_MASS := 0.02       # uma cereja ja pesa ~7x isso; a mosca ~0.001
+
 func _check_crush() -> void:
-	for item: Array in _loomers:
-		var o = item[0]
-		if not is_instance_valid(o) or o is Spectator or o == surface_body:
+	if Engine.get_physics_frames() < 600:
+		return  # frutas ainda se acomodando no inicio do mundo
+	var p := global_position + _up * 0.9
+	for n in get_tree().get_nodes_in_group("grabbable"):
+		var rb := n as RigidBody3D
+		if rb == null or rb == surface_body and rb.linear_velocity.length() < 250.0:
 			continue
-		var v: Vector3 = item[1]
-		if v.length() < 350.0:
+		var r: float = rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0
+		var c := rb.global_position
+		var d := p.distance_to(c) - r
+		if d > 1.2:
 			continue
-		var r: float = o.loom_radius()
-		if (o.global_position as Vector3).distance_to(global_position + _up) < r + 1.2:
-			die("esmagada")
+		var v := rb.linear_velocity
+		var towards := -v.dot((p - c).normalized())
+		var above := (c - p).dot(_up) > r * 0.25
+		if rb.mass >= CRUSH_MASS and (towards > 120.0 or (above and d < 0.3)):
+			crush()
 			return
+		if towards > 40.0 or d < 0.0:
+			hurt(clampf(towards / 400.0, 0.05, 0.6), "batida")
+			if d < 0.5 and state == State.WALK and escape_cooldown <= 0.0:
+				_escape(-(c - p))
+
+
+func hurt(amount: float, _what := "") -> void:
+	pain = clampf(pain + amount, 0.0, 2.0)
+	health -= amount * 0.35
+	_touch = maxf(_touch, amount * 2.0)
+	_punish_t = maxf(_punish_t, 0.6)
+	if health <= 0.0:
+		die("ferimentos")
+
+
+func crush() -> void:
+	if dead:
+		return
+	_crushed = true
+	die("esmagada")
+	body.scale = Vector3(body.scale.x * 1.25, body.scale.y * 0.28, body.scale.z * 1.15)
+	if LifeManager.instance:
+		LifeManager.instance.splat(global_position, _up)
 
 
 # ---------------------------------------------------------------- corte e acasalamento
@@ -482,6 +544,88 @@ func _sense(dt: float) -> void:
 	brain.set_input("explore_L", 55.0 * focus * maxf(0.0, -steer))
 	brain.set_input("explore_R", 55.0 * focus * maxf(0.0, steer))
 	brain.set_input("explore_back", 0.0)
+	_sense_body(dt, sugar, bitter, loom, mech)
+
+
+## Sistema nervoso periferico completo (canais do conectoma inteiro):
+## visao, termo/higro, tato, propriocepcao, dor, orgao de Johnston, paladar
+## da perna e da boca, feromonio (cVA) dos machos.
+func _sense_body(dt: float, sugar: float, bitter: float, loom: Vector2, mech: float) -> void:
+	pain = maxf(0.0, pain - dt * 0.8)
+	_touch = maxf(0.0, _touch - dt * 2.0)
+	health = minf(1.0, health + dt / 300.0)
+	# sol ou sombra (raio ate o sol), a cada ~10 ticks
+	_sun_t += 1
+	if _sun_t % 10 == 0:
+		if not is_instance_valid(_sun_node):
+			_sun_node = get_tree().current_scene.find_child("Sol", true, false) as DirectionalLight3D
+		var sun_node := _sun_node
+		if sun_node:
+			var to_sun := sun_node.global_basis.z.normalized()
+			var hit := _ray(global_position + _up * 1.5, global_position + _up * 1.5 + to_sun * 3000.0)
+			sun = 0.25 if hit else 1.0
+	temperature = lerpf(temperature, 21.0 + 13.0 * sun, 1.0 - exp(-dt / 20.0))
+	if temperature > 32.0:
+		hurt(dt * 0.02, "calor")
+	var light := 0.1 + sun
+	for side in ["L", "R"]:
+		brain.set_input("luz_R1-6_" + side, 20.0 + 90.0 * light)
+		brain.set_input("luz_R7-8_" + side, 10.0 + 50.0 * light)
+	brain.set_input("temperatura", clampf((temperature - 18.0) * 7.0, 0.0, 150.0))
+	var humid := clampf(_odor_adapt * 1.5, 0.0, 1.0)
+	brain.set_input("umidade", 10.0 + 60.0 * humid)
+	# tato: pernas no chao, corpo quando agarrada ou batida
+	var on_surface := state == State.WALK
+	var carried := state == State.CARRIED
+	brain.set_input("tato_perna", (4.0 + absf(speed) * 0.8 if on_surface else 0.0) + (140.0 if carried else 0.0) + 80.0 * _touch)
+	brain.set_input("tato_corpo", (140.0 if carried else 0.0) + 120.0 * _touch)
+	brain.set_input("tato_asa", (100.0 if carried else 0.0) + 60.0 * _touch)
+	brain.set_input("tato_cabeca", (60.0 if m_groom > 0.3 else 0.0) + 80.0 * _touch)
+	# propriocepcao
+	brain.set_input("proprio_pernas", 3.0 + absf(speed) * 1.5 + (60.0 if carried else 0.0))
+	brain.set_input("proprio_haltere", 120.0 if state == State.FLY else 0.0)
+	brain.set_input("proprio_pescoco", 10.0 + absf(m_turn) * 30.0)
+	# dor (multidendriticos do abdome e das pernas)
+	brain.set_input("dor_abdome", 200.0 * clampf(pain, 0.0, 1.0))
+	brain.set_input("dor_pernas", 150.0 * clampf(pain, 0.0, 1.0))
+	# orgao de Johnston: vento/voo e som (canto de corte dos machos)
+	var song := 0.0
+	if sex == "F":
+		for n in get_tree().get_nodes_in_group("flies"):
+			var f := n as Fly
+			if f.sex == "M" and f.behavior.begins_with("cantando") and f.global_position.distance_to(global_position) < 12.0:
+				song = 120.0
+	brain.set_input("jo_som", song)
+	brain.set_input("jo_vento", mech + (80.0 if state == State.FLY else 0.0))
+	# paladar: GRNs das pernas sempre que pisa; os da boca so com a probocide
+	var juicy := 30.0 if surface_body is Fruit else 0.0
+	brain.set_input("gust_acucar_perna", sugar)
+	brain.set_input("gust_amargo_perna", bitter)
+	brain.set_input("gust_agua_perna", juicy)
+	var mouth := clampf(m_prob * 2.0, 0.0, 1.0)
+	brain.set_input("gust_acucar_boca", sugar * mouth)
+	brain.set_input("gust_amargo_boca", bitter * mouth)
+	brain.set_input("gust_agua_boca", juicy * mouth)
+	# feromonio cVA dos machos (ORNs do glomerulo DA1)
+	var cva_l := 0.0
+	var cva_r := 0.0
+	var right := global_basis.x
+	for n in get_tree().get_nodes_in_group("flies"):
+		var f := n as Fly
+		if f == self or f.sex != "M" or f.dead:
+			continue
+		var d := f.global_position.distance_to(global_position)
+		if d < 120.0:
+			var k := exp(-d / 30.0)
+			if right.dot(f.global_position - global_position) < 0.0:
+				cva_l += k
+			else:
+				cva_r += k
+	brain.set_input("odor_DA1_L", _orn_rate(cva_l * 3.0))
+	brain.set_input("odor_DA1_R", _orn_rate(cva_r * 3.0))
+	# dor tambem ensina (PPL1)
+	if pain > 0.3:
+		_punish_t = maxf(_punish_t, 0.3)
 
 
 # cache compartilhado por todas as moscas, refeito uma vez por tick de fisica
@@ -527,7 +671,8 @@ func _odor_vec(p: Vector3) -> PackedFloat32Array:
 
 
 func _orn_rate(x: float) -> float:
-	return ODOR_BASELINE + 170.0 * x * x / (x * x + 1.0)
+	var base := 0.0 if brain is GpuBrain else ODOR_BASELINE
+	return base + 170.0 * x * x / (x * x + 1.0)
 
 
 func _odor_at(p: Vector3) -> float:
@@ -594,17 +739,22 @@ func _read_motor(dt: float) -> void:
 	var od_l: float = sense["odor_L"]
 	var od_r: float = sense["odor_R"]
 	var grad := (od_l - od_r) / (od_l + od_r + 1.0)
-	var turn_cmd := (brain.output("turn_L") - brain.output("turn_R")) * mg + tropism * grad * 2.0
+	var turn_cmd: float = (brain.output("turn_L") - brain.output("turn_R")) * mg + tropism * grad * 2.0
 	# corte: o macho segue a femea
 	if is_instance_valid(_court_target) and courtship > 0.25:
 		var to := _court_target.global_position - global_position
 		var side := global_basis.x.dot(to)
 		turn_cmd = clampf(-side * 0.4, -1.5, 1.5)
 	m_turn = lerpf(m_turn, turn_cmd, a)
-	var court_raw := brain.output("courtship") if brain.has_output("courtship") else (1.0 if is_instance_valid(_court_target) else 0.0)
+	var court_raw: float = brain.output("courtship") if brain.has_output("courtship") else (1.0 if is_instance_valid(_court_target) else 0.0)
 	courtship = lerpf(courtship, court_raw * 3.0, a)
 	m_back = lerpf(m_back, brain.output("backward"), a)
-	m_prob = lerpf(m_prob, brain.output("proboscis"), a)
+	# MN9 do conectoma + reflexo de extensao da probocide (paladar x fome):
+	# no conectoma completo simulado o MN9 responde fraco ao acucar
+	var reflex := 0.0
+	if sense["sugar"] > 0.0 and sense["bitter"] <= 0.0:
+		reflex = clampf(float(sense["sugar"]) / 120.0, 0.0, 1.0) * (0.3 + hunger)
+	m_prob = lerpf(m_prob, maxf(brain.output("proboscis"), reflex), a)
 	m_groom = lerpf(m_groom, brain.output("groom"), a)
 
 	if brain.output("escape") > 0.35 and escape_cooldown <= 0.0 and state == State.WALK and not _copulating_with:
@@ -865,6 +1015,7 @@ func release(vel: Vector3) -> void:
 
 
 func _carried(dt: float) -> void:
+	pain = maxf(pain, 0.25)   # ser apertada entre os dedos doi
 	global_transform = global_transform.interpolate_with(carrier_target, 1.0 - exp(-dt * 20.0))
 	cpg.set_descending(1.3, 1.3, 1.6)
 	cpg.step(dt)
