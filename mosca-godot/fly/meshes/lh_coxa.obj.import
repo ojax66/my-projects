@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://6ngvk0jqpbc5"
+path="res://.godot/imported/lh_coxa.obj-3224e4fa622b1ad0108ffc5d4f096cfd.mesh"
+
+[deps]
+
+files=["res://.godot/imported/lh_coxa.obj-3224e4fa622b1ad0108ffc5d4f096cfd.mesh"]
+
+source_file="res://fly/meshes/lh_coxa.obj"
+dest_files=["res://.godot/imported/lh_coxa.obj-3224e4fa622b1ad0108ffc5d4f096cfd.mesh", "res://.godot/imported/lh_coxa.obj-3224e4fa622b1ad0108ffc5d4f096cfd.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

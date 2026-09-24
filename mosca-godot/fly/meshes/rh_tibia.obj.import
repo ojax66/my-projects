@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://cno6de47msbel"
+path="res://.godot/imported/rh_tibia.obj-60744585160aa11a766dd5dce77edfcd.mesh"
+
+[deps]
+
+files=["res://.godot/imported/rh_tibia.obj-60744585160aa11a766dd5dce77edfcd.mesh"]
+
+source_file="res://fly/meshes/rh_tibia.obj"
+dest_files=["res://.godot/imported/rh_tibia.obj-60744585160aa11a766dd5dce77edfcd.mesh", "res://.godot/imported/rh_tibia.obj-60744585160aa11a766dd5dce77edfcd.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

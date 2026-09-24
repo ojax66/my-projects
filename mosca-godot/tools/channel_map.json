@@ -1,0 +1,25 @@
+{
+  "_comentario": "Expressoes regulares sobre o tipo celular (coluna cell_type/type). 'lateral': separa em _L/_R pelo lado do soma. Pode listar IDs em 'ids'. A nomenclatura muda entre FlyWire, MANC e MCNS: rode o extrator e ajuste o que vier vazio.",
+  "inputs": {
+    "odor":    {"lateral": true,  "types": ["^ORN_(DM1|DM2|DM3|DM4|VM2|VA2|VC3|DL1)$"]},
+    "sugar":   {"lateral": true,  "types": ["(?i)sugar", "(?i)^Gr5a", "(?i)^Gr64", "(?i)^GRN.*sweet"]},
+    "bitter":  {"lateral": true,  "types": ["(?i)bitter", "(?i)^Gr66a", "(?i)^Gr33a"]},
+    "loom":    {"lateral": true,  "types": ["^LPLC2$"]},
+    "mechano": {"lateral": false, "types": ["^JO-(C|E|CE|CA|CM|EDM|EDP|EV)"]},
+    "hunger":  {"lateral": false, "types": ["^ISN$", "(?i)^DH44"]}
+  },
+  "outputs": {
+    "forward":   {"lateral": true,  "types": ["^DNp09$", "^oDN1$"]},
+    "turn":      {"lateral": true,  "types": ["^DNa02$"]},
+    "backward":  {"lateral": false, "types": ["^MDN$", "(?i)moonwalker"]},
+    "escape":    {"lateral": false, "types": ["^DNp01$", "(?i)^giant.?fiber", "^GF$"]},
+    "proboscis": {"lateral": false, "types": ["^MN9$"]},
+    "groom":     {"lateral": false, "types": ["^aDN1$", "^aDN2$", "^DNg12$"]}
+  },
+  "explore": {
+    "explore_fwd": ["forward_L", "forward_R"],
+    "explore_L": ["turn_L"],
+    "explore_R": ["turn_R"],
+    "explore_back": ["backward"]
+  }
+}

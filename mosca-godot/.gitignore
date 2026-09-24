@@ -1,0 +1,6 @@
+.godot/
+*.tmp
+/build/
+tools/__pycache__/
+brain/codex/
+tests/

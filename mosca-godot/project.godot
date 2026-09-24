@@ -1,0 +1,38 @@
+; Engine configuration file.
+; Godot 4.4+
+
+config_version=5
+
+[application]
+
+config/name="Mosca no Jardim (NeuroMechFly)"
+config/description="Mosca-das-frutas NeuroMechFly com cerebro spiking num jardim interativo."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/aspect="expand"
+
+[physics]
+
+3d/default_gravity=9800.0
+3d/default_linear_damp=0.05
+3d/sleep_threshold_linear=2.0
+common/physics_ticks_per_second=90
+
+[layer_names]
+
+3d_physics/layer_1="mundo"
+3d_physics/layer_2="objetos"
+3d_physics/layer_3="moscas"
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+lights_and_shadows/directional_shadow/size=8192
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+textures/default_filters/anisotropic_filtering_level=3
