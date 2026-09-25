@@ -152,6 +152,12 @@ de hormônios e a população.
     hipotálamo (fome), pálio → estriado com dopamina de recompensa/punição.
   - `python3 tools/build_amphibian_brain.py --test` mostra as respostas (presa
     à esquerda → orientar à esquerda + língua; ameaça → fuga e pulo...).
+- **Modelo da rã**: a malha e a textura do sapo-banjo (*Limnodynastes*)
+  enviados pelo usuário, convertidos por `tools/import_frog_model.py` para
+  `frog/frog_skin.bin` com esqueleto (quadril, fêmur, tíbia, tarso, pé,
+  ombro, úmero, rádio-ulna, mão, garganta, olhos) e pesos por vértice; as 4
+  patas se movem pelos ossos. Verifique a licença do modelo original antes
+  de publicar o jogo.
 - **Corpo e órgãos de verdade** (`scripts/frog/`): a rã tem pele úmida com
   dobras dorsolaterais, olhos com íris e pupila horizontal, pálpebra,
   tímpano, narinas, saco vocal (machos), pernas nas proporções de *Rana*
