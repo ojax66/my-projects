@@ -5,9 +5,12 @@ extends Node3D
 ## vertice, entao a cauda dobra lisa como a de verdade. A pele (shader) tem
 ## dorso escuro pintado, pontinhos dourados, barriga translucida, miomeros
 ## em V na musculatura e nadadeiras finas quase transparentes.
-## Por dentro: o intestino longo enrolado em espiral dupla (da para ver pela
-## barriga, como nos girinos reais), coracao batendo, branquias internas
-## (raio-X), cerebro e notocorda. Na cabeca: olhos dorsolaterais, disco oral
+## Por dentro (tools/build_tadpole_organs.py): o intestino longo enrolado em
+## espiral dupla com esofago e manicotto (da para ver pela barriga, como nos
+## girinos reais), figado com vesicula, coracao (seio venoso, atrio,
+## ventriculo, bulbo) batendo, arterias branquiais, branquias internas em
+## franja nos 4 arcos, pronefros, pulmoes que crescem, encefalo, nervos
+## opticos, medula e notocorda (raio-X). Na cabeca: olhos dorsolaterais, disco oral
 ## com o bico corneo e as fileiras de denticulos, narinas e o espiraculo
 ## (saida da agua das branquias, lado esquerdo). As patas aparecem com o
 ## crescimento e a cauda e reabsorvida na metamorfose.
@@ -20,7 +23,7 @@ var _mesh: MeshInstance3D
 var _tail_bones: Array[int] = []
 var _gut: MeshInstance3D
 var _heart: MeshInstance3D
-var _gills: Array[MeshInstance3D] = []
+var _org := {}
 var _beak: Array[MeshInstance3D] = []
 var _legs_h: Array[Node3D] = []
 var _legs_f: Array[Node3D] = []
@@ -200,53 +203,37 @@ func _head_parts() -> void:
 	sp.rotation.y = 0.7
 
 
+## Orgaos esculpidos (tools/build_tadpole_organs.py): o intestino, o figado
+## e o coracao aparecem pela barriga translucida; o resto so no raio-X.
+const SEEN_THROUGH_BELLY := ["intestino", "manicotto", "reto", "figado", "ventriculo", "atrio", "bulbo_arterial", "esofago"]
+
+
 func _inside() -> void:
 	var hb := _body_attach()
-	# intestino: tubo longo enrolado em espiral dupla (visivel pela barriga)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var pts := PackedVector3Array()
-	for k in 90:
-		var tt := float(k) / 89.0
-		var a := tt * TAU * 3.2
-		var r := 0.058 * (1.0 - tt * 0.85) if tt < 0.5 else 0.058 * (0.15 + (tt - 0.5) * 1.7)
-		var side := 1.0 if tt < 0.5 else -1.0
-		pts.append(Vector3(cos(a * side) * r, -0.05 + 0.004 * sin(a * 2.0), -0.3 + sin(a * side) * r * 1.05))
-	var sides := 7
-	for i in pts.size():
-		var tg := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
-		var ax := tg.cross(Vector3.UP).normalized()
-		var bx := tg.cross(ax)
-		for j in sides + 1:
-			var ang := TAU * j / sides
-			var dv := ax * cos(ang) + bx * sin(ang)
-			st.set_normal(dv)
-			st.add_vertex(pts[i] + dv * 0.009)
-	for i in pts.size() - 1:
-		for j in sides:
-			var p0 := i * (sides + 1) + j
-			var p1 := p0 + sides + 1
-			for k in [p0, p1, p0 + 1, p0 + 1, p1, p1 + 1]:
-				st.add_index(k)
-	_gut = MeshInstance3D.new()
-	_gut.mesh = st.commit()
-	var gm := StandardMaterial3D.new()
-	gm.albedo_color = Color(0.3, 0.36, 0.14)     # cheio de algas
-	gm.roughness = 0.3
-	_gut.material_override = gm
-	hb.add_child(_gut)
-	_heart = _mi(hb, Color(0.75, 0.05, 0.08), Vector3(0, -0.055, -0.4), Vector3.ONE * 0.028)
-	for s in [-1.0, 1.0]:
-		for k in 4:
-			_gills.append(_mi(hb, Color(0.85, 0.2, 0.25), Vector3(0.06 * s, -0.02 - 0.006 * k, -0.37 + 0.012 * k), Vector3(0.012, 0.03, 0.01), 1.0, true))
-	_mi(hb, Color(0.95, 0.82, 0.8), Vector3(0, 0.055, -0.44), Vector3(0.035, 0.025, 0.06), 1.0, true)   # cerebro
-	# notocorda ao longo do corpo (a da cauda vai com os ossos)
+	for e: Dictionary in OrganBank.meshes(OrganBank.TADPOLE):
+		var mi := MeshInstance3D.new()
+		mi.mesh = e["mesh"]
+		mi.material_override = OrganBank.tissue(e["mat"])
+		mi.position = e["pivot"]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		hb.add_child(mi)
+		_org[e["name"]] = mi
+		if not (e["name"] in SEEN_THROUGH_BELLY):
+			_xray_nodes.append(mi)
+	_gut = _org["intestino"]
+	_heart = _org["ventriculo"]
+	# notocorda da cauda: segue as vertebras
+	var nm := OrganBank.tissue("notocorda")
 	for i in SEGS:
 		var ba := BoneAttachment3D.new()
 		ba.bone_name = "cauda_%d" % i
 		_skel.add_child(ba)
-		var nc := _mi(ba, Color(0.9, 0.9, 0.8), Vector3(0, 0, (1.0 - BODY_FRAC) / SEGS * 0.5), Vector3(0.01, 0.01, (1.0 - BODY_FRAC) / SEGS * 1.1), 0.7, true)
+		var nc := _mi(ba, Color.WHITE, Vector3(0, 0.012, (1.0 - BODY_FRAC) / SEGS * 0.5), Vector3(0.016, 0.016, (1.0 - BODY_FRAC) / SEGS * 1.1), 1.0, true)
+		nc.material_override = nm
 		nc.scale *= Vector3(1.0 - float(i) / SEGS * 0.6, 1.0 - float(i) / SEGS * 0.6, 1.0)
+		var cord := _mi(ba, Color.WHITE, Vector3(0, 0.028 - 0.0015 * i, (1.0 - BODY_FRAC) / SEGS * 0.5), Vector3(0.009, 0.009, (1.0 - BODY_FRAC) / SEGS * 1.1), 1.0, true)
+		cord.material_override = OrganBank.tissue("cerebro")
+		cord.scale *= Vector3(1.0 - float(i) / SEGS * 0.6, 1.0 - float(i) / SEGS * 0.6, 1.0)
 
 
 func _leg(pos: Vector3, s: float, length: float, hind: bool) -> Node3D:
@@ -274,10 +261,18 @@ func set_tail(angles: PackedFloat32Array, _act_l: PackedFloat32Array, _act_r: Pa
 
 
 func set_state(org: AmphibianOrgans, growth: float, climax: float, feeding: float, gut_fill: float) -> void:
-	_heart.scale = Vector3.ONE * 0.028 * (1.0 - 0.3 * org.beat_now)
-	for g in _gills:
-		g.scale = Vector3(0.012, 0.03, 0.01) * (0.8 + 0.4 * absf(org.buccal)) * (1.0 - climax)
-	_gut.scale = Vector3.ONE * (0.75 + 0.35 * clampf(gut_fill, 0.0, 1.0)) * (1.0 - 0.6 * climax)
+	# atrio contrai logo antes do ventriculo
+	var a_sys := exp(-pow(wrapf(org.beat_phase - 0.02, -0.5, 0.5) / 0.05, 2.0))
+	_heart.scale = Vector3.ONE * (1.0 - 0.25 * org.beat_now)
+	_heart.set_instance_shader_parameter("pulse", 0.5 * org.beat_now)
+	(_org["atrio"] as Node3D).scale = Vector3.ONE * (1.0 - 0.3 * a_sys)
+	# branquias: a agua bombeada pela boca abre os filamentos; somem no climax
+	for s in ["L", "R"]:
+		(_org["branquias_" + s] as Node3D).scale = Vector3.ONE * (0.85 + 0.25 * absf(org.buccal)) * maxf(1.0 - climax, 0.02)
+		(_org["arcos_branquiais_" + s] as Node3D).scale = Vector3.ONE * maxf(1.0 - climax, 0.05)
+		(_org["pulmao_" + s] as Node3D).scale = Vector3.ONE * maxf(smoothstep(0.35, 1.0, growth) * (0.6 + 0.5 * org.lung), 0.05)
+	# o intestino longo de herbivoro encurta na metamorfose (a ra come insetos)
+	_gut.scale = Vector3.ONE * (0.85 + 0.2 * clampf(gut_fill, 0.0, 1.0)) * (1.0 - 0.55 * climax)
 	for b in _beak:
 		b.scale = Vector3(0.045, 0.01 + 0.006 * feeding, 0.014)
 	var lh := smoothstep(0.55, 0.85, growth)

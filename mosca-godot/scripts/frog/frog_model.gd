@@ -5,13 +5,19 @@ extends Node3D
 ## esqueleto de verdade (quadril, femur, tibia, tarso, pe, ombro, umero,
 ## radio-ulna, mao, garganta, olhos) e pesos por vertice (skinning).
 ##
-## Dentro, os orgaos com forma anatomica: coracao com 2 atrios + ventriculo
-## + tronco arterial, pulmoes em saco com alveolos, figado de 3 lobos com a
-## vesicula biliar, estomago em J, intestino delgado enrolado e reto,
-## rins, corpos gordurosos em dedos, bexiga, cerebro (bulbos olfatorios,
-## hemisferios, lobos opticos, cerebelo) e medula; o esqueleto (cranio,
-## vertebras, urostilo, ilio, ossos dos membros) e os musculos das pernas
-## (seguem os ossos). Tudo visivel no modo raio-X.
+## Dentro, os orgaos esculpidos na cavidade do proprio corpo
+## (tools/build_frog_organs.py -> frog/frog_organs.*): coracao com seio
+## venoso, 2 atrios, ventriculo e cone arterial em espiral, arcos aorticos
+## (carotido, sistemico, pulmocutaneo), aorta dorsal, cavas, veia abdominal e
+## porta; pulmoes com septos alveolares; figado de 3 lobos com vesicula;
+## estomago em J, pancreas, duodeno, intestino delgado enovelado, baco,
+## intestino grosso e cloaca; rins com adrenais e ureteres, bexiga bilobada;
+## testiculos (macho) ou ovarios cheios de ovulos pigmentados e ovidutos
+## (femea); corpos gordurosos; encefalo completo, medula, nervos opticos,
+## plexos e isquiaticos; cranio, mandibula, coluna, urostilo, pelve, cintura
+## escapular e ossos dos membros; musculos da coxa, perna e braco (fibras).
+## O shader de tecido (shaders/organ.gdshaderinc) desenha vasos, alveolos,
+## lobulos e fibras. Tudo visivel no modo raio-X.
 ##
 ## Nao ha animacao: Frog calcula extensao das pernas, ativacao dos musculos,
 ## garganta, pulmoes, coracao e lingua; aqui so se mostra esse estado.
@@ -38,6 +44,7 @@ var _xray_nodes: Array[Node3D] = []
 var _muscles := {}           # "femur_L" -> MeshInstance3D
 var _eyes_rest := {}
 var _sac: MeshInstance3D
+var _holders := {}           # osso -> Node3D no espaco do modelo
 static var _mesh_cache: ArrayMesh
 static var _meta_cache: Dictionary
 static var _sph: SphereMesh
@@ -60,8 +67,6 @@ func build(svl: float, is_male: bool, hue_shift: float, _seed_i: int) -> void:
 	_skeleton()
 	_skin_mesh()
 	_organs()
-	_skeleton_bones()
-	_leg_muscles()
 	_tongue()
 	set_xray(false)
 
@@ -149,7 +154,7 @@ func _skin_mesh() -> void:
 	_body.skeleton = _body.get_path_to(_skel)
 
 
-# ---------------------------------------------------------------- geometria de orgaos
+# ---------------------------------------------------------------- orgaos (tools/build_frog_organs.py)
 func _mat(col: Color, rough := 0.25, alpha := 1.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(col.r, col.g, col.b, alpha)
@@ -162,190 +167,72 @@ func _mat(col: Color, rough := 0.25, alpha := 1.0) -> StandardMaterial3D:
 	return m
 
 
-## Tubo liso por uma curva (intestino, estomago, medula, arterias).
-func _tube(pts: PackedVector3Array, radii: PackedFloat32Array, sides := 10) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var n := pts.size()
-	for i in n:
-		var t := (pts[mini(i + 1, n - 1)] - pts[maxi(i - 1, 0)]).normalized()
-		var a := t.cross(Vector3.UP if absf(t.y) < 0.9 else Vector3.RIGHT).normalized()
-		var b := t.cross(a)
-		for j in sides + 1:
-			var ang := TAU * j / sides
-			var dir := a * cos(ang) + b * sin(ang)
-			st.set_normal(dir)
-			st.add_vertex(pts[i] + dir * radii[i])
-	for i in n - 1:
-		for j in sides:
-			var p0 := i * (sides + 1) + j
-			var p1 := p0 + sides + 1
-			for k in [p0, p1, p0 + 1, p0 + 1, p1, p1 + 1]:
-				st.add_index(k)
-	return st.commit()
-
-
-## Esfera deformada (lobos, sacos): bumps = alveolos/rugosidade.
-func _blob(radii: Vector3, bumps := 0.0, freq := 9.0, taper := 0.0) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rings := 14
-	var segs := 20
-	for i in rings + 1:
-		var v := float(i) / rings
-		var th := v * PI
-		for j in segs + 1:
-			var ph := TAU * j / segs
-			var p := Vector3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph))
-			var r := 1.0 + bumps * sin(p.x * freq) * sin(p.y * freq * 1.3) * sin(p.z * freq * 0.9)
-			r *= 1.0 - taper * (p.z * 0.5 + 0.5)
-			st.add_vertex(p * radii * r)
-	for i in rings:
-		for j in segs:
-			var a := i * (segs + 1) + j
-			var b := a + segs + 1
-			for k in [a, b, a + 1, a + 1, b, b + 1]:
-				st.add_index(k)
-	st.generate_normals()
-	return st.commit()
-
-
-func _put(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot := Vector3.ZERO) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.rotation = rot
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
-	_xray_nodes.append(mi)
-	return mi
-
-
 func _attach(bone: String) -> Node3D:
+	if _holders.has(bone):
+		return _holders[bone]
 	var ba := BoneAttachment3D.new()
 	ba.bone_name = bone
 	_skel.add_child(ba)
 	var holder := Node3D.new()
+	holder.position = -(_rest[bone][0] as Vector3)     # espaco do modelo em repouso
 	ba.add_child(holder)
+	_holders[bone] = holder
 	return holder
 
 
 func _organs() -> void:
-	var trunk := _attach("corpo")
-	var chest := _attach("peito")
-	var head := _attach("cabeca")
-	var o_c: Vector3 = _rest["corpo"][0]
-	var o_p: Vector3 = _rest["peito"][0]
-	var o_h: Vector3 = _rest["cabeca"][0]
-	# coracao (3 camaras): dois atrios em cima, ventriculo conico, tronco arterial
-	var heart := Node3D.new()
-	heart.position = Vector3(0, 0.1, -0.2) - o_p
-	chest.add_child(heart)
-	organs["coracao"] = heart
-	_put(heart, _blob(Vector3(0.045, 0.05, 0.05), 0.02, 6.0, 0.35), _mat(Color(0.62, 0.05, 0.06), 0.2), Vector3(0, -0.02, 0.01), Vector3(-0.5, 0, 0))
-	_put(heart, _blob(Vector3(0.028, 0.025, 0.03), 0.03), _mat(Color(0.45, 0.04, 0.12), 0.25), Vector3(-0.025, 0.028, 0.0))
-	_put(heart, _blob(Vector3(0.026, 0.024, 0.028), 0.03), _mat(Color(0.4, 0.05, 0.2), 0.25), Vector3(0.025, 0.028, 0.0))
-	_put(heart, _tube(PackedVector3Array([Vector3(0, 0.0, -0.02), Vector3(0, 0.03, -0.05), Vector3(0.02, 0.05, -0.06), Vector3(0.05, 0.06, -0.05)]),
-		PackedFloat32Array([0.012, 0.011, 0.009, 0.008])), _mat(Color(0.8, 0.35, 0.4)), Vector3.ZERO)
-	_put(heart, _tube(PackedVector3Array([Vector3(0, 0.03, -0.05), Vector3(-0.02, 0.05, -0.06), Vector3(-0.05, 0.06, -0.05)]),
-		PackedFloat32Array([0.011, 0.009, 0.008])), _mat(Color(0.8, 0.35, 0.4)), Vector3.ZERO)
-	# pulmoes: sacos finos com alveolos, dorsais
-	for s in [-1.0, 1.0]:
-		var lung := _put(chest, _blob(Vector3(0.055, 0.045, 0.13), 0.08, 22.0, 0.3), _mat(Color(0.93, 0.55, 0.58), 0.35, 0.92),
-			Vector3(0.08 * s, 0.2, -0.05) - o_p)
-		organs["pulmao_%s" % ("L" if s < 0 else "R")] = lung
-		lung.set_meta("base", lung.scale)
-	# figado: 3 lobos (o esquerdo maior) + vesicula biliar verde
-	var liver_m := _mat(Color(0.38, 0.1, 0.07), 0.2)
-	_put(chest, _blob(Vector3(0.09, 0.03, 0.08), 0.02), liver_m, Vector3(-0.07, 0.08, -0.05) - o_p, Vector3(0, 0.3, 0))
-	_put(chest, _blob(Vector3(0.07, 0.03, 0.07), 0.02), liver_m, Vector3(0.07, 0.08, -0.06) - o_p, Vector3(0, -0.3, 0))
-	_put(chest, _blob(Vector3(0.04, 0.025, 0.05), 0.02), liver_m, Vector3(0.0, 0.07, -0.02) - o_p)
-	_put(chest, _blob(Vector3(0.015, 0.015, 0.015)), _mat(Color(0.2, 0.5, 0.15)), Vector3(0.01, 0.06, -0.04) - o_p)
-	# estomago em J (lado esquerdo) -> intestino delgado enrolado -> reto
-	var stomach := _put(trunk, _tube(PackedVector3Array([Vector3(-0.05, 0.15, -0.3), Vector3(-0.08, 0.13, -0.2), Vector3(-0.09, 0.12, -0.1),
-		Vector3(-0.06, 0.11, -0.03), Vector3(-0.01, 0.1, -0.02)]), PackedFloat32Array([0.02, 0.035, 0.042, 0.035, 0.018])),
-		_mat(Color(0.88, 0.76, 0.6), 0.3), -o_c)
-	organs["estomago"] = stomach
-	var gut := PackedVector3Array()
-	var gr := PackedFloat32Array()
-	for k in 40:
-		var a := float(k) * 0.55
-		gut.append(Vector3(cos(a) * 0.05 * (1.0 - k / 60.0), 0.08 + sin(a * 0.5) * 0.015, 0.02 + sin(a) * 0.035 + k * 0.0022))
-		gr.append(0.011)
-	gut.append(Vector3(0.0, 0.1, 0.16))
-	gut.append(Vector3(0.0, 0.11, 0.24))
-	gr.append(0.016)
-	gr.append(0.018)
-	var intestine := _put(trunk, _tube(gut, gr, 8), _mat(Color(0.86, 0.68, 0.52), 0.3), -o_c)
-	organs["intestino"] = intestine
-	# rins (dorsais, escuros), corpos gordurosos (dedos amarelos), bexiga
-	for s in [-1.0, 1.0]:
-		_put(trunk, _blob(Vector3(0.022, 0.012, 0.07), 0.05, 14.0), _mat(Color(0.45, 0.1, 0.08)), Vector3(0.03 * s, 0.17, 0.14) - o_c)
-		var fat := Node3D.new()
-		fat.position = Vector3(0.05 * s, 0.14, 0.02) - o_c
-		trunk.add_child(fat)
-		for k in 4:
-			_put(fat, _tube(PackedVector3Array([Vector3.ZERO, Vector3(0.01 * s * k, -0.01, 0.04), Vector3(0.02 * s * k, -0.02, 0.07)]),
-				PackedFloat32Array([0.008, 0.01, 0.006]), 6), _mat(Color(1.0, 0.82, 0.2), 0.4), Vector3(0.006 * k * s, 0, -0.004 * k))
-		organs["gordura_%s" % ("L" if s < 0 else "R")] = fat
-	_put(trunk, _blob(Vector3(0.035, 0.025, 0.03), 0.0), _mat(Color(0.95, 0.95, 0.8), 0.1, 0.55), Vector3(0, 0.07, 0.24) - o_c)
-	# cerebro: bulbos olfatorios, hemisferios, lobos opticos, cerebelo, bulbo; medula
-	var brain_m := _mat(Color(0.95, 0.78, 0.76), 0.3)
-	var bz := Vector3(0, 0.35, -0.42) - o_h
-	for s in [-1.0, 1.0]:
-		_put(head, _blob(Vector3(0.009, 0.008, 0.02)), brain_m, bz + Vector3(0.008 * s, 0, -0.06))
-		_put(head, _blob(Vector3(0.014, 0.012, 0.03)), brain_m, bz + Vector3(0.012 * s, 0, -0.02))
-		_put(head, _blob(Vector3(0.014, 0.014, 0.016)), _mat(Color(0.95, 0.7, 0.7)), bz + Vector3(0.014 * s, 0.002, 0.018))
-	_put(head, _blob(Vector3(0.012, 0.006, 0.008)), brain_m, bz + Vector3(0, 0.005, 0.04))
-	_put(head, _tube(PackedVector3Array([bz + Vector3(0, 0, 0.045), bz + Vector3(0, -0.01, 0.1), Vector3(0, 0.27, -0.1) - o_h]),
-		PackedFloat32Array([0.009, 0.007, 0.006])), brain_m, Vector3.ZERO)
-	_put(trunk, _tube(PackedVector3Array([Vector3(0, 0.27, -0.1), Vector3(0, 0.25, 0.05), Vector3(0, 0.22, 0.12)]) , PackedFloat32Array([0.006, 0.005, 0.003])),
-		brain_m, -o_c)
-
-
-## Esqueleto de ra: cranio achatado, 9 vertebras curtas, urostilo longo,
-## ilio (bacia comprida), e os ossos dos membros presos aos ossos animados.
-func _skeleton_bones() -> void:
-	var bone_m := _mat(Color(0.96, 0.93, 0.85), 0.5, 0.55)
-	var trunk := _attach("corpo")
-	var head := _attach("cabeca")
-	var o_c: Vector3 = _rest["corpo"][0]
-	var o_h: Vector3 = _rest["cabeca"][0]
-	_put(head, _blob(Vector3(0.1, 0.018, 0.12), 0.05, 12.0), bone_m, Vector3(0, 0.33, -0.44) - o_h)
-	for k in 9:
-		_put(trunk, _blob(Vector3(0.025, 0.012, 0.012)), bone_m, Vector3(0, 0.26 - k * 0.004, -0.25 + k * 0.04) - o_c)
-	_put(trunk, _tube(PackedVector3Array([Vector3(0, 0.23, 0.11), Vector3(0, 0.2, 0.3)]), PackedFloat32Array([0.008, 0.004])), bone_m, -o_c)
-	for s in [-1.0, 1.0]:
-		_put(trunk, _tube(PackedVector3Array([Vector3(0.03 * s, 0.24, 0.1), Vector3(0.05 * s, 0.16, 0.3)]), PackedFloat32Array([0.007, 0.009])), bone_m, -o_c)
-	for s in ["L", "R"]:
-		for b in ["femur", "tibia", "tarso", "pe", "umero", "antebraco", "mao"]:
-			var n: String = b + "_" + s
-			var hold := _attach(n)
-			var v: Vector3 = (_rest[n][1] as Vector3) - (_rest[n][0] as Vector3)
-			var r := 0.009 if b in ["femur", "tibia"] else 0.006
-			_put(hold, _tube(PackedVector3Array([Vector3.ZERO, v * 0.5, v]), PackedFloat32Array([r * 1.3, r, r * 1.2]), 6), bone_m, Vector3.ZERO)
-
-
-## Musculos das pernas: fusos vermelhos em volta do femur e da tibia;
-## incham (e ficam mais vermelhos) quando os motoneuronios os contraem.
-func _leg_muscles() -> void:
-	for s in ["L", "R"]:
-		for b in ["femur", "tibia", "umero"]:
-			var n: String = b + "_" + s
-			var hold := _attach(n)
-			var v: Vector3 = (_rest[n][1] as Vector3) - (_rest[n][0] as Vector3)
-			var r: float = {"femur": 0.05, "tibia": 0.035, "umero": 0.025}[b]
-			var m := _put(hold, _tube(PackedVector3Array([v * 0.05, v * 0.3, v * 0.6, v * 0.95]), PackedFloat32Array([r * 0.3, r, r * 0.8, r * 0.25]), 10),
-				_mat(Color(0.7, 0.15, 0.15), 0.35, 0.75), Vector3.ZERO)
-			_muscles[n] = m
+	for e: Dictionary in OrganBank.meshes(OrganBank.FROG):
+		var n: String = e["name"]
+		# gonadas conforme o sexo
+		if male and (n.begins_with("ovario") or n.begins_with("oviduto")):
+			continue
+		if not male and n.begins_with("testiculo"):
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = e["mesh"]
+		mi.material_override = OrganBank.tissue(e["mat"])
+		mi.position = e["pivot"]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_attach(e["bone"]).add_child(mi)
+		_xray_nodes.append(mi)
+		organs[n] = mi
+		mi.set_meta("base", mi.scale)
+		if n.begins_with("musc_"):
+			var b: String = e["bone"]
+			if not _muscles.has(b):
+				_muscles[b] = []
+			(_muscles[b] as Array).append(mi)
+	if not male:
+		var eggs: Dictionary = OrganBank.meta(OrganBank.FROG)["ovulos"]
+		var egg_mat := StandardMaterial3D.new()
+		egg_mat.vertex_color_use_as_albedo = true
+		egg_mat.roughness = 0.15
+		egg_mat.clearcoat_enabled = true
+		egg_mat.clearcoat = 1.0
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(hue)
+		for s in ["L", "R"]:
+			var list: Array = eggs[s]
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = OrganBank.egg_mesh()
+			mm.instance_count = list.size()
+			for i in list.size():
+				var q: Array = list[i]
+				var b := Basis.from_euler(Vector3(rng.randf_range(-0.6, 0.6), rng.randf() * TAU, rng.randf_range(-0.6, 0.6)))
+				mm.set_instance_transform(i, Transform3D(b.scaled(Vector3.ONE * float(q[3])), Vector3(q[0], q[1], q[2])))
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.material_override = egg_mat
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			(organs["ovario_" + s] as Node3D).add_child(mmi)
 
 
 func _tongue() -> void:
 	var head := _attach("cabeca")
 	var p: Array = _meta_cache["pontos"]["boca"]
 	tongue_root = Node3D.new()
-	tongue_root.position = Vector3(p[0], p[1], p[2]) - (_rest["cabeca"][0] as Vector3)
+	tongue_root.position = Vector3(p[0], p[1], p[2])
 	head.add_child(tongue_root)
 	tongue = MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
@@ -369,7 +256,7 @@ func _tongue() -> void:
 		_sac.mesh = _sph
 		_sac.material_override = sm
 		_sac.scale = Vector3(0.1, 0.05, 0.09)
-		_sac.position = Vector3(0, -0.005, -0.03)
+		_sac.position = (_rest["garganta"][0] as Vector3) + Vector3(0, -0.005, -0.03)
 		throat.add_child(_sac)
 
 
@@ -406,11 +293,11 @@ func set_leg(s: String, ext: float, act: float) -> void:
 		var rd: Vector3 = ((_rest[names[i]][1] as Vector3) - (_rest[names[i]][0] as Vector3)).normalized()
 		dirs.append(rd.slerp((ext_dirs[i] as Vector3).normalized(), e))
 	_chain(names, dirs)
+	# os ventres dos musculos incham e avermelham quando contraem (shader)
+	var k := clampf(act, 0.0, 1.3)
 	for b in ["femur_" + s, "tibia_" + s]:
-		var m: MeshInstance3D = _muscles[b]
-		var k := clampf(act, 0.0, 1.3)
-		m.scale = Vector3(1.0 + 0.35 * k, 1.0 - 0.1 * k, 1.0 + 0.35 * k)
-		(m.material_override as StandardMaterial3D).albedo_color = Color(0.6 + 0.35 * k, 0.12, 0.12, 0.75)
+		for m: MeshInstance3D in _muscles.get(b, []):
+			m.set_instance_shader_parameter("activation", k)
 
 
 func set_arm(s: String, lift: float) -> void:
@@ -425,14 +312,23 @@ func set_arm(s: String, lift: float) -> void:
 
 
 func set_state(org: AmphibianOrgans, call: float, swallow: float, blink: float, _jaw: float, energy: float) -> void:
-	var heart: Node3D = organs["coracao"]
-	heart.scale = Vector3.ONE * (1.0 - 0.22 * org.beat_now)
+	# ciclo cardiaco: os atrios contraem logo antes do ventriculo (sistole
+	# atrial -> ventricular); o ventriculo empalidece ao ejetar o sangue
+	var ph := org.beat_phase
+	var a_sys := exp(-pow(wrapf(ph - 0.02, -0.5, 0.5) / 0.05, 2.0))
+	var v_sys := org.beat_now
+	(organs["ventriculo"] as MeshInstance3D).scale = Vector3(1.0 - 0.14 * v_sys, 1.0 - 0.1 * v_sys, 1.0 - 0.18 * v_sys)
+	(organs["ventriculo"] as MeshInstance3D).set_instance_shader_parameter("pulse", 0.5 * v_sys)
 	for s in ["L", "R"]:
-		var lg: MeshInstance3D = organs["pulmao_" + s]
-		lg.scale = Vector3.ONE * (0.5 + 0.7 * org.lung)
-		(organs["gordura_" + s] as Node3D).scale = Vector3.ONE * (0.4 + 0.9 * energy)
-	(organs["estomago"] as Node3D).scale = Vector3.ONE * (0.8 + 0.8 * minf(org.stomach, 0.4))
-	(organs["intestino"] as Node3D).scale = Vector3.ONE * (0.9 + 0.5 * minf(org.intestine, 0.3))
+		(organs["atrio_" + s] as Node3D).scale = Vector3.ONE * (1.0 - 0.25 * a_sys + 0.08 * v_sys)
+		# pulmoes enchem a partir do hilo com a bomba bucal
+		(organs["pulmao_" + s] as Node3D).scale = Vector3.ONE * (0.55 + 0.55 * org.lung)
+		(organs["gordura_" + s] as Node3D).scale = Vector3.ONE * (0.4 + 0.8 * energy)
+		if organs.has("ovario_" + s):
+			(organs["ovario_" + s] as Node3D).scale = Vector3.ONE * (0.55 + 0.5 * energy)
+	(organs["cone_arterial"] as Node3D).scale = Vector3.ONE * (1.0 + 0.12 * v_sys)
+	(organs["estomago"] as Node3D).scale = Vector3.ONE * (0.8 + 0.7 * minf(org.stomach, 0.4))
+	(organs["intestino_delgado"] as Node3D).scale = Vector3.ONE * (0.95 + 0.25 * minf(org.intestine, 0.3))
 	# garganta: a bomba bucal sobe e desce o assoalho da boca; canto infla o saco
 	var g := 1.0 + 0.35 * maxf(-org.buccal, 0.0) + 0.12 * org.buccal
 	_skel.set_bone_pose_scale(_bone["garganta"], Vector3(1.0 + 0.1 * (g - 1.0), g, 1.0 + 0.2 * (g - 1.0)))

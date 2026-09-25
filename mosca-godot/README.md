@@ -158,14 +158,39 @@ de hormônios e a população.
   ombro, úmero, rádio-ulna, mão, garganta, olhos) e pesos por vértice; as 4
   patas se movem pelos ossos. Verifique a licença do modelo original antes
   de publicar o jogo.
-- **Corpo e órgãos de verdade** (`scripts/frog/`): a rã tem pele úmida com
-  dobras dorsolaterais, olhos com íris e pupila horizontal, pálpebra,
-  tímpano, narinas, saco vocal (machos), pernas nas proporções de *Rana*
-  (fêmur, tíbio-fíbula, tarso, pé com 5 dedos e membrana), músculos que
-  incham ao contrair, e por dentro coração, pulmões, fígado, estômago,
-  intestino, rins, corpos gordurosos, cérebro e medula (**Raio-X** mostra).
-  O girino tem barriga translúcida com o intestino em espiral, coração,
-  brânquias, bico córneo, espiráculo e a cauda com miômeros e nadadeiras.
+- **Órgãos anatômicos** (`tools/build_frog_organs.py`,
+  `tools/build_tadpole_organs.py` → `frog/*_organs.bin`): cada órgão é
+  esculpido como superfície implícita (SDF) dentro da cavidade do próprio
+  corpo (a pele voxelizada) e poligonizado; eles se encaixam uns nos outros
+  como numa dissecação. A rã tem:
+  - coração com seio venoso, 2 átrios, ventrículo e cone arterial em espiral;
+  - arcos aórticos (carotídeo, sistêmico, pulmocutâneo), aorta dorsal, cavas,
+    veia abdominal e porta hepática;
+  - pulmões com septos alveolares e fígado de 3 lobos com vesícula;
+  - estômago em J, pâncreas, duodeno, intestino delgado de ~1,6× o corpo
+    (acomodado por relaxação física, sem atravessar nada), baço, intestino
+    grosso e cloaca;
+  - rins com adrenais e ureteres, bexiga bilobada e corpos gordurosos;
+  - testículos no macho; na fêmea, ovários com ~300 óvulos pigmentados e
+    ovidutos;
+  - encéfalo completo, medula, nervos ópticos, plexo braquial e ciáticos;
+  - crânio, mandíbula, coluna com sacral e urostilo, pelve, cintura
+    escapular, esterno e os ossos de cada membro;
+  - músculos da coxa (cruralis, grácil, semimembranoso, sartório), da perna
+    (gastrocnêmio com tendão de Aquiles, tibial, fibular), do braço e do
+    antebraço.
+  O shader de tecido (`shaders/organ.gdshaderinc`) desenha vasos, alvéolos,
+  lóbulos e fibras.
+  O girino tem o intestino em espiral dupla com esôfago e manicotto, fígado,
+  coração (seio, átrio, ventrículo, bulbo), artérias branquiais, brânquias
+  internas em franja nos 4 arcos, pronefros, pulmões que crescem, encéfalo,
+  medula e notocorda. A pele do girino tem barriga translúcida, bico córneo,
+  espiráculo e cauda com miômeros e nadadeiras.
+- **Órgãos em movimento**: os átrios contraem antes do ventrículo, e o
+  ventrículo empalidece ao ejetar o sangue. Os pulmões enchem a partir do
+  hilo; o estômago, o intestino, os corpos gordurosos e os ovários mudam com
+  a comida e a energia. Os músculos incham e avermelham quando os
+  motoneurônios contraem, e as brânquias do girino somem na metamorfose.
 - **Sem animação pronta**: os motoneurônios do conectoma ativam os músculos.
   Extensores (`hop_L/R`) esticam as pernas, e a perna esticando no chão
   empurra o corpo: o pulo sai da força muscular. A diferença entre os lados
