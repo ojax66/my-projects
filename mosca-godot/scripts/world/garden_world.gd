@@ -125,7 +125,7 @@ func _process(dt: float) -> void:
 
 ## 1 = sol alto, 0 = noite escura.
 func daylight() -> float:
-	var elev := sin((hour - 6.0) / 12.0 * PI)
+	var elev := sin((hour - 6.0) / 13.0 * PI)   # sol das 6h as 19h
 	return smoothstep(-0.08, 0.3, elev)
 
 
@@ -139,15 +139,15 @@ func clock_text() -> String:
 	var fase := "noite"
 	if hour >= 5.0 and hour < 7.0:
 		fase = "amanhecer"
-	elif hour >= 7.0 and hour < 17.5:
+	elif hour >= 7.0 and hour < 18.0:
 		fase = "dia"
-	elif hour >= 17.5 and hour < 19.5:
+	elif hour >= 18.0 and hour < 19.5:
 		fase = "entardecer"
 	return "Dia %d  %02d:%02d  (%s)" % [day, h, m, fase]
 
 
 func _apply_daylight() -> void:
-	var ang := (hour - 6.0) / 12.0 * PI          # 0 nascer, PI por do sol
+	var ang := (hour - 6.0) / 13.0 * PI          # 0 nascer (6h), PI por do sol (19h)
 	var elev := sin(ang)
 	var dl := daylight()
 	var elev_deg := clampf(rad_to_deg(asin(clampf(elev, -1.0, 1.0))) * 0.85, -20.0, 75.0)

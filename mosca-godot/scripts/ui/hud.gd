@@ -77,6 +77,9 @@ func _process(dt: float) -> void:
 	brain_view.fly = fly if fly else (fol if fol and fol.get("brain") != null else keep)
 	_chem_fly = fly
 	var followed: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
+	if not fly and not followed:
+		_status.text = "Nenhuma mosca no jardim. Menu -> + Mosca / + Larva"
+		_life.text = ""
 	if fly:
 		var st: String = ["andando", "voando", "carregada", "morta"][fly.state]
 		_status.text = "%s  |  %s  |  %s\nenergia %d%%   papo %d%%   velocidade %.1f mm/s   cerebro: %s\nodor E/D %.0f/%.0f Hz   acucar %.0f   amargo %.0f   looming %.0f/%.0f   vento %.0f\nDNp09 E/D %.2f/%.2f   DNa02 %+.2f   MDN %.2f   MN9 %.2f   groom %.2f   GF %.2f   corte %.2f" % [

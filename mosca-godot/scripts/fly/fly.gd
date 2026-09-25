@@ -841,8 +841,8 @@ func _descending() -> Vector2:
 	var f := 0.3 * (m_fwd_l + m_fwd_r)
 	if decision in ["buscar comida", "evitar"]:
 		f = maxf(f, 0.7)
-	elif decision == "descansar":
-		f = 0.0
+	elif decision == "descansar" and m_back < 0.8 and sense["bitter"] <= 0.0:
+		return Vector2.ZERO   # dormindo: pernas paradas
 	var dl := f - 0.7 * m_turn - 1.0 * m_back
 	var dr := f + 0.7 * m_turn - 1.0 * m_back
 	if m_groom > 0.35 or (m_prob > 0.45 and sense["sugar"] > 0.0):
