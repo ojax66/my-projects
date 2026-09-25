@@ -77,6 +77,40 @@ O painel **Cérebro** (B) mostra spikes e taxas por população; o painel de
 **vida** (L) mostra sexo, geração, idade, energia, memória, genes, as barras
 de hormônios e a população.
 
+## Mundo, decisão, memória e arquivos
+
+- **Começa vazio**: a tela inicial oferece *Continuar mundo salvo* ou *Novo
+  mundo (sem moscas)*; as moscas entram pelo Menu → **+ Mosca**.
+- **Dia e noite**: um dia dura 12 min de jogo (x1). De noite o sol se põe, a
+  luz entra fraca nos fotorreceptores e as moscas dormem.
+- **Tempo**: barra de cima com **Pausar**, **x1/x2/x4/x8** (e câmera lenta),
+  **Salvar** e **Sair** (salva e fecha). Salva sozinho a cada 4 min e quando o
+  app vai para o fundo.
+- **Cérebro zerado**: ninguém nasce sabendo de nada — nem que o limão é
+  amargo. A memória de cheiros (`scripts/brain/creature_memory.gd`) só
+  aprende pelo paladar (açúcar +, amargo −) ou vendo outro indivíduo comer ou
+  cuspir; susto, dor e ser pego vão para a memória de perigo, então a maçã
+  nunca fica "negativa". Cada fruta tem uma assinatura de cheiro própria, e o
+  que se aprende do limão não contamina a laranja nem a maçã.
+- **Tomada de decisão**: a cada ~0,5 s cada mosca/larva pesa *comer, buscar
+  comida, evitar, fugir, descansar, explorar* (larva: *comer, procurar comida,
+  desviar, evitar, pupar*) a partir de fome, medo, noite, hormônios, memória e
+  sentidos. O conectoma continua gerando o andar, o giro e os reflexos. As
+  larvas agora decidem comer e vão até a comida.
+- **Esmagamento**: só se algo pesado cair **literalmente em cima**, vindo de
+  cima e em queda (`scripts/world/hazards.gd`). Ficar embaixo de uma fruta
+  parada ou levar uma batida de lado não mata (só machuca).
+- **Aprendizado social**: quem vê outro indivíduo morrer esmagado aprende o
+  lugar perigoso e fica com medo de coisas caindo, e passa a desviar quando
+  algo cai na sua direção.
+- **Conectoma único por indivíduo**: cada sinapse tem um fator de peso
+  herdado (um "haplótipo" de fiação da mãe, outro do pai, mais uma mutação
+  própria). Cada indivíduo vivo tem um arquivo
+  `user://mundo/individuos/<id>.json` com genes, as sementes da fiação, os
+  pesos KC→MBON aprendidos, a memória e o corpo; os mortos vão para
+  `user://mundo/arquivo/`. O conectoma base de cada espécie já vem no jogo
+  (`brain/full/*.bin.gz`), sem precisar extrair nada.
+
 ## Controles
 
 **Toque / mouse (o botão esquerdo do mouse funciona como um dedo):**
@@ -93,17 +127,23 @@ de hormônios e a população.
 **Teclado:** W A S D (setas) andar, E/Espaço sobe, Q/Ctrl desce, Z/X girar,
 Shift/Alt rápido/lento, roda = velocidade, botão direito = olhar, Tab prende
 o mouse, C seguir, I ir até a mosca, F soprar, 1–7 criar itens, Del apagar o
-segurado, T câmera lenta, B cérebro, L vida, N trocar cérebro, H ajuda.
+segurado, P pausar, T acelerar o tempo, F5 salvar, B cérebro, L vida, N trocar
+cérebro, H ajuda.
 
 ## Desempenho e requisitos
 
 - Cérebro completo: precisa de **Vulkan** (renderizador Forward+ ou Mobile).
   O conectoma (≈ 50 MB de sinapses) é carregado uma vez; cada mosca guarda só
   o próprio estado (~5 MB de GPU) e a própria memória KC→MBON.
-- Aqui foi testado com Vulkan emulado na CPU (lavapipe), onde 6 moscas com
-  166.700 neurônios cada custam ~150 ms por tick. Numa GPU de verdade deve ser
-  muitas vezes mais rápido, mas **não pude medir em GPU real**. Se ficar
-  pesado: diminua `LifeManager.MAX_ADULTS` ou use N para trocar para o
+- Os cérebros rodam num lote assíncrono por quadro (a GPU calcula enquanto a
+  CPU cuida da física e do desenho), com um orçamento de sinapses por quadro
+  que se ajusta sozinho ao FPS. A criatura seguida tem prioridade; as outras
+  rodam em passos de 50–120 ms de campo médio.
+- Física a 60 ticks/s; o CPG usa sub-passos maiores. **Gráficos leves** (Menu)
+  desliga SSAO/brilho, reduz sombras, grama e a resolução 3D (padrão no
+  celular).
+- Testado só com Vulkan emulado na CPU (lavapipe); **não pude medir em GPU
+  real**. Se ainda ficar pesado: Gráficos leves, menos moscas, ou N para o
   subcircuito.
 - Para exportar, veja `export_presets_nota.txt` (os conectomas precisam entrar
   no filtro de arquivos).

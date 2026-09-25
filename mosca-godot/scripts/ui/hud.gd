@@ -22,6 +22,12 @@ var _life: Label
 var _chem_view: Control
 var _life_panel: PanelContainer
 var _chem_fly: Fly
+var _gfx_btn: Button
+var _speed_btn: Button
+var _pause_btn: Button
+var _clock: Label
+var _perf: Label
+var _start: PanelContainer
 
 
 static var instance: Hud
@@ -30,6 +36,7 @@ static var instance: Hud
 func _ready() -> void:
 	instance = self
 	layer = 5
+	process_mode = Node.PROCESS_MODE_ALWAYS   # a interface funciona com o jogo pausado
 	_panel_normal = _stylebox("panel_normal.png")
 	_panel_hover = _stylebox("panel_hover.png")
 	_panel_pressed = _stylebox("panel_pressed.png")
@@ -38,6 +45,7 @@ func _ready() -> void:
 	_build_status()
 	_build_brain_panel()
 	_build_help()
+	_build_time_bar()
 	_crosshair = Control.new()
 	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
 	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -65,7 +73,8 @@ func _process(dt: float) -> void:
 	_crosshair.visible = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	var fly := _current_fly()
 	var fol: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
-	brain_view.fly = fly if fly else (fol if fol and fol.get("brain") != null else brain_view.fly)
+	var keep: Node = brain_view.fly if is_instance_valid(brain_view.fly) else null
+	brain_view.fly = fly if fly else (fol if fol and fol.get("brain") != null else keep)
 	_chem_fly = fly
 	var followed: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
 	if fly:
@@ -81,9 +90,11 @@ func _process(dt: float) -> void:
 			repro = "fecundada, %d ovos para botar (%d postos)" % [fly.eggs_to_lay, fly.eggs_laid] if fly.mated else ("madura" if fly.age > LifeManager.ADULT_MATURE else "imatura")
 		else:
 			repro = "maduro" if fly.age > LifeManager.ADULT_MATURE else "imaturo"
-		_life.text = "%s  geracao %d  linhagem %d  idade %ds / %ds  %s\nmemoria: %.1f%% das sinapses KC->MBON alteradas   valencia do cheiro atual %+.2f\ngenes: %s" % [
-			"femea" if fly.sex == "F" else "macho", fly.generation, fly.lineage, int(fly.age), int(fly.genome.get_gene("lifespan")), repro,
-			fly.brain.memory_strength() * 100.0, fly.valence, fly.genome.summary()]
+		_life.text = "%s #%d  geracao %d  linhagem %d  idade %ds / %ds  %s\ndecisao: %s   (%s)\nmemoria: %s\n%s\nsinapses KC->MBON alteradas %.1f%%   valencia do cheiro atual %+.2f   conectoma unico #%08x\ngenes: %s" % [
+			"femea" if fly.sex == "F" else "macho", fly.uid, fly.generation, fly.lineage, int(fly.age), int(fly.genome.get_gene("lifespan")), repro,
+			fly.decision.to_upper(), _scores(fly.decision_scores), fly.mind.summary(),
+			("ultima licao: " + fly.last_lesson) if fly.last_lesson != "" else "",
+			fly.brain.memory_strength() * 100.0, fly.valence, int(fly.wiring[2]) & 0xFFFFFFFF, fly.genome.summary()]
 	elif followed:
 		_status.text = Spectator._label(followed)
 		if followed is Larva:
@@ -91,6 +102,10 @@ func _process(dt: float) -> void:
 			_status.text += "\ncomida %d%%  idade %ds  cerebro: conectoma da larva (%d neuronios)\nodor E/D %.0f/%.0f  paladar %.0f  luz %.0f   DN-VNC E/D %.2f/%.2f  DN-SEZ %.2f" % [
 				int(l.food / LifeManager.LARVA_FOOD * 100), int(l.age), l.brain.n, l.sense["odor_L"], l.sense["odor_R"], l.sense["taste"], l.sense["light"], l.m_crawl_l, l.m_crawl_r, l.m_feed]
 		_life.text = ""
+		if followed is Larva:
+			var l := followed as Larva
+			_life.text = "larva #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [l.uid, l.decision.to_upper(), _scores(l.decision_scores),
+				l.mind.summary(), ("ultima licao: " + l.last_lesson) if l.last_lesson != "" else ""]
 	var lm := LifeManager.instance
 	if lm:
 		var d := ""
@@ -99,14 +114,33 @@ func _process(dt: float) -> void:
 		_life.text += "\npopulacao: %d adultos  %d larvas  %d pupas  %d ovos   nascimentos %d   geracao max %d\nmortes: %s" % [
 			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.births, lm.max_generation, d if d != "" else "nenhuma"]
 		_inherit_btn.text = "Heranca: %s" % ("SIM" if lm.inherit_learning else "NAO")
+	if GardenWorld.instance:
+		_gfx_btn.text = "Graficos: %s" % ("leve" if GardenWorld.instance.low_quality else "alto")
 	_chem_view.visible = fly != null and _life.visible
 	_chem_view.queue_redraw()
 	var ts := Engine.time_scale
-	_time_btn.text = "Tempo x%s" % (str(ts) if ts < 1.0 else "1")
+	_time_btn.text = "Tempo x%s" % _fmt_speed(ts)
+	_speed_btn.text = "x%s" % _fmt_speed(ts)
+	_pause_btn.text = "Continuar" if get_tree().paused else "Pausar"
+	if GardenWorld.instance:
+		_clock.text = GardenWorld.instance.clock_text() + ("   PAUSADO" if get_tree().paused else "")
+	var eng := BrainEngine.instance
+	_perf.text = "%d FPS   cerebros GPU %d/quadro  %.1f ms" % [Engine.get_frames_per_second(), eng.stepped_last if eng else 0, eng.gpu_ms if eng else 0.0]
+
+
+func _scores(sc: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for k: String in sc:
+		parts.append("%s %.2f" % [k, float(sc[k])])
+	return ", ".join(parts)
+
+
+func _fmt_speed(ts: float) -> String:
+	return str(int(ts)) if ts >= 1.0 else str(ts)
 
 
 func _current_fly() -> Fly:
-	if spectator and spectator.follow and is_instance_valid(spectator.follow):
+	if spectator and is_instance_valid(spectator.follow):
 		return spectator.follow as Fly
 	var flies := get_tree().get_nodes_in_group("flies")
 	return flies[0] if not flies.is_empty() else null
@@ -122,6 +156,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_help.visible = not _help.visible
 	elif event.is_action_pressed("time_scale"):
 		cycle_time()
+	elif event.is_action_pressed("pause"):
+		toggle_pause()
+	elif event.is_action_pressed("save"):
+		_main_call("save_world")
 	elif event.is_action_pressed("swap_brain"):
 		toggle_brain_source()
 
@@ -154,11 +192,35 @@ func _draw_chem() -> void:
 		_chem_view.draw_rect(Rect2(x, y + 14, w * lv, 8), cols[i])
 
 
+## Acelerador de tempo: x1 -> x2 -> x4 -> x8 -> camera lenta x0.5 / x0.25.
+## Com o tempo rapido a fisica usa mais ticks por segundo (passos menores) e
+## os cerebros passam para o modo de campo medio (mais barato).
+const SPEEDS := [1.0, 2.0, 4.0, 8.0, 0.25, 0.5]
+
+
 func cycle_time() -> void:
-	var steps := [1.0, 0.5, 0.25, 0.1]
-	var i := steps.find(Engine.time_scale)
-	Engine.time_scale = steps[(i + 1) % steps.size()]
-	toast("Velocidade do tempo: x%s" % str(Engine.time_scale))
+	var i := SPEEDS.find(Engine.time_scale)
+	set_speed(SPEEDS[(i + 1) % SPEEDS.size()])
+
+
+func set_speed(ts: float) -> void:
+	Engine.time_scale = ts
+	Engine.physics_ticks_per_second = 60 if ts <= 2.0 else (90 if ts <= 4.0 else 120)
+	Engine.max_physics_steps_per_frame = 8
+	toast("Velocidade do tempo: x%s" % _fmt_speed(ts))
+
+
+func toggle_pause() -> void:
+	if start_menu_open():
+		return
+	get_tree().paused = not get_tree().paused
+	toast("Pausado" if get_tree().paused else "Continuando")
+
+
+func _main_call(m: String) -> void:
+	var main := get_tree().current_scene
+	if main and main.has_method(m):
+		main.call(m)
 
 
 # ---------------------------------------------------------------- construcao
@@ -323,7 +385,7 @@ func _build_action_bar() -> void:
 	grid.add_child(_text_button("Pedra", func(): _spawn(5), "Criar pedrinha (5)"))
 	grid.add_child(_text_button("+ Mosca", func(): _spawn(6), "Criar mosca (6)"))
 	grid.add_child(_text_button("+ Larva", func(): _spawn(7), "Criar larva (7)"))
-	_time_btn = _text_button("Tempo x1", cycle_time, "Camera lenta (T)")
+	_time_btn = _text_button("Tempo x1", cycle_time, "Acelerar / camera lenta (T)")
 	grid.add_child(_time_btn)
 	grid.add_child(_text_button("Cerebro", func(): brain_view.get_parent().visible = not brain_view.get_parent().visible, "Painel do cerebro (B)"))
 	grid.add_child(_text_button("Vida", func():
@@ -334,6 +396,11 @@ func _build_action_bar() -> void:
 		LifeManager.instance.inherit_learning = not LifeManager.instance.inherit_learning, "Filhotes nascem com parte da memoria dos pais (lamarckiano)")
 	grid.add_child(_inherit_btn)
 	grid.add_child(_text_button("Ajuda", func(): _help.visible = not _help.visible, "Ajuda (H)"))
+	_gfx_btn = _text_button("Graficos: alto", func():
+		var gw := GardenWorld.instance
+		gw.set_quality(not gw.low_quality)
+		toast("Graficos " + ("leves (mais rapido)" if gw.low_quality else "altos")), "Graficos leves = bem mais leve no celular")
+	grid.add_child(_gfx_btn)
 	_menu.add_child(grid)
 	_menu.visible = false
 	add_child(_menu)
@@ -461,13 +528,18 @@ MUNDO       mouse esquerdo = dedo (segurar pega, arrastar gira); algo pesado cai
             solte com o mouse em movimento para arremessar | roda = distancia
             F ou botao do meio: soprar (empurra objetos e a mosca sente o vento)
             1 maca  2 cereja  3 laranja  4 limao amargo  5 pedra  6 mosca  7 larva
-            Del apaga o objeto segurado  |  T camera lenta  |  B cerebro  |  N troca cerebro  |  H ajuda
+            Del apaga o objeto segurado  |  B cerebro  |  N troca cerebro  |  H ajuda
+TEMPO       P pausa | T acelera (x1 x2 x4 x8, depois camera lenta) | F5 salva | dia e noite (12 min)
 
 A MOSCA     Anda com passadas reais gravadas (flygym), coordenadas por um CPG.
             Cheiro de fruta (fermentada atrai mais) -> vira e caminha ate ela.
             Pisar em acucar -> estende a probocide e come ate saciar.
-            Amargo (limao) -> anda para tras. Algo vindo rapido -> Giant Fiber -> foge voando.
-            Sopro -> limpa as antenas. Com fome e sem cheiro, voa ate uma fruta.
+            Amargo -> anda para tras e APRENDE (ninguem nasce sabendo do limao).
+            Algo vindo rapido -> Giant Fiber -> foge voando. Sopro -> limpa as antenas.
+DECISAO     comer, buscar comida, evitar, fugir, descansar (a noite dormem) ou explorar:
+            fome, medo, memoria e hormonios decidem. Quem VE alguem ser esmagado aprende
+            o lugar perigoso e passa a desviar de coisas caindo. So morre esmagado se algo
+            pesado cair literalmente em cima.
 
 VIDA        Cerebro real (MCNS): hormonios (insulina, DH44, octopamina, serotonina...)
             saem dos neuronios neuroendocrinos. Dopamina PAM/PPL1 altera as sinapses
@@ -478,3 +550,98 @@ VIDA        Cerebro real (MCNS): hormonios (insulina, DH44, octopamina, serotoni
 	_help.add_child(l)
 	_help.visible = false
 	add_child(_help)
+
+
+# ---------------------------------------------------------------- tempo e arquivo
+## Barra de cima: relogio (dia/noite), pausar, acelerar, salvar e sair.
+func _build_time_bar() -> void:
+	var box := VBoxContainer.new()
+	box.anchor_left = 0.5
+	box.anchor_right = 0.5
+	box.offset_top = 12
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_pause_btn = _text_button("Pausar", toggle_pause, "Pausar / continuar (P)")
+	_speed_btn = _text_button("x1", cycle_time, "Acelerar o tempo: x1, x2, x4, x8 (T)")
+	var save_b := _text_button("Salvar", func(): _main_call("save_world"), "Salvar o progresso (F5)")
+	var quit_b := _text_button("Sair", func(): _main_call("save_and_quit"), "Salvar e sair do jogo")
+	for b: Button in [_pause_btn, _speed_btn, save_b, quit_b]:
+		b.custom_minimum_size = Vector2(118, 64)
+		b.add_theme_font_size_override("font_size", 20)
+		row.add_child(b)
+	box.add_child(row)
+	_clock = Label.new()
+	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_clock.add_theme_font_size_override("font_size", 18)
+	_clock.add_theme_constant_override("outline_size", 6)
+	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	box.add_child(_clock)
+	_perf = Label.new()
+	_perf.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_perf.add_theme_font_size_override("font_size", 12)
+	_perf.add_theme_constant_override("outline_size", 4)
+	_perf.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_perf.modulate = Color(1, 1, 1, 0.7)
+	box.add_child(_perf)
+	add_child(box)
+	_toast.offset_top = 150
+
+
+## Tela inicial: continuar o mundo salvo ou comecar um novo (sem moscas).
+func show_start_menu(has_save: bool) -> void:
+	get_tree().paused = true
+	_start = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.02, 0.06, 0.03, 0.92)
+	sb.set_corner_radius_all(22)
+	sb.set_content_margin_all(28)
+	_start.add_theme_stylebox_override("panel", sb)
+	_start.set_anchors_preset(Control.PRESET_CENTER)
+	_start.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_start.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	var t := Label.new()
+	t.text = "Mosca no Jardim"
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_font_size_override("font_size", 34)
+	t.add_theme_color_override("font_color", Color(0.75, 1.0, 0.7))
+	v.add_child(t)
+	var sub := Label.new()
+	sub.text = "Conectomas completos da mosca (MCNS) e da larva, cada individuo com o seu.\nOs cerebros nascem zerados: tudo o que sabem, aprendem vivendo."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 15)
+	v.add_child(sub)
+	if has_save:
+		var info := ""
+		var w: Variant = SaveGame._read(SaveGame.DIR + "/mundo.json")
+		if w is Dictionary:
+			info = "  (dia %d, %d individuos, salvo %s)" % [int(w.get("dia", 1)), (w.get("individuos", []) as Array).size(), str(w.get("salvo_em", "")).replace("T", " ")]
+		v.add_child(_start_button("Continuar mundo salvo" + info, func(): _close_start("continue_world")))
+	v.add_child(_start_button("Novo mundo (sem moscas)", func(): _close_start("new_world")))
+	v.add_child(_start_button("Sair", func(): get_tree().quit()))
+	_start.add_child(v)
+	add_child(_start)
+	_ui_controls.append(_start)
+
+
+func _start_button(text: String, cb: Callable) -> Button:
+	var b := _text_button(text, cb)
+	b.custom_minimum_size = Vector2(560, 84)
+	b.add_theme_font_size_override("font_size", 24)
+	return b
+
+
+func _close_start(method: String) -> void:
+	_start.queue_free()
+	_start = null
+	get_tree().paused = false
+	_main_call(method)
+
+
+func start_menu_open() -> bool:
+	return _start != null and is_instance_valid(_start)

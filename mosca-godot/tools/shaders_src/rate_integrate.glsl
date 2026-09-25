@@ -11,7 +11,7 @@ void main() {
 	float x = float(gi[i]) / FIX;
 	gi[i] = 0;
 	float ri = r[i];
-	float ad = adapt[i] + (ri - adapt[i]) * min(1.0, pc.dt / 400.0);
+	float ad = adapt[i] + (ri - adapt[i]) * (pc.dt / (pc.dt + 400.0));
 	adapt[i] = ad;
 	x -= 0.1 * ad + 0.3 * max(0.0, ad - 80.0);
 	float th = V_TH - V_REST;
@@ -24,7 +24,8 @@ void main() {
 	ri += (target - ri) * (pc.dt / (pc.dt + 30.0));
 	r[i] = ri;
 	float dep = da[i].w;
-	dep += pc.dt * ((1.0 - dep) / STD_TAU - STD_U * dep * ri / 1000.0);
+	// implicito: estavel mesmo com passos grandes (tempo acelerado)
+	dep = (dep + pc.dt / STD_TAU) / (1.0 + pc.dt / STD_TAU + STD_U * ri * pc.dt / 1000.0);
 	da[i].w = clamp(dep, 0.02, 1.0);
 	elig[i] = max(elig[i] * exp(-pc.dt / 1500.0), clamp((ri - 5.0) / 40.0, 0.0, 1.0));
 	add_group(i, int(ri * 10.0));

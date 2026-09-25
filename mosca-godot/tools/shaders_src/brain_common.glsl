@@ -39,6 +39,10 @@ layout(push_constant, std430) uniform P {
 	float w_syn;     // mV por sinapse
 	float learn;     // taxa de aprendizado efetiva * dt(s)
 	float rec;       // recuperacao (dt / tau)
+	uint seed_a;     // fiacao herdada da mae
+	uint seed_b;     // fiacao herdada do pai
+	uint seed_c;     // mistura/mutacao deste individuo
+	float wvar;      // amplitude da variacao individual dos pesos
 } pc;
 
 const float V_REST = -52.0;
@@ -58,6 +62,17 @@ uint hash(uint x) {
 	return x;
 }
 float rand01(uint i, uint s) { return float(hash(i * 747796405U + s * 2891336453U + 1U) & 0xFFFFFFU) / 16777216.0; }
+
+// Conectoma unico de cada individuo: cada sinapse k tem um fator de peso
+// herdado (gene a gene, da mae ou do pai) mais uma pequena mutacao propria.
+// Reproduzivel a partir das 3 sementes guardadas no arquivo do individuo.
+float wmul(uint k) {
+	if (pc.wvar <= 0.0) return 1.0;
+	uint s = (hash(k ^ pc.seed_c) & 1u) == 0u ? pc.seed_a : pc.seed_b;
+	float g = rand01(k, s) * 2.0 - 1.0;
+	float m = rand01(k, pc.seed_c + 7u) * 2.0 - 1.0;
+	return max(0.0, 1.0 + pc.wvar * (g + 0.3 * m));
+}
 
 float input_rate(uint i) {
 	int c = chan[i];

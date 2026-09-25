@@ -21,12 +21,13 @@ const GENES := {
 	"metabolism":  [0.7, 1.35, 1.0, "gasto de energia"],
 	"lifespan":    [700.0, 1600.0, 1100.0, "tempo de vida adulta (s)"],
 	"fecundity":   [3.0, 10.0, 6.0, "ovos por acasalamento"],
-	"pref_DM1":    [-1.0, 1.0, 0.3, "preferencia inata: glomerulo DM1 (esteres)"],
-	"pref_DM2":    [-1.0, 1.0, 0.3, "preferencia inata: DM2"],
-	"pref_DM3":    [-1.0, 1.0, 0.1, "preferencia inata: DM3"],
-	"pref_DM4":    [-1.0, 1.0, 0.1, "preferencia inata: DM4"],
+	"pref_DM1":    [-1.0, 1.0, 0.0, "preferencia inata: glomerulo DM1 (esteres)"],
+	"pref_DM2":    [-1.0, 1.0, 0.0, "preferencia inata: DM2"],
+	"pref_DM3":    [-1.0, 1.0, 0.0, "preferencia inata: DM3"],
+	"pref_DM4":    [-1.0, 1.0, 0.0, "preferencia inata: DM4"],
 	"pref_DL1":    [-1.0, 1.0, 0.0, "preferencia inata: DL1"],
 	"pref_VA2":    [-1.0, 1.0, 0.0, "preferencia inata: VA2"],
+	"wiring_var":  [0.0, 0.3, 0.12, "variacao individual das sinapses do conectoma"],
 }
 
 var genes: Dictionary = {}
@@ -38,6 +39,8 @@ static func random_founder(rng: RandomNumberGenerator) -> Genome:
 		var spec: Array = GENES[k]
 		var span: float = spec[1] - spec[0]
 		g.genes[k] = clampf(spec[2] + rng.randfn() * span * 0.08, spec[0], spec[1])
+		if k.begins_with("pref_"):
+			g.genes[k] = 0.0   # fundadores nascem sem preferencia por nenhum cheiro
 	return g
 
 
@@ -49,6 +52,17 @@ static func cross(a: Genome, b: Genome, rng: RandomNumberGenerator, mutation := 
 		if rng.randf() < mutation:
 			v += rng.randfn() * (spec[1] - spec[0]) * 0.07
 		g.genes[k] = clampf(v, spec[0], spec[1])
+	return g
+
+
+func to_dict() -> Dictionary:
+	return genes.duplicate()
+
+
+static func from_dict(d: Dictionary) -> Genome:
+	var g := Genome.new()
+	for k: String in GENES:
+		g.genes[k] = float(d.get(k, GENES[k][2]))
 	return g
 
 

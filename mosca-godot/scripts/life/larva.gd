@@ -13,6 +13,19 @@ var genome: Genome
 var memory := PackedFloat32Array()
 var generation := 1
 var lineage := 0
+var uid := 0
+var mind: CreatureMemory        # comeca zerada; sobrevive a metamorfose
+var wiring: Array = []
+var parents: Array = []
+var last_lesson := ""
+var decision := "explorar"
+var decision_scores := {}
+var _decide_t := 0.0
+var _target: Node3D = null
+var _threat_obj: Object = null
+var _dodge_t := 0.0
+var _dodge_dir := Vector3.ZERO
+var _taste_t := 0.0
 var brain   # GpuBrain (conectoma completo da larva) ou FlyBrain (subcircuito)
 # fisiologia (mesmos orgaos basicos da mosca: papo/intestino, corpo gorduroso, traqueias)
 var energy := 0.5
@@ -40,7 +53,7 @@ var _carry_t := Transform3D.IDENTITY
 var _segs: Array[MeshInstance3D] = []
 var _body_root: Node3D
 var _rng := RandomNumberGenerator.new()
-var sense := {"odor_L": 0.0, "odor_R": 0.0, "taste": 0.0, "light": 0.0}
+var sense := {"odor_L": 0.0, "odor_R": 0.0, "taste": 0.0, "bitter": 0.0, "light": 0.0}
 var m_crawl_l := 0.0
 var m_crawl_r := 0.0
 var m_feed := 0.0
@@ -63,6 +76,13 @@ func _ready() -> void:
 			brain = FlyBrain.from_dict({"neurons": [], "edges": []})
 	brain.set_mode(1)
 	brain.learning_gain = genome.get_gene("learning")
+	if uid == 0:
+		uid = LifeManager.instance.next_uid() if LifeManager.instance else randi()
+	if wiring.size() < 3:
+		wiring = LifeManager.instance.random_wiring() if LifeManager.instance else [randi(), randi(), randi()]
+	if mind == null:
+		mind = CreatureMemory.new()
+	brain.set_wiring(int(wiring[0]), int(wiring[1]), int(wiring[2]), genome.get_gene("wiring_var"))
 	_build_body()
 	var area := Area3D.new()
 	area.collision_layer = 4
@@ -193,7 +213,10 @@ func _physics_process(dt: float) -> void:
 	else:
 		surface_body = null
 	var cam := get_viewport().get_camera_3d() as Spectator
-	brain.set_mode(0 if cam and cam.follow == self else 1)
+	var followed := cam != null and cam.follow == self
+	brain.focused = followed
+	brain.set_mode(0 if followed and Engine.time_scale <= 1.0 else 1)
+	mind.decay(dt)
 	_check_crush()
 	if dead:
 		return
@@ -211,7 +234,8 @@ func _physics_process(dt: float) -> void:
 	size_mm = lerpf(0.7, 4.0 * genome.get_gene("size"), clampf(food / LifeManager.LARVA_FOOD, 0.0, 1.0))
 	_body_root.scale = Vector3.ONE * size_mm
 
-	var on_food := surface_body is Fruit and (surface_body as Fruit).flesh > 0.0
+	var fruit := surface_body as Fruit if surface_body is Fruit else null
+	var on_food := fruit != null and fruit.flesh > 0.0
 	# rolamento nociceptivo (reflexo do cordao ventral: neuronios Goro/Basin,
 	# que nao estao no conectoma do cerebro)
 	if pain > 0.6 and _roll_t <= 0.0:
@@ -225,41 +249,168 @@ func _physics_process(dt: float) -> void:
 		_animate(dt, 3.0)
 		return
 	_body_root.rotation.z = lerpf(_body_root.rotation.z, 0.0, 0.2)
-	var ready := food >= LifeManager.LARVA_FOOD and age >= LifeManager.LARVA_MIN_TIME
+	_turn_noise = clampf(_turn_noise * (1.0 - dt * 0.5) + _rng.randfn() * sqrt(dt) * 0.8, -1.0, 1.0)
+	_decide(dt, fruit, on_food)
 	var speed := 0.0
 	var turn := 0.0
-	_turn_noise = clampf(_turn_noise * (1.0 - dt * 0.5) + _rng.randfn() * sqrt(dt) * 0.8, -1.0, 1.0)
-	if ready:
-		# fase errante: larva madura sai da comida para pupar
-		_wander_t += dt
-		behavior = "procurando lugar para pupar"
-		speed = 1.2 * size_mm * 0.4
-		turn = _turn_noise * 0.6 - _odor_bias() * 1.5
-		if _wander_t > 18.0 and not on_food:
-			behavior = "virando pupa"
-			if LifeManager.instance:
-				LifeManager.instance.pupate(self)
-			queue_free()
-			return
-	elif on_food and (m_feed > 0.15 or sense["taste"] > 0.0):
-		behavior = "comendo a polpa"
-		var got := (surface_body as Fruit).consume(0.006 * size_mm * dt)
-		food += got
-		gut = minf(gut + got * 3.0, 1.0)
-		speed = 0.1 * size_mm
-		turn = _turn_noise * 0.4
-	else:
-		behavior = "rastejando"
-		var drive := clampf((m_crawl_l + m_crawl_r) * 0.5, 0.2, 1.5)
-		speed = 0.35 * size_mm * drive * genome.get_gene("speed")
-		# viragem: assimetria dos descendentes do conectoma + quimiotaxia
-		turn = (m_crawl_l - m_crawl_r) * 1.5 + _odor_bias() * 2.0 * genome.get_gene("tropism") + _turn_noise * 0.7
+	var crawl := 0.35 * size_mm * genome.get_gene("speed")
+	if decision == "comer" and not on_food:
+		decision = "procurar comida"
+	match decision:
+		"desviar":
+			# rasteja depressa para fora de onde a coisa vai cair
+			_dodge_t -= dt
+			behavior = "desviando de algo caindo!"
+			speed = crawl * 4.0
+			turn = _steer_to(global_position + _dodge_dir) * 3.0
+		"pupar":
+			_wander_t += dt
+			behavior = "procurando lugar para pupar"
+			speed = crawl * 1.4
+			turn = _turn_noise * 0.6 - _odor_bias() * 1.5
+			if _wander_t > 18.0 and not on_food and mind.danger_at(global_position) < 0.3:
+				behavior = "virando pupa"
+				if LifeManager.instance:
+					LifeManager.instance.pupate(self)
+				queue_free()
+				return
+		"comer":
+			behavior = "comendo a polpa"
+			var got := fruit.consume(0.006 * size_mm * dt)
+			food += got
+			gut = minf(gut + got * 3.0, 1.0)
+			speed = 0.1 * size_mm
+			turn = _turn_noise * 0.4
+			_taste_t -= dt
+			if got > 0.0 and _taste_t <= 0.0:
+				_taste_t = 2.0
+				mind.learn_odor(fruit.memory_key(), 1.0, _learn_rate(), fruit.display_name)
+				if LifeManager.instance:
+					LifeManager.instance.report_taste(self, fruit, 1.0)
+		"procurar comida":
+			behavior = "procurando comida"
+			speed = crawl * 2.5
+			if is_instance_valid(_target):
+				behavior = "indo ate %s" % _target.get("display_name")
+				turn = _steer_to(_target.global_position) * 2.0 + _turn_noise * 0.3
+			else:
+				turn = _odor_bias() * 2.5 + _turn_noise * 0.7
+		"evitar":
+			behavior = "saindo daqui (lembra que e ruim)"
+			speed = crawl * 2.5
+			var dz := mind.nearest_danger(global_position)
+			if fruit and sense["bitter"] > 0.0:
+				turn = _turn_noise * 1.5 + 1.0
+			elif dz != Vector3.INF:
+				turn = -_steer_to(dz) * 2.0
+		_:
+			behavior = "rastejando"
+			var drive := clampf((m_crawl_l + m_crawl_r) * 0.5, 0.2, 1.5)
+			speed = crawl * drive
+			# viragem: assimetria dos descendentes do conectoma + quimiotaxia
+			turn = (m_crawl_l - m_crawl_r) * 1.5 + _odor_bias() * 2.0 * genome.get_gene("tropism") + _turn_noise * 0.7
 	# toque leve: para e recua um pouco (resposta de Kernell)
-	if _touch > 0.5 and not ready:
+	if _touch > 0.5 and decision != "desviar" and decision != "pupar":
 		speed = -0.3 * size_mm
 		behavior = "recuando (tocada)"
 	_crawl(dt, speed, turn)
 	_animate(dt, speed / maxf(size_mm, 0.1))
+
+
+## Selecao de acao da larva (mesma ideia da mosca): fome, medo, memoria e
+## sentidos dao a utilidade de cada opcao; o conectoma continua gerando o
+## rastejar e a vontade de comer (DN-SEZ).
+func _decide(dt: float, fruit: Fruit, on_food: bool) -> void:
+	# ameaca: algo caindo onde ela esta (sente a sombra/vibracao)
+	var th := Hazards.threat(global_position, size_mm + 6.0)
+	if not th.is_empty() and th["obj"] != _threat_obj:
+		_threat_obj = th["obj"]
+		var p_react := clampf(0.12 + 0.85 * mind.fall_fear, 0.0, 0.95)
+		if _rng.randf() < p_react:
+			decision = "desviar"
+			_dodge_t = 1.5
+			_dodge_dir = th["away"]
+	if decision == "desviar" and _dodge_t > 0.0:
+		return
+	_decide_t -= dt
+	if _decide_t > 0.0 and decision != "desviar":
+		return
+	_decide_t = 0.5
+	var ready := food >= LifeManager.LARVA_FOOD and age >= LifeManager.LARVA_MIN_TIME
+	var hunger := clampf(1.0 - energy, 0.0, 1.0)
+	var sc := {"explorar": 0.25}
+	if ready:
+		sc["pupar"] = 1.2
+	var sweet := on_food and float(fruit.taste().get("sugar", 0.0)) > 0.0 and float(fruit.taste().get("bitter", 0.0)) <= 0.0
+	if sweet and not ready:
+		# larvas comem quase sem parar ate juntar reserva para a metamorfose
+		sc["comer"] = 0.6 + hunger + 0.4 * m_feed + (0.3 if food < LifeManager.LARVA_FOOD else 0.0)
+	if not on_food or not sweet:
+		var best := _best_food()
+		_target = best[0] if best.size() > 0 else null
+		sc["procurar comida"] = (0.4 + hunger) * (1.0 if ready == false else 0.2) * (1.0 if _target else 0.6)
+	var dz := mind.danger_at(global_position)
+	var bad := 0.0
+	if on_food and float(fruit.taste().get("bitter", 0.0)) > 0.0:
+		bad = 1.0
+	sc["evitar"] = maxf(dz * 1.2, bad)
+	var pick := decision if sc.has(decision) else "explorar"
+	var pick_v := float(sc.get(pick, 0.0)) + 0.1
+	for k: String in sc:
+		if float(sc[k]) > pick_v:
+			pick_v = sc[k]
+			pick = k
+	decision = pick
+	decision_scores = sc
+
+
+func _best_food() -> Array:
+	var best: Node3D = null
+	var best_v := 0.02
+	for src in get_tree().get_nodes_in_group("odor_source"):
+		var fr := src as Fruit
+		if fr == null or fr.hanging or fr.flesh <= 0.02:
+			continue
+		var d := fr.global_position.distance_to(global_position)
+		if d > 700.0:
+			continue
+		var pr := mind.predict(fr.memory_key())
+		var expected := pr.x * pr.y + (1.0 - pr.y) * 0.4
+		var v := expected - d / 1200.0 - 1.2 * mind.danger_at(fr.global_position)
+		if v > best_v:
+			best_v = v
+			best = fr
+	return [best, best_v] if best else []
+
+
+func _steer_to(p: Vector3) -> float:
+	var to := p - global_position
+	to -= _up * to.dot(_up)
+	if to.length() < 0.01:
+		return 0.0
+	return clampf(-global_basis.x.normalized().dot(to.normalized()) * 2.0, -1.5, 1.5)
+
+
+func _learn_rate() -> float:
+	return clampf(0.3 * genome.get_gene("learning"), 0.05, 0.8)
+
+
+func sight_range() -> float:
+	return 150.0   # olhinhos de Bolwig + vibracao do substrato
+
+
+func observe_death(pos: Vector3, reason: String, _obj: Object, _victim: Node) -> void:
+	if reason.begins_with("esmagad"):
+		mind.scare(0.45)
+		mind.add_danger(pos, 120.0, 0.8, "sentiu alguem ser esmagado")
+		last_lesson = "sentiu um vizinho ser esmagado: agora desvia de coisas caindo"
+	elif reason.begins_with("ferimentos"):
+		mind.add_danger(pos, 100.0, 0.5, "viu alguem se ferir")
+
+
+func observe_taste(fruit: Node3D, us: float) -> void:
+	if is_instance_valid(fruit):
+		mind.learn_odor(fruit.call("memory_key"), us, _learn_rate() * 0.3, str(fruit.get("display_name")), true)
 
 
 func _physiology(dt: float) -> void:
@@ -293,25 +444,18 @@ func hurt(amount: float) -> void:
 
 
 func _check_crush() -> void:
-	if Engine.get_physics_frames() < 600:
+	if Engine.get_physics_frames() < 180:
 		return  # frutas ainda se acomodando no inicio do mundo
-	var p := global_position + _up * size_mm * 0.15
-	for n in get_tree().get_nodes_in_group("grabbable"):
-		var rb := n as RigidBody3D
-		if rb == null or rb == surface_body and rb.linear_velocity.length() < 250.0:
-			continue
-		var r: float = rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0
-		var c := rb.global_position
-		var dist := p.distance_to(c) - r
-		if dist > size_mm * 0.4:
-			continue
-		var towards := -rb.linear_velocity.dot((p - c).normalized())
-		var above := (c - p).dot(_up) > r * 0.25
-		if rb.mass >= Fly.CRUSH_MASS and (towards > 120.0 or (above and dist < 0.2)):
-			crush()
-			return
-		if towards > 40.0:
-			hurt(clampf(towards / 400.0, 0.05, 0.7))
+	Hazards.refresh(get_tree())
+	var r := Hazards.check(global_position, size_mm * 0.25, size_mm * 0.5, surface_body)
+	if r.is_empty():
+		return
+	if r.has("crush"):
+		crush(r["crush"])
+		return
+	hurt(float(r["hit"]))
+	mind.add_danger(global_position, 100.0, float(r["hit"]), "levou uma batida")
+	mind.scare(float(r["hit"]) * 0.5)
 
 
 func _sense() -> void:
@@ -325,9 +469,18 @@ func _sense() -> void:
 	brain.set_input("odor_L", sense["odor_L"])
 	brain.set_input("odor_R", sense["odor_R"])
 	var taste := 0.0
+	var bitter := 0.0
 	if surface_body is Fruit:
 		taste = 150.0 * float((surface_body as Fruit).taste().get("sugar", 0.0))
+		bitter = 150.0 * float((surface_body as Fruit).taste().get("bitter", 0.0))
+		if bitter > 0.0:
+			_taste_t -= 0.1
+			if _taste_t <= 0.0:
+				_taste_t = 2.0
+				mind.learn_odor((surface_body as Fruit).memory_key(), -1.0, _learn_rate(), (surface_body as Fruit).display_name)
+				last_lesson = "provou %s: amargo!" % (surface_body as Fruit).display_name
 	sense["taste"] = taste
+	sense["bitter"] = bitter
 	brain.set_input("taste", taste)
 	brain.set_input("gust_externo", taste)
 	brain.set_input("gust_faringe", taste if behavior == "comendo a polpa" else 0.0)
@@ -340,7 +493,7 @@ func _sense() -> void:
 	brain.set_input("calor", 40.0 * clampf(_up.y, 0.0, 1.0))
 	brain.set_input("frio", 0.0)
 	# larvas fogem da luz: exposta = superficie virada para o ceu
-	var light := clampf(_up.y, 0.0, 1.0) * 80.0
+	var light := clampf(_up.y, 0.0, 1.0) * 80.0 * (GardenWorld.instance.daylight() if GardenWorld.instance else 1.0)
 	sense["light"] = light
 	brain.set_input("light_L", light)
 	brain.set_input("light_R", light)
@@ -428,13 +581,15 @@ func _ray(from: Vector3, to: Vector3) -> Dictionary:
 	return get_world_3d().direct_space_state.intersect_ray(q)
 
 
-func _die(reason: String) -> void:
+func _die(reason: String, cause: Object = null) -> void:
+	if dead:
+		return
 	dead = true
 	behavior = "morta (" + reason + ")"
+	if LifeManager.instance:
+		LifeManager.instance.report_death(self, reason, cause)
 	if brain and brain.has_method("free_gpu"):
 		brain.free_gpu()
-	if LifeManager.instance:
-		LifeManager.instance.record_death(reason)
 	_mat_dark()
 	get_tree().create_timer(40.0).timeout.connect(queue_free)
 
@@ -446,9 +601,9 @@ func _mat_dark() -> void:
 		s.material_override = m
 
 
-func crush() -> void:
+func crush(obj: Object = null) -> void:
 	if not dead:
-		_die("esmagada (larva)")
+		_die("esmagada (larva)", obj)
 		_body_root.scale = Vector3(_body_root.scale.x * 1.3, _body_root.scale.y * 0.25, _body_root.scale.z)
 		if LifeManager.instance:
 			LifeManager.instance.splat(global_position, _up)

@@ -43,6 +43,10 @@ layout(push_constant, std430) uniform P {
 	float w_syn;     // mV por sinapse
 	float learn;     // taxa de aprendizado efetiva * dt(s)
 	float rec;       // recuperacao (dt / tau)
+	uint seed_a;     // fiacao herdada da mae
+	uint seed_b;     // fiacao herdada do pai
+	uint seed_c;     // mistura/mutacao deste individuo
+	float wvar;      // amplitude da variacao individual dos pesos
 } pc;
 
 const float V_REST = -52.0;
@@ -62,6 +66,17 @@ uint hash(uint x) {
 	return x;
 }
 float rand01(uint i, uint s) { return float(hash(i * 747796405U + s * 2891336453U + 1U) & 0xFFFFFFU) / 16777216.0; }
+
+// Conectoma unico de cada individuo: cada sinapse k tem um fator de peso
+// herdado (gene a gene, da mae ou do pai) mais uma pequena mutacao propria.
+// Reproduzivel a partir das 3 sementes guardadas no arquivo do individuo.
+float wmul(uint k) {
+	if (pc.wvar <= 0.0) return 1.0;
+	uint s = (hash(k ^ pc.seed_c) & 1u) == 0u ? pc.seed_a : pc.seed_b;
+	float g = rand01(k, s) * 2.0 - 1.0;
+	float m = rand01(k, pc.seed_c + 7u) * 2.0 - 1.0;
+	return max(0.0, 1.0 + pc.wvar * (g + 0.3 * m));
+}
 
 float input_rate(uint i) {
 	int c = chan[i];
@@ -142,7 +157,7 @@ void main() {
 	float x = float(gi[i]) / FIX;
 	gi[i] = 0;
 	float ri = r[i];
-	float ad = adapt[i] + (ri - adapt[i]) * min(1.0, pc.dt / 400.0);
+	float ad = adapt[i] + (ri - adapt[i]) * (pc.dt / (pc.dt + 400.0));
 	adapt[i] = ad;
 	x -= 0.1 * ad + 0.3 * max(0.0, ad - 80.0);
 	float th = V_TH - V_REST;
@@ -155,7 +170,8 @@ void main() {
 	ri += (target - ri) * (pc.dt / (pc.dt + 30.0));
 	r[i] = ri;
 	float dep = da[i].w;
-	dep += pc.dt * ((1.0 - dep) / STD_TAU - STD_U * dep * ri / 1000.0);
+	// implicito: estavel mesmo com passos grandes (tempo acelerado)
+	dep = (dep + pc.dt / STD_TAU) / (1.0 + pc.dt / STD_TAU + STD_U * ri * pc.dt / 1000.0);
 	da[i].w = clamp(dep, 0.02, 1.0);
 	elig[i] = max(elig[i] * exp(-pc.dt / 1500.0), clamp((ri - 5.0) / 40.0, 0.0, 1.0));
 	add_group(i, int(ri * 10.0));
@@ -170,7 +186,7 @@ void main() {
 	float ri = r[i];
 	if (ri < 0.5) return;
 	float s = ri * da[i].w * TAU_S / 1000.0 * pc.w_syn * FIX;
-	for (uint k = off[i]; k < off[i + 1]; k++) atomicAdd(gi[dst[k]], int(float(wsyn[k]) * s));
+	for (uint k = off[i]; k < off[i + 1]; k++) atomicAdd(gi[dst[k]], int(float(wsyn[k]) * wmul(k) * s));
 	if ((flags[i] & 1) != 0)
 		for (uint p = poff[i]; p < poff[i + 1]; p++) atomicAdd(gi[pdst[p]], int(pw[p] * s));
 }
@@ -218,7 +234,7 @@ void main() {
 	for (uint s = gl_GlobalInvocationID.x; s < count; s += total) {
 		uint pre = uint(spk[1 + s]);
 		float ws = pc.w_syn * FIX * da[pre].w / (1.0 - STD_U);
-		for (uint k = off[pre]; k < off[pre + 1]; k++) atomicAdd(gi[dst[k]], int(float(wsyn[k]) * ws));
+		for (uint k = off[pre]; k < off[pre + 1]; k++) atomicAdd(gi[dst[k]], int(float(wsyn[k]) * wmul(k) * ws));
 		if ((flags[pre] & 1) != 0)
 			for (uint p = poff[pre]; p < poff[pre + 1]; p++) atomicAdd(gi[pdst[p]], int(pw[p] * ws));
 	}

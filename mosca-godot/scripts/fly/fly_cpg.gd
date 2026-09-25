@@ -53,8 +53,9 @@ func set_descending(drive_l: float, drive_r: float, freq_scale := 1.0) -> void:
 
 
 func step(dt: float) -> void:
-	# integra em sub-passos para estabilidade (α=20 exige dt pequeno)
-	var n := maxi(1, ceili(dt / 0.002))
+	# integra em sub-passos para estabilidade (α=20 exige h < 0,05 s);
+	# no maximo 16 sub-passos para o tempo acelerado nao pesar na CPU
+	var n := clampi(ceili(dt / 0.008), 1, 16)
 	var h := dt / n
 	for _k in n:
 		var dphi := PackedFloat32Array([0, 0, 0, 0, 0, 0])

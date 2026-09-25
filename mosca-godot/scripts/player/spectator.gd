@@ -33,6 +33,7 @@ var _puff_fx: CPUParticles3D
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS   # a camera anda mesmo com o jogo pausado
 	near = 0.05
 	far = 20000.0
 	fov = 70.0

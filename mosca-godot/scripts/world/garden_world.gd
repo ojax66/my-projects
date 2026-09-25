@@ -7,13 +7,25 @@ extends Node3D
 const SIZE := 6000.0
 const RES := 160
 
+## Um dia inteiro dura DAY_LENGTH segundos de jogo (12 min com o tempo x1).
+const DAY_LENGTH := 720.0
+
+static var instance: GardenWorld
+
 var noise := FastNoiseLite.new()
 var sun: DirectionalLight3D
+var moon: DirectionalLight3D
 var env: Environment
+var sky_mat: ProceduralSkyMaterial
+var day := 1
+var hour := 7.0               # 0..24
+var low_quality := false
 var _rng := RandomNumberGenerator.new()
+var _sky_t := 0.0
 
 
 func _ready() -> void:
+	instance = self
 	_rng.seed = 7
 	noise.seed = 11
 	noise.frequency = 0.0006
@@ -25,6 +37,7 @@ func _ready() -> void:
 	_rocks()
 	_flowers()
 	_fallen_fruits()
+	set_quality(low_quality)
 
 
 func height_at(x: float, z: float) -> float:
@@ -42,6 +55,7 @@ func _environment() -> void:
 	env = Environment.new()
 	var sky := Sky.new()
 	var psm := ProceduralSkyMaterial.new()
+	sky_mat = psm
 	psm.sky_top_color = Color(0.28, 0.5, 0.85)
 	psm.sky_horizon_color = Color(0.7, 0.8, 0.9)
 	psm.ground_bottom_color = Color(0.2, 0.17, 0.12)
@@ -84,6 +98,97 @@ func _environment() -> void:
 	sun.shadow_normal_bias = 1.0
 	sun.shadow_blur = 1.5
 	add_child(sun)
+	moon = DirectionalLight3D.new()
+	moon.name = "Lua"
+	moon.light_color = Color(0.55, 0.65, 1.0)
+	moon.light_energy = 0.0
+	moon.shadow_enabled = false
+	moon.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	moon.rotation_degrees = Vector3(-60, 140, 0)
+	add_child(moon)
+	low_quality = OS.has_feature("mobile") or OS.has_feature("web")
+	set_quality(low_quality)
+	_apply_daylight()
+
+
+# ---------------------------------------------------------------- dia e noite
+func _process(dt: float) -> void:
+	hour += dt / DAY_LENGTH * 24.0
+	if hour >= 24.0:
+		hour -= 24.0
+		day += 1
+	_sky_t += dt
+	if _sky_t > 0.2:
+		_sky_t = 0.0
+		_apply_daylight()
+
+
+## 1 = sol alto, 0 = noite escura.
+func daylight() -> float:
+	var elev := sin((hour - 6.0) / 12.0 * PI)
+	return smoothstep(-0.08, 0.3, elev)
+
+
+func is_night() -> bool:
+	return daylight() < 0.15
+
+
+func clock_text() -> String:
+	var h := int(hour)
+	var m := int((hour - h) * 60.0)
+	var fase := "noite"
+	if hour >= 5.0 and hour < 7.0:
+		fase = "amanhecer"
+	elif hour >= 7.0 and hour < 17.5:
+		fase = "dia"
+	elif hour >= 17.5 and hour < 19.5:
+		fase = "entardecer"
+	return "Dia %d  %02d:%02d  (%s)" % [day, h, m, fase]
+
+
+func _apply_daylight() -> void:
+	var ang := (hour - 6.0) / 12.0 * PI          # 0 nascer, PI por do sol
+	var elev := sin(ang)
+	var dl := daylight()
+	var elev_deg := clampf(rad_to_deg(asin(clampf(elev, -1.0, 1.0))) * 0.85, -20.0, 75.0)
+	var az := lerpf(100.0, -100.0, clampf(ang / PI, 0.0, 1.0))
+	sun.rotation_degrees = Vector3(-maxf(elev_deg, 2.0), az, 0)
+	var warm := 1.0 - smoothstep(0.1, 0.5, elev)   # sol baixo = alaranjado
+	sun.light_color = Color(1.0, 0.96, 0.88).lerp(Color(1.0, 0.62, 0.35), warm)
+	sun.light_energy = 1.25 * dl
+	sun.visible = dl > 0.01
+	sun.shadow_enabled = dl > 0.05
+	moon.light_energy = 0.22 * (1.0 - dl)
+	moon.visible = dl < 0.95
+	env.ambient_light_energy = lerpf(0.12, 0.7, dl)
+	env.background_energy_multiplier = lerpf(0.08, 1.0, dl)
+	env.fog_light_color = Color(0.08, 0.1, 0.18).lerp(Color(0.72, 0.8, 0.88), dl)
+	if sky_mat:
+		sky_mat.sky_top_color = Color(0.02, 0.03, 0.08).lerp(Color(0.28, 0.5, 0.85), dl)
+		sky_mat.sky_horizon_color = Color(0.06, 0.07, 0.12).lerp(Color(0.7, 0.8, 0.9), dl).lerp(Color(0.95, 0.6, 0.4), warm * dl)
+		sky_mat.ground_horizon_color = Color(0.05, 0.06, 0.06).lerp(Color(0.6, 0.65, 0.6), dl)
+
+
+## Graficos leves (celular): sem SSAO/brilho, sombras menores, menos grama e
+## resolucao 3D reduzida. O cerebro nao muda.
+func set_quality(low: bool) -> void:
+	low_quality = low
+	env.ssao_enabled = not low
+	env.glow_enabled = not low
+	env.fog_aerial_perspective = 0.0 if low else 0.4
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if low else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.directional_shadow_max_distance = 1200.0 if low else 2500.0
+	sun.shadow_blur = 1.0 if low else 1.5
+	var vp := get_viewport()
+	if vp:
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		vp.scaling_3d_scale = 0.7 if low else 1.0
+		vp.msaa_3d = Viewport.MSAA_DISABLED if low else Viewport.MSAA_2X
+	RenderingServer.directional_shadow_atlas_set_size(2048 if low else 4096, true)
+	var grass := get_node_or_null("Grama") as MultiMeshInstance3D
+	if grass:
+		grass.multimesh.visible_instance_count = grass.multimesh.instance_count / 3 if low else -1
+		grass.visibility_range_end = 2000.0 if low else 3500.0
 
 
 func _terrain() -> void:

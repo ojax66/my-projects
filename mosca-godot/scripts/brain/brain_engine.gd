@@ -53,6 +53,32 @@ func _ready() -> void:
 	print("BrainEngine: GPU %s" % rd.get_device_name())
 
 
+## Saida do jogo: termina o lote em voo e libera tudo na ordem certa
+## (cerebros -> conectomas -> pipelines -> dispositivo).
+func _exit_tree() -> void:
+	if rd == null:
+		return
+	flush()
+	for b: GpuBrain in brains.duplicate():
+		b.free_gpu()
+	flush()
+	for tag in datasets:
+		var ds: Dictionary = datasets[tag]
+		for k in ds["sets"]:
+			if rd.uniform_set_is_valid(ds["sets"][k]):
+				rd.free_rid(ds["sets"][k])
+		for rid: RID in ds["buffers"]:
+			rd.free_rid(rid)
+	datasets.clear()
+	for k in pipelines:
+		rd.free_rid(pipelines[k]["pipeline"])
+		rd.free_rid(pipelines[k]["shader"])
+	pipelines.clear()
+	available = false
+	rd.free()
+	rd = null
+
+
 func has_dataset(tag: String) -> bool:
 	return FileAccess.file_exists("res://brain/full/%s.bin.gz" % tag)
 
@@ -134,25 +160,81 @@ func unregister(b: GpuBrain) -> void:
 	brains.erase(b)
 
 
-func _physics_process(_dt: float) -> void:
-	if not available or brains.is_empty():
+## Um lote por quadro, assincrono: grava e envia os cerebros escolhidos e so
+## busca o resultado no quadro seguinte (a GPU trabalha enquanto a CPU cuida
+## da fisica e do desenho). Um orcamento de sinapses por quadro se ajusta
+## sozinho para manter o jogo fluido; quem esta sendo seguido tem prioridade.
+var budget_edges := 30.0e6
+var stepped_last := 0
+var _in_flight: Array = []
+var _wait_ms := 0.0
+
+
+## Termina o lote em voo (antes de ler/escrever buffers fora do ciclo).
+func flush() -> void:
+	if _in_flight.is_empty():
+		return
+	rd.sync()
+	for b: GpuBrain in _in_flight:
+		if b.alive:
+			b.after_sync()
+	_in_flight.clear()
+	for rid: RID in _to_free:
+		if rid.is_valid():
+			rd.free_rid(rid)
+	_to_free.clear()
+
+
+var _to_free: Array[RID] = []
+
+
+func free_later(rids: Array) -> void:
+	if _in_flight.is_empty():
+		for rid: RID in rids:
+			rd.free_rid(rid)
+	else:
+		_to_free.append_array(rids)
+
+
+func _process(_dt: float) -> void:
+	if not available:
 		return
 	var t0 := Time.get_ticks_usec()
-	var active: Array = []
+	flush()
+	var wait := (Time.get_ticks_usec() - t0) / 1000.0
+	_wait_ms = lerpf(_wait_ms, wait, 0.1)
+	# ajuste do orcamento: GPU atrasando o quadro -> menos sinapses por quadro
+	var frame_ms := 1000.0 / maxf(Engine.get_frames_per_second(), 1.0)
+	if wait > 3.0 or frame_ms > 40.0:
+		budget_edges = maxf(budget_edges * 0.9, 4.0e6)
+	elif wait < 1.0 and frame_ms < 22.0:
+		budget_edges = minf(budget_edges * 1.04, 400.0e6)
+	if brains.is_empty() or get_tree().paused:
+		return
+	var ready: Array = []
 	for b: GpuBrain in brains:
 		if b.wants_step():
-			b.before_submit()
-			active.append(b)
-	if active.is_empty():
+			ready.append(b)
+	if ready.is_empty():
+		return
+	ready.sort_custom(func(a: GpuBrain, b: GpuBrain): return a.priority_score() > b.priority_score())
+	var spent := 0.0
+	for b: GpuBrain in ready:
+		var cost := b.step_cost()
+		if spent > 0.0 and spent + cost > budget_edges and not b.focused:
+			b.starve()
+			continue
+		spent += cost
+		b.before_submit()
+		_in_flight.append(b)
+	if _in_flight.is_empty():
 		return
 	var cl := rd.compute_list_begin()
-	for b: GpuBrain in active:
+	for b: GpuBrain in _in_flight:
 		b.record(cl)
 	rd.compute_list_end()
 	rd.submit()
-	rd.sync()
-	for b: GpuBrain in active:
-		b.after_sync()
+	stepped_last = _in_flight.size()
 	gpu_ms = lerpf(gpu_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.1)
 
 

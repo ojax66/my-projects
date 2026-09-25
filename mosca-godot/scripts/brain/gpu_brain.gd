@@ -37,12 +37,20 @@ var raster_frame := PackedInt32Array()
 var raster_enabled := false
 var sim_time_ms := 0.0
 var alive := true
+## cerebro da criatura seguida pela camera: roda todo quadro, com prioridade
+var focused := false
+## conectoma unico: sementes da fiacao (mae, pai, propria) e amplitude
+var seed_a := 1
+var seed_b := 1
+var seed_c := 1
+var wvar := 0.0
 
 
 static func create(tag: String) -> GpuBrain:
 	var eng := BrainEngine.instance
 	if eng == null or not eng.available or not eng.has_dataset(tag):
 		return null
+	eng.flush()   # nao criar buffers com um lote da GPU em voo
 	var b := GpuBrain.new()
 	b._init_on(eng, eng.dataset(tag))
 	return b
@@ -69,29 +77,39 @@ func _init_on(eng: BrainEngine, ds: Dictionary) -> void:
 	_disp_rate.resize(ds["n_disp"])
 	var rd := eng.rd
 	var N: int = n
-	var v0 := PackedFloat32Array()
-	v0.resize(N)
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	for i in N:
-		v0[i] = -52.0 + rng.randf() * 4.0
-	var zeros := PackedByteArray()
-	zeros.resize(N * 4)
-	var spk := PackedByteArray()
-	spk.resize((N + 1) * 4)
-	var acc := PackedByteArray()
-	acc.resize((int(ds["n_out"]) + int(ds["n_disp"]) + 4) * 4)
-	var ras := PackedByteArray()
-	ras.resize(maxi(int(ds["rows"]), 1) * 4)
-	var pw: PackedFloat32Array = ds["pw0"]
-	var pwb := pw.to_byte_array() if not pw.is_empty() else PackedByteArray([0, 0, 0, 0])
-	var daf := PackedFloat32Array()
-	daf.resize(N * 4)
-	for i in N:
-		daf[i * 4 + 3] = 1.0   # depressao sinaptica: recursos cheios
-	var dab := daf.to_byte_array()
+	if not ds.has("init"):
+		# estados iniciais (repouso) calculados uma vez por especie
+		var v0 := PackedFloat32Array()
+		v0.resize(N)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 12345
+		for i in N:
+			v0[i] = -52.0 + rng.randf() * 4.0
+		var zeros := PackedByteArray()
+		zeros.resize(N * 4)
+		var spk0 := PackedByteArray()
+		spk0.resize((N + 1) * 4)
+		var acc0 := PackedByteArray()
+		acc0.resize((int(ds["n_out"]) + int(ds["n_disp"]) + 4) * 4)
+		var ras0 := PackedByteArray()
+		ras0.resize(maxi(int(ds["rows"]), 1) * 4)
+		var pw0: PackedFloat32Array = ds["pw0"]
+		var daf := PackedFloat32Array()
+		daf.resize(N * 4)
+		for i in N:
+			daf[i * 4 + 3] = 1.0   # depressao sinaptica: recursos cheios
+		ds["init"] = {"v": v0.to_byte_array(), "zeros": zeros, "spk": spk0, "acc": acc0, "ras": ras0,
+			"pw": pw0.to_byte_array() if not pw0.is_empty() else PackedByteArray([0, 0, 0, 0]), "da": daf.to_byte_array()}
+	var init: Dictionary = ds["init"]
+	var zeros: PackedByteArray = init["zeros"]
+	var v0b: PackedByteArray = init["v"]
+	var spk: PackedByteArray = init["spk"]
+	var acc: PackedByteArray = init["acc"]
+	var ras: PackedByteArray = init["ras"]
+	var pwb: PackedByteArray = init["pw"]
+	var dab: PackedByteArray = init["da"]
 	var list := [
-		["v", v0.to_byte_array()], ["gi", zeros], ["refr", zeros], ["r", zeros], ["elig", zeros], ["adapt", zeros],
+		["v", v0b], ["gi", zeros], ["refr", zeros], ["r", zeros], ["elig", zeros], ["adapt", zeros],
 		["spk", spk], ["chan", _chan_rate.to_byte_array()], ["acc", acc], ["raster", ras], ["pw", pwb], ["da", dab]]
 	var uniforms := []
 	for bi in list.size():
@@ -114,11 +132,23 @@ func free_gpu() -> void:
 		return
 	alive = false
 	_eng.unregister(self)
+	if _eng.rd == null:
+		return
+	var rids: Array = []
 	for k in _sets:
 		if _eng.rd.uniform_set_is_valid(_sets[k]):
-			_eng.rd.free_rid(_sets[k])
+			rids.append(_sets[k])
 	for k in _bufs:
-		_eng.rd.free_rid(_bufs[k])
+		rids.append(_bufs[k])
+	_eng.free_later(rids)
+
+
+## Define a fiacao individual (ver wmul() em brain_common.glsl).
+func set_wiring(a: int, b: int, c: int, amount: float) -> void:
+	seed_a = a
+	seed_b = b
+	seed_c = c
+	wvar = amount
 
 
 # ---------------------------------------------------------------- API
@@ -158,6 +188,7 @@ func set_mode(m: int) -> void:
 	if m == mode:
 		return
 	mode = m
+	_eng.flush()
 	_eng.rd.buffer_clear(_bufs["gi"], 0, n * 4)
 	raster_enabled = m == Mode.SPIKE
 
@@ -175,6 +206,7 @@ func memory_strength() -> float:
 
 
 func get_memory() -> PackedFloat32Array:
+	_eng.flush()
 	var w := _eng.rd.buffer_get_data(_bufs["pw"]).to_float32_array()
 	var w0: PackedFloat32Array = _ds["pw0"]
 	for i in w.size():
@@ -186,6 +218,7 @@ func set_memory(m: PackedFloat32Array, amount := 1.0) -> void:
 	var w0: PackedFloat32Array = _ds["pw0"]
 	if m.size() != w0.size() or m.is_empty():
 		return
+	_eng.flush()
 	var w := PackedFloat32Array()
 	w.resize(w0.size())
 	for i in w.size():
@@ -216,8 +249,26 @@ func raster_row_groups() -> PackedInt32Array:
 
 # ---------------------------------------------------------------- GPU
 func wants_step() -> bool:
-	# a mosca seguida (spikes) roda todo tick; as demais em lotes de >= 20 ms
-	return _pending >= (1.0 if mode == Mode.SPIKE else 20.0)
+	# a criatura seguida roda todo quadro; as demais em lotes de >= 50 ms
+	if focused:
+		return _pending >= (1.0 if mode == Mode.SPIKE else 12.0)
+	return _pending >= 50.0
+
+
+func priority_score() -> float:
+	return 1e9 if focused else _pending
+
+
+## Custo aproximado (sinapses tocadas) do proximo passo.
+func step_cost() -> float:
+	if mode == Mode.SPIKE:
+		return clampf(_pending, 1.0, 20.0) * (n * 3.0 + total_edges * 0.03)
+	return float(total_edges + n * 3)
+
+
+## Ficou sem vez neste quadro (orcamento esgotado): nao acumula atraso infinito.
+func starve() -> void:
+	_pending = minf(_pending, 300.0)
 
 
 func before_submit() -> void:
@@ -232,7 +283,7 @@ func before_submit() -> void:
 
 func _push(dt: float, learn := 0.0, rec := 0.0) -> PackedByteArray:
 	var p := PackedByteArray()
-	p.resize(32)
+	p.resize(48)
 	p.encode_u32(0, n)
 	p.encode_u32(4, _step)
 	p.encode_u32(8, int(_ds["n_out"]))
@@ -241,16 +292,20 @@ func _push(dt: float, learn := 0.0, rec := 0.0) -> PackedByteArray:
 	p.encode_float(20, float(params["w_syn"]))
 	p.encode_float(24, learn)
 	p.encode_float(28, rec)
+	p.encode_u32(32, seed_a & 0xFFFFFFFF)
+	p.encode_u32(36, seed_b & 0xFFFFFFFF)
+	p.encode_u32(40, seed_c & 0xFFFFFFFF)
+	p.encode_float(44, wvar)
 	return p
 
 
 func record(cl: int) -> void:
 	var groups := ceili(float(n) / BrainEngine.WG)
 	if mode == Mode.SPIKE:
-		_steps_this = clampi(int(_pending), 1, 14)
+		_steps_this = clampi(int(_pending), 1, 20)
 		_dt_this = float(_steps_this)
 		_pending = maxf(0.0, _pending - _steps_this)
-		if _pending > 30.0:
+		if _pending > 40.0:
 			_pending = 0.0
 		for s in _steps_this:
 			_step += 1
@@ -259,8 +314,10 @@ func record(cl: int) -> void:
 			_eng.dispatch(cl, "spike_propagate", _ds, _sets["spike_propagate"], mini(groups, 256), pu)
 			_eng.dispatch(cl, "reset", _ds, _sets["reset"], 1, pu)
 	else:
-		_dt_this = minf(_pending, 60.0)
-		_pending = 0.0
+		_dt_this = minf(_pending, 120.0)
+		_pending -= _dt_this
+		if _pending > 240.0:
+			_pending = 0.0
 		_steps_this = 1
 		_step += 1
 		var pu := _push(_dt_this)

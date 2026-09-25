@@ -31,6 +31,7 @@ static var _shader: Shader
 
 @export var kind: Kind = Kind.APPLE
 @export var hanging := false
+var radius_override := 0.0
 
 var radius := 30.0
 var display_name := "Fruta"
@@ -54,7 +55,7 @@ static func create(k: Kind, hang := false) -> Fruit:
 
 func _ready() -> void:
 	var info: Dictionary = INFO[kind]
-	radius = info["radius"] * randf_range(0.85, 1.15)
+	radius = radius_override if radius_override > 0.0 else info["radius"] * randf_range(0.85, 1.15)
 	display_name = info["name"]
 	capacity = pow(radius / 10.0, 3.0) * 0.08
 	add_to_group("odor_source")
@@ -135,6 +136,20 @@ func odor_profile() -> PackedFloat32Array:
 	out.resize(GLOMS.size())
 	for i in GLOMS.size():
 		out[i] = k * (float(base[i]) + ferment * float(FERMENT[i]))
+	return out
+
+
+## "Assinatura" do cheiro para a memoria: o perfil nos glomerulos mais os
+## compostos proprios de cada fruta (limoneno do limao, etc.), que no cerebro
+## viram um padrao esparso e quase unico de celulas de Kenyon. Assim o que se
+## aprende sobre um limao nao contamina a laranja ou a maca.
+func memory_key() -> PackedFloat32Array:
+	var prof := CreatureMemory.norm(odor_profile())
+	var out := PackedFloat32Array()
+	for x in prof:
+		out.append(x * 0.5)
+	for k in Kind.size():
+		out.append(1.0 if k == kind else 0.0)
 	return out
 
 

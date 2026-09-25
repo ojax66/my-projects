@@ -212,6 +212,14 @@ func _setup_plasticity(spec: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- API
+var focused := false   # compatibilidade com GpuBrain
+
+
+## Subcircuito em GDScript: a fiacao individual so existe no conectoma da GPU.
+func set_wiring(_a: int, _b: int, _c: int, _amount: float) -> void:
+	pass
+
+
 func set_input(channel: String, rate_hz: float) -> void:
 	var ids: PackedInt32Array = input_channels.get(channel, PackedInt32Array())
 	for i in ids:

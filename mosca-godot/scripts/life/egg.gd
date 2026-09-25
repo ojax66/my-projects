@@ -7,6 +7,10 @@ var genome: Genome
 var memory := PackedFloat32Array()
 var generation := 1
 var lineage := 0
+var uid := 0
+var mind: CreatureMemory
+var wiring: Array = []
+var parents: Array = []
 var surface: Node3D
 var _local := Transform3D.IDENTITY
 var _t := 0.0
