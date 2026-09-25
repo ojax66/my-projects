@@ -152,12 +152,19 @@ de hormônios e a população.
     hipotálamo (fome), pálio → estriado com dopamina de recompensa/punição.
   - `python3 tools/build_amphibian_brain.py --test` mostra as respostas (presa
     à esquerda → orientar à esquerda + língua; ameaça → fuga e pulo...).
-- **Modelo da rã**: a malha e a textura do sapo-banjo (*Limnodynastes*)
-  enviados pelo usuário, convertidos por `tools/import_frog_model.py` para
-  `frog/frog_skin.bin` com esqueleto (quadril, fêmur, tíbia, tarso, pé,
-  ombro, úmero, rádio-ulna, mão, garganta, olhos) e pesos por vértice; as 4
-  patas se movem pelos ossos. Verifique a licença do modelo original antes
-  de publicar o jogo.
+- **Modelo da rã (feito do zero)**: `tools/build_frog_body.py` esculpe o
+  corpo com as proporções e a aparência de um sapo-banjo sentado:
+  - tronco cheio com gordura e barriga apoiada, coxas grossas e musculosas,
+    panturrilha, glândula tibial;
+  - braços fortes, pés com 5 dedos compridos e membrana, mãos com 4 dedos;
+  - cabeça larga com sulco da boca, pálpebras saltadas, tímpano, narinas e
+    verrugas; o papo fica recolhido (só o saco vocal infla, no canto).
+  Tem esqueleto (os mesmos ossos) e pesos por vértice tirados das próprias
+  partes. A pele é pintada pelo shader, sem textura (`shaders/frog_skin.*`):
+  dorso escuro com reticulado e verrugas cor de ferrugem, flancos
+  marmorizados, barriga creme, faixas nas patas, lábio bronze, pele úmida
+  com relevo. A gordura do corpo aumenta e diminui com a energia. Os olhos
+  são globos separados, com íris dourada e pupila horizontal.
 - **Órgãos anatômicos** (`tools/build_frog_organs.py`,
   `tools/build_tadpole_organs.py` → `frog/*_organs.bin`): cada órgão é
   esculpido como superfície implícita (SDF) dentro da cavidade do próprio
@@ -191,9 +198,40 @@ de hormônios e a população.
   hilo; o estômago, o intestino, os corpos gordurosos e os ovários mudam com
   a comida e a energia. Os músculos incham e avermelham quando os
   motoneurônios contraem, e as brânquias do girino somem na metamorfose.
+- **Velhice, quedas e genética** (`scripts/life/mortality.gd`,
+  `genome.gd`):
+  - velhice pela lei de Gompertz: o risco de morrer cresce com a idade, a
+    mediana é o gene `lifespan`, e os velhos ficam mais lentos e fracos;
+  - quedas: a velocidade do impacto é a da queda livre freada pelo ar. A rã
+    se machuca ou morre caindo de alto (ex.: largada pelo jogador), a larva
+    mole também; a pupa aguenta mais, e a mosca é leve demais para se
+    machucar;
+  - genes mendelianos recessivos (portador x afetado), herdados um de cada
+    pai, com mutações novas raras; cruzamento entre parentes gera mais
+    defeitos:
+    - mosca: `vestigial` (não voa), `curly` (asas enroladas, voo fraco),
+      `white` (olho branco, enxerga mal), `ebony` (corpo escuro), `shaker`
+      (cansa e vive menos), letal (morre larva);
+    - rã: ectromelia (sem uma pata), polimelia (pata extra), anoftalmia (sem
+      um olho), albinismo (resseca no sol), cardiopatia (arritmia, vive
+      menos), escoliose (pula e nada mal), letal (morre girino);
+  - o painel mostra os defeitos e de quais o indivíduo é portador;
+  - fruta caindo não mata rã: só dá uma pancada e um susto.
+- **Rã caçadora de verdade**: fica de tocaia, mas desiste de um lugar sem
+  presa. O tempo de desistência é mais curto com fome. Então ela vai
+  procurar aos saltos (uns pulos, para e olha em volta), escolhendo:
+  - os lugares onde já comeu (memória);
+  - as frutas no chão, onde as moscas se juntam;
+  - a beira do lago;
+  - ou um rumo novo.
+  Caça mais no crepúsculo e à noite, e no sol forte do meio-dia se abriga
+  na sombra das árvores.
 - **Sem animação pronta**: os motoneurônios do conectoma ativam os músculos.
-  Extensores (`hop_L/R`) esticam as pernas, e a perna esticando no chão
-  empurra o corpo: o pulo sai da força muscular. A diferença entre os lados
+  O comando de salto do tronco encefálico (`hop_L/R`) passa pelo gerador
+  de salto da medula, que o transforma em surtos dos extensores seguidos da
+  fase de recolher as pernas. A perna esticando no chão empurra o corpo: o
+  pulo sai da força muscular (~2 m/s, 5 a 10 corpos de distância). A rã
+  gira primeiro para o alvo e depois pula. A diferença entre os lados
   gira o corpo; na água os mesmos chutes nadam. A língua sai quando o
   hipoglosso dispara. No girino, os motoneurônios E/D contraem os miômeros
   em onda pela cauda, e a onda empurra a água; a Mauthner contrai um lado

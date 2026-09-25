@@ -673,6 +673,10 @@ func _physiology(dt: float) -> void:
 	pain = maxf(0.0, pain - dt * 0.8)
 	_touch = maxf(0.0, _touch - dt * 1.5)
 	health = minf(1.0, health + dt / 300.0)
+	# alelo letal em dose dupla: o desenvolvimento falha ainda no 1o estagio
+	if genome.has_defect("letal_mosca") and instar == 1 and instar_t > (0.25 + 0.5 * fposmod(uid * 0.618, 1.0)) * LifeManager.DAY:
+		_die("defeito genetico letal (larva)")
+		return
 	if energy <= 0.0:
 		energy = 0.0
 		_starve_t += dt
@@ -859,7 +863,8 @@ func _animate(dt: float, rel_speed: float) -> void:
 
 
 func _ray(from: Vector3, to: Vector3) -> Dictionary:
-	var q := PhysicsRayQueryParameters3D.create(from, to, WORLD_MASK)
+	var o := Vector3(0.0137, 0.0, 0.0071)    # evita a fresta do campo de alturas em raios verticais
+	var q := PhysicsRayQueryParameters3D.create(from + o, to + o, WORLD_MASK)
 	return get_world_3d().direct_space_state.intersect_ray(q)
 
 
@@ -913,6 +918,17 @@ func release(_vel: Vector3) -> void:
 	_carried = false
 	var down := _ray(global_position, global_position + Vector3.DOWN * 3000.0)
 	if down:
+		# queda: larva mole se machuca (o ar freia pouco um corpo de ~3 mm)
+		var v := Mortality.impact_speed(global_position.y - (down.position as Vector3).y, 3600.0)
+		var dmg := Mortality.impact_damage(v, 2200.0, 3300.0)
+		if dmg >= 1.0:
+			global_position = down.position
+			_die("queda (larva)")
+			return
+		if dmg > 0.0:
+			hurt(dmg * 2.0)
+			mind.scare(0.5)
+			last_lesson = "caiu de alto e se machucou"
 		_up = down.normal
 		global_transform = Transform3D(Fly._basis_from(_up, -global_basis.z), down.position)
 		_attach(down.collider)

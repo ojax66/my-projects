@@ -20,6 +20,7 @@ var _static: StaticBody3D
 
 
 func _ready() -> void:
+	add_to_group("trees")     # sombra (as ras se abrigam do sol do meio-dia)
 	_rng.seed = seed_value
 	_static = StaticBody3D.new()
 	_static.collision_layer = 1

@@ -223,6 +223,8 @@ func _apply_genome_visuals() -> void:
 		var c := m.albedo_color
 		if seg_name.ends_with("_eye"):
 			m.albedo_color = Color(c.r * genome.get_gene("eye_red"), c.g, c.b, c.a)
+			if genome.has_defect("white"):
+				m.albedo_color = Color(0.93, 0.91, 0.86, c.a)     # sem pigmento no olho
 		else:
 			m.albedo_color = Color.from_hsv(fposmod(c.h + hue, 1.0), c.s, c.v, c.a) if c.s > 0.01 else c
 			if sex == "M" and (seg_name == "c_abdomen5" or seg_name == "c_abdomen6"):
@@ -230,7 +232,18 @@ func _apply_genome_visuals() -> void:
 				m.albedo_texture = null
 			if not seg_name.ends_with("_eye") and m.albedo_texture:
 				m.albedo_color = Color.from_hsv(fposmod(hue, 1.0), 0.0, 1.0).lerp(Color.from_hsv(fposmod(0.08 + hue, 1.0), 0.35, 1.0), 0.5)
+			if genome.has_defect("ebony"):
+				m.albedo_color = m.albedo_color * Color(0.35, 0.33, 0.32, 1.0)
 		mi.material_override = m
+	# asas: vestigiais (cotoco) ou enroladas
+	for w in ["l_wing", "r_wing"]:
+		if body.segments.has(w):
+			var wn: Node3D = (body.segments[w] as Node3D).get_node("mesh")
+			if genome.has_defect("vestigial"):
+				wn.scale = Vector3.ONE * 0.22
+			elif genome.has_defect("curly"):
+				wn.scale = Vector3(1.0, 0.7, 0.75)
+				wn.rotation.x = -0.5
 
 
 func using_connectome() -> bool:
@@ -301,7 +314,7 @@ func _update_internal(dt: float) -> void:
 ## digere (vira energia) e excreta o residuo. Morre de fome ou de velhice.
 func _physiology(dt: float) -> void:
 	age += dt
-	var met := genome.get_gene("metabolism")
+	var met := genome.get_gene("metabolism") * (1.35 if genome.has_defect("shaker") else 1.0)
 	var burn := 1.0 / 600.0 + absf(speed) / 20.0 / 400.0
 	if state == State.FLY:
 		burn = 1.0 / 90.0
@@ -339,7 +352,10 @@ func _physiology(dt: float) -> void:
 			die("fome")
 	else:
 		_starve_t = 0.0
-	if age > genome.get_gene("lifespan"):
+	# velhice (Gompertz): o risco cresce com a idade; os velhos ficam lentos
+	var life := genome.get_gene("lifespan") * (0.55 if genome.has_defect("shaker") else 1.0)
+	cpg.intrinsic_freq = 12.0 * genome.get_gene("speed") * Mortality.vigor(age, life)
+	if Mortality.dies_of_age(age, life, dt, _rng):
 		die("velhice")
 	# postura de ovos: femea fecundada em cima de fruta
 	if sex == "F" and eggs_to_lay > 0 and state == State.WALK and surface_body is Fruit and energy > 0.25:
@@ -558,6 +574,8 @@ func _sense(dt: float) -> void:
 	_check_crush()
 	if dead:
 		return
+	if genome.has_defect("white"):
+		loom *= 0.35          # olho branco: sem pigmento, a imagem e borrada
 	sense["loom_L"] = loom.x
 	sense["loom_R"] = loom.y
 	var mech := puff * 220.0
@@ -1029,6 +1047,9 @@ func _escape(threat_vel := Vector3.ZERO) -> void:
 func _take_off(target: Vector3, target_node: Node3D = null) -> void:
 	if state == State.FLY:
 		return
+	if genome.has_defect("vestigial"):
+		behavior = "tentou voar (asas vestigiais)"
+		return
 	state = State.FLY
 	surface_body = null
 	_flight_target = target
@@ -1047,7 +1068,8 @@ func _fly(dt: float) -> void:
 		target = _flight_target_node.global_position + Vector3.UP * tr
 	var to_t := target - global_position
 	var dist := to_t.length()
-	var desired := to_t.normalized() * minf(FLIGHT_SPEED, dist * 2.5 + 40.0)
+	var fs := FLIGHT_SPEED * (0.5 if genome.has_defect("curly") else 1.0) * Mortality.vigor(age, genome.get_gene("lifespan"))
+	var desired := to_t.normalized() * minf(fs, dist * 2.5 + 40.0)
 	# pequena oscilacao de voo
 	desired += Vector3(sin(_t * 3.1), sin(_t * 4.3) * 0.6, cos(_t * 2.7)) * 25.0
 	_vel = _vel.lerp(desired, 1.0 - exp(-dt * 2.8))
@@ -1113,6 +1135,11 @@ func release(vel: Vector3) -> void:
 		return
 	state = State.WALK
 	_up = Vector3.UP
+	if genome.has_defect("vestigial"):
+		# sem asas: cai (uma mosca e tao leve que o ar a freia; nao se machuca)
+		behavior = "caiu (asas vestigiais, nao voa)"
+		_snap_to_ground()
+		return
 	var ang := _rng.randf() * TAU
 	_take_off(global_position + Vector3(cos(ang), 0, sin(ang)) * _rng.randf_range(200, 500))
 	_vel = vel + Vector3.UP * 80.0
@@ -1186,7 +1213,8 @@ func _animate(dt: float) -> void:
 
 # ---------------------------------------------------------------- util
 func _ray(from: Vector3, to: Vector3) -> Dictionary:
-	var q := PhysicsRayQueryParameters3D.create(from, to, WORLD_MASK)
+	var o := Vector3(0.0137, 0.0, 0.0071)    # evita a fresta do campo de alturas em raios verticais
+	var q := PhysicsRayQueryParameters3D.create(from + o, to + o, WORLD_MASK)
 	q.collide_with_areas = false
 	q.hit_back_faces = false
 	return get_world_3d().direct_space_state.intersect_ray(q)

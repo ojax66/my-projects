@@ -33,6 +33,8 @@ var has_lungs := true
 var has_gills := false
 var work := 0.0               # trabalho muscular agora (0..1+)
 var cause_of_failure := ""
+var heart_defect := false     # cardiopatia (genetica): coracao fraco, arritmia
+var _skip := 0.0
 
 
 ## Um passo. brain: GpuBrain/FlyBrain. surface_air: a narina esta fora d'agua.
@@ -45,13 +47,17 @@ func step(dt: float, brain, surface_air: bool, in_water: bool, skin_moist: float
 	var q10 := pow(2.0, (temp_c - 20.0) / 10.0)
 	var target := (30.0 + 25.0 * work) * q10 * (1.0 + 1.2 * acc) * (1.0 - 0.5 * clampf(brk, 0.0, 1.0))
 	target += 20.0 * (1.0 - o2)      # falta de O2 tambem acelera (reflexo)
-	heart_rate = lerpf(heart_rate, clampf(target, 8.0, 160.0), 1.0 - exp(-dt / 3.0))
-	beat_phase += dt * heart_rate / 60.0
+	heart_rate = lerpf(heart_rate, clampf(target, 8.0, 55.0 if heart_defect else 160.0), 1.0 - exp(-dt / 3.0))
+	_skip = maxf(0.0, _skip - dt)
+	if _skip <= 0.0:
+		beat_phase += dt * heart_rate / 60.0
 	if beat_phase >= 1.0:
 		beat_phase -= floor(beat_phase)
 		beats += 1
+		if heart_defect and randf() < 0.18:
+			_skip = 60.0 / maxf(heart_rate, 1.0)     # arritmia: pula uma batida
 	beat_now = exp(-pow((beat_phase - 0.1) / 0.08, 2.0))
-	var perfusion := clampf(heart_rate / 40.0, 0.2, 2.0)
+	var perfusion := clampf(heart_rate / 40.0, 0.2, 2.0) * (0.7 if heart_defect else 1.0)
 	# ---- bomba bucal (garganta) e pulmoes
 	var resp: float = brain.output("respirar") if brain.has_output("respirar") else (1.0 - o2) * 2.0
 	var pump_hz := clampf(0.5 + resp * 4.0, 0.3, 6.0)

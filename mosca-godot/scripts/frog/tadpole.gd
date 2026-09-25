@@ -111,6 +111,9 @@ func _build_body() -> void:
 	model = TadpoleModel.new()
 	add_child(model)
 	model.build(uid)
+	if genome.has_defect("albinismo"):
+		model.skin.set_shader_parameter("dorsal", Color(0.85, 0.72, 0.55))
+		model.skin.set_shader_parameter("belly", Color(0.95, 0.88, 0.75))
 	_angles.resize(TadpoleModel.SEGS)
 	_act_l.resize(TadpoleModel.SEGS)
 	_act_r.resize(TadpoleModel.SEGS)
@@ -155,6 +158,10 @@ func _physics_process(dt: float) -> void:
 
 
 func _physiology(dt: float) -> void:
+	# alelo letal em dose dupla: o girino nao se desenvolve
+	if genome.has_defect("letal_ra") and age > (0.3 + fposmod(uid * 0.618, 1.0)) * DAY:
+		_die("defeito genetico letal (girino)")
+		return
 	energy -= dt / (1.5 * DAY) * genome.get_gene("metabolism") * (1.0 + org.work * 0.5)
 	# branquias sempre; o pulmao se forma na segunda metade do girino e ele
 	# passa a subir para engolir ar na superficie
@@ -378,7 +385,7 @@ func _move(dt: float) -> void:
 	tip /= 3.0
 	org.work = maxf(org.work, drive)
 	# empuxo pela onda da cauda (~ frequencia x amplitude^2) e arrasto
-	var thrust := len * freq * tip * tip * 6.0 * (1.0 - climax * 0.8)
+	var thrust := len * freq * tip * tip * 6.0 * (1.0 - climax * 0.8) * (0.55 if genome.has_defect("escoliose") else 1.0)
 	var fwd := -global_basis.z
 	velocity += fwd * thrust * dt
 	velocity *= exp(-dt * 3.0)
@@ -396,6 +403,9 @@ func _move(dt: float) -> void:
 	np.y = clampf(np.y, lo, maxf(hi, lo))
 	global_position = np
 	model.scale = Vector3.ONE * len
+	if genome.has_defect("escoliose"):
+		for i in _angles.size():
+			_angles[i] += 0.07 * sin(i * 0.9)     # coluna torta: a cauda nunca fica reta
 	model.set_tail(_angles, _act_l, _act_r, climax)
 	model.set_state(org, growth, climax, _feeding, energy)
 

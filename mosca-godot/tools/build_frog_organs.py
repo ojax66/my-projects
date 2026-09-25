@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Esculpe os orgaos internos, o esqueleto e os musculos da ra dentro do
-corpo do sapo-banjo (frog/frog_skin.bin, gerado por import_frog_model.py).
+corpo da ra (frog/frog_skin.bin, feito do zero por build_frog_body.py).
 
     pip install numpy scipy scikit-image
     python3 tools/build_frog_organs.py
@@ -59,7 +59,8 @@ def load_skin():
     nv, ni = struct.unpack("<II", d[4:12])
     o = 12
     P = np.frombuffer(d[o:o + nv * 12], "<f4").reshape(-1, 3).astype(float)
-    o += nv * 12 * 2 + nv * 8
+    # FRG2 (build_frog_body.py): pos, normal, uv, uv2, cor, indices
+    o += nv * 12 * 2 + nv * 8 + (nv * 8 + nv * 16 if d[:4] == b"FRG2" else 0)
     idx = np.frombuffer(d[o:o + ni * 4], "<i4").reshape(-1, 3)
     return P, idx
 
@@ -898,23 +899,23 @@ def muscles(skin, bones):
 # musculo: (desloc. na origem (u,v), desloc. na insercao, r origem, r ventre, r insercao, posicao do ventre, (frac. inicio, fim))
 MUSCLES = {
     "femur": {
-        "cruralis": ((0.0, 0.018), (0.0, 0.012), 0.012, 0.034, 0.01, 0.5, (0.0, 1.05)),
-        "semimembranoso": ((0.0, -0.02), (0.0, -0.014), 0.012, 0.03, 0.008, 0.45, (0.0, 1.05)),
-        "gracilis": ((0.022, -0.004), (0.015, -0.006), 0.01, 0.026, 0.007, 0.5, (0.0, 1.08)),
-        "sartorio": ((-0.02, 0.006), (-0.016, 0.0), 0.006, 0.013, 0.005, 0.5, (0.02, 1.05)),
+        "cruralis": ((0.0, 0.018), (0.0, 0.012), 0.016, 0.046, 0.014, 0.5, (0.0, 1.05)),
+        "semimembranoso": ((0.0, -0.02), (0.0, -0.014), 0.016, 0.041, 0.011, 0.45, (0.0, 1.05)),
+        "gracilis": ((0.022, -0.004), (0.015, -0.006), 0.014, 0.035, 0.009, 0.5, (0.0, 1.08)),
+        "sartorio": ((-0.02, 0.006), (-0.016, 0.0), 0.008, 0.018, 0.007, 0.5, (0.02, 1.05)),
     },
     "tibia": {
-        "gastrocnemio": ((0.0, -0.016), (0.0, -0.014), 0.012, 0.032, 0.006, 0.32, (-0.04, 0.92)),
-        "tibial_anterior": ((0.0, 0.014), (0.0, 0.01), 0.008, 0.017, 0.005, 0.45, (0.0, 0.95)),
-        "peroneo": ((0.016, 0.0), (0.012, 0.0), 0.006, 0.013, 0.004, 0.4, (0.0, 0.95)),
+        "gastrocnemio": ((0.0, -0.016), (0.0, -0.014), 0.016, 0.043, 0.008, 0.32, (-0.04, 0.92)),
+        "tibial_anterior": ((0.0, 0.014), (0.0, 0.01), 0.011, 0.023, 0.007, 0.45, (0.0, 0.95)),
+        "peroneo": ((0.016, 0.0), (0.012, 0.0), 0.008, 0.018, 0.005, 0.4, (0.0, 0.95)),
     },
     "umero": {
-        "deltoide": ((0.0, 0.014), (0.0, 0.01), 0.008, 0.017, 0.006, 0.35, (0.0, 0.9)),
-        "triceps": ((0.0, -0.014), (0.0, -0.01), 0.009, 0.019, 0.006, 0.45, (0.0, 1.02)),
+        "deltoide": ((0.0, 0.014), (0.0, 0.01), 0.011, 0.023, 0.008, 0.35, (0.0, 0.9)),
+        "triceps": ((0.0, -0.014), (0.0, -0.01), 0.012, 0.026, 0.008, 0.45, (0.0, 1.02)),
     },
     "antebraco": {
-        "flexores": ((0.0, -0.01), (0.0, -0.006), 0.008, 0.015, 0.004, 0.3, (0.0, 0.9)),
-        "extensores": ((0.0, 0.01), (0.0, 0.006), 0.007, 0.013, 0.004, 0.3, (0.0, 0.9)),
+        "flexores": ((0.0, -0.01), (0.0, -0.006), 0.011, 0.020, 0.005, 0.3, (0.0, 0.9)),
+        "extensores": ((0.0, 0.01), (0.0, 0.006), 0.009, 0.018, 0.005, 0.3, (0.0, 0.9)),
     },
 }
 

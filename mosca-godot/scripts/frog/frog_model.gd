@@ -1,9 +1,13 @@
 class_name FrogModel
 extends Node3D
-## Corpo da ra: a malha e a textura do sapo-banjo (Limnodynastes) trazidos
-## pelo usuario (tools/import_frog_model.py -> frog/frog_skin.*), com
-## esqueleto de verdade (quadril, femur, tibia, tarso, pe, ombro, umero,
-## radio-ulna, mao, garganta, olhos) e pesos por vertice (skinning).
+## Corpo da ra feito do zero (tools/build_frog_body.py -> frog/frog_skin.*):
+## superficie esculpida com as proporcoes e a aparencia de um sapo-banjo
+## (Limnodynastes) sentado, com esqueleto de verdade (quadril, femur, tibia,
+## tarso, pe, ombro, umero, radio-ulna, mao, garganta, olhos) e pesos por
+## vertice (skinning). A pele e pintada pelo shader (shaders/frog_skin.*):
+## dorso escuro com verrugas ferrugem, barriga creme, faixas nos membros,
+## pele umida com relevo. Os olhos sao globos separados (iris dourada e
+## pupila horizontal).
 ##
 ## Dentro, os orgaos esculpidos na cavidade do proprio corpo
 ## (tools/build_frog_organs.py -> frog/frog_organs.*): coracao com seio
@@ -24,12 +28,16 @@ extends Node3D
 
 const SKIN := "res://frog/frog_skin.bin"
 const META := "res://frog/frog_skin.json"
-const TEX := "res://frog/banjofrog_diffuse.jpg"
 
 var L := 45.0
 var male := false
 var hue := 0.0
-var skin_mat: StandardMaterial3D
+var skin_mat: ShaderMaterial
+var skin_xray: ShaderMaterial
+var albino := 0.0
+var missing := []            # ossos de membros ausentes (defeito genetico)
+var extra_leg := false       # polimelia: uma pata extra
+var _eyes: Array[MeshInstance3D] = []
 var tongue: MeshInstance3D
 var tongue_root: Node3D
 var organs := {}
@@ -66,8 +74,10 @@ func build(svl: float, is_male: bool, hue_shift: float, _seed_i: int) -> void:
 	_load()
 	_skeleton()
 	_skin_mesh()
+	_eyeballs()
 	_organs()
 	_tongue()
+	_apply_defects()
 	set_xray(false)
 
 
@@ -83,24 +93,34 @@ func _load() -> void:
 	var pos := f.get_buffer(nv * 12).to_float32_array()
 	var nrm := f.get_buffer(nv * 12).to_float32_array()
 	var uv := f.get_buffer(nv * 8).to_float32_array()
+	var uv2 := f.get_buffer(nv * 8).to_float32_array()
+	var col := f.get_buffer(nv * 16).to_float32_array()
 	var idx := f.get_buffer(ni * 4).to_int32_array()
 	var bones := f.get_buffer(nv * 16).to_int32_array()
 	var weights := f.get_buffer(nv * 16).to_float32_array()
 	var pv := PackedVector3Array()
 	var nvv := PackedVector3Array()
 	var uvv := PackedVector2Array()
+	var uvv2 := PackedVector2Array()
+	var cc := PackedColorArray()
 	pv.resize(nv)
 	nvv.resize(nv)
 	uvv.resize(nv)
+	uvv2.resize(nv)
+	cc.resize(nv)
 	for i in nv:
 		pv[i] = Vector3(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2])
 		nvv[i] = Vector3(nrm[i * 3], nrm[i * 3 + 1], nrm[i * 3 + 2])
 		uvv[i] = Vector2(uv[i * 2], uv[i * 2 + 1])
+		uvv2[i] = Vector2(uv2[i * 2], uv2[i * 2 + 1])
+		cc[i] = Color(col[i * 4], col[i * 4 + 1], col[i * 4 + 2], col[i * 4 + 3])
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = pv
 	arr[Mesh.ARRAY_NORMAL] = nvv
 	arr[Mesh.ARRAY_TEX_UV] = uvv
+	arr[Mesh.ARRAY_TEX_UV2] = uvv2
+	arr[Mesh.ARRAY_COLOR] = cc
 	arr[Mesh.ARRAY_INDEX] = idx
 	arr[Mesh.ARRAY_BONES] = bones
 	arr[Mesh.ARRAY_WEIGHTS] = weights
@@ -134,24 +154,76 @@ func _skeleton() -> void:
 
 
 func _skin_mesh() -> void:
-	skin_mat = StandardMaterial3D.new()
-	skin_mat.albedo_texture = load(TEX)
-	# cada individuo tem um tom um pouco diferente (gene da cor)
-	skin_mat.albedo_color = Color.from_hsv(fposmod(0.1 + hue, 1.0), 0.12, 1.0)
-	skin_mat.roughness = 0.38
-	skin_mat.clearcoat_enabled = true
-	skin_mat.clearcoat = 0.7          # pele umida (muco)
-	skin_mat.clearcoat_roughness = 0.2
-	skin_mat.rim_enabled = true
-	skin_mat.rim = 0.15
-	skin_mat.subsurf_scatter_enabled = true
-	skin_mat.subsurf_scatter_strength = 0.15
+	skin_mat = ShaderMaterial.new()
+	skin_mat.shader = load("res://shaders/frog_skin.gdshader")
+	skin_xray = ShaderMaterial.new()
+	skin_xray.shader = load("res://shaders/frog_skin_xray.gdshader")
+	for m in [skin_mat, skin_xray]:
+		m.set_shader_parameter("hue", hue * 3.0)       # cada individuo tem um tom (gene da cor)
+		m.set_shader_parameter("albino", albino)
 	_body = MeshInstance3D.new()
 	_body.mesh = _mesh_cache
 	_body.material_override = skin_mat
 	_skel.add_child(_body)
 	_body.skin = _skel.create_skin_from_rest_transforms()
 	_body.skeleton = _body.get_path_to(_skel)
+
+
+## Globos oculares: saltam da cabeca pela abertura das palpebras.
+func _eyeballs() -> void:
+	var r: float = float(_meta_cache["pontos"].get("raio_olho", 0.066))
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = r * 2.0
+	sm.radial_segments = 24
+	sm.rings = 12
+	var em := ShaderMaterial.new()
+	em.shader = load("res://shaders/frog_eye.gdshader")
+	em.set_shader_parameter("albino", albino)
+	for s in ["L", "R"]:
+		var sg := 1.0 if s == "R" else -1.0
+		var out_dir := Vector3(0.72 * sg, 0.62, -0.3).normalized()
+		var eye := MeshInstance3D.new()
+		eye.mesh = sm
+		eye.material_override = em
+		var pos: Vector3 = _rest["olho_" + s][0]
+		eye.transform = Transform3D(Basis.looking_at(out_dir, Vector3.UP), pos - out_dir * 0.006)
+		_attach("olho_" + s).add_child(eye)
+		_eyes.append(eye)
+
+
+## Defeitos geneticos/de desenvolvimento visiveis: membro ausente (ectromelia),
+## pata extra (polimelia), olho ausente (anoftalmia), albinismo.
+func set_defects(d: Dictionary) -> void:
+	albino = 1.0 if d.get("albinismo", false) else 0.0
+	missing = d.get("membro_ausente", [])
+	extra_leg = d.get("polimelia", false)
+	set_meta("sem_olho", d.get("anoftalmia", ""))
+	set_meta("escoliose", d.get("escoliose", false))
+
+
+func _apply_defects() -> void:
+	for b: String in missing:
+		if _bone.has(b):
+			_skel.set_bone_pose_scale(_bone[b], Vector3.ONE * 0.02)
+	if get_meta("escoliose", false):
+		# coluna torta: o peito e a cabeca ficam desviados do quadril
+		_skel.set_bone_pose_rotation(_bone["peito"], Quaternion(Vector3.UP, 0.22) * Quaternion(Vector3.FORWARD, 0.12))
+	var no_eye: String = get_meta("sem_olho", "")
+	if no_eye != "":
+		_eyes[0 if no_eye == "L" else 1].visible = false
+		_skel.set_bone_pose_scale(_bone["olho_" + no_eye], Vector3(1.0, 0.4, 1.0))
+	if extra_leg:
+		# uma perna a mais saindo do quadril (copia menor e torta da perna direita)
+		var extra := MeshInstance3D.new()
+		var cm := CapsuleMesh.new()
+		cm.radius = 0.035
+		cm.height = 0.4
+		extra.mesh = cm
+		extra.material_override = skin_mat
+		var hip: Vector3 = _rest["femur_R"][0]
+		extra.transform = Transform3D(Basis.from_euler(Vector3(1.2, 0.5, 0.4)), hip + Vector3(0.05, -0.02, 0.1))
+		_attach("corpo").add_child(extra)
 
 
 # ---------------------------------------------------------------- orgaos (tools/build_frog_organs.py)
@@ -327,10 +399,12 @@ func set_state(org: AmphibianOrgans, call: float, swallow: float, blink: float, 
 		if organs.has("ovario_" + s):
 			(organs["ovario_" + s] as Node3D).scale = Vector3.ONE * (0.55 + 0.5 * energy)
 	(organs["cone_arterial"] as Node3D).scale = Vector3.ONE * (1.0 + 0.12 * v_sys)
+	skin_mat.set_shader_parameter("fat", energy)
+	skin_xray.set_shader_parameter("fat", energy)
 	(organs["estomago"] as Node3D).scale = Vector3.ONE * (0.8 + 0.7 * minf(org.stomach, 0.4))
 	(organs["intestino_delgado"] as Node3D).scale = Vector3.ONE * (0.95 + 0.25 * minf(org.intestine, 0.3))
 	# garganta: a bomba bucal sobe e desce o assoalho da boca; canto infla o saco
-	var g := 1.0 + 0.35 * maxf(-org.buccal, 0.0) + 0.12 * org.buccal
+	var g := 1.0 + 0.06 * maxf(-org.buccal, 0.0)   # papo recolhido; o saco vocal so infla no canto
 	_skel.set_bone_pose_scale(_bone["garganta"], Vector3(1.0 + 0.1 * (g - 1.0), g, 1.0 + 0.2 * (g - 1.0)))
 	if _sac:
 		_sac.visible = call > 0.05
@@ -339,13 +413,13 @@ func set_state(org: AmphibianOrgans, call: float, swallow: float, blink: float, 
 	for s in ["L", "R"]:
 		var off := Vector3(0, -0.07 * swallow - 0.02 * blink, 0)
 		_skel.set_bone_pose_position(_bone["olho_" + s], _eyes_rest[s] + off)
-		_skel.set_bone_pose_scale(_bone["olho_" + s], Vector3(1.0, 1.0 - 0.5 * blink, 1.0))
+		var sunk := 0.4 if get_meta("sem_olho", "") == s else 1.0
+		_skel.set_bone_pose_scale(_bone["olho_" + s], Vector3(1.0, (1.0 - 0.5 * blink) * sunk, 1.0))
 
 
 func set_xray(on: bool) -> void:
 	_xray = on
-	skin_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if on else BaseMaterial3D.TRANSPARENCY_DISABLED
-	skin_mat.albedo_color.a = 0.28 if on else 1.0
+	_body.material_override = skin_xray if on else skin_mat
 	for n in _xray_nodes:
 		n.visible = on
 

@@ -9,6 +9,8 @@ extends Node3D
 ##   conectoma -> motoneuronios: extensores de cada perna (hop_L/R),
 ##     orientacao (orient_L/R), fuga, hipoglosso (lingua), gerador
 ##     respiratorio (bomba bucal), simpatico/vago (coracao), vocal (canto)
+##   medula: o comando continuo de salto do tronco encefalico vira surtos
+##     dos extensores (gerador de salto espinhal) com uma fase de recolher
 ##   musculos: a ativacao dos extensores estica as pernas; perna esticando
 ##     com os pes no chao empurra o corpo -> o pulo sai da forca do musculo;
 ##     diferenca entre esquerda e direita vira giro; na agua os mesmos chutes
@@ -93,6 +95,19 @@ var _blink := 0.0
 var _jaw := 0.0
 var _launch_cd := 0.0
 var _dive_t := 0.0
+# forrageio (senta-e-espera com tempo de desistencia, depois muda de lugar)
+var _no_prey_t := 0.0                    # tempo sem ver presa
+var _pause_t := 0.0                      # parada para olhar em volta depois de uns pulos
+var _hops := 0
+var _hops_goal := 2
+var _forage_goal := Vector3.INF
+var _food_spots: Array = []              # [posicao, forca] onde ja comeu
+var _land_vy := 0.0
+var _hop_ref := 0.0
+var _hop_burst := 0.0
+var _hop_amp := 1.0
+var _hop_scale := 1.0        # pulo longo (viagem/fuga) ou curto (aproximar da presa)
+var defects := {}                        # defeitos visiveis/funcionais (genetica)
 
 
 func _ready() -> void:
@@ -113,8 +128,11 @@ func _ready() -> void:
 		brain = FlyBrain.from_dict(DefaultCircuit.build())
 	brain.set_wiring(int(wiring[0]), int(wiring[1]), int(wiring[2]), genome.get_gene("wiring_var"))
 	brain.set_mode(1)
+	defects = _defects()
+	org.heart_defect = genome.has_defect("cardiopatia")
 	model = FrogModel.new()
 	add_child(model)
+	model.set_defects(defects)
 	model.build(SVL, sex == "M", genome.get_gene("hue"), uid)
 	_apply_scale()
 	var area := Area3D.new()
@@ -130,6 +148,39 @@ func _ready() -> void:
 	area.set_meta("creature", self)
 	model.add_child(area)
 	_snap.call_deferred()
+
+
+## Defeitos geneticos (alelo recessivo em dose dupla). O lado afetado sai
+## do numero do individuo, entao e sempre o mesmo para a mesma ra.
+func _defects() -> Dictionary:
+	var side := "L" if uid % 2 == 0 else "R"
+	var d := {}
+	if genome.has_defect("ectromelia"):
+		d["membro_ausente"] = ["femur_" + side]
+		d["perna_ausente"] = side
+	if genome.has_defect("polimelia"):
+		d["polimelia"] = true
+	if genome.has_defect("anoftalmia"):
+		d["anoftalmia"] = "R" if side == "L" else "L"
+	if genome.has_defect("albinismo"):
+		d["albinismo"] = true
+	if genome.has_defect("escoliose"):
+		d["escoliose"] = true
+	return d
+
+
+func life_expectancy() -> float:
+	return genome.get_gene("lifespan") * 4.0 * (0.6 if genome.has_defect("cardiopatia") else 1.0)
+
+
+## Forca do corpo: cai com a velhice e com defeitos de locomocao.
+func vigor() -> float:
+	var v := Mortality.vigor(age, life_expectancy())
+	if defects.has("escoliose"):
+		v *= 0.7
+	if defects.has("polimelia"):
+		v *= 0.85
+	return v
 
 
 func size() -> float:
@@ -223,7 +274,7 @@ func _physiology(dt: float) -> void:
 	if in_water:
 		hydration = minf(1.0, hydration + dt / 60.0)
 	else:
-		hydration -= dt / (0.6 * day) * (0.4 + 1.2 * dl)   # pele resseca, mais no sol
+		hydration -= dt / (0.6 * day) * (0.4 + 1.2 * dl) * (1.6 if defects.has("albinismo") else 1.0)   # pele resseca, mais no sol
 	pain = maxf(0.0, pain - dt * 0.6)
 	health = minf(1.0, health + dt / 600.0)
 	if growth < 1.0:
@@ -243,7 +294,13 @@ func _physiology(dt: float) -> void:
 		health -= dt / 120.0
 		if health <= 0.0:
 			die("asfixia (ra)")
-	if age > genome.get_gene("lifespan") * 4.0:
+	if org.heart_defect and org.work > 0.8:
+		health -= dt / 400.0          # coracao fraco nao aguenta esforco
+		if health <= 0.0:
+			die("insuficiencia cardiaca (ra)")
+			return
+	# velhice (Gompertz): risco cresce com a idade; a velha fica fraca
+	if Mortality.dies_of_age(age, life_expectancy(), dt, _rng):
 		die("velhice (ra)")
 
 
@@ -268,12 +325,11 @@ func _check_crush() -> void:
 	if r.is_empty():
 		return
 	if r.has("crush"):
-		var rb: RigidBody3D = r["crush"]
-		if rb.mass >= 0.15 * genome.get_gene("size"):
-			die("esmagada (ra)", rb)
-			model.scale.y *= 0.35
-			return
-		r = {"hit": 0.3, "obj": rb}
+		# uma fruta caindo so da um susto e uma pancada numa ra (ela e grande
+		# e o corpo e elastico); ela foge pulando
+		r = {"hit": 0.15, "obj": r["crush"]}
+		_dive_t = 4.0
+		_pause_t = 0.0
 	if age - _hit_t < 0.6:
 		return
 	_hit_t = age
@@ -308,7 +364,16 @@ func _sense(dt: float) -> void:
 		sense["presa_perto"] = retina.prey_near
 		sense["sombra_L"] = retina.threat["L"]
 		sense["sombra_R"] = retina.threat["R"]
+		var no_eye: String = defects.get("anoftalmia", "")
+		if no_eye != "":
+			sense["presa_" + no_eye] = 0.0
+			sense["sombra_" + no_eye] = 0.0
+			retina.light[no_eye] = 0.0
 		_hear()
+		if maxf(sense["presa_L"], sense["presa_R"]) > 15.0 or sense["presa_perto"] > 10.0:
+			_no_prey_t = 0.0
+	_no_prey_t += dt
+	_pause_t = maxf(0.0, _pause_t - dt)
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
 	var inp := org.brain_inputs()
 	brain.set_input("presa_L", sense["presa_L"])
@@ -403,11 +468,21 @@ func _decide(dt: float) -> void:
 func _choose() -> void:
 	var dl := GardenWorld.instance.daylight() if GardenWorld.instance else 1.0
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
-	var sc := {"explorar": 0.2, "esperar presa": 0.3 + 0.6 * hunger}
+	# ras sao senta-e-espera, mas desistem de um lugar sem presa (tempo de
+	# desistencia: mais curto com fome) e vao procurar em outro; caçam mais
+	# no crepusculo e a noite, e no sol forte do meio-dia se abrigam
+	var give_up := lerpf(45.0, 12.0, hunger)
+	var stay := exp(-_no_prey_t / give_up)
+	var sees: bool = maxf(sense["presa_L"], sense["presa_R"]) > 15.0 or float(sense["presa_perto"]) > 10.0
+	var night := 1.0 - dl
+	var sc := {"explorar": 0.12, "esperar presa": (0.25 + 0.55 * hunger) * stay + (0.9 if sees else 0.0)}
+	sc["forragear"] = (0.15 + hunger) * (0.35 + 0.9 * (1.0 - stay)) * (0.6 + 0.6 * night) if not sees else 0.0
 	sc["ir para a agua"] = (1.0 - hydration) * 1.6 + 0.3 * mind.danger_at(global_position)
 	sc["respirar"] = (0.6 - org.o2) * 3.0 if state == State.SWIM else 0.0
 	sc["evitar"] = mind.danger_at(global_position) * 1.1
-	sc["descansar"] = 0.25 + 0.35 * dl * (1.0 - hunger)
+	sc["descansar"] = (0.15 + 0.3 * dl) * (1.0 - hunger) * (1.0 - hunger)
+	if dl > 0.75 and state != State.SWIM:
+		sc["abrigar"] = (dl - 0.75) * 2.4 * (0.4 + (1.0 - hydration)) * (1.0 - 0.6 * hunger)
 	var mature := age > LifeManager.DAY * 3.0 and growth >= 0.95
 	var pd := Pond.nearest(global_position)
 	var near_water := pd != null and pd.dist_to_water(global_position) < 120.0
@@ -455,8 +530,70 @@ func _choose() -> void:
 				var a := _rng.randf() * TAU
 				_goal = global_position + Vector3(cos(a), 0, sin(a)) * size() * 4.0
 				_drive = 0.5
+		"forragear":
+			if _pause_t > 0.0:
+				_drive = 0.0      # parada, olhos varrendo a volta
+			else:
+				if _forage_goal == Vector3.INF or _forage_goal.distance_to(global_position) < size() * 1.5:
+					_forage_goal = _pick_forage_goal()
+				_goal = _forage_goal
+				_drive = 0.65 * vigor()
+		"abrigar":
+			var sh := _shade_spot()
+			if sh != Vector3.INF:
+				_goal = sh
+				_drive = 0.6
 		"respirar":
 			_dive_t = 0.0
+
+
+## Para onde ir procurar comida: lugares onde ja comeu (memoria), frutas no
+## chao (moscas se juntam ali), a beira do lago (insetos), ou um rumo novo.
+func _pick_forage_goal() -> Vector3:
+	var best := Vector3.INF
+	var best_s := 0.0
+	for fs: Array in _food_spots:
+		var p: Vector3 = fs[0]
+		var d := p.distance_to(global_position)
+		var sc: float = float(fs[1]) * 1.2 / (1.0 + d / 800.0)
+		if d > size() * 2.0 and sc > best_s:
+			best_s = sc
+			best = p
+	for n in get_tree().get_nodes_in_group("odor_source"):
+		var fr := n as Fruit
+		if fr == null or fr.hanging:
+			continue
+		var d := fr.global_position.distance_to(global_position)
+		if d < 2500.0 and d > size() * 2.0:
+			var sc := 0.9 / (1.0 + d / 600.0) * (1.0 - 0.5 * minf(mind.danger_at(fr.global_position), 1.0))
+			if sc > best_s:
+				best_s = sc
+				best = fr.global_position + Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)) * size() * 1.5
+	var pd := Pond.nearest(global_position)
+	if pd and _rng.randf() < 0.3:
+		var sp := pd.shore_point(global_position)
+		if sp.distance_to(global_position) > size() * 3.0 and 0.35 > best_s:
+			best = sp
+			best_s = 0.35
+	if best == Vector3.INF or _rng.randf() < 0.25:
+		var a := _rng.randf() * TAU
+		best = global_position + Vector3(cos(a), 0, sin(a)) * size() * _rng.randf_range(4.0, 9.0)
+	return best
+
+
+## Sombra mais perto (debaixo de uma arvore) ou a beira d'agua.
+func _shade_spot() -> Vector3:
+	var best := Vector3.INF
+	var bd := 3000.0
+	for t in get_tree().get_nodes_in_group("trees"):
+		var p := (t as Node3D).global_position
+		var d := p.distance_to(global_position)
+		if d < bd:
+			bd = d
+			best = p + (global_position - p).normalized() * 150.0
+	if bd < 250.0:
+		return Vector3.INF   # ja esta na sombra
+	return best
 
 
 func _nearest_caller() -> Frog:
@@ -479,8 +616,32 @@ func _nearest_caller() -> Frog:
 ## flexores e a elasticidade dobram a perna de volta.
 func _muscles(dt: float) -> void:
 	var gain := genome.get_gene("motor_gain")
+	# gerador de salto da medula: um comando continuo do tronco encefalico
+	# (hop_L/R) vira surtos dos extensores (~90 ms), seguidos da fase em que os
+	# flexores recolhem as pernas (refratario); com mais comando, surto mais forte
+	var cmd := (_out("hop_L") + _out("hop_R")) * 0.5 * gain
+	_hop_ref = maxf(0.0, _hop_ref - dt)
+	_hop_burst = maxf(0.0, _hop_burst - dt)
+	# o salto sai quando ha motivo: fuga, presa a frente, ou indo para um lugar
+	# ja virada para ele (a ra gira primeiro, depois pula)
+	var fleeing: bool = _out("escape_L") + _out("escape_R") > 0.4 or _dive_t > 0.0 or pain > 0.5
+	# presa vista mas fora do alcance da lingua: pulinhos curtos de aproximacao
+	var in_reach: bool = float(sense["presa_perto"]) > 10.0
+	var chasing: bool = not in_reach and maxf(sense["presa_L"], sense["presa_R"]) > 25.0 and energy < 0.9
+	var going: bool = _drive > 0.2 and absf(_steer) < 0.45
+	if in_reach and not fleeing:
+		cmd = 0.0             # presa ao alcance: fica parada e usa a lingua
+	if cmd > 0.3 and _hop_ref <= 0.0 and (state == State.SIT or state == State.SWIM) and _tongue_t < 0.0 and (fleeing or chasing or going or state == State.SWIM):
+		_hop_scale = 1.0 if (fleeing or going or state == State.SWIM) else 0.32
+		_hop_burst = 0.09
+		_hop_ref = 0.09 + lerpf(0.9, 0.35, clampf(cmd, 0.0, 1.0)) / maxf(vigor(), 0.3)
+		_hop_amp = clampf(0.7 + cmd * 0.6, 0.8, 1.35)
 	for s in ["L", "R"]:
-		var a_in := clampf(_out("hop_" + s) * gain, 0.0, 1.6)
+		var a_in := clampf(_out("hop_" + s) * gain, 0.0, 1.6) * 0.3       # tonus postural
+		if _hop_burst > 0.0:
+			a_in = _hop_amp * clampf(0.75 + 0.5 * _out("hop_" + s) / maxf(cmd, 0.05), 0.6, 1.25)
+		if defects.get("perna_ausente", "") == s:
+			a_in = 0.0            # sem a perna: nada a contrair
 		act[s] = lerpf(act[s], a_in, 1.0 - exp(-dt / 0.02))
 		var target := clampf((act[s] - 0.2) * 2.6, 0.0, 1.0)
 		if state == State.AIR:
@@ -495,8 +656,16 @@ func _muscles(dt: float) -> void:
 
 # ---------------------------------------------------------------- corpo (fisica)
 func _ground(p: Vector3) -> Dictionary:
-	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 200.0, p + Vector3.DOWN * 3000.0, WORLD_MASK)
-	return get_world_3d().direct_space_state.intersect_ray(q)
+	# raio levemente deslocado: um raio vertical exatamente numa linha da grade
+	# do campo de alturas escapa pela fresta (bug do HeightMapShape3D)
+	var o := Vector3(0.0137, 0.0, 0.0071)
+	var q := PhysicsRayQueryParameters3D.create(p + o + Vector3.UP * 200.0, p + o + Vector3.DOWN * 3000.0, WORLD_MASK)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty() and GardenWorld.instance:
+		var gy := GardenWorld.instance.height_at(p.x, p.z)
+		if gy <= p.y + 200.0:
+			hit = {"position": Vector3(p.x, gy, p.z), "normal": Vector3.UP}
+	return hit
 
 
 func _snap() -> void:
@@ -515,7 +684,7 @@ func _body_physics(dt: float) -> void:
 	var push := (maxf(ext_v["L"], 0.0) + maxf(ext_v["R"], 0.0)) * 0.5
 	var asym := maxf(ext_v["R"], 0.0) - maxf(ext_v["L"], 0.0)
 	# orientacao: reticular de orientacao (presa/vontade) e fuga (vira para longe)
-	var yaw := (_out("orient_L") - _out("orient_R")) * 2.2 + (_out("escape_R") - _out("escape_L")) * 2.5
+	var yaw := (_out("orient_L") - _out("orient_R")) * 5.0 + (_out("escape_R") - _out("escape_L")) * 2.5
 	match state:
 		State.SIT:
 			velocity = Vector3.ZERO
@@ -523,7 +692,10 @@ func _body_physics(dt: float) -> void:
 				rotate_y(clampf(yaw, -4.0, 4.0) * dt)
 			# pernas esticando rapido com os pes no chao: decola
 			if push > 6.0 and (ext["L"] + ext["R"]) * 0.5 > 0.55 and _launch_cd <= 0.0 and _tongue_t < 0.0:
-				var v := leg * push * 0.32 * genome.get_gene("speed")
+				# ~2 m/s num pulo forte: 5-10 comprimentos do corpo, como uma ra de verdade
+				var v := leg * minf(push, 30.0) * 0.95 * genome.get_gene("speed") * vigor() * _hop_scale
+				if defects.has("perna_ausente"):
+					v *= 1.4          # compensa um pouco com a perna que sobrou (o empurrao e de uma so)
 				rotate_y(asym * 0.02)
 				var fwd := -global_basis.z
 				var pitch := deg_to_rad(38.0)
@@ -549,6 +721,7 @@ func _body_physics(dt: float) -> void:
 				var hit := _ground(np)
 				if hit and np.y <= (hit.position as Vector3).y:
 					global_position = hit.position
+					_landed(-velocity.y)
 					velocity = Vector3.ZERO
 					state = State.SIT
 					return
@@ -576,6 +749,25 @@ func _body_physics(dt: float) -> void:
 		behavior = _sit_label()
 
 
+## Pouso: pulos normais nao machucam; uma queda de muito alto (ou ser
+## largada pelo jogador la de cima) machuca ou mata.
+func _landed(vy: float) -> void:
+	_land_vy = vy
+	_hops += 1
+	if decision == "forragear" and _hops >= _hops_goal:
+		# busca aos saltos: uns pulos, depois para e olha em volta
+		_hops = 0
+		_hops_goal = _rng.randi_range(1, 3)
+		_pause_t = _rng.randf_range(2.5, 7.0)
+	var dmg := Mortality.impact_damage(Mortality.impact_speed(vy * vy / (2.0 * Mortality.G), 14000.0), 4000.0, 8500.0)
+	if dmg >= 1.0:
+		die("queda (ra)")
+	elif dmg > 0.0:
+		hurt(dmg * 2.5)
+		mind.add_danger(global_position, size() * 3.0, dmg, "caiu de alto")
+		last_lesson = "caiu de alto e se machucou"
+
+
 func _sit_label() -> String:
 	if _swallow_t > 0.0:
 		return "engolindo (olhos afundam)"
@@ -587,7 +779,8 @@ func _sit_label() -> String:
 		return "de olho numa presa (%s)" % retina.target_kind
 	return {"ir para a agua": "indo para a agua (pele secando)", "evitar": "saindo de um lugar perigoso",
 		"procurar parceiro": "seguindo o canto", "descansar": "descansando", "esperar presa": "esperando presa (parada)",
-		"cantar": "indo cantar na beira"}.get(decision, "explorando")
+		"cantar": "indo cantar na beira", "abrigar": "indo para a sombra (sol forte)",
+		"forragear": "parada, olhando em volta (procurando presa)" if _pause_t > 0.0 else "procurando comida (mudando de lugar)"}.get(decision, "explorando")
 
 
 # ---------------------------------------------------------------- lingua
@@ -673,6 +866,18 @@ func _swallowed() -> void:
 		_reward_t = 1.0
 		mind.learn_odor(key, 1.0, rate, _tongue_kind)
 		last_lesson = "comeu uma %s" % _tongue_kind
+		_no_prey_t = 0.0
+		_forage_goal = Vector3.INF
+		# lembra do lugar que deu comida
+		var merged := false
+		for fs: Array in _food_spots:
+			if (fs[0] as Vector3).distance_to(global_position) < size() * 4.0:
+				fs[1] = minf(3.0, float(fs[1]) + 1.0)
+				merged = true
+		if not merged:
+			_food_spots.append([global_position, 1.0])
+			if _food_spots.size() > 6:
+				_food_spots.pop_front()
 		prey.queue_free()
 	else:
 		_taste_bad = 1.0

@@ -382,11 +382,22 @@ func carry_to(t: Transform3D) -> void:
 
 func release(_vel: Vector3) -> void:
 	_carried = false
+	var h0 := global_position.y
 	_fall_to_ground()
+	# o pupario e duro: so uma queda bem alta racha a casca e mata a mosca dentro
+	var v := Mortality.impact_speed(h0 - global_position.y, 4200.0)
+	if Mortality.impact_damage(v, 3300.0, 4000.0) >= 1.0 and not dead:
+		dead = true
+		behavior = "morta (queda)"
+		_shell_mat.albedo_color = Color(0.3, 0.2, 0.1, 0.9)
+		if LifeManager.instance:
+			LifeManager.instance.report_death(self, "queda (pupa)", null)
+		get_tree().create_timer(LifeManager.DAY * 0.5, false).timeout.connect(queue_free)
 
 
 func _fall_to_ground() -> void:
-	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 2.0, global_position + Vector3.DOWN * 3000.0, WORLD_MASK)
+	var o := Vector3(0.0137, 0.0, 0.0071)    # evita a fresta do campo de alturas
+	var q := PhysicsRayQueryParameters3D.create(global_position + o + Vector3.UP * 2.0, global_position + o + Vector3.DOWN * 3000.0, WORLD_MASK)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit:
 		global_transform = Transform3D(Fly._basis_from(hit.normal, -global_basis.z), hit.position)

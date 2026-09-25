@@ -93,11 +93,11 @@ func _process(dt: float) -> void:
 			repro = "fecundada, %d ovos para botar (%d postos)" % [fly.eggs_to_lay, fly.eggs_laid] if fly.mated else ("madura" if fly.age > LifeManager.ADULT_MATURE else "imatura")
 		else:
 			repro = "maduro" if fly.age > LifeManager.ADULT_MATURE else "imaturo"
-		_life.text = "%s #%d  geracao %d  linhagem %d  idade %ds / %ds  %s\ndecisao: %s   (%s)\nmemoria: %s\n%s\nsinapses KC->MBON alteradas %.1f%%   valencia do cheiro atual %+.2f   conectoma unico #%08x\ngenes: %s" % [
+		_life.text = "%s #%d  geracao %d  linhagem %d  idade %ds / %ds  %s\ndecisao: %s   (%s)\nmemoria: %s\n%s\nsinapses KC->MBON alteradas %.1f%%   valencia do cheiro atual %+.2f   conectoma unico #%08x\ngenes: %s\ngenetica: %s" % [
 			"femea" if fly.sex == "F" else "macho", fly.uid, fly.generation, fly.lineage, int(fly.age), int(fly.genome.get_gene("lifespan")), repro,
 			fly.decision.to_upper(), _scores(fly.decision_scores), fly.mind.summary(),
 			("ultima licao: " + fly.last_lesson) if fly.last_lesson != "" else "",
-			fly.brain.memory_strength() * 100.0, fly.valence, int(fly.wiring[2]) & 0xFFFFFFFF, fly.genome.summary()]
+			fly.brain.memory_strength() * 100.0, fly.valence, int(fly.wiring[2]) & 0xFFFFFFFF, fly.genome.summary(), fly.genome.defects_text("mosca")]
 	elif followed:
 		_status.text = Spectator._label(followed)
 		if followed is Larva:
@@ -116,8 +116,8 @@ func _process(dt: float) -> void:
 				fb.name, fb.n, fr.sense["presa_L"], fr.sense["presa_R"], fr.sense["sombra_L"], fr.sense["sombra_R"],
 				fr.act["L"], fr.act["R"], fr.ext["L"], fr.ext["R"], fb.output("orient_L"), fb.output("orient_R"), fb.output("snap"),
 				fb.output("escape_L"), fb.output("escape_R"), fb.output("call"), fr.org.summary()]
-			_life.text = "ra #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [fr.uid, fr.decision.to_upper(), _scores(fr.decision_scores),
-				fr.mind.summary(), ("ultima licao: " + fr.last_lesson) if fr.last_lesson != "" else ""]
+			_life.text = "ra #%d  decisao: %s   (%s)\nmemoria: %s\n%s\ngenetica: %s   vigor %d%%" % [fr.uid, fr.decision.to_upper(), _scores(fr.decision_scores),
+				fr.mind.summary(), ("ultima licao: " + fr.last_lesson) if fr.last_lesson != "" else "", fr.genome.defects_text("ra"), int(fr.vigor() * 100)]
 		elif followed is Tadpole:
 			var tp := followed as Tadpole
 			var tb = tp.brain
@@ -125,12 +125,12 @@ func _process(dt: float) -> void:
 				int(tp.energy * 100), int(tp.growth * 100), int(tp.climax * 100), tp.age / LifeManager.DAY, tb.name, tb.n,
 				tp.sense["linha_lateral_L"], tp.sense["linha_lateral_R"], tp.sense["sombra"],
 				tb.output("swim_L"), tb.output("swim_R"), tb.output("escape_L"), tb.output("escape_R"), tb.output("feed"), tp.org.summary()]
-			_life.text = "girino #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [tp.uid, tp.decision.to_upper(), _scores(tp.decision_scores),
-				tp.mind.summary(), ("ultima licao: " + tp.last_lesson) if tp.last_lesson != "" else ""]
+			_life.text = "girino #%d  decisao: %s   (%s)\nmemoria: %s\n%s\ngenetica: %s" % [tp.uid, tp.decision.to_upper(), _scores(tp.decision_scores),
+				tp.mind.summary(), ("ultima licao: " + tp.last_lesson) if tp.last_lesson != "" else "", tp.genome.defects_text("ra")]
 		if followed is Larva:
 			var l := followed as Larva
-			_life.text = "larva #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [l.uid, l.decision.to_upper(), _scores(l.decision_scores),
-				l.mind.summary(), ("ultima licao: " + l.last_lesson) if l.last_lesson != "" else ""]
+			_life.text = "larva #%d  decisao: %s   (%s)\nmemoria: %s\n%s\ngenetica: %s" % [l.uid, l.decision.to_upper(), _scores(l.decision_scores),
+				l.mind.summary(), ("ultima licao: " + l.last_lesson) if l.last_lesson != "" else "", l.genome.defects_text("mosca")]
 	var lm := LifeManager.instance
 	if lm:
 		var d := ""
