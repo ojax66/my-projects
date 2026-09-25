@@ -37,7 +37,7 @@ dissecacoes de Rana/Lithobates):
   musculos: coxa (cruralis, gracilis, semimembranoso, sartorio), perna
   (gastrocnemio com tendao, tibial anterior), braco e antebraco.
 
-Saida: frog/frog_organs.bin (malhas) + frog/frog_organs.json (ovulos etc).
+Saida: frog/frog_organs.bin (malhas, formato ORG2) + frog/frog_organs.json (ovulos etc).
 """
 import json
 import struct
@@ -921,17 +921,19 @@ MUSCLES = {
 
 # ------------------------------------------------------------------ saida
 def write(eggs, name="frog_organs"):
+    """ORG2: posicoes em meia precisao (float16), normais em int8, cor em
+    uint8, indices uint32 (o arquivo fica ~3x menor)."""
     with open(OUT / (name + ".bin"), "wb") as f:
-        f.write(struct.pack("<4sI", b"ORG1", len(MESHES)))
+        f.write(struct.pack("<4sI", b"ORG2", len(MESHES)))
         for m in MESHES:
             for sname in (m["name"], m["bone"], m["mat"]):
                 b = sname.encode()
                 f.write(struct.pack("<H", len(b)) + b)
             f.write(struct.pack("<3f", *m["pivot"]))
             f.write(struct.pack("<II", len(m["V"]), m["F"].size))
-            f.write(m["V"].astype("<f4").tobytes())
-            f.write(m["N"].astype("<f4").tobytes())
-            f.write(np.asarray(m["C"]).astype("<f4").tobytes())
+            f.write(m["V"].astype("<f2").tobytes())
+            f.write(np.clip(np.round(m["N"] * 127), -127, 127).astype("i1").tobytes())
+            f.write(np.clip(np.round(np.asarray(m["C"]) * 255), 0, 255).astype("u1").tobytes())
             f.write(m["F"].astype("<u4").tobytes())
     (OUT / (name + ".json")).write_text(json.dumps({"ovulos": eggs, "malhas": [m["name"] for m in MESHES]}))
     tv = sum(len(m["V"]) for m in MESHES)

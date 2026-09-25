@@ -101,9 +101,10 @@ static func _load(path: String) -> void:
 		e["pivot"] = Vector3(f.get_float(), f.get_float(), f.get_float())
 		var nv := f.get_32()
 		var ni := f.get_32()
-		var pos := f.get_buffer(nv * 12).to_float32_array()
-		var nrm := f.get_buffer(nv * 12).to_float32_array()
-		var col := f.get_buffer(nv * 16).to_float32_array()
+		# ORG2: posicao float16, normal int8, cor uint8
+		var pos := f.get_buffer(nv * 6)
+		var nrm := f.get_buffer(nv * 3)
+		var col := f.get_buffer(nv * 4)
 		var idx := f.get_buffer(ni * 4).to_int32_array()
 		var pv := PackedVector3Array()
 		var nn := PackedVector3Array()
@@ -112,9 +113,9 @@ static func _load(path: String) -> void:
 		nn.resize(nv)
 		cc.resize(nv)
 		for k in nv:
-			pv[k] = Vector3(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2])
-			nn[k] = Vector3(nrm[k * 3], nrm[k * 3 + 1], nrm[k * 3 + 2])
-			cc[k] = Color(col[k * 4], col[k * 4 + 1], col[k * 4 + 2], col[k * 4 + 3])
+			pv[k] = Vector3(pos.decode_half(k * 6), pos.decode_half(k * 6 + 2), pos.decode_half(k * 6 + 4))
+			nn[k] = Vector3(nrm.decode_s8(k * 3), nrm.decode_s8(k * 3 + 1), nrm.decode_s8(k * 3 + 2)) / 127.0
+			cc[k] = Color8(col[k * 4], col[k * 4 + 1], col[k * 4 + 2], col[k * 4 + 3])
 		var arr := []
 		arr.resize(Mesh.ARRAY_MAX)
 		arr[Mesh.ARRAY_VERTEX] = pv
