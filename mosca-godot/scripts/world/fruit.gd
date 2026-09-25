@@ -98,6 +98,10 @@ func _ready() -> void:
 
 
 var _still_t := 0.0
+## Fruta caida apodrece: depois de ROT_START dias comeca a murchar e some em
+## mais ROT_LEN dias (as larvas e moscas continuam comendo enquanto isso).
+const ROT_START := 3.0
+const ROT_LEN := 2.0
 
 
 func _physics_process(dt: float) -> void:
@@ -125,6 +129,18 @@ func _physics_process(dt: float) -> void:
 		ground_time = maxf(0.0, ground_time - dt * 0.5)
 	if global_position.y < -2000.0:
 		queue_free()
+	if not hanging:
+		var day := GardenWorld.DAY_LENGTH
+		var over := ground_time - ROT_START * day
+		if over > 0.0:
+			if _mat:
+				_mat.set_shader_parameter("rot", clampf(maxf(1.0 - flesh, over / (ROT_LEN * day)), 0.0, 1.0))
+			consume(capacity * dt / (ROT_LEN * day))
+
+
+## Idade da fruta no chao em dias (para o painel).
+func rot_fraction() -> float:
+	return clampf((ground_time / GardenWorld.DAY_LENGTH - ROT_START) / ROT_LEN, 0.0, 1.0)
 
 
 func drop() -> void:
@@ -204,6 +220,8 @@ func describe() -> String:
 		s += " (no galho)"
 	if flesh < 0.97:
 		s += " — %d%% comida" % int((1.0 - flesh) * 100)
+	elif rot_fraction() > 0.0:
+		s += " (apodrecendo %d%%)" % int(rot_fraction() * 100)
 	elif ground_time > 30.0:
 		s += " (fermentando)"
 	return s

@@ -121,6 +121,43 @@ func _process(dt: float) -> void:
 	if _sky_t > 0.2:
 		_sky_t = 0.0
 		_apply_daylight()
+	_prune_t += dt
+	if _prune_t > 10.0:
+		_prune_t = 0.0
+		prune_fallen_fruits()
+
+
+## Limite de frutas no chao (cada uma custa fisica, cheiro e desenho): se
+## passar, somem as mais velhas (mais podres) que nao tem ninguem em cima
+## ou dentro (ovo, larva, pupa, mosca pousada, fruta segurada).
+const MAX_FALLEN := 70
+var _prune_t := 0.0
+
+
+func prune_fallen_fruits() -> int:
+	var fallen: Array = []
+	for n in get_tree().get_nodes_in_group("grabbable"):
+		if n is Fruit and not (n as Fruit).hanging and not n.is_queued_for_deletion():
+			fallen.append(n)
+	if fallen.size() <= MAX_FALLEN:
+		return 0
+	var used := {}
+	for grp in ["eggs", "larvae", "pupae", "flies"]:
+		for c in get_tree().get_nodes_in_group(grp):
+			for key in ["surface", "surface_body"]:
+				var sfc = c.get(key)
+				if sfc is Fruit:
+					used[sfc] = true
+	fallen.sort_custom(func(a: Fruit, b: Fruit): return a.ground_time > b.ground_time)
+	var removed := 0
+	for f: Fruit in fallen:
+		if fallen.size() - removed <= MAX_FALLEN:
+			break
+		if used.has(f) or f.has_meta("held"):
+			continue
+		f.queue_free()
+		removed += 1
+	return removed
 
 
 ## 1 = sol alto, 0 = noite escura.
