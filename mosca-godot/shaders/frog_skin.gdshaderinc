@@ -10,6 +10,8 @@ uniform float albino = 0.0;
 uniform float wet = 0.7;
 uniform float xray_alpha = 0.28;
 uniform float fat = 0.5;       // reserva de gordura (energia): o corpo engorda/emagrece
+uniform float dark = 0.0;      // melanoforos (hormonio MSH): pele escurece
+uniform float inflate = 0.0;   // defesa: enche os pulmoes e incha o corpo
 
 varying vec3 rest;
 varying vec4 msk;
@@ -54,7 +56,7 @@ void vertex() {
 	rest = vec3(UV.x, UV.y, UV2.x);
 	region = floor(UV2.y + 0.01);
 	float fat_w = (UV2.y - region) / 0.49;
-	VERTEX += NORMAL * fat_w * (fat - 0.5) * 0.045;
+	VERTEX += NORMAL * fat_w * ((fat - 0.5) * 0.045 + inflate * 0.05);
 	msk = COLOR;
 }
 
@@ -98,6 +100,7 @@ vec3 skin_color(out float height) {
 	vec3 alb = mix(vec3(0.95, 0.8, 0.72), vec3(1.0, 0.93, 0.78), smoothstep(0.3, 0.7, dorsal)) * (0.9 + 0.1 * m);
 	alb = mix(alb, vec3(1.0, 0.75, 0.5), wart * 0.3);
 	col = mix(col, alb, albino);
+	col *= 1.0 - 0.45 * dark * (0.4 + 0.6 * smoothstep(0.2, 0.7, dorsal));
 	// variacao individual (gene da cor)
 	col *= vec3(1.0 + hue * 0.8, 1.0 + hue * 0.2, 1.0 - hue * 0.6);
 	height = wart * 0.9 * (0.3 + dorsal) + fbm(p * 90.0) * 0.25;

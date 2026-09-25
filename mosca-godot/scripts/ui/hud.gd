@@ -111,11 +111,14 @@ func _process(dt: float) -> void:
 		if followed is Frog:
 			var fr := followed as Frog
 			var fb = fr.brain
-			_status.text += "\nenergia %d%%  pele (hidratacao) %d%%  saude %d%%  idade %.1f dias  %s\ncerebro: %s (%d neuronios)   presa E/D %.0f/%.0f  ameaca E/D %.0f/%.0f\nmusculos extensores E/D %.2f/%.2f  pernas E/D %.2f/%.2f  orientar E/D %.2f/%.2f  LINGUA %.2f  fuga %.2f/%.2f  canto %.2f\norgaos: %s" % [
+			_status.text += "\nenergia %d%%  pele (hidratacao) %d%%  saude %d%%  idade %.1f dias  %s\ncerebro: %s (%d neuronios)   presa E/D %.0f/%.0f  ameaca E/D %.0f/%.0f\nmusculos extensores E/D %.2f/%.2f  pernas E/D %.2f/%.2f  orientar E/D %.2f/%.2f  LINGUA %.2f  fuga %.2f/%.2f  canto %.2f\nreflexos: boca %.2f  engolir %.2f  limpar %.2f/%.2f  abraco %.2f  grito %.2f  inflar %.2f  andar %.2f\nhormonios: corticosterona %.2f  vasotocina %.2f  GnRH %.2f  melatonina %.2f  MSH %.2f  sede %.2f\norgaos: %s" % [
 				int(fr.energy * 100), int(fr.hydration * 100), int(fr.health * 100), fr.age / LifeManager.DAY, "jovem" if fr.growth < 0.95 else "adulta",
 				fb.name, fb.n, fr.sense["presa_L"], fr.sense["presa_R"], fr.sense["sombra_L"], fr.sense["sombra_R"],
 				fr.act["L"], fr.act["R"], fr.ext["L"], fr.ext["R"], fb.output("orient_L"), fb.output("orient_R"), fb.output("snap"),
-				fb.output("escape_L"), fb.output("escape_R"), fb.output("call"), fr.org.summary()]
+				fb.output("escape_L"), fb.output("escape_R"), fb.output("call"),
+				fb.output("boca_abrir"), fb.output("engolir"), fb.output("limpar_L"), fb.output("limpar_R"), fb.output("abraco_L"), fb.output("grito"),
+				fb.output("inflar"), (fb.output("andar_L") + fb.output("andar_R")) * 0.5,
+				fb.output("cort"), fb.output("avt"), fb.output("gnrh"), fb.output("melatonina"), fb.output("escurecer"), fb.output("sede"), fr.org.summary()]
 			_life.text = "ra #%d  decisao: %s   (%s)\nmemoria: %s\n%s\ngenetica: %s   vigor %d%%" % [fr.uid, fr.decision.to_upper(), _scores(fr.decision_scores),
 				fr.mind.summary(), ("ultima licao: " + fr.last_lesson) if fr.last_lesson != "" else "", fr.genome.defects_text("ra"), int(fr.vigor() * 100)]
 		elif followed is Tadpole:

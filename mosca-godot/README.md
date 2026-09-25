@@ -138,20 +138,60 @@ de hormônios e a população.
 
 - **Dois lagos** com água, algas no fundo (crescem com a luz do dia) e
   frutas que caem e boiam. Moscas e larvas não entram na água.
-- **Conectomas sintéticos** (`tools/build_amphibian_brain.py`): não existe
-  conectoma medido de rã/girino, então eles são construídos por regras da
-  anatomia publicada, no mesmo formato e motor (GPU, LIF, plasticidade com
-  dopamina) dos de inseto:
-  - **girino** (7.078 neurônios): medula de Roberts et al. (Rohon-Beard, dlc,
-    dla, dIN, cIN, aIN, motoneurônios), célula de Mauthner (fuga em C),
-    linha lateral, pineal (sombra faz nadar), MHR (parar), teto óptico, pálio
-    e estriado com dopamina, CPG da boca;
-  - **rã** (25.570 neurônios): retina R2 → teto T5.2 (presa) → orientação,
-    aproximação e hipoglosso (língua); R3/R4 → pré-teto (ameaça), que suprime
-    a caça e aciona a fuga (Ewert); membros posteriores (pulo), gerador vocal,
-    hipotálamo (fome), pálio → estriado com dopamina de recompensa/punição.
-  - `python3 tools/build_amphibian_brain.py --test` mostra as respostas (presa
-    à esquerda → orientar à esquerda + língua; ameaça → fuga e pulo...).
+- **Conectomas sintéticos v2** (`tools/build_amphibian_brain.py`): não
+  existe conectoma medido de rã/girino, então eles são construídos por regras
+  da anatomia e fisiologia publicadas, no mesmo formato e motor (GPU, LIF,
+  plasticidade com dopamina) dos de inseto. As ligações são dadas pelo número
+  de entradas por neurônio, com mapas topográficos: a posição da presa no
+  campo visual vira posição no teto óptico, que vira o ângulo do giro.
+  - **rã: 221.550 neurônios, 13,9 milhões de sinapses**, 131 grupos. Tem:
+    - retina de 8 setores (R2 inseto, R3/R4 ameaça, R1, binocular,
+      optocinético);
+    - teto T5.1/5.2/5.3/T6/T1-4, pré-teto TH3, lentiforme, isthmi e tálamo;
+    - pálio medial (hipocampo), pálio dorsal e lateral, estriado, accumbens,
+      septo, amígdalas e área pré-óptica;
+    - bulbo olfativo e vomeronasal; audição (papilas → bulbo → oliva →
+      toro → tálamo); vestibular e sáculo (vibração do chão);
+    - cerebelo com 25 mil grânulos;
+    - hipotálamo: fome/saciedade, relógio, corticosterona, vasotocina,
+      GnRH, TRH, MSH, sede e temperatura; dopamina, noradrenalina,
+      serotonina e melatonina;
+    - reticular com mapa de orientação, aproximação e fuga;
+    - língua (protrator e retrator), boca, retrator do bulbo, membrana
+      nictitante;
+    - gerador vocal (canto de anúncio, de soltura e grito de socorro),
+      geradores respiratórios bucal e pulmonar, coração;
+    - medula dos braços (limpar o rosto, abraço do amplexo) e das pernas
+      (CPG, comissurais, Ia, Renshaw, extensores, flexores, passo);
+    - glândulas da pele e defesa inflando o corpo.
+  - **girino: 38.766 neurônios, 2,5 milhões de sinapses**. Tem:
+    - medula de Roberts et al.: Rohon-Beard, dlc/dla, dIN, cIN, aIN,
+      motoneurônios e o circuito de se debater quando é segurado;
+    - Mauthner e células de fuga, MHR e glândula de cimento (parar),
+      reticuloespinhais;
+    - linha lateral, pineal, retina de 8 setores → teto retinotópico;
+    - olfato, paladar, pálio/estriado com dopamina, cerebelo;
+    - boca (raspar algas), bomba bucal, coração;
+    - hipotálamo com o eixo TRH → tireoide, que dá o ritmo da metamorfose.
+  - No jogo, a rã recebe dos sentidos:
+    - os 8 setores dos olhos e o fluxo óptico do próprio giro;
+    - vibração (fruta caindo, o jogador andando perto), a pele secando, o
+      estômago cheio e a pressão;
+    - a propriocepção das pernas, o polegar no amplexo, a irritação depois
+      de um gosto ruim;
+    - a luz na pineal e os hormônios da época de reprodução.
+  - E faz o que o cérebro manda:
+    - gira, pula, anda, usa a língua e abre a boca;
+    - afunda os olhos para engolir e pisca;
+    - limpa a boca com as mãos e abraça no amplexo;
+    - grita quando é segurada (o macho dá o canto de soltura);
+    - infla o corpo, solta muco e escurece a pele (MSH);
+    - canta só quando o gerador vocal liga;
+    - fica sem fome sob estresse e procura água com sede.
+  - O girino se debate quando é segurado, e a metamorfose segue o próprio
+    hormônio tireoidiano.
+  - `python3 tools/build_amphibian_brain.py --test` mostra as respostas de
+    cada caso (presa, ameaça, canto, sede, amplexo, noite...).
 - **Modelo da rã (feito do zero)**: `tools/build_frog_body.py` esculpe o
   corpo com as proporções e a aparência de um sapo-banjo sentado:
   - tronco cheio com gordura e barriga apoiada, coxas grossas e musculosas,

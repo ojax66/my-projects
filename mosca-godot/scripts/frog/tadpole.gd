@@ -131,6 +131,17 @@ func _physics_process(dt: float) -> void:
 	if _carried:
 		global_transform = global_transform.interpolate_with(_carry_t, 1.0 - exp(-dt * 20.0))
 		pain = maxf(pain, 0.2)
+		# segurado: Rohon-Beard + dor -> circuito de se debater (ritmo lento e forte)
+		brain.set_input("tato_L", 150.0)
+		brain.set_input("tato_R", 150.0)
+		brain.set_input("dor", 200.0 * clampf(pain, 0.0, 1.0))
+		brain.advance(dt)
+		var st := clampf((brain.output("debater_L") + brain.output("debater_R")) * 0.8, 0.0, 1.5)
+		_cpg += dt * TAU * 4.0
+		for i in _angles.size():
+			_angles[i] = sin(_cpg - i * 0.5) * 0.35 * st * (0.4 + 0.6 * float(i) / _angles.size())
+		model.set_tail(_angles, _act_l, _act_r, climax)
+		behavior = "se debatendo (segurado)" if st > 0.2 else "sendo carregado!"
 		return
 	var cam := get_viewport().get_camera_3d() as Spectator
 	var followed := cam != null and cam.follow == self
@@ -178,7 +189,9 @@ func _physiology(dt: float) -> void:
 	health = minf(1.0, health + dt / 600.0)
 	if growth >= 1.0 and climax < 1.0:
 		# metamorfose: a cauda e reabsorvida (energia vem dela), nao come
-		climax = minf(1.0, climax + dt / (CLIMAX_DAYS * DAY))
+		# o ritmo da metamorfose vem do eixo TRH -> tireoide do proprio cerebro
+		var th := clampf(0.6 + brain.output("tsh") * 3.0, 0.6, 1.8) if brain is GpuBrain else 1.0
+		climax = minf(1.0, climax + dt / (CLIMAX_DAYS * DAY) * th)
 		energy = maxf(energy, 0.3)
 		if climax >= 1.0:
 			_become_frog()
@@ -254,8 +267,8 @@ func _sense(dt: float) -> void:
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
 	brain.set_input("linha_lateral_L", ll_l)
 	brain.set_input("linha_lateral_R", ll_r)
-	brain.set_input("sombra_L", shadow)
-	brain.set_input("sombra_R", shadow)
+	for k in 8:
+		brain.set_input("sombra_s%d" % k, shadow * 0.6)   # sombra por cima: todos os setores
 	brain.set_input("escuro_pineal", shadow * 0.8)
 	brain.set_input("luz_L", 20.0 + 80.0 * dl)
 	brain.set_input("luz_R", 20.0 + 80.0 * dl)

@@ -108,6 +108,12 @@ var _hop_burst := 0.0
 var _hop_amp := 1.0
 var _hop_scale := 1.0        # pulo longo (viagem/fuga) ou curto (aproximar da presa)
 var defects := {}                        # defeitos visiveis/funcionais (genetica)
+var _last_yaw := 0.0
+var _last_cam := Vector3.ZERO
+var _irritate_t := 0.0                   # algo ruim na boca/pele: reflexo de limpar
+var _wipe := {"L": 0.0, "R": 0.0}
+var _dark := 0.0
+var _walking := 0.0
 
 
 func _ready() -> void:
@@ -244,7 +250,14 @@ func _physics_process(dt: float) -> void:
 		return
 	if state == State.CARRIED:
 		global_transform = global_transform.interpolate_with(_carry_t, 1.0 - exp(-dt * 20.0))
-		pain = maxf(pain, 0.3)
+		pain = maxf(pain, 0.6)
+		# segurada: grito de socorro; macho da o canto de soltura; pele solta muco
+		if _out("grito") > 0.4:
+			behavior = "gritando por socorro (segurada)"
+		elif sex == "M" and _out("canto_soltura") > 0.3:
+			behavior = "canto de soltura (me larga!)"
+		else:
+			behavior = "sendo carregada! (se debatendo)"
 	else:
 		_check_crush()
 		if dead:
@@ -397,12 +410,62 @@ func _sense(dt: float) -> void:
 	brain.set_input("temperatura", 40.0 + 60.0 * (GardenWorld.instance.daylight() if GardenWorld.instance else 1.0))
 	brain.set_input("oxigenio_baixo", inp["oxigenio_baixo"])
 	brain.set_input("pulmao_cheio", inp["pulmao_cheio"])
+	# retina em 8 setores (mapa retinotopico no teto); sem um olho, metade apaga
+	var no_eye: String = defects.get("anoftalmia", "")
+	for k in 8:
+		var blind := (no_eye == "L" and k < 4) or (no_eye == "R" and k >= 4)
+		brain.set_input("presa_s%d" % k, 0.0 if blind else retina.prey_sector[k])
+		brain.set_input("sombra_s%d" % k, 0.0 if blind else retina.threat_sector[k])
+	var dl := GardenWorld.instance.daylight() if GardenWorld.instance else 1.0
+	# fluxo optico do proprio giro (optocinetico)
+	var yaw_now := global_rotation.y
+	var yaw_rate := wrapf(yaw_now - _last_yaw, -PI, PI) / maxf(dt, 1e-3)
+	_last_yaw = yaw_now
+	brain.set_input("fluxo_L", clampf(yaw_rate * 60.0, 0.0, 150.0))
+	brain.set_input("fluxo_R", clampf(-yaw_rate * 60.0, 0.0, 150.0))
+	brain.set_input("luz_pineal", 100.0 * dl)
+	brain.set_input("escuro_pineal", 100.0 * (1.0 - dl))
+	brain.set_input("pele_seca", 150.0 * clampf(1.0 - hydration, 0.0, 1.0))
+	brain.set_input("estomago_cheio", 300.0 * clampf(org.stomach, 0.0, 0.5))
+	brain.set_input("pressao", 20.0 + org.heart_rate * 0.8)
+	brain.set_input("vibracao", _vibration())
+	brain.set_input("tato_cabeca", 150.0 if _irritate_t > 0.0 else 0.0)
+	brain.set_input("irritante_L", 150.0 if _irritate_t > 0.0 else 0.0)
+	brain.set_input("irritante_R", 150.0 if _irritate_t > 0.0 else 0.0)
+	brain.set_input("polegar", 150.0 if _amplexus and sex == "M" else 0.0)
+	for sd in ["L", "R"]:
+		brain.set_input("proprio_" + sd, clampf(absf(ext_v[sd]) * 8.0, 0.0, 150.0))
+	# epoca de reproducao: hormonios sexuais dos adultos maduros, mais a noite
+	var mature := age > LifeManager.DAY * 3.0 and growth >= 0.95
+	var repro := 0.0
+	if mature and (sex == "M" or eggs_cooldown <= 0.0):
+		repro = 120.0 * (0.35 + 0.65 * (1.0 - dl)) * clampf(energy * 1.6, 0.0, 1.0)
+	brain.set_input("reproducao", repro)
+	_irritate_t = maxf(0.0, _irritate_t - dt)
 	# vontade vinda da decisao -> reticular (lado para onde quer ir)
 	var base := 10.0 + 90.0 * _drive
 	brain.set_input("explore_L", base * (1.0 + clampf(-_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
 	brain.set_input("explore_R", base * (1.0 + clampf(_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(-_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
 	_taste_good = maxf(0.0, _taste_good - dt * 0.8)
 	_taste_bad = maxf(0.0, _taste_bad - dt * 0.8)
+
+
+## Saculo: vibracao do chao (fruta ou pedra caindo por perto, o jogador
+## andando perto).
+func _vibration() -> float:
+	var v := 0.0
+	for item: Array in Hazards.falling:
+		if is_instance_valid(item[0]):
+			var d := (item[1] as Vector3).distance_to(global_position)
+			v = maxf(v, 160.0 * clampf(1.0 - d / 1500.0, 0.0, 1.0))
+	var cam := get_viewport().get_camera_3d()
+	if cam:
+		var d := cam.global_position.distance_to(global_position)
+		var sp := cam.global_position.distance_to(_last_cam) / maxf(get_physics_process_delta_time(), 1e-3)
+		_last_cam = cam.global_position
+		if d < 400.0 and sp > 150.0 and cam.global_position.y - global_position.y < 150.0:
+			v = maxf(v, 90.0 * clampf(1.0 - d / 400.0, 0.0, 1.0))
+	return v
 
 
 ## Ouvido (timpano de cada lado): canto das outras ras.
@@ -474,10 +537,15 @@ func _choose() -> void:
 	var give_up := lerpf(45.0, 12.0, hunger)
 	var stay := exp(-_no_prey_t / give_up)
 	var sees: bool = maxf(sense["presa_L"], sense["presa_R"]) > 15.0 or float(sense["presa_perto"]) > 10.0
-	var night := 1.0 - dl
+	# relogio: a melatonina da pineal marca a noite (ras caçam mais a noite);
+	# a corticosterona do estresse tira a fome; a vasotocina e o GnRH dao
+	# vontade de cantar; a sede (pele seca) manda para a agua
+	var night := maxf(1.0 - dl, clampf(_out("melatonina"), 0.0, 1.0))
+	var stress := clampf(_out("cort") * 1.5, 0.0, 1.0)
 	var sc := {"explorar": 0.12, "esperar presa": (0.25 + 0.55 * hunger) * stay + (0.9 if sees else 0.0)}
-	sc["forragear"] = (0.15 + hunger) * (0.35 + 0.9 * (1.0 - stay)) * (0.6 + 0.6 * night) if not sees else 0.0
-	sc["ir para a agua"] = (1.0 - hydration) * 1.6 + 0.3 * mind.danger_at(global_position)
+	sc["forragear"] = (0.15 + hunger) * (0.35 + 0.9 * (1.0 - stay)) * (0.6 + 0.6 * night) * (1.0 - 0.5 * stress) if not sees else 0.0
+	sc["esperar presa"] = float(sc["esperar presa"]) * (1.0 - 0.4 * stress)
+	sc["ir para a agua"] = (1.0 - hydration) * 1.6 + 0.3 * mind.danger_at(global_position) + 1.2 * _out("sede")
 	sc["respirar"] = (0.6 - org.o2) * 3.0 if state == State.SWIM else 0.0
 	sc["evitar"] = mind.danger_at(global_position) * 1.1
 	sc["descansar"] = (0.15 + 0.3 * dl) * (1.0 - hunger) * (1.0 - hunger)
@@ -487,7 +555,7 @@ func _choose() -> void:
 	var pd := Pond.nearest(global_position)
 	var near_water := pd != null and pd.dist_to_water(global_position) < 120.0
 	if mature and sex == "M" and dl < 0.35 and hunger < 0.6:
-		sc["cantar"] = 0.8 * (1.0 - dl) + (0.3 if near_water else -0.2) + 0.3 * _out("call")
+		sc["cantar"] = 0.8 * (1.0 - dl) + (0.3 if near_water else -0.2) + 0.3 * _out("call") + 0.6 * _out("avt") + 0.4 * _out("gnrh")
 	if mature and sex == "F" and eggs_cooldown <= 0.0 and dl < 0.4 and hunger < 0.6 and _nearest_caller():
 		sc["procurar parceiro"] = 0.9 + (sense["som_L"] + sense["som_R"]) / 400.0
 	var pick := decision if sc.has(decision) else "explorar"
@@ -516,8 +584,10 @@ func _choose() -> void:
 			if pd and pd.dist_to_water(global_position) > 60.0 and state != State.SWIM:
 				_goal = pd.shore_point(global_position)
 				_drive = 0.7
+			elif _out("call") > 0.12:
+				add_to_group("calling_frogs")      # o gerador vocal (DTAM) esta ligado: canta
 			else:
-				add_to_group("calling_frogs")
+				remove_from_group("calling_frogs")
 		"procurar parceiro":
 			var m := _nearest_caller()
 			if m:
@@ -704,6 +774,17 @@ func _body_physics(dt: float) -> void:
 				_launch_cd = 0.25
 				org.work = 1.2
 				remove_from_group("calling_frogs")
+			# andar: o sapo-banjo tambem anda devagar (passos alternados da medula)
+			var walk := clampf((_out("andar_L") + _out("andar_R")) * 0.5 - 0.25, 0.0, 1.0)
+			if walk > 0.0 and _drive > 0.2 and absf(_steer) < 0.6 and _tongue_t < 0.0 and state == State.SIT:
+				var step := -global_basis.z * size() * 0.9 * walk * vigor() * dt
+				var np := global_position + step
+				var hit := _ground(np)
+				if hit:
+					global_position = hit.position
+				_walking = walk
+			else:
+				_walking = 0.0
 			var pd := Pond.at(global_position)
 			if pd and pd.depth_at(global_position) > size() * 0.35:
 				state = State.SWIM
@@ -771,6 +852,12 @@ func _landed(vy: float) -> void:
 func _sit_label() -> String:
 	if _swallow_t > 0.0:
 		return "engolindo (olhos afundam)"
+	if maxf(_wipe["L"], _wipe["R"]) > 0.3:
+		return "limpando a boca com as maos"
+	if _out("inflar") > 0.4:
+		return "inflada (defesa)"
+	if _walking > 0.0:
+		return "andando"
 	if is_in_group("calling_frogs"):
 		return "cantando (saco vocal)"
 	if sense["presa_perto"] > 20.0:
@@ -882,6 +969,7 @@ func _swallowed() -> void:
 	else:
 		_taste_bad = 1.0
 		_punish_t = 1.0
+		_irritate_t = 2.0          # limpa a boca com as maos
 		mind.learn_odor(key, -1.0, rate, _tongue_kind)
 		last_lesson = "pegou uma %s e cuspiu: nao e comida" % _tongue_kind
 		if prey is RigidBody3D:
@@ -929,7 +1017,10 @@ func _end_amplexus() -> void:
 func _draw_state(dt: float) -> void:
 	for s in ["L", "R"]:
 		model.set_leg(s, ext[s], act[s])
-		model.set_arm(s, 1.0 if state == State.AIR else 0.0)
+		# bracos: esticados no salto; limpar o rosto e o abraco sao reflexos da medula
+		_wipe[s] = lerpf(_wipe[s], clampf(_out("limpar_" + s) * 1.6, 0.0, 1.0) * (0.6 + 0.4 * sin(age * 14.0)), 1.0 - exp(-dt * 12.0))
+		var clasp := clampf(_out("abraco_" + s) * 1.3, 0.0, 1.0) if _amplexus else 0.0
+		model.set_arm(s, 1.0 if state == State.AIR else 0.0, _wipe[s], clasp)
 	if is_in_group("calling_frogs"):
 		_call_t += dt
 		_call = maxf(0.0, sin(_call_t * 9.0)) * clampf(0.6 + _out("call") * 3.0, 0.0, 1.0)
@@ -938,9 +1029,13 @@ func _draw_state(dt: float) -> void:
 	_blink = maxf(0.0, _blink - dt * 6.0)
 	if _rng.randf() < dt * 0.3:
 		_blink = 1.0
-	_jaw = move_toward(_jaw, 0.0, dt * 8.0)
-	var sw := 1.0 if _swallow_t > 0.0 else 0.0
+	_jaw = maxf(move_toward(_jaw, 0.0, dt * 8.0), _out("boca_abrir"))
+	# olhos afundam para empurrar a presa (retrator do bulbo) e a membrana pisca
+	var sw := maxf(1.0 if _swallow_t > 0.0 else 0.0, clampf(_out("engolir") * 1.5, 0.0, 1.0))
+	_blink = maxf(_blink, clampf(_out("piscar") * 1.5, 0.0, 1.0))
 	model.set_state(org, _call, sw, maxf(_blink, sw), _jaw, energy)
+	model.set_skin(_out("secrecao") * 1.5, _dark, _out("inflar") * 1.4)
+	_dark = lerpf(_dark, clampf(_out("escurecer") * 1.5, 0.0, 1.0), 1.0 - exp(-dt / 20.0))   # cor muda devagar
 	# postura sentada: cabeca levantada; no ar: corpo esticado
 	var pitch_goal := -0.25 if state == State.SIT else (0.1 if state == State.AIR else 0.05)
 	model.rotation.x = lerpf(model.rotation.x, pitch_goal, 1.0 - exp(-dt * 10.0))

@@ -372,15 +372,31 @@ func set_leg(s: String, ext: float, act: float) -> void:
 			m.set_instance_shader_parameter("activation", k)
 
 
-func set_arm(s: String, lift: float) -> void:
+## Braco: lift = esticado para a frente (salto); wipe = mao passando no
+## rosto (reflexo de limpar); clasp = abraco do amplexo (bracos por baixo da
+## femea, maos para dentro).
+func set_arm(s: String, lift: float, wipe := 0.0, clasp := 0.0) -> void:
 	var sx := 1.0 if s == "R" else -1.0
 	var names := ["umero_" + s, "antebraco_" + s, "mao_" + s]
 	var lift_dirs := [Vector3(0.4 * sx, -0.3, -0.8), Vector3(0.1 * sx, -0.4, -0.9), Vector3(0.0, -0.3, -1.0)]
+	var wipe_dirs := [Vector3(0.35 * sx, 0.55, -0.75), Vector3(-0.45 * sx, 0.5, 0.25), Vector3(-0.5 * sx, 0.2, 0.4)]
+	var clasp_dirs := [Vector3(0.55 * sx, -0.25, -0.8), Vector3(-0.85 * sx, -0.35, -0.2), Vector3(-0.9 * sx, -0.3, 0.2)]
 	var dirs := []
 	for i in names.size():
 		var rd: Vector3 = ((_rest[names[i]][1] as Vector3) - (_rest[names[i]][0] as Vector3)).normalized()
-		dirs.append(rd.slerp((lift_dirs[i] as Vector3).normalized(), clampf(lift, 0.0, 1.0)))
+		var d := rd.slerp((lift_dirs[i] as Vector3).normalized(), clampf(lift, 0.0, 1.0))
+		d = d.slerp((clasp_dirs[i] as Vector3).normalized(), clampf(clasp, 0.0, 1.0))
+		d = d.slerp((wipe_dirs[i] as Vector3).normalized(), clampf(wipe, 0.0, 1.0))
+		dirs.append(d)
 	_chain(names, dirs)
+
+
+## Pele: secrecao (brilho do muco), escurecer (MSH, melanoforos), inflar.
+func set_skin(secretion: float, dark: float, inflate: float) -> void:
+	for m in [skin_mat, skin_xray]:
+		m.set_shader_parameter("wet", clampf(0.7 + 0.3 * secretion, 0.0, 1.0))
+		m.set_shader_parameter("dark", clampf(dark, 0.0, 1.0))
+		m.set_shader_parameter("inflate", clampf(inflate, 0.0, 1.0))
 
 
 func set_state(org: AmphibianOrgans, call: float, swallow: float, blink: float, _jaw: float, energy: float) -> void:

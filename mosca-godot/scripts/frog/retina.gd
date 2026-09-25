@@ -25,8 +25,8 @@ var fov_h := deg_to_rad(165.0)   # por olho
 var fov_v := deg_to_rad(95.0)
 var view_range := 1500.0
 var small_max_rad := 0.3         # objeto maior que isso (raio angular) nao e presa
-var binocular := deg_to_rad(28.0)
-var near_range := 60.0
+var binocular := deg_to_rad(32.0)
+var near_range := 78.0            # ~alcance da lingua (1,6 corpo)
 
 var _prev_depth := {}            # [olho, i] -> distancia
 var _prev_lum := {}
@@ -44,6 +44,11 @@ var target: Node3D = null         # o pontinho mais saliente
 var target_kind := ""
 var target_speed := 0.0
 var threat_dir := Vector3.ZERO
+## 8 setores do campo visual (s0 atras-esquerda .. s3 frente-esquerda,
+## s4 frente-direita .. s7 atras-direita): mapa retinotopico para o teto
+var prey_sector := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
+var threat_sector := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
+var _basis_inv := Basis()
 var pixels := PackedFloat32Array()   # luminancia dos dois olhos (painel)
 
 
@@ -62,6 +67,11 @@ func look(owner: Node3D, eyes: Array, dt: float, candidates: Array) -> void:
 	_last_xf = xf
 	_has_xf = true
 	var prev_threat := threat.duplicate()
+	var prev_ts := threat_sector.duplicate()
+	_basis_inv = owner.global_basis.orthonormalized().inverse()
+	var s_exp := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
+	var s_dim := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
+	var s_n := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
 	threat = {"L": 0.0, "R": 0.0}
 	light = {"L": 0.0, "R": 0.0}
 	threat_dir = Vector3.ZERO
@@ -95,6 +105,8 @@ func look(owner: Node3D, eyes: Array, dt: float, candidates: Array) -> void:
 					elif col is Prop:
 						albedo = 0.45
 					lum = sky * albedo * (0.4 + 0.6 * maxf(n.dot(Vector3.UP), 0.0))
+				var sk := sector(dir)
+				s_n[sk] += 1.0
 				var key := ei * 1000 + r * cols + c
 				var pd: float = _prev_depth.get(key, depth)
 				var pl: float = _prev_lum.get(key, lum)
@@ -102,7 +114,9 @@ func look(owner: Node3D, eyes: Array, dt: float, candidates: Array) -> void:
 				if depth < pd * 0.75 and depth < 800.0:
 					expand += 1
 					threat_dir += -dir
+					s_exp[sk] += 1.0
 				dim += maxf(0.0, pl - lum)
+				s_dim[sk] += maxf(0.0, pl - lum)
 				_prev_depth[key] = depth
 				_prev_lum[key] = lum
 				lum_sum += lum
@@ -115,12 +129,20 @@ func look(owner: Node3D, eyes: Array, dt: float, candidates: Array) -> void:
 			threat[side] = clampf(expand / n_px * 900.0 + dim / n_px * 600.0, 0.0, 220.0)
 		light[side] = 20.0 + 100.0 * lum_sum / n_px
 		ei += 1
+	for k in 8:
+		if self_moving:
+			threat_sector[k] = prev_ts[k] * 0.5
+		elif s_n[k] > 0.0:
+			threat_sector[k] = clampf(s_exp[k] / s_n[k] * 900.0 + s_dim[k] / s_n[k] * 600.0, 0.0, 220.0)
+		else:
+			threat_sector[k] = 0.0
 	_scan_small(owner, eyes, dt, candidates, space)
 
 
 ## R2: pontinhos em movimento. candidates: [[no, tipo, raio], ...]
 func _scan_small(owner: Node3D, eyes: Array, dt: float, candidates: Array, space: PhysicsDirectSpaceState3D) -> void:
 	prey = {"L": 0.0, "R": 0.0}
+	prey_sector.fill(0.0)
 	prey_near = 0.0
 	target = null
 	target_kind = ""
@@ -160,6 +182,8 @@ func _scan_small(owner: Node3D, eyes: Array, dt: float, candidates: Array, space
 				continue   # a retina da ra quase nao ve o que esta parado
 			var rate := 170.0 * clampf(speed / 30.0, 0.25, 1.0) * clampf(ang * 30.0, 0.2, 1.0) * clampf(1.0 - d / (view_range * 0.35), 0.0, 1.0)
 			prey[side] = maxf(prey[side], rate)
+			var sk := sector(to)
+			prey_sector[sk] = maxf(prey_sector[sk], rate)
 			var front := to.normalized().dot(head_fwd)
 			if front > cos(binocular) and d < near_range:
 				prey_near = maxf(prey_near, 160.0 * clampf(1.0 - d / near_range, 0.3, 1.0))
@@ -169,3 +193,11 @@ func _scan_small(owner: Node3D, eyes: Array, dt: float, candidates: Array, space
 				target_kind = kind
 				target_speed = speed
 	_prev_pos = seen
+
+
+## Setor (0..7) de uma direcao no mundo, pelo angulo com a frente da cabeca.
+func sector(dir: Vector3) -> int:
+	var l := _basis_inv * dir
+	var th := atan2(-l.x, -l.z)          # + = esquerda
+	var k := mini(3, int(absf(th) / (PI / 4.0)))
+	return 3 - k if th >= 0.0 else 4 + k
