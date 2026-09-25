@@ -26,6 +26,7 @@ var _threat_obj: Object = null
 var _dodge_t := 0.0
 var _dodge_dir := Vector3.ZERO
 var _taste_t := 0.0
+var _hit_t := -99.0
 # estagios (L1, L2, L3) separados por mudas de pele
 var instar := 1
 var instar_t := 0.0             # segundos neste estagio
@@ -326,8 +327,11 @@ func _physics_process(dt: float) -> void:
 			speed = crawl * 2.5
 			if is_instance_valid(_target):
 				behavior = "indo ate %s" % _target.get("display_name")
-				turn = _steer_to(_target.global_position) * 2.0 + _turn_noise * 0.3
 				_leave_fruit_towards(_target.global_position)
+				if _target is Fruit and _try_climb(_target as Fruit):
+					behavior = "subindo na %s" % _target.get("display_name")
+				else:
+					turn = _steer_to(_target.global_position) * 2.0 + _turn_noise * 0.3
 			else:
 				turn = _odor_bias() * 2.5 + _turn_noise * 0.7
 		"evitar":
@@ -663,6 +667,9 @@ func _check_crush() -> void:
 	if r.has("crush"):
 		crush(r["crush"])
 		return
+	if age - _hit_t < 0.6:
+		return   # a mesma batida nao conta a cada tick
+	_hit_t = age
 	hurt(float(r["hit"]))
 	mind.add_danger(global_position, 100.0, float(r["hit"]), "levou uma batida")
 	mind.scare(float(r["hit"]) * 0.5)
@@ -732,12 +739,39 @@ func _odor_bias() -> float:
 var _last_speed := 0.0
 
 
+## Encostou (ou esta por baixo) de uma fruta: sobe nela pelo ponto mais
+## proximo da superficie, em vez de ficar rodando embaixo.
+func _try_climb(fr: Fruit) -> bool:
+	if surface_body == fr or not is_instance_valid(fr):
+		return false
+	var from := global_position + _up * 0.3
+	var q := PhysicsRayQueryParameters3D.create(from, fr.global_position, WORLD_MASK)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if not hit or hit.collider != fr:
+		return false
+	if from.distance_to(hit.position) > size_mm * 1.5 + 3.0:
+		return false
+	var fwd := -global_basis.z
+	_up = (hit.normal as Vector3).normalized()
+	global_transform = Transform3D(Fly._basis_from(_up, fwd - _up * fwd.dot(_up) if absf(fwd.dot(_up)) < 0.95 else _up.cross(Vector3.RIGHT)), hit.position)
+	_attach(fr)
+	return true
+
+
 func _crawl(dt: float, speed: float, turn: float) -> void:
 	_last_speed = speed
 	var up := _up.normalized()
 	var b := Basis(up, turn * dt) * global_basis.orthonormalized()
 	var fwd := -b.z
 	var pos := global_position
+	# obstaculo na frente (lateral de fruta, pedra): sobe nele, como a mosca
+	if speed > 0.0:
+		var probe := _ray(pos + up * size_mm * 0.3, pos + up * size_mm * 0.3 + fwd * (speed * dt + size_mm * 0.6))
+		if probe and (probe.normal as Vector3).dot(up) < 0.7:
+			_up = (probe.normal as Vector3).normalized()
+			global_transform = Transform3D(Fly._basis_from(_up, up), probe.position)
+			_attach(probe.collider)
+			return
 	var p := pos + fwd * speed * dt
 	var hit := _ray(p + up * 1.0, p - up * 2.5)
 	if not hit:

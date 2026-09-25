@@ -49,11 +49,15 @@ static func refresh(tree: SceneTree) -> void:
 
 ## Verifica se algo caiu em cima de uma criatura em p (base do corpo) com
 ## altura h e raio de corpo w. Retorna {"crush": objeto} ou {"hit": forca}.
+## Um objeto que o jogador esta segurando nunca esmaga (so empurra/machuca
+## de leve); solto de cima, ele cai e ai pode esmagar.
 static func check(p: Vector3, h: float, w: float, ignore: Object) -> Dictionary:
 	for item: Array in falling:
 		if not is_instance_valid(item[0]) or item[0] == ignore:
 			continue
 		var rb: RigidBody3D = item[0]
+		if rb.has_meta("held"):
+			continue   # na mao do jogador: empurra, mas nao "cai" em cima
 		var pos: Vector3 = item[1]
 		var prev: Vector3 = item[2]
 		var r: float = item[4]
@@ -78,7 +82,8 @@ static func check(p: Vector3, h: float, w: float, ignore: Object) -> Dictionary:
 		var d := _seg_dist(p + Vector3.UP * h * 0.5, item[2], item[1]) - r
 		if d < w:
 			var v: Vector3 = item[3]
-			return {"hit": clampf(v.length() / 1500.0, 0.05, 0.5), "obj": rb}
+			var k := 0.3 if rb.has_meta("held") else 1.0
+			return {"hit": clampf(v.length() / 1500.0, 0.05, 0.5) * k, "obj": rb}
 	return {}
 
 

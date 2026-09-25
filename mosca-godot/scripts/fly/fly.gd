@@ -84,6 +84,7 @@ var sperm_mind: CreatureMemory
 var sperm_wiring: Array = []
 var sperm_uid := 0
 var last_lesson := ""
+var _hit_t := -99.0
 
 # tomada de decisao
 var decision := "explorar"
@@ -404,6 +405,9 @@ func _check_crush() -> void:
 	if r.has("crush"):
 		crush(r["crush"])
 		return
+	if age - _hit_t < 0.6:
+		return   # a mesma batida nao conta a cada tick
+	_hit_t = age
 	var amt: float = r["hit"]
 	hurt(amt, "batida")
 	mind.add_danger(global_position, 150.0, amt, "levou uma batida")
