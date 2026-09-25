@@ -1,0 +1,404 @@
+<title>Cérebro de Anuro 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #06080b;
+  --panel: rgba(12, 16, 21, 0.92);
+  --panel-solid: #0c1015;
+  --line: #1c252e;
+  --line-2: #2a3642;
+  --text: #d9e2e8;
+  --muted: #7f8e9a;
+  --accent: #86e3c8;
+  --warn: #f0b35a;
+  --ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --display: "Archivo Narrow", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.45 var(--ui); overflow: hidden; }
+#view { position: fixed; inset: 0; }
+#view canvas { display: block; touch-action: none; }
+.panel {
+  position: fixed; z-index: 2; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 320px; display: flex; flex-direction: column; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  backdrop-filter: blur(6px); overflow: hidden;
+}
+.panel > * { flex-shrink: 0; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+h1 { font: 600 19px/1.1 var(--display); letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.seg button { font: 500 13px var(--ui); color: var(--muted); background: transparent; border: 0; padding: 7px 0; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #16202a; color: var(--text); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat b { display: block; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.label { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; display: flex; justify-content: space-between; }
+.label button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0; letter-spacing: inherit; }
+#regions { overflow-y: auto; flex: 1 1 auto; flex-shrink: 1; min-height: 80px; margin: 0 -6px; padding: 0 6px; }
+.reg { display: grid; grid-template-columns: 10px 1fr auto; gap: 9px; align-items: center; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+.reg:hover { background: #121a22; }
+.reg[aria-selected="true"] { background: #17222c; outline: 1px solid var(--line-2); }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.reg .n { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.reg .per { color: var(--muted); font-size: 10.5px; }
+.card { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 42%; overflow-y: auto; flex-shrink: 1; }
+.card h2 { font: 600 15px/1.2 var(--display); margin: 0; }
+.kv { display: grid; grid-template-columns: 88px 1fr; gap: 2px 8px; font-size: 12px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+.mono { font-family: var(--mono); font-size: 11.5px; }
+.bars { display: flex; flex-direction: column; gap: 4px; }
+.bar { display: grid; grid-template-columns: 1fr 64px; gap: 8px; font-size: 11.5px; align-items: center; cursor: pointer; }
+.bar .track { height: 5px; background: #16202a; border-radius: 3px; overflow: hidden; grid-column: 1 / -1; }
+.bar .fill { height: 100%; }
+.bar .w { font: 11px var(--mono); color: var(--muted); text-align: right; }
+.opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 12px var(--ui); color: var(--muted); background: transparent; border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.note { color: var(--muted); font-size: 11px; line-height: 1.4; }
+button:focus-visible, .reg:focus-visible, .bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#tip { position: fixed; z-index: 3; pointer-events: none; background: var(--panel-solid); border: 1px solid var(--line-2); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+#toggle { display: none; }
+.copy { font: 11px var(--mono); color: var(--accent); background: none; border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+@media (max-width: 720px) {
+  .panel { left: 12px; right: 12px; width: auto; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 58%; }
+  .panel.min { max-height: none; }
+  .panel.min > :not(.head) { display: none; }
+  #toggle { display: inline-block; }
+  .card { max-height: none; }
+}
+</style>
+
+<div id="view"></div>
+<div id="tip" hidden></div>
+<aside class="panel" id="panel">
+  <div class="head">
+    <div>
+      <h1 id="title">Rã adulta</h1>
+      <div class="sub">conectoma sintético do Matrix mosceana</div>
+    </div>
+    <button class="chip" id="toggle" aria-expanded="true">Ocultar</button>
+  </div>
+  <div class="seg" role="group" aria-label="Animal">
+    <button id="b-ra" aria-pressed="true">Rã</button>
+    <button id="b-girino" aria-pressed="false">Girino</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="s-n">–</b><span>neurônios</span></div>
+    <div class="stat"><b id="s-e">–</b><span>conexões</span></div>
+    <div class="stat"><b id="s-s">–</b><span>sinapses</span></div>
+  </div>
+  <div>
+    <div class="label"><span>Esqueletos</span></div>
+    <div class="opts" role="group" aria-label="Esqueletos">
+      <button class="chip" data-sk="sel" aria-pressed="true">Da seleção</button>
+      <button class="chip" data-sk="amostra" aria-pressed="false">Amostra de todos</button>
+      <button class="chip" data-sk="nenhum" aria-pressed="false">Só os corpos</button>
+    </div>
+  </div>
+  <div class="label"><span>Regiões</span><button id="clear">Limpar seleção</button></div>
+  <div id="regions" role="listbox" aria-label="Regiões do encéfalo"></div>
+  <div class="card" id="card"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script type="application/json" id="data-ra">__RA__</script>
+<script type="application/json" id="data-girino">__GIRINO__</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => n.toLocaleString("pt-BR");
+  function b64(s, T) {
+    const bin = atob(s); const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return new T(u8.buffer);
+  }
+  function load(tag) {
+    const d = JSON.parse($("data-" + tag).textContent);
+    d.P = b64(d.pos, Int16Array); d.popOf = b64(d.pop, Uint8Array);
+    d.target = b64(d.alvo, d.N < 65536 ? Uint16Array : Uint32Array);
+    d.top3 = b64(d.top, Uint8Array); d.top3w = b64(d.topw, Uint16Array);
+    d.regKeys = Object.keys(d.regioes);
+    d.regOfPop = d.populacoes.map((p) => p.regiao);
+    d.regCount = {}; d.populacoes.forEach((p) => { d.regCount[p.regiao] = (d.regCount[p.regiao] || 0) + p.n; });
+    d.regKeys.sort((a, b) => d.regioes[a].centro[2] - d.regioes[b].centro[2]);
+    // matriz regiao -> regiao
+    d.rr = {};
+    for (const [a, c, k] of d.matriz) {
+      const ra = d.regOfPop[a], rc = d.regOfPop[c];
+      const key = ra + ">" + rc; d.rr[key] = (d.rr[key] || 0) + k;
+    }
+    return d;
+  }
+  const data = { ra: load("ra"), girino: load("girino") };
+
+  // ---------------------------------------------------------------- cena
+  const view = $("view");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  view.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#06080b");
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 500);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  const root = new THREE.Group(); scene.add(root);
+  let cur = null, points = null, skel = null, hulls = null, selRegion = null, selNeuron = -1, skMode = "sel", hiLine = null;
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h); camera.aspect = w / h;
+    // no computador o painel ocupa a esquerda: centraliza o cerebro no resto da tela
+    if (w > 720) camera.setViewOffset(w, h, -176, 0, w, h); else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize); resize();
+
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function pos(d, i, out) { const s = d.escala; out[0] = d.P[i * 3] * s; out[1] = d.P[i * 3 + 1] * s; out[2] = d.P[i * 3 + 2] * s; return out; }
+
+  // esqueleto: soma, 3 dendritos, axonio curvo ate o alvo principal, ramos finais
+  function skeletonSegs(d, i, arr) {
+    const r = mulberry(i * 2654435761 + 7), s = pos(d, i, [0, 0, 0]), t = pos(d, d.target[i], [0, 0, 0]);
+    const gauss = () => (r() + r() + r() - 1.5) * 1.15;
+    for (let k = 0; k < 3; k++) {
+      let dx = gauss(), dy = gauss(), dz = gauss(); const n = Math.hypot(dx, dy, dz) || 1; dx /= n; dy /= n; dz /= n;
+      const L = 0.08 + r() * 0.17; let px = s[0], py = s[1], pz = s[2];
+      for (let j = 1; j <= 2; j++) {
+        const qx = s[0] + dx * L * j / 2 + gauss() * 0.02, qy = s[1] + dy * L * j / 2 + gauss() * 0.02, qz = s[2] + dz * L * j / 2 + gauss() * 0.02;
+        arr.push(px, py, pz, qx, qy, qz); px = qx; py = qy; pz = qz;
+      }
+    }
+    const dist = Math.hypot(t[0] - s[0], t[1] - s[1], t[2] - s[2]);
+    if (dist > 0.05) {
+      const m = [(s[0] + t[0]) / 2, (s[1] + t[1]) / 2, (s[2] + t[2]) / 2];
+      m[0] += (0 - m[0]) * 0.35; m[1] += (-0.4 - m[1]) * 0.25;
+      let px = s[0], py = s[1], pz = s[2];
+      for (let k = 1; k <= 10; k++) {
+        const u = k / 10, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u;
+        const qx = a * s[0] + b * m[0] + c * t[0], qy = a * s[1] + b * m[1] + c * t[1], qz = a * s[2] + b * m[2] + c * t[2];
+        arr.push(px, py, pz, qx, qy, qz); px = qx; py = qy; pz = qz;
+      }
+      for (let k = 0; k < 3; k++) {
+        let dx = gauss(), dy = gauss(), dz = gauss(); const n = Math.hypot(dx, dy, dz) || 1; const L = 0.05 + r() * 0.1;
+        arr.push(t[0], t[1], t[2], t[0] + dx / n * L, t[1] + dy / n * L, t[2] + dz / n * L);
+      }
+    }
+  }
+
+  function regionColor(d, rk) { return new THREE.Color(d.regioes[rk].cor); }
+
+  function build(tag) {
+    cur = data[tag];
+    root.clear(); selRegion = null; selNeuron = -1; hiLine = null;
+    const d = cur, N = d.N;
+    const g = new THREE.BufferGeometry();
+    const P = new Float32Array(N * 3), C = new Float32Array(N * 3);
+    const tmp = [0, 0, 0];
+    for (let i = 0; i < N; i++) { pos(d, i, tmp); P.set(tmp, i * 3); }
+    g.setAttribute("position", new THREE.BufferAttribute(P, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(C, 3));
+    const mat = new THREE.PointsMaterial({ size: tag === "ra" ? 0.055 : 0.03, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
+    points = new THREE.Points(g, mat); root.add(points);
+    // contorno das regioes centrais
+    hulls = new THREE.Group();
+    for (const rk of d.regKeys) {
+      const R = d.regioes[rk]; if (R.periferico) continue;
+      const sides = R.centro[0] === 0 ? [1] : [1, -1];
+      for (const sx of sides) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), new THREE.MeshBasicMaterial({ color: R.cor, transparent: true, opacity: 0.045, depthWrite: false }));
+        m.scale.set(R.raios[0] * 1.08, R.raios[1] * 1.08, R.raios[2] * 1.08);
+        m.position.set(R.centro[0] * sx, R.centro[1], R.centro[2]);
+        hulls.add(m);
+      }
+    }
+    root.add(hulls);
+    // camera
+    const box = new THREE.Box3().setFromBufferAttribute(g.attributes.position);
+    const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length();
+    controls.target.copy(c);
+    const k = tag === "ra" ? 0.62 : 0.5;
+    camera.position.set(c.x - size * k, c.y + size * k * 0.9, c.z - size * k * 0.2);
+    camera.near = size / 500; camera.far = size * 20; camera.updateProjectionMatrix();
+    raycaster.params.Points.threshold = tag === "ra" ? 0.07 : 0.035;
+    $("title").textContent = tag === "ra" ? "Rã adulta" : "Girino";
+    $("s-n").textContent = fmt(d.N); $("s-e").textContent = fmt(d.conexoes); $("s-s").textContent = fmt(d.sinapses);
+    $("b-ra").setAttribute("aria-pressed", tag === "ra"); $("b-girino").setAttribute("aria-pressed", tag === "girino");
+    listRegions(); recolor(); rebuildSkeletons(); showOverview();
+  }
+
+  function recolor() {
+    const d = cur, C = points.geometry.attributes.color.array, col = new THREE.Color();
+    const cache = {};
+    for (let i = 0; i < d.N; i++) {
+      const rk = d.regOfPop[d.popOf[i]];
+      if (!cache[rk]) cache[rk] = regionColor(d, rk);
+      col.copy(cache[rk]);
+      if (selRegion && rk !== selRegion) col.multiplyScalar(0.12);
+      if (selNeuron >= 0 && i !== selNeuron) col.multiplyScalar(selRegion ? 1 : 0.35);
+      C[i * 3] = col.r; C[i * 3 + 1] = col.g; C[i * 3 + 2] = col.b;
+    }
+    points.geometry.attributes.color.needsUpdate = true;
+  }
+
+  function rebuildSkeletons() {
+    if (skel) { root.remove(skel); skel.geometry.dispose(); skel = null; }
+    const d = cur; let idx = [];
+    if (skMode === "amostra") { const step = d.N > 10000 ? 9 : 4; for (let i = 0; i < d.N; i += step) idx.push(i); }
+    else if (skMode === "sel" && selRegion) {
+      for (let i = 0; i < d.N; i++) if (d.regOfPop[d.popOf[i]] === selRegion) idx.push(i);
+      if (idx.length > 700) { const st = Math.ceil(idx.length / 700); idx = idx.filter((_, k) => k % st === 0); }
+    }
+    if (!idx.length) return;
+    const arr = [], cols = [], col = new THREE.Color();
+    for (const i of idx) {
+      const n0 = arr.length; skeletonSegs(d, i, arr);
+      col.set(d.regioes[d.regOfPop[d.popOf[i]]].cor);
+      for (let k = n0; k < arr.length; k += 3) cols.push(col.r, col.g, col.b);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
+    skel = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: skMode === "amostra" ? 0.22 : 0.3, depthWrite: false, blending: THREE.AdditiveBlending }));
+    root.add(skel);
+  }
+
+  function highlightNeuron(i) {
+    if (hiLine) { root.remove(hiLine); hiLine.geometry.dispose(); hiLine = null; }
+    if (i < 0) return;
+    const arr = []; skeletonSegs(cur, i, arr);
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+    hiLine = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.95 }));
+    root.add(hiLine);
+  }
+
+  // ---------------------------------------------------------------- painel
+  function listRegions() {
+    const d = cur, box = $("regions"); box.innerHTML = "";
+    for (const rk of d.regKeys) {
+      const R = d.regioes[rk], el = document.createElement("div");
+      el.className = "reg"; el.tabIndex = 0; el.setAttribute("role", "option"); el.dataset.rk = rk;
+      el.innerHTML = `<span class="dot" style="background:${R.cor}"></span><span>${R.nome}${R.periferico ? ' <span class="per">periferia</span>' : ""}</span><span class="n">${fmt(d.regCount[rk] || 0)}</span>`;
+      el.addEventListener("click", () => selectRegion(rk === selRegion ? null : rk));
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } });
+      box.appendChild(el);
+    }
+  }
+
+  function bars(list, total) {
+    const max = Math.max(1, ...list.map((x) => x[1]));
+    return `<div class="bars">${list.map(([rk, w]) => `<div class="bar" tabindex="0" data-rk="${rk}"><span>${cur.regioes[rk].nome}</span><span class="w">${fmt(w)}</span><div class="track"><div class="fill" style="width:${(w / max * 100).toFixed(1)}%;background:${cur.regioes[rk].cor}"></div></div></div>`).join("")}</div>`;
+  }
+  function wireBars() {
+    document.querySelectorAll("#card .bar").forEach((b) => b.addEventListener("click", () => selectRegion(b.dataset.rk)));
+  }
+
+  function showOverview() {
+    const d = cur;
+    $("card").innerHTML = `<h2>${d.tag === "ra" ? "Encéfalo de rã" : "Girino (medula longa, cauda)"}</h2>
+      <p class="note">Cada ponto é um neurônio, colorido pela região. Toque numa região da lista para ver os esqueletos e para onde ela manda sinapses; toque num ponto para ver o neurônio. Arraste para girar, pince ou role para aproximar.</p>
+      <p class="note">As ligações são as mesmas que o jogo roda. Posições e formatos foram gerados a partir da anatomia de anuros: ninguém mapeou ainda um cérebro real de rã.</p>`;
+  }
+
+  function selectRegion(rk) {
+    selRegion = rk; selNeuron = -1; highlightNeuron(-1);
+    document.querySelectorAll(".reg").forEach((e) => e.setAttribute("aria-selected", e.dataset.rk === rk));
+    recolor(); rebuildSkeletons();
+    if (!rk) { showOverview(); return; }
+    const d = cur, R = d.regioes[rk];
+    const outs = [], ins = [];
+    for (const [key, w] of Object.entries(d.rr)) {
+      const [a, c] = key.split(">");
+      if (a === rk && c !== rk) outs.push([c, w]);
+      if (c === rk && a !== rk) ins.push([a, w]);
+    }
+    outs.sort((a, b) => b[1] - a[1]); ins.sort((a, b) => b[1] - a[1]);
+    const self = d.rr[rk + ">" + rk] || 0;
+    const pops = d.populacoes.filter((p) => p.regiao === rk);
+    $("card").innerHTML = `<h2>${R.nome}</h2>
+      <dl class="kv"><dt>neurônios</dt><dd class="mono">${fmt(d.regCount[rk])}</dd><dt>populações</dt><dd>${[...new Set(pops.map((p) => p.classe))].join("; ")}</dd>
+      <dt>transmissor</dt><dd>${[...new Set(pops.map((p) => p.nt))].join(", ")}</dd><dt>internas</dt><dd class="mono">${fmt(self)} sinapses</dd></dl>
+      <div class="label"><span>manda para</span><span>sinapses</span></div>${outs.length ? bars(outs.slice(0, 8)) : '<p class="note">Não manda para outras regiões.</p>'}
+      <div class="label"><span>recebe de</span><span>sinapses</span></div>${ins.length ? bars(ins.slice(0, 6)) : '<p class="note">Não recebe de outras regiões.</p>'}`;
+    wireBars();
+  }
+
+  function selectNeuron(i) {
+    selNeuron = i; recolor(); highlightNeuron(i);
+    const d = cur, p = d.populacoes[d.popOf[i]], id = (BigInt(d.id0) + BigInt(i)).toString();
+    const tops = [];
+    for (let k = 0; k < 3; k++) { const t = d.top3[i * 3 + k]; if (t !== 255) tops.push([d.populacoes[t], d.top3w[i * 3 + k]]); }
+    $("card").innerHTML = `<h2>${p.nome}</h2>
+      <dl class="kv"><dt>id</dt><dd><span class="mono">${id}</span> <button class="copy" id="cp">copiar</button></dd>
+      <dt>classe</dt><dd>${p.classe}</dd><dt>região</dt><dd>${d.regioes[p.regiao].nome}</dd>
+      <dt>lado</dt><dd>${p.lado}</dd><dt>transmissor</dt><dd>${p.nt}</dd><dt>tipo</dt><dd>${p.fluxo}</dd>
+      ${p.canal ? `<dt>no jogo</dt><dd class="mono">${p.canal}</dd>` : ""}</dl>
+      <div class="label"><span>mais sinapses para</span><span>sinapses</span></div>
+      ${tops.length ? `<div class="bars">${tops.map(([q, w]) => `<div class="bar" data-rk="${q.regiao}" tabindex="0"><span>${q.nome} · ${q.classe}</span><span class="w">${fmt(w)}</span><div class="track"><div class="fill" style="width:${(w / tops[0][1] * 100).toFixed(1)}%;background:${d.regioes[q.regiao].cor}"></div></div></div>`).join("")}</div>` : '<p class="note">Este neurônio não faz sinapses de saída.</p>'}`;
+    wireBars();
+    const cp = $("cp");
+    cp.addEventListener("click", () => {
+      navigator.clipboard.writeText(id).then(() => { cp.textContent = "copiado"; }).catch(() => {
+        const r = document.createRange(); r.selectNodeContents(cp.previousElementSibling); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------- interacao
+  const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $("tip");
+  let down = null;
+  function pick(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObject(points);
+    for (const h of hits) {
+      const rk = cur.regOfPop[cur.popOf[h.index]];
+      if (!selRegion || rk === selRegion) return h.index;
+    }
+    return -1;
+  }
+  renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener("pointerup", (e) => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+    const i = pick(e); if (i >= 0) selectNeuron(i);
+  });
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse" || e.buttons) { tip.hidden = true; return; }
+    const i = pick(e);
+    if (i < 0) { tip.hidden = true; return; }
+    const p = cur.populacoes[cur.popOf[i]];
+    tip.textContent = `${p.nome} · ${cur.regioes[p.regiao].nome}`;
+    tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY + 12 + "px"; tip.hidden = false;
+  });
+  $("b-ra").addEventListener("click", () => build("ra"));
+  $("b-girino").addEventListener("click", () => build("girino"));
+  $("clear").addEventListener("click", () => selectRegion(null));
+  document.querySelectorAll("[data-sk]").forEach((b) => b.addEventListener("click", () => {
+    skMode = b.dataset.sk;
+    document.querySelectorAll("[data-sk]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    rebuildSkeletons();
+  }));
+  $("toggle").addEventListener("click", () => {
+    const p = $("panel"), min = p.classList.toggle("min");
+    $("toggle").textContent = min ? "Mostrar" : "Ocultar"; $("toggle").setAttribute("aria-expanded", !min);
+  });
+
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let t0 = performance.now(), idle = 0;
+  controls.addEventListener("start", () => { idle = -1; });
+  function loop(t) {
+    requestAnimationFrame(loop);
+    if (!still && idle >= 0 && t - t0 < 20000) root.rotation.y = Math.sin((t - t0) / 6000) * 0.35;
+    controls.update(); renderer.render(scene, camera);
+  }
+  build("ra");
+  requestAnimationFrame(loop);
+})();
+</script>
