@@ -403,6 +403,11 @@ func _build_action_bar() -> void:
 		gw.set_quality(not gw.low_quality)
 		toast("Graficos " + ("leves (mais rapido)" if gw.low_quality else "altos")), "Graficos leves = bem mais leve no celular")
 	grid.add_child(_gfx_btn)
+	grid.add_child(_text_button("Exportar arquivos", func():
+		var main := get_tree().current_scene
+		SaveGame.save(main)
+		toast(SaveGame.export_copy())
+		_toast_t = 8.0, "Salva e copia os arquivos dos individuos para Documentos (pasta visivel)"))
 	_menu.add_child(grid)
 	_menu.visible = false
 	add_child(_menu)

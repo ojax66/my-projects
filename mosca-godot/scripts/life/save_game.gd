@@ -142,6 +142,43 @@ static func archive_individual(c: Node, reason: String) -> void:
 		DirAccess.remove_absolute(live)
 
 
+## Copia a pasta do save para um lugar que o usuario consegue abrir (no
+## Android a pasta user:// fica em /data/data/..., inacessivel sem root).
+## Tenta Documentos, depois Downloads, depois a pasta do projeto.
+static func export_copy() -> String:
+	var dirs: Array[String] = []
+	for sd in [OS.SYSTEM_DIR_DOCUMENTS, OS.SYSTEM_DIR_DOWNLOADS]:
+		var d := OS.get_system_dir(sd)
+		if d != "":
+			dirs.append(d.path_join(str(ProjectSettings.get_setting("application/config/name"))))
+	dirs.append(ProjectSettings.globalize_path("res://save_exportado"))
+	for dest in dirs:
+		var n := _copy_tree(DIR, dest.path_join("mundo"))
+		if n > 0:
+			return "Copiados %d arquivos para: %s" % [n, dest.path_join("mundo")]
+	return "Nao consegui copiar (sem permissao de escrita). Pasta original: " + folder_path()
+
+
+static func _copy_tree(src: String, dst: String) -> int:
+	if DirAccess.make_dir_recursive_absolute(dst) != OK and not DirAccess.dir_exists_absolute(dst):
+		return 0
+	var da := DirAccess.open(src)
+	if da == null:
+		return 0
+	var n := 0
+	for f in da.get_files():
+		var data := FileAccess.get_file_as_bytes(src.path_join(f))
+		var out := FileAccess.open(dst.path_join(f), FileAccess.WRITE)
+		if out == null:
+			return 0
+		out.store_buffer(data)
+		out.close()
+		n += 1
+	for sub in da.get_directories():
+		n += _copy_tree(src.path_join(sub), dst.path_join(sub))
+	return n
+
+
 # ---------------------------------------------------------------- carregar
 static func load_world(main: Node) -> bool:
 	var w: Variant = _read(DIR + "/mundo.json")
