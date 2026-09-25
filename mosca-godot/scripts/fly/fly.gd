@@ -720,7 +720,7 @@ func _refresh_cache() -> void:
 			_odor_prof.append(src.odor_profile() if src.has_method("odor_profile") else PackedFloat32Array([k, k, k, k, k, k]))
 	_loomers.clear()
 	for obj in get_tree().get_nodes_in_group("loomer"):
-		var v: Vector3 = obj.cam_velocity if obj is Spectator else (obj.linear_velocity if obj is RigidBody3D else Vector3.ZERO)
+		var v: Vector3 = obj.cam_velocity if obj is Spectator else (obj.linear_velocity if obj is RigidBody3D else (obj.get("velocity") if obj.get("velocity") is Vector3 else Vector3.ZERO))
 		if v.length_squared() > 900.0:
 			_loomers.append([obj, v])
 
@@ -915,6 +915,10 @@ func _walk(dt: float) -> void:
 			_set_on_surface(wall.position, wall.normal, wall.collider, b)
 			return
 	var p := pos + step
+	if Pond.submerged(p + up * 0.5) > 0.0:
+		# agua na frente: vira e nao entra
+		global_transform.basis = Basis(up.normalized(), 3.0 * dt) * b
+		return
 	var hit := _ray(p + up * 1.2, p - up * 2.5)
 	if hit:
 		_set_on_surface(hit.position, hit.normal, hit.collider, b)
@@ -1051,12 +1055,17 @@ func _fly(dt: float) -> void:
 	var np := p + _vel * dt
 	if _flight_time > 0.35:
 		var hit := _ray(p, np + _vel.normalized() * 2.0)
-		if hit:
+		if hit and Pond.submerged(hit.position) <= 0.0:
 			_land(hit.position, hit.normal, hit.collider)
 			return
+		if Pond.submerged(np) > 0.0:
+			# nao pousa n'agua: sobe e vai para a margem
+			var pd := Pond.at(np)
+			_flight_target = pd.shore_point(np) + Vector3.UP * 5.0 if pd else np + Vector3.UP * 100.0
+			_vel.y = absf(_vel.y) + 60.0
 	if dist < 6.0:
 		var down := _ray(target + Vector3.UP * 40.0, target + Vector3.DOWN * 400.0)
-		if down:
+		if down and Pond.submerged(down.position) <= 0.0:
 			_land(down.position, down.normal, down.collider)
 			return
 	if _flight_time > 25.0:
@@ -1246,6 +1255,12 @@ func observe_death(pos: Vector3, reason: String, _obj: Object, victim: Node) -> 
 	elif reason.begins_with("ferimentos"):
 		mind.add_danger(pos, 180.0, 0.5, "viu alguem se ferir")
 		last_lesson = "viu %s morrer ferida" % who
+	elif reason.begins_with("comida por"):
+		# viu um predador (ra) comer outra: o lugar fica marcado como perigoso
+		mind.add_danger(pos, 300.0, 0.9, "viu uma ra comer alguem")
+		last_lesson = "viu uma ra comer %s: evita esse lugar" % who
+		if state == State.WALK and escape_cooldown <= 0.0 and global_position.distance_to(pos) < 300.0:
+			_escape(global_position - pos)
 	chem.level["dopamina-"] = maxf(float(chem.level.get("dopamina-", 0.0)), 0.6)
 
 

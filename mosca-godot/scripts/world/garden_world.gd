@@ -32,6 +32,7 @@ func _ready() -> void:
 	noise.fractal_octaves = 4
 	_environment()
 	_terrain()
+	_ponds()
 	_grass()
 	_trees()
 	_rocks()
@@ -47,7 +48,37 @@ func height_at(x: float, z: float) -> float:
 	var flat := smoothstep(250.0, 900.0, d)
 	# borda levanta como um barranco
 	var rim := smoothstep(2400.0, 3000.0, d) * 450.0
-	return h * flat + rim
+	var y := h * flat + rim
+	# lagos: o terreno fica plano em volta (borda por igual) e afunda numa
+	# bacia de fundo arredondado
+	for pd: Array in PONDS:
+		var c: Vector2 = pd[0]
+		var r: float = pd[1]
+		var dd := Vector2(x, z).distance_to(c) / r
+		if dd < 1.6:
+			var base := noise.get_noise_2d(c.x, c.y) * 140.0 * smoothstep(250.0, 900.0, c.length())
+			y = lerpf(base, y, smoothstep(1.0, 1.6, dd))
+			if dd < 1.0:
+				y -= float(pd[2]) * (1.0 - dd * dd) * (1.0 - 0.3 * dd)
+	return y
+
+
+## Lagos: [centro, raio, profundidade] (mm). Longe das arvores.
+const PONDS := [[Vector2(1250, -250), 380.0, 140.0], [Vector2(-1050, 1500), 320.0, 110.0]]
+
+
+func _ponds() -> void:
+	for pd: Array in PONDS:
+		var pond := Pond.new()
+		pond.setup(pd[0], pd[1], pd[2], self)
+		add_child(pond)
+
+
+func _in_pond_area(x: float, z: float) -> bool:
+	for pd: Array in PONDS:
+		if Vector2(x, z).distance_to(pd[0]) < float(pd[1]) * 1.02:
+			return true
+	return false
 
 
 func _environment() -> void:
@@ -307,7 +338,10 @@ func _grass() -> void:
 		cols.append(Color(t, t * _rng.randf_range(0.9, 1.05), t * 0.8))
 	mm.instance_count = xforms.size()
 	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
+		var xf := xforms[i]
+		if _in_pond_area(xf.origin.x, xf.origin.z):
+			xf = xf.scaled_local(Vector3.ZERO)   # sem grama dentro d'agua
+		mm.set_instance_transform(i, xf)
 		mm.set_instance_color(i, cols[i])
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Grama"
@@ -482,6 +516,7 @@ func _flowers() -> void:
 		center.material_override = ccm
 		center.position.y = h + 1.0
 		root.add_child(center)
+		root.visible = not _in_pond_area(x, z)
 		add_child(root)
 
 

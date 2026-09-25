@@ -134,6 +134,39 @@ de hormônios e a população.
   sem memória. Da larva para a mosca adulta ~60% da memória sobrevive, como
   na vida real (Tully et al. 1994).
 
+## Lagos, rãs e girinos
+
+- **Dois lagos** com água, algas no fundo (crescem com a luz do dia) e
+  frutas que caem e boiam. Moscas e larvas não entram na água.
+- **Conectomas sintéticos** (`tools/build_amphibian_brain.py`): não existe
+  conectoma medido de rã/girino, então eles são construídos por regras da
+  anatomia publicada, no mesmo formato e motor (GPU, LIF, plasticidade com
+  dopamina) dos de inseto:
+  - **girino** (7.078 neurônios): medula de Roberts et al. (Rohon-Beard, dlc,
+    dla, dIN, cIN, aIN, motoneurônios), célula de Mauthner (fuga em C),
+    linha lateral, pineal (sombra faz nadar), MHR (parar), teto óptico, pálio
+    e estriado com dopamina, CPG da boca;
+  - **rã** (25.570 neurônios): retina R2 → teto T5.2 (presa) → orientação,
+    aproximação e hipoglosso (língua); R3/R4 → pré-teto (ameaça), que suprime
+    a caça e aciona a fuga (Ewert); membros posteriores (pulo), gerador vocal,
+    hipotálamo (fome), pálio → estriado com dopamina de recompensa/punição.
+  - `python3 tools/build_amphibian_brain.py --test` mostra as respostas (presa
+    à esquerda → orientar à esquerda + língua; ameaça → fuga e pulo...).
+- **Rã**: caça "senta e espera" objetos pequenos que se mexem (moscas,
+  larvas, girinos, até pedrinhas), pula até perto e dispara a língua (~70 ms);
+  engole afundando os olhos. Aprende: mosca = comida; pedrinha = cospe e passa
+  a ignorar. Resseca fora d'água e volta para o lago; foge pulando para a
+  água. De noite os machos cantam (saco vocal), a fêmea segue o canto,
+  amplexo e desova na água.
+- **Desova** (~1,5 dia) → **girinos**: nadam com a cauda (motoneurônios E/D),
+  raspam algas, sentem ondas pela linha lateral e fogem com a Mauthner;
+  crescem em ~6 dias, ganham patas traseiras e dianteiras, reabsorvem a cauda
+  e saem do lago como rã jovem (parte da memória fica).
+- **Moscas aprendem com o predador**: ver uma rã comer outra marca o lugar como
+  perigoso e faz fugir.
+- **Vários mundos salvos**: a tela inicial lista todos (continuar ou
+  **Apagar**, com confirmação) e "Novo mundo" cria outro.
+
 ## Controles
 
 **Toque / mouse (o botão esquerdo do mouse funciona como um dedo):**
@@ -149,7 +182,7 @@ de hormônios e a população.
 
 **Teclado:** W A S D (setas) andar, E/Espaço sobe, Q/Ctrl desce, Z/X girar,
 Shift/Alt rápido/lento, roda = velocidade, botão direito = olhar, Tab prende
-o mouse, C seguir, I ir até a mosca, F soprar, 1–7 criar itens, Del apagar o
+o mouse, C seguir, I ir até a mosca, F soprar, 1–7 criar itens, 8 rã, 9 girino, 0 desova, Del apagar o
 segurado, P pausar, T acelerar o tempo, F5 salvar, B cérebro, L vida, N trocar
 cérebro, H ajuda.
 

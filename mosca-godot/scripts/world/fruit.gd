@@ -125,6 +125,14 @@ func _physics_process(dt: float) -> void:
 				sleeping = true
 		else:
 			_still_t = 0.0
+	# na agua: boia (empuxo) e e freada
+	if not hanging and not freeze:
+		var sub := Pond.submerged(global_position - Vector3.UP * radius * 0.3)
+		if sub > 0.0:
+			sleeping = false
+			apply_central_force(Vector3.UP * mass * 9800.0 * clampf(0.6 + sub / radius, 0.6, 2.0))
+			linear_velocity *= exp(-dt * 2.5)
+			angular_velocity *= exp(-dt * 2.0)
 	if linear_velocity.length() < 5.0 and global_position.y < 200.0:
 		ground_time += dt
 	else:

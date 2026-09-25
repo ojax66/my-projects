@@ -12,7 +12,60 @@ extends RefCounted
 ## os pesos das sinapses plasticas KC->MBON que ele aprendeu na vida.
 ## Junto vao os genes, a memoria (cheiros, perigos, medo) e o estado do corpo.
 
-const DIR := "user://mundo"
+## Varios mundos salvos: cada um numa pasta de user://mundos/. O save antigo
+## (user://mundo, de antes dos varios mundos) aparece como mais um mundo.
+const ROOT := "user://mundos"
+const LEGACY := "user://mundo"
+static var DIR := "user://mundos/Mundo 1"
+
+
+## [{nome, pasta, dia, individuos, salvo_em}] do mais recente para o mais antigo.
+static func list_slots() -> Array:
+	var out: Array = []
+	var paths: Array[String] = []
+	if FileAccess.file_exists(LEGACY + "/mundo.json"):
+		paths.append(LEGACY)
+	var da := DirAccess.open(ROOT)
+	if da:
+		for d in da.get_directories():
+			if FileAccess.file_exists(ROOT.path_join(d) + "/mundo.json"):
+				paths.append(ROOT.path_join(d))
+	for path in paths:
+		var w: Variant = _read(path + "/mundo.json")
+		if not (w is Dictionary):
+			continue
+		var nome: String = "Mundo antigo" if path == LEGACY else path.get_file()
+		out.append({"nome": str(w.get("nome", nome)), "pasta": path, "dia": int(w.get("dia", 1)),
+			"individuos": (w.get("individuos", []) as Array).size(), "salvo_em": str(w.get("salvo_em", "")).replace("T", " ")})
+	out.sort_custom(func(a, b): return str(a["salvo_em"]) > str(b["salvo_em"]))
+	return out
+
+
+## Pasta para um mundo novo ("Mundo N" livre).
+static func new_slot() -> String:
+	var i := 1
+	while DirAccess.dir_exists_absolute(ROOT.path_join("Mundo %d" % i)):
+		i += 1
+	return ROOT.path_join("Mundo %d" % i)
+
+
+## Apaga um mundo salvo inteiro (individuos e arquivo inclusos).
+static func delete_slot(path: String) -> bool:
+	if not (path.begins_with(ROOT + "/") or path == LEGACY):
+		return false
+	_remove_tree(path)
+	return not DirAccess.dir_exists_absolute(path)
+
+
+static func _remove_tree(path: String) -> void:
+	var da := DirAccess.open(path)
+	if da == null:
+		return
+	for f in da.get_files():
+		da.remove(f)
+	for d in da.get_directories():
+		_remove_tree(path.path_join(d))
+	DirAccess.remove_absolute(path)
 const VERSION := 2
 
 
@@ -34,13 +87,14 @@ static func save(main: Node) -> String:
 	var cam: Spectator = main.get("spectator")
 	var w := {
 		"versao": VERSION,
+		"nome": DIR.get_file() if DIR != LEGACY else "Mundo antigo",
 		"salvo_em": Time.get_datetime_string_from_system(),
 		"dia": gw.day, "hora": gw.hour,
 		"vida": {"nascimentos": lm.births, "mortes": lm.deaths, "geracao_max": lm.max_generation,
-			"uid": lm.uid_counter, "moscas_criadas": lm.fly_count, "linhagens": lm.lineages},
+			"uid": lm.uid_counter, "moscas_criadas": lm.fly_count, "linhagens": lm.lineages, "ras_criadas": lm.frog_count},
 		"camera": {"pos": _v(cam.global_position), "yaw": cam.yaw, "pitch": cam.pitch},
 		"graficos_leves": gw.low_quality,
-		"frutas": [], "pedras": [], "ovos": [], "pupas": [], "individuos": [], "arvores": [],
+		"frutas": [], "pedras": [], "ovos": [], "pupas": [], "individuos": [], "arvores": [], "desovas": [],
 	}
 	for t in gw.get_children():
 		if t is FruitTree:
@@ -59,6 +113,10 @@ static func save(main: Node) -> String:
 		w["ovos"].append({"id": e.uid, "genes": e.genome.to_dict(), "memoria_sinapses": _pack(e.memory), "memoria": _mind(e.mind),
 			"fiacao": e.wiring, "pais": e.parents, "geracao": e.generation, "linhagem": e.lineage, "t": e.get("_t"),
 			"pos": _v(e.global_position), "normal": _v(e.global_basis.y)})
+	for e: FrogEgg in tree.get_nodes_in_group("frog_eggs"):
+		w["desovas"].append({"genes_mae": e.genome_m.to_dict(), "genes_pai": e.genome_f.to_dict(), "fiacao_mae": e.wiring_m,
+			"fiacao_pai": e.wiring_f, "pais": e.parents, "geracao": e.generation, "linhagem": e.lineage, "t": e.t,
+			"pos": _v(e.global_position)})
 	for p: Pupa in tree.get_nodes_in_group("pupae"):
 		w["pupas"].append({"id": p.uid, "genes": p.genome.to_dict(), "memoria_sinapses": _pack(p.memory), "memoria": _mind(p.mind),
 			"fiacao": p.wiring, "pais": p.parents, "geracao": p.generation, "linhagem": p.lineage, "t": p.get("_t"),
@@ -66,7 +124,7 @@ static func save(main: Node) -> String:
 	# um arquivo por individuo vivo; apaga os que nao existem mais
 	var alive := {}
 	for c in tree.get_nodes_in_group("creatures"):
-		if (c is Fly and not (c as Fly).dead) or (c is Larva and not (c as Larva).dead):
+		if (c is Fly or c is Larva or c is Frog or c is Tadpole) and not bool(c.get("dead")):
 			var d := individual(c)
 			alive[str(d["id"])] = true
 			_write(DIR + "/individuos/%d.json" % int(d["id"]), d)
@@ -94,13 +152,13 @@ static func individual(c: Node) -> Dictionary:
 			changed += 1
 	var d := {
 		"id": c.get("uid"),
-		"especie": "mosca adulta" if c is Fly else "larva",
+		"especie": "mosca adulta" if c is Fly else ("larva" if c is Larva else ("ra" if c is Frog else "girino")),
 		"geracao": c.get("generation"), "linhagem": c.get("lineage"), "pais": c.get("parents"),
 		"idade_s": c.get("age"), "energia": c.get("energy"), "papo": c.get("gut"), "saude": c.get("health"),
 		"pos": _v((c as Node3D).global_position), "yaw": (c as Node3D).global_rotation.y,
 		"genes": genome.to_dict(),
 		"conectoma": {
-			"base": "brain/full/%s.bin.gz" % ("mcns" if c is Fly else "larva"),
+			"base": "brain/full/%s.bin.gz" % ("mcns" if c is Fly else ("larva" if c is Larva else ("ra" if c is Frog else "girino"))),
 			"nome": str(brain.name) if brain else "",
 			"neuronios": brain.n if brain else 0,
 			"sinapses": brain.total_edges if brain else 0,
@@ -123,6 +181,17 @@ static func individual(c: Node) -> Dictionary:
 		if f.mated and f.sperm_genome:
 			d["esperma"] = {"id": f.sperm_uid, "genes": f.sperm_genome.to_dict(), "geracao": f.sperm_generation,
 				"fiacao": f.sperm_wiring, "memoria": _mind(f.sperm_mind), "memoria_sinapses": _pack(f.sperm_memory)}
+	elif c is Frog:
+		var fr := c as Frog
+		d["nome"] = fr.fly_name
+		d["sexo"] = fr.sex
+		d["crescimento"] = fr.growth
+		d["hidratacao"] = fr.hydration
+		d["desova_em_s"] = fr.eggs_cooldown
+	elif c is Tadpole:
+		var tp := c as Tadpole
+		d["crescimento"] = tp.growth
+		d["metamorfose"] = tp.climax
 	else:
 		var l := c as Larva
 		d["comida"] = l.food
@@ -135,7 +204,7 @@ static func individual(c: Node) -> Dictionary:
 
 
 static func archive_individual(c: Node, reason: String) -> void:
-	if not (c is Fly or c is Larva):
+	if not (c is Fly or c is Larva or c is Frog or c is Tadpole):
 		return
 	DirAccess.make_dir_recursive_absolute(DIR + "/arquivo")
 	var d := individual(c)
@@ -159,9 +228,10 @@ static func export_copy() -> String:
 			dirs.append(d.path_join(str(ProjectSettings.get_setting("application/config/name"))))
 	dirs.append(ProjectSettings.globalize_path("res://save_exportado"))
 	for dest in dirs:
-		var n := _copy_tree(DIR, dest.path_join("mundo"))
+		var sub: String = DIR.get_file() if DIR != LEGACY else "mundo"
+		var n := _copy_tree(DIR, dest.path_join(sub))
 		if n > 0:
-			return "Copiados %d arquivos para: %s" % [n, dest.path_join("mundo")]
+			return "Copiados %d arquivos para: %s" % [n, dest.path_join(sub)]
 	return "Nao consegui copiar (sem permissao de escrita). Pasta original: " + folder_path()
 
 
@@ -202,6 +272,7 @@ static func load_world(main: Node) -> bool:
 	lm.uid_counter = int(v.get("uid", 0))
 	lm.fly_count = int(v.get("moscas_criadas", 0))
 	lm.lineages = int(v.get("linhagens", 0))
+	lm.frog_count = int(v.get("ras_criadas", 0))
 	gw.set_quality(bool(w.get("graficos_leves", gw.low_quality)))
 	# frutas penduradas salvas (sem isso cada carregamento enchia as arvores
 	# de novo e as frutas caidas se acumulavam)
@@ -238,6 +309,18 @@ static func load_world(main: Node) -> bool:
 		e.set("_t", float(ed.get("t", 0.0)))
 		var pos := _vec(ed["pos"])
 		e.place(pos, _vec(ed.get("normal", [0, 1, 0])), _fruit_at(tree, pos))
+	for ed: Dictionary in w.get("desovas", []):
+		var fe := FrogEgg.new()
+		fe.genome_m = Genome.from_dict(ed.get("genes_mae", {}))
+		fe.genome_f = Genome.from_dict(ed.get("genes_pai", {}))
+		fe.wiring_m = ed.get("fiacao_mae", [])
+		fe.wiring_f = ed.get("fiacao_pai", [])
+		fe.parents = ed.get("pais", [])
+		fe.generation = int(ed.get("geracao", 1))
+		fe.lineage = int(ed.get("linhagem", 0))
+		fe.t = float(ed.get("t", 0.0))
+		fe.position = _vec(ed["pos"])
+		lm.add_child(fe)
 	for pd: Dictionary in w.get("pupas", []):
 		var p := Pupa.new()
 		_fill_stage(p, pd)
@@ -272,7 +355,26 @@ static func _spawn_individual(main: Node, d: Dictionary) -> void:
 	var mind := CreatureMemory.from_dict(d.get("memoria", {}))
 	var syn := _unpack(str(con.get("pesos_plasticos", "")))
 	var pos := _vec(d.get("pos", [0, 0, 0]))
-	if str(d.get("especie", "")) == "larva":
+	var esp := str(d.get("especie", ""))
+	if esp == "ra" or esp == "girino":
+		var extra := {"uid": int(d["id"]), "wiring": wiring, "mind": mind, "parents": d.get("pais", []),
+			"lineage": int(d.get("linhagem", 0)), "age": float(d.get("idade_s", 0.0)), "energy": float(d.get("energia", 0.6)),
+			"health": float(d.get("saude", 1.0)), "growth": float(d.get("crescimento", 1.0))}
+		var c: Node3D
+		if esp == "ra":
+			extra["sex"] = str(d.get("sexo", "F"))
+			extra["fly_name"] = str(d.get("nome", "Ra"))
+			extra["hydration"] = float(d.get("hidratacao", 1.0))
+			extra["eggs_cooldown"] = float(d.get("desova_em_s", 0.0))
+			c = LifeManager.instance.spawn_frog(pos, genome, int(d.get("geracao", 1)), extra)
+		else:
+			extra["climax"] = float(d.get("metamorfose", 0.0))
+			extra["pond"] = Pond.at(pos) if Pond.at(pos) else Pond.nearest(pos)
+			c = LifeManager.instance.spawn_tadpole(pos, genome, int(d.get("geracao", 1)), extra)
+		if c and not syn.is_empty():
+			c.get("brain").set_memory(syn)
+		return
+	if esp == "larva":
 		var l := Larva.new()
 		l.genome = genome
 		l.uid = int(d["id"])

@@ -25,6 +25,9 @@ const MAX_ADULTS := 14
 const MAX_LARVAE := 18
 const MAX_EGGS := 40
 const MAX_SPOTS := 400
+const MAX_FROGS := 8
+const MAX_TADPOLES := 16
+const MAX_FROG_EGGS := 4
 
 static var instance: LifeManager
 
@@ -32,6 +35,7 @@ var births := 0
 var uid_counter := 0
 var fly_count := 0
 var lineages := 0
+var frog_count := 0
 var deaths := {}
 var max_generation := 1
 var _spots: Array[Node3D] = []
@@ -234,6 +238,80 @@ func pupate(larva: Larva) -> void:
 	add_child(p)
 	p.global_transform = larva.global_transform
 	p.attach(larva.surface_body)
+
+
+# ---------------------------------------------------------------- ras
+func spawn_frog(p: Vector3, genome: Genome = null, generation := 1, extra := {}) -> Frog:
+	if count("frogs") >= MAX_FROGS and not extra.has("uid"):
+		if Hud.instance:
+			Hud.instance.toast("Limite de %d ras" % MAX_FROGS)
+		return null
+	frog_count += 1
+	var f := Frog.new()
+	f.genome = genome
+	f.generation = generation
+	f.sex = "F" if _rng.randf() < 0.5 else "M"
+	for k: String in extra:
+		f.set(k, extra[k])
+	f.fly_name = "Ra %s%d" % [f.sex, frog_count] if not extra.has("fly_name") else str(extra["fly_name"])
+	f.position = p
+	f.rotation.y = _rng.randf() * TAU
+	add_child(f)
+	return f
+
+
+func spawn_tadpole(p: Vector3, genome: Genome = null, generation := 1, extra := {}) -> Tadpole:
+	if count("tadpoles") >= MAX_TADPOLES and not extra.has("uid"):
+		return null
+	var t := Tadpole.new()
+	t.genome = genome
+	t.generation = generation
+	for k: String in extra:
+		t.set(k, extra[k])
+	t.position = p
+	t.rotation.y = _rng.randf() * TAU
+	add_child(t)
+	return t
+
+
+func lay_frog_eggs(mother: Frog, father: Frog, p: Vector3) -> void:
+	if count("frog_eggs") >= MAX_FROG_EGGS:
+		return
+	var e := FrogEgg.new()
+	e.genome_m = mother.genome
+	e.genome_f = father.genome if father else mother.genome
+	e.wiring_m = mother.wiring
+	e.wiring_f = father.wiring if father else mother.wiring
+	e.parents = [mother.uid, father.uid if father else 0]
+	e.generation = maxi(mother.generation, father.generation if father else 1) + 1
+	e.lineage = mother.lineage
+	e.position = p
+	add_child(e)
+	if Hud.instance:
+		Hud.instance.toast("%s botou uma desova no lago!" % mother.fly_name)
+
+
+func hatch_frog_eggs(e: FrogEgg) -> void:
+	var pd := Pond.at(e.global_position)
+	if pd == null:
+		pd = Pond.nearest(e.global_position)
+	# de dezenas de ovos, so alguns girinos sobrevivem
+	var n := mini(3 + _rng.randi() % 3, MAX_TADPOLES - count("tadpoles"))
+	for i in n:
+		var g := Genome.cross(e.genome_m, e.genome_f, _rng)
+		var p := e.global_position + Vector3(_rng.randfn() * 6.0, -4.0, _rng.randfn() * 6.0)
+		spawn_tadpole(p, g, e.generation, {"wiring": child_wiring(e.wiring_m, e.wiring_f), "parents": e.parents,
+			"lineage": e.lineage, "pond": pd, "uid": next_uid()})
+	births += n
+
+
+func tadpole_metamorphosis(t: Tadpole) -> void:
+	var p := t.pond.shore_point(t.global_position) if t.pond else t.global_position
+	var mind := CreatureMemory.metamorphosis(t.mind, METAMORPHOSIS_KEEP)
+	var f := spawn_frog(p, t.genome, t.generation, {"uid": t.uid, "wiring": t.wiring, "parents": t.parents,
+		"lineage": t.lineage, "mind": mind, "growth": 0.35})
+	if f and Hud.instance:
+		Hud.instance.toast("Um girino virou %s (ra jovem)!" % f.fly_name)
 
 
 func eclose(pupa: Pupa) -> void:

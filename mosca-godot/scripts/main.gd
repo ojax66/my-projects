@@ -12,6 +12,7 @@ const KEYS := {
 	"toggle_help": [KEY_H, KEY_F1], "time_scale": [KEY_T], "swap_brain": [KEY_N],
 	"spawn_1": [KEY_1], "spawn_2": [KEY_2], "spawn_3": [KEY_3],
 	"spawn_4": [KEY_4], "spawn_5": [KEY_5], "spawn_6": [KEY_6], "spawn_7": [KEY_7],
+	"spawn_8": [KEY_8], "spawn_9": [KEY_9], "spawn_10": [KEY_0],
 	"teleport": [KEY_I], "toggle_life": [KEY_L], "pause": [KEY_P, KEY_PAUSE],
 	"save": [KEY_F5],
 }
@@ -50,7 +51,7 @@ func _ready() -> void:
 
 	# o jardim comeca SEM moscas: o jogador escolhe continuar o mundo salvo
 	# ou comecar um novo e colocar as moscas (Menu -> + Mosca)
-	hud.show_start_menu(SaveGame.exists())
+	hud.show_start_menu()
 
 
 func new_world() -> void:

@@ -808,6 +808,9 @@ func _crawl(dt: float, speed: float, turn: float) -> void:
 			_attach(probe.collider)
 			return
 	var p := pos + fwd * speed * dt
+	if Pond.submerged(p + up * 0.3) > 0.0:
+		global_transform.basis = Basis(up, 2.5 * dt) * b   # agua: vira
+		return
 	var hit := _ray(p + up * 1.0, p - up * 2.5)
 	if not hit:
 		hit = _ray(p - up * 0.6, p - up * 0.6 - fwd * 2.5)

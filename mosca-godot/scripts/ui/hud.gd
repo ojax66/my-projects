@@ -108,6 +108,25 @@ func _process(dt: float) -> void:
 				int(l.energy * 100), int(l.hidden * 100), l.age / LifeManager.DAY,
 				l.brain.n, l.sense["odor_L"], l.sense["odor_R"], l.sense["taste"], l.sense["light"], l.m_crawl_l, l.m_crawl_r, l.m_feed]
 		_life.text = ""
+		if followed is Frog:
+			var fr := followed as Frog
+			var fb = fr.brain
+			_status.text += "\nenergia %d%%  pele (hidratacao) %d%%  saude %d%%  idade %.1f dias  %s\ncerebro: %s (%d neuronios)   presa E/D %.0f/%.0f  ameaca E/D %.0f/%.0f\nsaidas: orientar E/D %.2f/%.2f  aproximar %.2f  LINGUA %.2f  fuga %.2f/%.2f  pulo %.2f  canto %.2f" % [
+				int(fr.energy * 100), int(fr.hydration * 100), int(fr.health * 100), fr.age / LifeManager.DAY, "jovem" if fr.growth < 0.95 else "adulta",
+				fb.name, fb.n, fr.sense["presa_L"], fr.sense["presa_R"], fr.sense["sombra_L"], fr.sense["sombra_R"],
+				fb.output("orient_L"), fb.output("orient_R"), fb.output("approach"), fb.output("snap"), fb.output("escape_L"), fb.output("escape_R"),
+				fb.output("hop"), fb.output("call")]
+			_life.text = "ra #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [fr.uid, fr.decision.to_upper(), _scores(fr.decision_scores),
+				fr.mind.summary(), ("ultima licao: " + fr.last_lesson) if fr.last_lesson != "" else ""]
+		elif followed is Tadpole:
+			var tp := followed as Tadpole
+			var tb = tp.brain
+			_status.text += "\nenergia %d%%  crescimento %d%%  metamorfose %d%%  idade %.1f dias\ncerebro: %s (%d neuronios)   linha lateral E/D %.0f/%.0f  sombra %.0f\nsaidas: nado E/D %.2f/%.2f  Mauthner E/D %.2f/%.2f  boca %.2f" % [
+				int(tp.energy * 100), int(tp.growth * 100), int(tp.climax * 100), tp.age / LifeManager.DAY, tb.name, tb.n,
+				tp.sense["linha_lateral_L"], tp.sense["linha_lateral_R"], tp.sense["sombra"],
+				tb.output("swim_L"), tb.output("swim_R"), tb.output("escape_L"), tb.output("escape_R"), tb.output("feed")]
+			_life.text = "girino #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [tp.uid, tp.decision.to_upper(), _scores(tp.decision_scores),
+				tp.mind.summary(), ("ultima licao: " + tp.last_lesson) if tp.last_lesson != "" else ""]
 		if followed is Larva:
 			var l := followed as Larva
 			_life.text = "larva #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [l.uid, l.decision.to_upper(), _scores(l.decision_scores),
@@ -117,8 +136,9 @@ func _process(dt: float) -> void:
 		var d := ""
 		for k: String in lm.deaths:
 			d += "%s %d  " % [k, lm.deaths[k]]
-		_life.text += "\npopulacao: %d adultos  %d larvas  %d pupas  %d ovos   nascimentos %d   geracao max %d\nmortes: %s" % [
-			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.births, lm.max_generation, d if d != "" else "nenhuma"]
+		_life.text += "\npopulacao: %d moscas  %d larvas  %d pupas  %d ovos  |  %d ras  %d girinos  %d desovas   nascimentos %d   geracao max %d\nmortes: %s" % [
+			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.count("frogs"), lm.count("tadpoles"), lm.count("frog_eggs"),
+			lm.births, lm.max_generation, d if d != "" else "nenhuma"]
 	if GardenWorld.instance:
 		_gfx_btn.text = "Graficos: %s" % ("leve" if GardenWorld.instance.low_quality else "alto")
 	_chem_view.visible = fly != null and _life.visible
@@ -390,6 +410,9 @@ func _build_action_bar() -> void:
 	grid.add_child(_text_button("Pedra", func(): _spawn(5), "Criar pedrinha (5)"))
 	grid.add_child(_text_button("+ Mosca", func(): _spawn(6), "Criar mosca (6)"))
 	grid.add_child(_text_button("+ Larva", func(): _spawn(7), "Criar larva (7)"))
+	grid.add_child(_text_button("+ Ra", func(): _spawn(8), "Criar ra adulta (8)"))
+	grid.add_child(_text_button("+ Girino", func(): _spawn(9), "Criar girino no lago (9)"))
+	grid.add_child(_text_button("+ Desova", func(): _spawn(10), "Colocar ovos de ra no lago (0)"))
 	_time_btn = _text_button("Tempo x1", cycle_time, "Acelerar / camera lenta (T)")
 	grid.add_child(_time_btn)
 	grid.add_child(_text_button("Cerebro", func(): brain_view.get_parent().visible = not brain_view.get_parent().visible, "Painel do cerebro (B)"))
@@ -604,9 +627,11 @@ func _build_time_bar() -> void:
 	_toast.offset_top = 150
 
 
-## Tela inicial: continuar o mundo salvo ou comecar um novo (sem moscas).
-func show_start_menu(has_save: bool) -> void:
+## Tela inicial: lista dos mundos salvos (continuar ou apagar) e mundo novo.
+func show_start_menu() -> void:
 	get_tree().paused = true
+	if start_menu_open():
+		_start.queue_free()
 	_start = PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.02, 0.06, 0.03, 0.92)
@@ -617,29 +642,86 @@ func show_start_menu(has_save: bool) -> void:
 	_start.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_start.grow_vertical = Control.GROW_DIRECTION_BOTH
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 14)
+	v.add_theme_constant_override("separation", 12)
 	var t := Label.new()
-	t.text = "Mosca no Jardim"
+	t.text = str(ProjectSettings.get_setting("application/config/name"))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.add_theme_font_size_override("font_size", 34)
 	t.add_theme_color_override("font_color", Color(0.75, 1.0, 0.7))
 	v.add_child(t)
 	var sub := Label.new()
-	sub.text = "Conectomas completos da mosca (MCNS) e da larva, cada individuo com o seu.\nOs cerebros nascem zerados: tudo o que sabem, aprendem vivendo."
+	sub.text = "Moscas, larvas, ras e girinos, cada individuo com o proprio conectoma.\nOs cerebros nascem zerados: tudo o que sabem, aprendem vivendo."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 15)
 	v.add_child(sub)
-	if has_save:
-		var info := ""
-		var w: Variant = SaveGame._read(SaveGame.DIR + "/mundo.json")
-		if w is Dictionary:
-			info = "  (dia %d, %d individuos, salvo %s)" % [int(w.get("dia", 1)), (w.get("individuos", []) as Array).size(), str(w.get("salvo_em", "")).replace("T", " ")]
-		v.add_child(_start_button("Continuar mundo salvo" + info, func(): _close_start("continue_world")))
-	v.add_child(_start_button("Novo mundo (sem moscas)", func(): _close_start("new_world")))
+	var slots := SaveGame.list_slots()
+	if not slots.is_empty():
+		var sc := ScrollContainer.new()
+		sc.custom_minimum_size = Vector2(760, mini(slots.size(), 4) * 96)
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		var list := VBoxContainer.new()
+		list.add_theme_constant_override("separation", 10)
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for slot: Dictionary in slots:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			var path: String = slot["pasta"]
+			var go := _start_button("%s  (dia %d, %d individuos, %s)" % [slot["nome"], slot["dia"], slot["individuos"], slot["salvo_em"]], func():
+				SaveGame.DIR = path
+				_close_start("continue_world"))
+			go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			go.custom_minimum_size = Vector2(560, 84)
+			go.add_theme_font_size_override("font_size", 20)
+			row.add_child(go)
+			var del := _start_button("Apagar", func(): _confirm_delete(path, str(slot["nome"])))
+			del.custom_minimum_size = Vector2(150, 84)
+			del.add_theme_color_override("font_color", Color(1.0, 0.75, 0.7))
+			row.add_child(del)
+			list.add_child(row)
+		sc.add_child(list)
+		v.add_child(sc)
+	v.add_child(_start_button("Novo mundo (vazio)", func():
+		SaveGame.DIR = SaveGame.new_slot()
+		_close_start("new_world")))
 	v.add_child(_start_button("Sair", func(): get_tree().quit()))
 	_start.add_child(v)
 	add_child(_start)
 	_ui_controls.append(_start)
+
+
+## Confirmacao antes de apagar (nao da para desfazer).
+func _confirm_delete(path: String, nome: String) -> void:
+	var dlg := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.03, 0.02, 0.97)
+	sb.set_corner_radius_all(18)
+	sb.set_content_margin_all(26)
+	dlg.add_theme_stylebox_override("panel", sb)
+	dlg.set_anchors_preset(Control.PRESET_CENTER)
+	dlg.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dlg.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	var l := Label.new()
+	l.text = "Apagar \"%s\"?\nTodos os individuos e o historico desse mundo somem para sempre." % nome
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 20)
+	v.add_child(l)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	row.add_child(_start_button("Sim, apagar", func():
+		var ok := SaveGame.delete_slot(path)
+		dlg.queue_free()
+		toast("Mundo apagado" if ok else "Nao consegui apagar")
+		show_start_menu()))
+	row.add_child(_start_button("Cancelar", func(): dlg.queue_free()))
+	for c in row.get_children():
+		(c as Button).custom_minimum_size = Vector2(240, 84)
+	v.add_child(row)
+	dlg.add_child(v)
+	add_child(dlg)
+	_ui_controls.append(dlg)
 
 
 func _start_button(text: String, cb: Callable) -> Button:

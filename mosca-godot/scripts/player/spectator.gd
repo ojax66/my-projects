@@ -203,7 +203,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		teleport_to_fly()
 	elif event.is_action_pressed("delete_held"):
 		delete_held()
-	for i in 7:
+	for i in 10:
 		if event.is_action_pressed("spawn_%d" % (i + 1)):
 			spawn(i + 1)
 
@@ -386,7 +386,7 @@ func _update_held(_dt: float) -> void:
 		held = null
 		return
 	var target := _hold_point()
-	if held is Fly or held is Larva or held is Pupa:
+	if held is Fly or held is Larva or held is Pupa or held is Frog or held is Tadpole:
 		var b := Fly._basis_from(Vector3.UP, (target - global_position).cross(Vector3.UP))
 		held.call("carry_to", Transform3D(b, target))
 	elif held is RigidBody3D:
@@ -403,7 +403,7 @@ func _release() -> void:
 	if held == null:
 		return
 	if is_instance_valid(held):
-		if held is Fly or held is Larva or held is Pupa:
+		if held is Fly or held is Larva or held is Pupa or held is Frog or held is Tadpole:
 			var n := held as Node3D
 			n.call("release", (_hold_point() - n.global_position) * 10.0 + cam_velocity * 0.5)
 		elif held is RigidBody3D:
@@ -413,7 +413,7 @@ func _release() -> void:
 
 
 func delete_held() -> void:
-	if held and is_instance_valid(held) and not (held is Fly) and not (held is Larva) and not (held is Pupa):
+	if held and is_instance_valid(held) and not (held is Fly) and not (held is Larva) and not (held is Pupa) and not (held is Frog) and not (held is Tadpole):
 		(held as Node).queue_free()
 		message.emit("Objeto removido")
 	held = null
@@ -477,3 +477,28 @@ func spawn(item: int, use_center := false) -> void:
 				get_tree().current_scene.add_child(l)
 			l.place(hit.position if hit else p, hit.normal if hit else Vector3.UP, hit.collider if hit else null)
 			message.emit("Larva criada")
+		8:
+			var f := LifeManager.instance.spawn_frog(hit.position if hit else p) if LifeManager.instance else null
+			if f:
+				message.emit("%s criada" % f.fly_name)
+		9, 10:
+			# girinos e desovas precisam de agua: no lago mais perto do ponto
+			var at: Vector3 = hit.position if hit else p
+			var pd := Pond.at(at)
+			if pd == null:
+				pd = Pond.nearest(at)
+			if pd == null or LifeManager.instance == null:
+				return
+			var rng := RandomNumberGenerator.new()
+			rng.randomize()
+			var wp := at if pd.contains(at) and pd.depth_at(at) > 12.0 else pd.random_water_point(rng, 15.0)
+			if item == 9:
+				var t := LifeManager.instance.spawn_tadpole(wp, null, 1, {"pond": pd})
+				message.emit("Girino criado no lago" if t else "Limite de girinos")
+			else:
+				var e := FrogEgg.new()
+				e.genome_m = Genome.random_founder(rng)
+				e.genome_f = Genome.random_founder(rng)
+				e.position = Vector3(wp.x, pd.level - 1.0, wp.z)
+				LifeManager.instance.add_child(e)
+				message.emit("Desova de ra colocada no lago")
