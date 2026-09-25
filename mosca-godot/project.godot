@@ -5,7 +5,7 @@ config_version=5
 
 [application]
 
-config/name="Mosca no Jardim (NeuroMechFly)"
+config/name="Matrix mosceana"
 config/description="Mosca-das-frutas NeuroMechFly com cerebro spiking num jardim interativo."
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
@@ -21,7 +21,9 @@ window/stretch/aspect="expand"
 
 3d/default_gravity=9800.0
 3d/default_linear_damp=0.05
-3d/sleep_threshold_linear=2.0
+3d/sleep_threshold_linear=20.0
+3d/sleep_threshold_angular=0.4
+3d/time_before_sleep=0.4
 common/physics_ticks_per_second=60
 
 [input_devices]

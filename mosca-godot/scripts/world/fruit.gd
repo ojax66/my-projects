@@ -66,9 +66,11 @@ func _ready() -> void:
 	mass = pow(radius / 10.0, 3.0) * 0.004
 	continuous_cd = true
 	can_sleep = true
+	contact_monitor = true
+	max_contacts_reported = 2
 	var pm := PhysicsMaterial.new()
 	pm.friction = 0.9
-	pm.bounce = 0.15 if kind != Kind.CHERRY else 0.25
+	pm.bounce = 0.1 if kind != Kind.CHERRY else 0.15
 	physics_material_override = pm
 	angular_damp = 1.5
 	_build_mesh(info)
@@ -95,7 +97,28 @@ func _ready() -> void:
 				drop())
 
 
+var _still_t := 0.0
+
+
 func _physics_process(dt: float) -> void:
+	# fruta de verdade nao e uma bola perfeita: encostada em algo, perde
+	# velocidade (atrito de rolamento) e, quase parada, "dorme" sem tremer.
+	# Acorda sozinha quando algo encosta, e pega, soprada ou atingida.
+	if not sleeping and not freeze and not has_meta("held"):
+		var v := linear_velocity.length()
+		var w := angular_velocity.length() * radius
+		if get_contact_count() > 0 and v < 400.0:
+			var k := exp(-dt * 4.0)
+			angular_velocity *= k
+			linear_velocity = Vector3(linear_velocity.x * k, linear_velocity.y, linear_velocity.z * k)
+		if v < 45.0 and w < 45.0:
+			_still_t += dt
+			if _still_t > 0.25:
+				linear_velocity = Vector3.ZERO
+				angular_velocity = Vector3.ZERO
+				sleeping = true
+		else:
+			_still_t = 0.0
 	if linear_velocity.length() < 5.0 and global_position.y < 200.0:
 		ground_time += dt
 	else:

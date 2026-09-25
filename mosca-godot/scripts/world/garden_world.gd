@@ -224,8 +224,20 @@ func _terrain() -> void:
 	var body := StaticBody3D.new()
 	body.name = "ChaoColisao"
 	body.collision_layer = 1
+	# campo de alturas em vez de malha de triangulos: as frutas (esferas)
+	# assentam sem tremer. Escala uniforme = tamanho da celula.
+	var hm := HeightMapShape3D.new()
+	hm.map_width = RES + 1
+	hm.map_depth = RES + 1
+	var data := PackedFloat32Array()
+	data.resize((RES + 1) * (RES + 1))
+	for iz in RES + 1:
+		for ix in RES + 1:
+			data[iz * (RES + 1) + ix] = height_at(-half + ix * step, -half + iz * step) / step
+	hm.map_data = data
 	var cs := CollisionShape3D.new()
-	cs.shape = mesh.create_trimesh_shape()
+	cs.shape = hm
+	cs.scale = Vector3.ONE * step
 	body.add_child(cs)
 	add_child(body)
 

@@ -364,6 +364,7 @@ func _try_grab(screen_pos: Vector2, force_pos := false) -> void:
 			(rb as Fruit).drop()
 		rb.freeze = false
 		rb.sleeping = false
+		rb.set_meta("held", true)
 		held = rb
 	else:
 		return
@@ -390,6 +391,7 @@ func _update_held(_dt: float) -> void:
 		held.call("carry_to", Transform3D(b, target))
 	elif held is RigidBody3D:
 		var rb := held as RigidBody3D
+		rb.sleeping = false
 		var v := (target - rb.global_position) * 14.0
 		if v.length() > 6000.0:
 			v = v.normalized() * 6000.0
@@ -406,6 +408,7 @@ func _release() -> void:
 			n.call("release", (_hold_point() - n.global_position) * 10.0 + cam_velocity * 0.5)
 		elif held is RigidBody3D:
 			(held as RigidBody3D).linear_velocity += cam_velocity * 0.3
+			(held as RigidBody3D).remove_meta("held")
 	held = null
 
 
