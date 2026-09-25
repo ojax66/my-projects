@@ -41,7 +41,6 @@ var _last_threat_t := -999.0
 var _site := Vector3.INF         # lugar escolhido para pupar
 var _site_t := 0.0
 var _dig_t := 0.0
-var _mound: MeshInstance3D
 var brain   # GpuBrain (conectoma completo da larva) ou FlyBrain (subcircuito)
 # fisiologia (mesmos orgaos basicos da mosca: papo/intestino, corpo gorduroso, traqueias)
 var energy := 0.5
@@ -394,32 +393,68 @@ func _finish_molt() -> void:
 	last_lesson = "trocou de pele: agora e L%d" % instar
 
 
-## Enterra/desenterra aos poucos (na polpa ou na terra).
+## Cava de verdade: abre um buraco (na terra, com a terra tirada em volta;
+## na polpa, um furo que fica na casca da fruta) e entra de cabeca nele.
 func _update_hidden(dt: float) -> void:
 	var prev := hidden
 	hidden = move_toward(hidden, _hide_goal, dt / (12.0 if _on_soil else 6.0))
-	_body_root.position.y = -hidden * size_mm * 0.3
-	if _on_soil and hidden > 0.3 and _mound == null:
-		_mound = MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = 1.0
-		sm.height = 0.5
-		sm.radial_segments = 10
-		sm.rings = 4
-		_mound.mesh = sm
-		var mm := StandardMaterial3D.new()
-		mm.albedo_color = Color(0.3, 0.22, 0.14)
-		mm.roughness = 1.0
-		_mound.material_override = mm
-		add_child(_mound)
-	if _mound:
-		_mound.scale = Vector3(size_mm * 0.45, size_mm * 0.35, size_mm * 0.6) * clampf(hidden * 1.5, 0.0, 1.0)
-		if hidden < 0.1 and prev >= 0.1:
-			# saiu: fica o buraco
-			if LifeManager.instance:
-				LifeManager.instance.make_hole(global_position, _up, size_mm)
-			_mound.queue_free()
-			_mound = null
+	if hidden > 0.05 and prev <= 0.05 and _hide_goal > 0.0:
+		_dig_hole()
+	# entra de cabeca: inclina para baixo e afunda o corpo todo
+	_body_root.rotation.x = -hidden * 1.1
+	_body_root.position = Vector3(0.0, -hidden * size_mm * 0.55, -hidden * size_mm * 0.15)
+	if hidden < 0.02 and prev >= 0.02:
+		_hole_node = null   # saiu: o buraco fica para tras
+
+
+var _hole_node: Node3D
+
+
+func _dig_hole() -> void:
+	var head := global_position - global_basis.z * size_mm * 0.3
+	var r := size_mm * 0.14
+	if surface_body is Fruit:
+		(surface_body as Fruit).add_hole(head, _up, r)
+		last_lesson = "cavou um furo na %s" % (surface_body as Fruit).display_name
+		return
+	if not _on_soil:
+		return
+	var root := Node3D.new()
+	root.name = "BuracoLarva"
+	var hole := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = r
+	cyl.bottom_radius = r * 0.5
+	cyl.height = size_mm * 0.05
+	cyl.radial_segments = 10
+	hole.mesh = cyl
+	var hm := StandardMaterial3D.new()
+	hm.albedo_color = Color(0.04, 0.03, 0.02)
+	hm.roughness = 1.0
+	hole.material_override = hm
+	root.add_child(hole)
+	# a terra que saiu do buraco, em volta
+	var ring := MeshInstance3D.new()
+	var tor := TorusMesh.new()
+	tor.inner_radius = r * 1.05
+	tor.outer_radius = r * 2.4
+	tor.rings = 16
+	tor.ring_segments = 6
+	ring.mesh = tor
+	ring.scale = Vector3(1.0, 0.45, 1.0)
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.42, 0.3, 0.18)
+	rm.roughness = 1.0
+	ring.material_override = rm
+	root.add_child(ring)
+	var parent: Node = LifeManager.instance if LifeManager.instance else get_parent()
+	parent.add_child(root)
+	root.global_transform = Transform3D(Fly._basis_from(_up, -global_basis.z), head + _up * 0.02)
+	_hole_node = root
+	# o buraco vai sendo coberto pela terra em ~1 dia
+	get_tree().create_timer(LifeManager.DAY, false).timeout.connect(func():
+		if is_instance_valid(root):
+			root.queue_free())
 
 
 ## L3 errante: escolhe um lugar seguro, vai ate la e pupa (enterrada, se for
@@ -857,10 +892,9 @@ func crush(obj: Object = null) -> void:
 func grab() -> void:
 	hidden = 0.0
 	_hide_goal = 0.0
-	_body_root.position.y = 0.0
-	if _mound:
-		_mound.queue_free()
-		_mound = null
+	_body_root.position = Vector3.ZERO
+	_body_root.rotation.x = 0.0
+	_hole_node = null
 	_touch = 1.0
 	pain = maxf(pain, 0.3)
 	_carried = true

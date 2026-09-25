@@ -115,7 +115,13 @@ de hormônios e a população.
 - **Ovo** ~1 dia → **larva** em 3 estágios (L1, L2, L3) com **mudas de pele**
   (fica a cutícula velha): cada estágio exige dias e comida, ~4 dias no total
   comendo quase sem parar → **pupa** ~4 dias → **mosca**.
-- A larva come **enterrada na polpa**, **cava buracos na terra** para se
+- **Frutas**: amadurecem nas árvores e caem ao longo de dias; novas crescem
+  aos poucos. Caídas, fermentam, e depois de ~3 dias apodrecem (escurecem,
+  murcham, achatam) e em mais ~2 dias viram terra. Não há limite de frutas.
+  Os furos das larvas aceleram o apodrecimento.
+- A larva cava **buracos de verdade** e entra de cabeça: na **polpa** (o furo
+  fica na casca da fruta) e na **terra** (buraco com a terra tirada em volta,
+  que fica ~1 dia). A larva come **enterrada na polpa**, **cava buracos na terra** para se
   esconder quando tem medo ou sente algo caindo, e a L3 errante **escolhe um
   lugar seguro** para pupar (longe de perigos lembrados, fora de onde caem
   frutas, fora da comida, na sombra), enterrada se for terra.

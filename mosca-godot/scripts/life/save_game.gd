@@ -40,13 +40,19 @@ static func save(main: Node) -> String:
 			"uid": lm.uid_counter, "moscas_criadas": lm.fly_count, "linhagens": lm.lineages},
 		"camera": {"pos": _v(cam.global_position), "yaw": cam.yaw, "pitch": cam.pitch},
 		"graficos_leves": gw.low_quality,
-		"frutas": [], "pedras": [], "ovos": [], "pupas": [], "individuos": [],
+		"frutas": [], "pedras": [], "ovos": [], "pupas": [], "individuos": [], "arvores": [],
 	}
+	for t in gw.get_children():
+		if t is FruitTree:
+			w["arvores"].append({"penduradas": (t as FruitTree).save_hanging()})
 	for n in tree.get_nodes_in_group("grabbable"):
 		if n is Fruit and not (n as Fruit).hanging and not n.is_queued_for_deletion():
 			var f := n as Fruit
+			var hs: Array = []
+			for h: Array in f.holes:
+				hs.append([_v(h[0]), _v(h[1]), h[2]])
 			w["frutas"].append({"tipo": int(f.kind), "pos": _v(f.global_position), "rot": _q(f.global_basis.get_rotation_quaternion()),
-				"raio": f.radius, "polpa": f.flesh, "fermentando": f.ground_time})
+				"raio": f.radius, "polpa": f.flesh, "fermentando": f.ground_time, "furos": hs})
 		elif n is Prop:
 			w["pedras"].append({"pos": _v((n as Prop).global_position)})
 	for e: Egg in tree.get_nodes_in_group("eggs"):
@@ -197,6 +203,15 @@ static func load_world(main: Node) -> bool:
 	lm.fly_count = int(v.get("moscas_criadas", 0))
 	lm.lineages = int(v.get("linhagens", 0))
 	gw.set_quality(bool(w.get("graficos_leves", gw.low_quality)))
+	# frutas penduradas salvas (sem isso cada carregamento enchia as arvores
+	# de novo e as frutas caidas se acumulavam)
+	var trees: Array = []
+	for t in gw.get_children():
+		if t is FruitTree:
+			trees.append(t)
+	var saved_trees: Array = w.get("arvores", [])
+	for i in mini(trees.size(), saved_trees.size()):
+		(trees[i] as FruitTree).load_hanging((saved_trees[i] as Dictionary).get("penduradas", []))
 	# o mundo salvo substitui as frutas caidas e pedras iniciais
 	for n in tree.get_nodes_in_group("grabbable"):
 		if (n is Fruit and not (n as Fruit).hanging) or n is Prop:
@@ -211,6 +226,9 @@ static func load_world(main: Node) -> bool:
 		f.ground_time = float(fd.get("fermentando", 0.0))
 		f.flesh = float(fd.get("polpa", 1.0))
 		f.consume(0.0)
+		for h: Array in fd.get("furos", []):
+			f.holes.append([_vec(h[0]), _vec(h[1]), float(h[2])])
+			f.call("_make_hole_mesh", _vec(h[0]), _vec(h[1]), float(h[2]))
 	for pd: Dictionary in w.get("pedras", []):
 		gw.spawn_pebble(_vec(pd["pos"]))
 	for ed: Dictionary in w.get("ovos", []):

@@ -121,43 +121,9 @@ func _process(dt: float) -> void:
 	if _sky_t > 0.2:
 		_sky_t = 0.0
 		_apply_daylight()
-	_prune_t += dt
-	if _prune_t > 10.0:
-		_prune_t = 0.0
-		prune_fallen_fruits()
 
 
-## Limite de frutas no chao (cada uma custa fisica, cheiro e desenho): se
-## passar, somem as mais velhas (mais podres) que nao tem ninguem em cima
-## ou dentro (ovo, larva, pupa, mosca pousada, fruta segurada).
-const MAX_FALLEN := 70
-var _prune_t := 0.0
 
-
-func prune_fallen_fruits() -> int:
-	var fallen: Array = []
-	for n in get_tree().get_nodes_in_group("grabbable"):
-		if n is Fruit and not (n as Fruit).hanging and not n.is_queued_for_deletion():
-			fallen.append(n)
-	if fallen.size() <= MAX_FALLEN:
-		return 0
-	var used := {}
-	for grp in ["eggs", "larvae", "pupae", "flies"]:
-		for c in get_tree().get_nodes_in_group(grp):
-			for key in ["surface", "surface_body"]:
-				var sfc = c.get(key)
-				if sfc is Fruit:
-					used[sfc] = true
-	fallen.sort_custom(func(a: Fruit, b: Fruit): return a.ground_time > b.ground_time)
-	var removed := 0
-	for f: Fruit in fallen:
-		if fallen.size() - removed <= MAX_FALLEN:
-			break
-		if used.has(f) or f.has_meta("held"):
-			continue
-		f.queue_free()
-		removed += 1
-	return removed
 
 
 ## 1 = sol alto, 0 = noite escura.
@@ -543,6 +509,30 @@ func _fallen_fruits() -> void:
 				f.position = Vector3(x, height_at(x, z) + float(Fruit.INFO[f.kind]["radius"]) * 1.2 + 2.0, z)
 				add_child(f)
 				f.ground_time = _rng.randf_range(0.0, 80.0)
+
+
+## Fruta que apodreceu por completo: vira uma mancha de terra escura
+## (materia organica) que se mistura ao chao e some em ~2 dias.
+func compost(pos: Vector3, radius: float) -> void:
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = radius * 0.9
+	cyl.bottom_radius = radius * 1.05
+	cyl.height = radius * 0.08
+	cyl.radial_segments = 16
+	mi.mesh = cyl
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.2, 0.13, 0.07, 0.95)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.9
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	var y := height_at(pos.x, pos.z)
+	mi.global_position = Vector3(pos.x, y + radius * 0.02, pos.z)
+	var tw := mi.create_tween()
+	tw.tween_property(m, "albedo_color:a", 0.0, DAY_LENGTH * 2.0)
+	tw.tween_callback(mi.queue_free)
 
 
 func spawn_fruit(kind: Fruit.Kind, p: Vector3) -> Fruit:

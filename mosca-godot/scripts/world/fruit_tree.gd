@@ -148,25 +148,89 @@ func _build_leaves() -> void:
 	add_child(mmi)
 
 
+## Lugares (locais) onde a arvore da frutas; comeca cheia e, conforme as
+## frutas maduras caem, novas crescem aos poucos (uma a cada ~dia).
+var _spots: Array[Vector3] = []
+var _grow_t := 0.0
+
+
+func budget() -> int:
+	return 18 if fruit_kind != Fruit.Kind.CHERRY else 30
+
+
 func _hang_fruits() -> void:
-	var budget := 18 if fruit_kind != Fruit.Kind.CHERRY else 30
+	var left := budget()
 	var tips := _tips.duplicate()
 	for i in tips.size():
 		var j := _rng.randi_range(i, tips.size() - 1)
 		var tmp = tips[i]
 		tips[i] = tips[j]
 		tips[j] = tmp
+	var r: float = Fruit.INFO[fruit_kind]["radius"]
 	for tip: Array in tips:
 		var p: Vector3 = tip[0]
 		var per := 1 if fruit_kind != Fruit.Kind.CHERRY else 2
 		for k in per:
-			if budget <= 0:
-				return
-			budget -= 1
-			var f := Fruit.create(fruit_kind, true)
-			var r: float = Fruit.INFO[fruit_kind]["radius"]
-			f.position = p + Vector3(_rng.randf_range(-30, 30), -r * 1.6 - _rng.randf() * 30.0, _rng.randf_range(-30, 30))
-			add_child(f)
+			if left <= 0:
+				break
+			left -= 1
+			_spots.append(p + Vector3(_rng.randf_range(-30, 30), -r * 1.6 - _rng.randf() * 30.0, _rng.randf_range(-30, 30)))
+	for sp in _spots:
+		_grow_at(sp)
+	_grow_t = randf_range(0.6, 1.2) * GardenWorld.DAY_LENGTH
+
+
+func _grow_at(local: Vector3) -> Fruit:
+	var f := Fruit.create(fruit_kind, true)
+	f.position = local
+	add_child(f)
+	return f
+
+
+func hanging_fruits() -> Array:
+	var out: Array = []
+	for c in get_children():
+		if c is Fruit and (c as Fruit).hanging and not c.is_queued_for_deletion():
+			out.append(c)
+	return out
+
+
+func _process(dt: float) -> void:
+	_grow_t -= dt
+	if _grow_t > 0.0:
+		return
+	_grow_t = randf_range(0.6, 1.2) * GardenWorld.DAY_LENGTH
+	var hang := hanging_fruits()
+	if hang.size() >= budget() or _spots.is_empty():
+		return
+	# uma fruta nova num lugar livre
+	var r: float = Fruit.INFO[fruit_kind]["radius"]
+	for k in 8:
+		var sp: Vector3 = _spots[randi() % _spots.size()]
+		var free := true
+		for f: Fruit in hang:
+			if f.position.distance_to(sp) < r * 1.5:
+				free = false
+				break
+		if free:
+			_grow_at(sp)
+			return
+
+
+## Save: posicoes das frutas penduradas agora.
+func save_hanging() -> Array:
+	var out: Array = []
+	for f: Fruit in hanging_fruits():
+		out.append([snappedf(f.position.x, 0.01), snappedf(f.position.y, 0.01), snappedf(f.position.z, 0.01)])
+	return out
+
+
+func load_hanging(list: Array) -> void:
+	for f: Fruit in hanging_fruits():
+		remove_child(f)
+		f.queue_free()
+	for a: Array in list:
+		_grow_at(Vector3(float(a[0]), float(a[1]), float(a[2])))
 
 
 static func _bark() -> StandardMaterial3D:

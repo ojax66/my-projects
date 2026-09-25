@@ -92,16 +92,18 @@ func _ready() -> void:
 		freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 		set_physics_process(false)
 		# de vez em quando uma fruta madura cai sozinha
-		get_tree().create_timer(randf_range(40.0, 600.0), false, true).timeout.connect(func():
+		get_tree().create_timer(randf_range(0.3, 4.0) * GardenWorld.DAY_LENGTH, false, true).timeout.connect(func():
 			if hanging and is_inside_tree():
 				drop())
 
 
 var _still_t := 0.0
-## Fruta caida apodrece: depois de ROT_START dias comeca a murchar e some em
-## mais ROT_LEN dias (as larvas e moscas continuam comendo enquanto isso).
+## Fruta caida apodrece: depois de ROT_START dias escurece, murcha, achata e
+## afunda; em mais ROT_LEN dias vira terra (GardenWorld.compost). Os furos
+## das larvas deixam o apodrecimento mais rapido. Nao ha limite de frutas.
 const ROT_START := 3.0
 const ROT_LEN := 2.0
+var holes: Array = []    # [posicao local, normal local, raio] dos furos das larvas
 
 
 func _physics_process(dt: float) -> void:
@@ -131,16 +133,68 @@ func _physics_process(dt: float) -> void:
 		queue_free()
 	if not hanging:
 		var day := GardenWorld.DAY_LENGTH
-		var over := ground_time - ROT_START * day
+		var boost := 1.0 + 0.15 * holes.size()
+		var over := ground_time * boost - ROT_START * day
 		if over > 0.0:
+			var r := clampf(over / (ROT_LEN * day), 0.0, 1.0)
+			consume(capacity * dt * boost / (ROT_LEN * day))
 			if _mat:
-				_mat.set_shader_parameter("rot", clampf(maxf(1.0 - flesh, over / (ROT_LEN * day)), 0.0, 1.0))
-			consume(capacity * dt / (ROT_LEN * day))
+				# marrom de podre -> quase da cor da terra no fim
+				_mat.set_shader_parameter("rot", clampf(maxf(1.0 - flesh, 0.35 + r), 0.0, 1.0))
+			if _mesh:
+				# murcha e achata no chao
+				_mesh.scale = Vector3(1.0 + 0.2 * r, 1.0 - 0.6 * r, 1.0 + 0.2 * r) * _last_scale
+			if flesh <= 0.02:
+				_become_soil()
 
 
-## Idade da fruta no chao em dias (para o painel).
+## Quanto ja apodreceu (0..1, para o painel).
 func rot_fraction() -> float:
-	return clampf((ground_time / GardenWorld.DAY_LENGTH - ROT_START) / ROT_LEN, 0.0, 1.0)
+	var boost := 1.0 + 0.15 * holes.size()
+	return clampf((ground_time * boost / GardenWorld.DAY_LENGTH - ROT_START) / ROT_LEN, 0.0, 1.0)
+
+
+var _soiled := false
+
+
+func _become_soil() -> void:
+	if _soiled:
+		return
+	_soiled = true
+	if GardenWorld.instance:
+		GardenWorld.instance.compost(global_position, radius)
+	queue_free()
+
+
+## Furo feito por uma larva (fica na casca e acompanha a fruta).
+func add_hole(world_pos: Vector3, world_normal: Vector3, r: float) -> void:
+	var lp := global_transform.affine_inverse() * world_pos
+	var ln := (global_basis.inverse() * world_normal).normalized()
+	holes.append([lp, ln, r])
+	_make_hole_mesh(lp, ln, r)
+
+
+func _make_hole_mesh(lp: Vector3, ln: Vector3, r: float) -> void:
+	if _hole_mat == null:
+		_hole_mat = StandardMaterial3D.new()
+		_hole_mat.albedo_color = Color(0.16, 0.08, 0.03)
+		_hole_mat.roughness = 0.3
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = r
+	cyl.bottom_radius = r * 0.6
+	cyl.height = r * 0.6
+	cyl.radial_segments = 10
+	mi.mesh = cyl
+	mi.material_override = _hole_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# furo dentro da malha (encolhe junto com a fruta)
+	var parent: Node3D = _mesh if _mesh else self
+	parent.add_child(mi)
+	mi.transform = Transform3D(Fly._basis_from(ln, Vector3.FORWARD), (lp - ln * r * 0.2) / maxf(_last_scale, 0.1))
+
+
+static var _hole_mat: StandardMaterial3D
 
 
 func drop() -> void:
@@ -206,7 +260,10 @@ func consume(amount: float) -> float:
 		if _mat:
 			_mat.set_shader_parameter("rot", 1.0 - flesh)
 	if flesh <= 0.01:
-		queue_free.call_deferred()
+		if hanging:
+			queue_free.call_deferred()
+		else:
+			_become_soil.call_deferred()   # o resto (casca) vira terra
 	return got
 
 

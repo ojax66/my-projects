@@ -29,13 +29,15 @@ void fragment() {
 	float speck = step(0.93, noise(p * 38.0));
 	col = mix(col, color_b.rgb * 1.2, speck * 0.5 * (1.0 - dimples));
 	// polpa comida/apodrecendo: manchas marrons
-	float spot = smoothstep(0.55, 0.45, fbm(p * 3.0 + 11.0) - rot * 0.6);
-	col = mix(col, vec3(0.28, 0.17, 0.06), clamp(rot * 1.4, 0.0, 1.0) * (1.0 - spot));
+	// manchas que crescem com o apodrecimento; no fim, cor de terra umida
+	float spot = smoothstep(0.5, 0.6, fbm(p * 3.0 + 11.0) + rot * 0.9 - 0.25);
+	col = mix(col, vec3(0.2, 0.12, 0.05), clamp(rot * 1.4, 0.0, 1.0) * spot);
+	col = mix(col, vec3(0.11, 0.075, 0.04), smoothstep(0.7, 1.0, rot));
 	ALBEDO = col;
 	float pores = noise(p * 60.0);
 	ROUGHNESS = mix(0.28, 0.5, pores * dimples + m * 0.2);
-	SPECULAR = 0.6;
-	CLEARCOAT = 0.3;
+	SPECULAR = mix(0.6, 0.2, rot);
+	CLEARCOAT = 0.3 * (1.0 - rot);
 	CLEARCOAT_ROUGHNESS = 0.3;
 	if (dimples > 0.5) {
 		NORMAL = normalize(NORMAL + (vec3(noise(p * 70.0), noise(p * 70.0 + 3.1), noise(p * 70.0 + 7.3)) - 0.5) * 0.25);
