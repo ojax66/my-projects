@@ -102,8 +102,11 @@ func _process(dt: float) -> void:
 		_status.text = Spectator._label(followed)
 		if followed is Larva:
 			var l := followed as Larva
-			_status.text += "\ncomida %d%%  idade %ds  cerebro: conectoma da larva (%d neuronios)\nodor E/D %.0f/%.0f  paladar %.0f  luz %.0f   DN-VNC E/D %.2f/%.2f  DN-SEZ %.2f" % [
-				int(l.food / LifeManager.LARVA_FOOD * 100), int(l.age), l.brain.n, l.sense["odor_L"], l.sense["odor_R"], l.sense["taste"], l.sense["light"], l.m_crawl_l, l.m_crawl_r, l.m_feed]
+			var li := l.instar - 1
+			_status.text += "\nestagio L%d: comida %d%% e dia %.1f de %.0f   reserva %d%%   enterrada %d%%   idade %.1f dias\ncerebro: conectoma da larva (%d neuronios)   odor E/D %.0f/%.0f  paladar %.0f  luz %.0f   DN-VNC E/D %.2f/%.2f  DN-SEZ %.2f" % [
+				l.instar, int(minf(l.instar_food / float(LifeManager.INSTAR_FOOD[li]), 1.0) * 100), l.instar_t / LifeManager.DAY, float(LifeManager.INSTAR_DAYS[li]),
+				int(l.energy * 100), int(l.hidden * 100), l.age / LifeManager.DAY,
+				l.brain.n, l.sense["odor_L"], l.sense["odor_R"], l.sense["taste"], l.sense["light"], l.m_crawl_l, l.m_crawl_r, l.m_feed]
 		_life.text = ""
 		if followed is Larva:
 			var l := followed as Larva
@@ -116,7 +119,6 @@ func _process(dt: float) -> void:
 			d += "%s %d  " % [k, lm.deaths[k]]
 		_life.text += "\npopulacao: %d adultos  %d larvas  %d pupas  %d ovos   nascimentos %d   geracao max %d\nmortes: %s" % [
 			lm.adults_alive(), lm.count("larvae"), lm.count("pupae"), lm.count("eggs"), lm.births, lm.max_generation, d if d != "" else "nenhuma"]
-		_inherit_btn.text = "Heranca: %s" % ("SIM" if lm.inherit_learning else "NAO")
 	if GardenWorld.instance:
 		_gfx_btn.text = "Graficos: %s" % ("leve" if GardenWorld.instance.low_quality else "alto")
 	_chem_view.visible = fly != null and _life.visible
@@ -395,9 +397,6 @@ func _build_action_bar() -> void:
 		_life.visible = not _life.visible
 		_chem_view.visible = _life.visible, "Painel de vida (L)"))
 	grid.add_child(_text_button("Trocar cerebro", toggle_brain_source, "Conectoma completo (GPU) / subcircuito / padrao (N)"))
-	_inherit_btn = _text_button("Heranca: SIM", func():
-		LifeManager.instance.inherit_learning = not LifeManager.instance.inherit_learning, "Filhotes nascem com parte da memoria dos pais (lamarckiano)")
-	grid.add_child(_inherit_btn)
 	grid.add_child(_text_button("Ajuda", func(): _help.visible = not _help.visible, "Ajuda (H)"))
 	_gfx_btn = _text_button("Graficos: alto", func():
 		var gw := GardenWorld.instance
@@ -549,7 +548,13 @@ VIDA        Cerebro real (MCNS): hormonios (insulina, DH44, octopamina, serotoni
             KC->MBON: ela lembra quais cheiros deram comida e quais deram susto.
             Come a polpa (a fruta encolhe), excreta, envelhece e morre.
             Machos cortejam femeas (pC1), femeas fecundadas botam ovos nas frutas:
-            ovo -> larva (conectoma da larva) -> pupa -> adulto com genes misturados."""
+            ovo (1 dia) -> larva L1, L2, L3 com mudas de pele (4+ dias comendo) ->
+            pupa (4 dias: a larva e dissolvida e o corpo da mosca se forma) -> adulto.
+            Filhos herdam so os genes e a fiacao do cerebro (nascem sem memoria);
+            da larva para a mosca parte da memoria sobrevive, como na vida real.
+LARVAS      comem enterradas na polpa, cavam buracos na terra para se esconder e
+            escolhem um lugar seguro (sem perigo, fora de onde caem frutas, na
+            sombra) para pupar, enterradas se for terra. Segure a pupa para pega-la."""
 	_help.add_child(l)
 	_help.visible = false
 	add_child(_help)

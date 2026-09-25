@@ -95,8 +95,7 @@ de hormônios e a população.
 - **Tomada de decisão**: a cada ~0,5 s cada mosca/larva pesa *comer, buscar
   comida, evitar, fugir, descansar, explorar* (larva: *comer, procurar comida,
   desviar, evitar, pupar*) a partir de fome, medo, noite, hormônios, memória e
-  sentidos. O conectoma continua gerando o andar, o giro e os reflexos. As
-  larvas agora decidem comer e vão até a comida.
+  sentidos. O conectoma continua gerando o andar, o giro e os reflexos.
 - **Esmagamento**: só se algo pesado cair **literalmente em cima**, vindo de
   cima e em queda (`scripts/world/hazards.gd`). Ficar embaixo de uma fruta
   parada ou levar uma batida de lado não mata (só machuca).
@@ -110,6 +109,24 @@ de hormônios e a população.
   pesos KC→MBON aprendidos, a memória e o corpo; os mortos vão para
   `user://mundo/arquivo/`. O conectoma base de cada espécie já vem no jogo
   (`brain/full/*.bin.gz`), sem precisar extrair nada.
+
+## Ciclo de vida (em dias do jogo)
+
+- **Ovo** ~1 dia → **larva** em 3 estágios (L1, L2, L3) com **mudas de pele**
+  (fica a cutícula velha): cada estágio exige dias e comida, ~4 dias no total
+  comendo quase sem parar → **pupa** ~4 dias → **mosca**.
+- A larva come **enterrada na polpa**, **cava buracos na terra** para se
+  esconder quando tem medo ou sente algo caindo, e a L3 errante **escolhe um
+  lugar seguro** para pupar (longe de perigos lembrados, fora de onde caem
+  frutas, fora da comida, na sombra), enterrada se for terra.
+- **Pupa**: casulo semitransparente onde dá para ver a larva sendo dissolvida
+  (histólise), os discos imaginais crescendo, o corpo da mosca se formando,
+  os olhos ficando vermelhos e a cutícula escurecendo. Segure para pegar e
+  carregar (se estiver enterrada, você a desenterra). No fim fica o pupário
+  vazio.
+- **Memória**: os filhos herdam só os genes e a fiação do conectoma e nascem
+  sem memória. Da larva para a mosca adulta ~60% da memória sobrevive, como
+  na vida real (Tully et al. 1994).
 
 ## Controles
 

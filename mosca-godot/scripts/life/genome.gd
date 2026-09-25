@@ -19,7 +19,7 @@ const GENES := {
 	"boldness":    [0.6, 1.6, 1.0, "limiar de fuga (looming)"],
 	"learning":    [0.2, 2.2, 1.0, "taxa de plasticidade KC->MBON"],
 	"metabolism":  [0.7, 1.35, 1.0, "gasto de energia"],
-	"lifespan":    [700.0, 1600.0, 1100.0, "tempo de vida adulta (s)"],
+	"lifespan":    [4320.0, 14400.0, 8640.0, "tempo de vida adulta (s; 6 a 20 dias, media 12)"],
 	"fecundity":   [3.0, 10.0, 6.0, "ovos por acasalamento"],
 	"pref_DM1":    [-1.0, 1.0, 0.0, "preferencia inata: glomerulo DM1 (esteres)"],
 	"pref_DM2":    [-1.0, 1.0, 0.0, "preferencia inata: DM2"],
@@ -63,6 +63,9 @@ static func from_dict(d: Dictionary) -> Genome:
 	var g := Genome.new()
 	for k: String in GENES:
 		g.genes[k] = float(d.get(k, GENES[k][2]))
+	# saves antigos: vida adulta era medida em ~1100 s; converte para dias
+	if float(g.genes["lifespan"]) < 3000.0:
+		g.genes["lifespan"] = clampf(float(g.genes["lifespan"]) / 1100.0 * 8640.0, 4320.0, 14400.0)
 	return g
 
 

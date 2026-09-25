@@ -386,7 +386,7 @@ func _update_held(_dt: float) -> void:
 		held = null
 		return
 	var target := _hold_point()
-	if held is Fly or held is Larva:
+	if held is Fly or held is Larva or held is Pupa:
 		var b := Fly._basis_from(Vector3.UP, (target - global_position).cross(Vector3.UP))
 		held.call("carry_to", Transform3D(b, target))
 	elif held is RigidBody3D:
@@ -403,7 +403,7 @@ func _release() -> void:
 	if held == null:
 		return
 	if is_instance_valid(held):
-		if held is Fly or held is Larva:
+		if held is Fly or held is Larva or held is Pupa:
 			var n := held as Node3D
 			n.call("release", (_hold_point() - n.global_position) * 10.0 + cam_velocity * 0.5)
 		elif held is RigidBody3D:
@@ -413,7 +413,7 @@ func _release() -> void:
 
 
 func delete_held() -> void:
-	if held and is_instance_valid(held) and not (held is Fly) and not (held is Larva):
+	if held and is_instance_valid(held) and not (held is Fly) and not (held is Larva) and not (held is Pupa):
 		(held as Node).queue_free()
 		message.emit("Objeto removido")
 	held = null

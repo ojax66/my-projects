@@ -2,27 +2,31 @@ class_name LifeManager
 extends Node3D
 ## Ciclo de vida da populacao: ovo -> larva -> pupa -> adulto -> morte.
 ## Guarda limites de populacao (para o jogo continuar rodando liso), conta
-## geracoes, cria os excrementos e decide o que os filhotes herdam.
+## geracoes e cria os excrementos.
 ##
-## Tempos comprimidos (na vida real: ovo 1 dia, larva 4 dias, pupa 4 dias,
-## adulto ~30-60 dias).
+## Tempos em DIAS do jogo (1 dia = GardenWorld.DAY_LENGTH s), como a
+## Drosophila a 25 °C: ovo ~1 dia; larva ~4 dias em 3 estagios (L1, L2, L3)
+## separados por mudas de pele; pupa ~4 dias; adulto vive semanas.
+##
+## Heranca: os filhotes recebem SO os genes e a fiacao do conectoma (DNA);
+## nascem com o cerebro zerado. Ja na metamorfose parte da memoria da larva
+## sobrevive no adulto (Tully et al. 1994), como na vida real.
 
-const EGG_TIME := 25.0
-const LARVA_MIN_TIME := 100.0
-const LARVA_FOOD := 0.6          # comida que a larva precisa antes de virar pupa
-const PUPA_TIME := 45.0
-const ADULT_MATURE := 40.0       # idade adulta minima para acasalar
+const DAY := GardenWorld.DAY_LENGTH
+const EGG_TIME := 1.0 * DAY
+const INSTAR_DAYS := [1.0, 1.0, 2.0]        # tempo minimo de cada estagio (L1, L2, L3)
+const INSTAR_FOOD := [0.10, 0.25, 0.60]     # comida (unidades de polpa) para cada estagio
+const INSTAR_SIZE := [[0.7, 1.5], [1.5, 2.6], [2.6, 4.2]]   # comprimento (mm) no inicio/fim
+const LARVA_FOOD := 0.95                    # total
+const PUPA_TIME := 4.0 * DAY
+const ADULT_MATURE := 0.5 * DAY             # idade adulta minima para acasalar
+const METAMORPHOSIS_KEEP := 0.6             # fracao da memoria da larva que chega ao adulto
 const MAX_ADULTS := 14
 const MAX_LARVAE := 18
 const MAX_EGGS := 40
 const MAX_SPOTS := 400
 
 static var instance: LifeManager
-
-## Heranca do aprendizado (lamarckiana): na biologia real so os genes passam.
-## Ligado, o filhote nasce com parte das memorias KC->MBON dos pais.
-var inherit_learning := true
-var inherit_fraction := 0.5
 
 var births := 0
 var uid_counter := 0
@@ -85,6 +89,28 @@ func drop_spot(pos: Vector3, normal: Vector3, surface: Node3D) -> void:
 			old.queue_free()
 
 
+## Buraco que uma larva cavou na terra (fica um tempo e some).
+func make_hole(pos: Vector3, normal: Vector3, size_mm: float) -> void:
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = size_mm * 0.22
+	cyl.bottom_radius = size_mm * 0.15
+	cyl.height = 0.03
+	cyl.radial_segments = 10
+	mi.mesh = cyl
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.06, 0.04, 0.03)
+	m.roughness = 1.0
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.global_transform = Transform3D(Fly._basis_from(normal, Vector3.FORWARD), pos + normal * 0.02)
+	_spots.append(mi)
+	get_tree().create_timer(DAY, false).timeout.connect(func():
+		if is_instance_valid(mi):
+			mi.queue_free())
+
+
 ## Mancha de hemolinfa quando uma mosca ou larva e esmagada.
 func splat(pos: Vector3, normal: Vector3) -> void:
 	var mi := MeshInstance3D.new()
@@ -120,10 +146,9 @@ func random_wiring() -> Array:
 	return [_rng.randi(), _rng.randi(), _rng.randi()]
 
 
-func child_mind(m: CreatureMemory, f: CreatureMemory) -> CreatureMemory:
-	if not inherit_learning:
-		return CreatureMemory.new()
-	return CreatureMemory.inherit(m, f, inherit_fraction)
+## Filhote: cerebro zerado (memoria nao e genetica).
+func child_mind(_m: CreatureMemory, _f: CreatureMemory) -> CreatureMemory:
+	return CreatureMemory.new()
 
 
 ## Alguem morreu: quem estava perto e viu aprende (aprendizado social).
@@ -155,15 +180,9 @@ func report_taste(eater: Node3D, fruit: Node3D, us: float) -> void:
 			c.call("observe_taste", fruit, us)
 
 
-func child_memory(mother_mem: PackedFloat32Array, father_mem: PackedFloat32Array) -> PackedFloat32Array:
-	if not inherit_learning or mother_mem.is_empty():
-		return PackedFloat32Array()
-	var out := PackedFloat32Array()
-	out.resize(mother_mem.size())
-	for i in out.size():
-		var f := father_mem[i] if i < father_mem.size() else mother_mem[i]
-		out[i] = lerpf(1.0, (mother_mem[i] + f) * 0.5, inherit_fraction)
-	return out
+## Filhote: pesos sinapticos de fabrica (sem memoria dos pais).
+func child_memory(_mother_mem: PackedFloat32Array, _father_mem: PackedFloat32Array) -> PackedFloat32Array:
+	return PackedFloat32Array()
 
 
 func record_death(reason: String) -> void:
@@ -208,11 +227,13 @@ func pupate(larva: Larva) -> void:
 	p.lineage = larva.lineage
 	p.size_mm = larva.size_mm
 	p.uid = larva.uid
+	p.buried = larva.hidden > 0.5
 	p.mind = larva.mind
 	p.wiring = larva.wiring
 	p.parents = larva.parents
 	add_child(p)
 	p.global_transform = larva.global_transform
+	p.attach(larva.surface_body)
 
 
 func eclose(pupa: Pupa) -> void:
@@ -222,6 +243,8 @@ func eclose(pupa: Pupa) -> void:
 	births += 1
 	max_generation = maxi(max_generation, pupa.generation)
 	if main and main.has_method("spawn_fly"):
-		var f: Fly = main.call("spawn_fly", pupa.global_position, pupa.genome, pupa.generation, pupa.memory, pupa.lineage, "",
-			{"uid": pupa.uid, "mind": pupa.mind, "wiring": pupa.wiring, "parents": pupa.parents})
+		# metamorfose: o cerebro e remodelado; so parte da memoria da larva fica
+		var mind := CreatureMemory.metamorphosis(pupa.mind, METAMORPHOSIS_KEEP)
+		var f: Fly = main.call("spawn_fly", pupa.global_position + pupa.global_basis.y * 2.0, pupa.genome, pupa.generation, PackedFloat32Array(), pupa.lineage, "",
+			{"uid": pupa.uid, "mind": mind, "wiring": pupa.wiring, "parents": pupa.parents})
 		f.behavior = "acabou de nascer"

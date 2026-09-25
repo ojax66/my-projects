@@ -187,6 +187,22 @@ static func inherit(a: CreatureMemory, b: CreatureMemory, fraction: float) -> Cr
 	return m
 
 
+## Metamorfose: o corpo cogumelo da larva e remodelado na pupa e parte das
+## memorias sobrevive no adulto (Tully et al. 1994). keep = fracao mantida.
+static func metamorphosis(src: CreatureMemory, keep: float) -> CreatureMemory:
+	var m := CreatureMemory.new()
+	if src == null:
+		return m
+	for p: Array in src.protos:
+		m.protos.append([(p[0] as PackedFloat32Array).duplicate(), float(p[1]) * keep, float(p[2]) * keep, p[3]])
+	for d: Array in src.dangers:
+		m.dangers.append([d[0], d[1], float(d[2]) * keep * 0.7, d[3]])
+	m.fall_fear = src.fall_fear * keep
+	m.learned = src.learned
+	m.observed = src.observed
+	return m
+
+
 func to_dict() -> Dictionary:
 	var ps: Array = []
 	for p: Array in protos:

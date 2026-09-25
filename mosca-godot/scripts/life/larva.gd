@@ -26,6 +26,21 @@ var _threat_obj: Object = null
 var _dodge_t := 0.0
 var _dodge_dir := Vector3.ZERO
 var _taste_t := 0.0
+# estagios (L1, L2, L3) separados por mudas de pele
+var instar := 1
+var instar_t := 0.0             # segundos neste estagio
+var instar_food := 0.0          # polpa comida neste estagio
+var molt_t := 0.0
+# esconderijo: 0 = na superficie, 1 = enterrada (na polpa ou na terra)
+var hidden := 0.0
+var _hide_goal := 0.0
+var _hide_t := 0.0
+var _on_soil := false
+var _last_threat_t := -999.0
+var _site := Vector3.INF         # lugar escolhido para pupar
+var _site_t := 0.0
+var _dig_t := 0.0
+var _mound: MeshInstance3D
 var brain   # GpuBrain (conectoma completo da larva) ou FlyBrain (subcircuito)
 # fisiologia (mesmos orgaos basicos da mosca: papo/intestino, corpo gorduroso, traqueias)
 var energy := 0.5
@@ -192,6 +207,7 @@ func place(p: Vector3, n: Vector3, surf: Node3D) -> void:
 
 
 func _attach(surf: Object) -> void:
+	_on_soil = surf is Node and (surf as Node).name == "ChaoColisao"
 	if surf is Node3D and (surf is RigidBody3D or (surf as Node3D).has_method("taste")):
 		surface_body = surf
 		_surface_local = surface_body.global_transform.affine_inverse() * global_transform
@@ -230,15 +246,15 @@ func _physics_process(dt: float) -> void:
 	m_crawl_r = lerpf(m_crawl_r, brain.output("crawl_R"), a)
 	m_feed = lerpf(m_feed, brain.output("feed"), a)
 
-	# crescimento: tamanho segue a comida acumulada
-	size_mm = lerpf(0.7, 4.0 * genome.get_gene("size"), clampf(food / LifeManager.LARVA_FOOD, 0.0, 1.0))
-	_body_root.scale = Vector3.ONE * size_mm
+	# crescimento: cada estagio vai do tamanho inicial ao final conforme come
+	instar_t += dt
+	_update_size()
 
 	var fruit := surface_body as Fruit if surface_body is Fruit else null
 	var on_food := fruit != null and fruit.flesh > 0.0
 	# rolamento nociceptivo (reflexo do cordao ventral: neuronios Goro/Basin,
 	# que nao estao no conectoma do cerebro)
-	if pain > 0.6 and _roll_t <= 0.0:
+	if pain > 0.6 and _roll_t <= 0.0 and hidden < 0.5:
 		_roll_t = 1.2
 	if _roll_t > 0.0:
 		_roll_t -= dt
@@ -249,6 +265,19 @@ func _physics_process(dt: float) -> void:
 		_animate(dt, 3.0)
 		return
 	_body_root.rotation.z = lerpf(_body_root.rotation.z, 0.0, 0.2)
+	# muda de pele (ecdise): para, sai da cuticula velha e passa ao proximo estagio
+	if molt_t > 0.0:
+		molt_t -= dt
+		behavior = "trocando de pele (virando L%d)" % (instar + 1)
+		if molt_t <= 0.0:
+			_finish_molt()
+		_update_hidden(dt)
+		_animate(dt, 0.4)
+		return
+	if instar < 3 and instar_t >= float(LifeManager.INSTAR_DAYS[instar - 1]) * LifeManager.DAY \
+			and instar_food >= float(LifeManager.INSTAR_FOOD[instar - 1]):
+		molt_t = 40.0
+		return
 	_turn_noise = clampf(_turn_noise * (1.0 - dt * 0.5) + _rng.randfn() * sqrt(dt) * 0.8, -1.0, 1.0)
 	_decide(dt, fruit, on_food)
 	var speed := 0.0
@@ -256,6 +285,7 @@ func _physics_process(dt: float) -> void:
 	var crawl := 0.35 * size_mm * genome.get_gene("speed")
 	if decision == "comer" and not on_food:
 		decision = "procurar comida"
+	_hide_goal = 0.0
 	match decision:
 		"desviar":
 			# rasteja depressa para fora de onde a coisa vai cair
@@ -264,22 +294,21 @@ func _physics_process(dt: float) -> void:
 			speed = crawl * 4.0
 			turn = _steer_to(global_position + _dodge_dir) * 3.0
 		"pupar":
-			_wander_t += dt
-			behavior = "procurando lugar para pupar"
-			speed = crawl * 1.4
-			turn = _turn_noise * 0.6 - _odor_bias() * 1.5
-			if _wander_t > 18.0 and not on_food and mind.danger_at(global_position) < 0.3:
-				behavior = "virando pupa"
-				if LifeManager.instance:
-					LifeManager.instance.pupate(self)
-				queue_free()
-				return
+			var r := _pupation(dt)
+			if r.is_empty():
+				return   # virou pupa
+			speed = r[0]
+			turn = r[1]
 		"comer":
-			behavior = "comendo a polpa"
-			var got := fruit.consume(0.006 * size_mm * dt)
+			# come a polpa cavando para dentro da fruta: com medo ou com luz
+			# (larvas fogem da luz) se enterra mais fundo
+			_hide_goal = clampf(0.35 + 0.5 * mind.fall_fear + 0.3 * float(sense["light"]) / 80.0, 0.0, 0.9)
+			behavior = "comendo dentro da polpa" if hidden > 0.5 else "comendo a polpa"
+			var got := fruit.consume(0.00016 * size_mm * dt)
 			food += got
-			gut = minf(gut + got * 3.0, 1.0)
-			speed = 0.1 * size_mm
+			instar_food += got
+			gut = minf(gut + got * 6.0, 1.0)
+			speed = 0.05 * size_mm
 			turn = _turn_noise * 0.4
 			_taste_t -= dt
 			if got > 0.0 and _taste_t <= 0.0:
@@ -287,12 +316,18 @@ func _physics_process(dt: float) -> void:
 				mind.learn_odor(fruit.memory_key(), 1.0, _learn_rate(), fruit.display_name)
 				if LifeManager.instance:
 					LifeManager.instance.report_taste(self, fruit, 1.0)
+		"esconder":
+			# cava um buraco na terra e fica la dentro ate o perigo passar
+			_hide_goal = 1.0
+			_hide_t += dt
+			behavior = "cavando um buraco" if hidden < 0.9 else "escondida no buraco"
 		"procurar comida":
 			behavior = "procurando comida"
 			speed = crawl * 2.5
 			if is_instance_valid(_target):
 				behavior = "indo ate %s" % _target.get("display_name")
 				turn = _steer_to(_target.global_position) * 2.0 + _turn_noise * 0.3
+				_leave_fruit_towards(_target.global_position)
 			else:
 				turn = _odor_bias() * 2.5 + _turn_noise * 0.7
 		"evitar":
@@ -309,12 +344,174 @@ func _physics_process(dt: float) -> void:
 			speed = crawl * drive
 			# viragem: assimetria dos descendentes do conectoma + quimiotaxia
 			turn = (m_crawl_l - m_crawl_r) * 1.5 + _odor_bias() * 2.0 * genome.get_gene("tropism") + _turn_noise * 0.7
+	if decision != "esconder":
+		_hide_t = maxf(0.0, _hide_t - dt * 0.5)
 	# toque leve: para e recua um pouco (resposta de Kernell)
-	if _touch > 0.5 and decision != "desviar" and decision != "pupar":
+	if _touch > 0.5 and decision != "desviar" and decision != "pupar" and hidden < 0.5:
 		speed = -0.3 * size_mm
 		behavior = "recuando (tocada)"
+	_update_hidden(dt)
+	# enterrada nao anda: primeiro sai do buraco
+	if hidden > 0.25 and _hide_goal < hidden and decision != "comer":
+		speed = 0.0
+		behavior = "saindo do esconderijo"
+	elif hidden > 0.6 and decision != "comer":
+		speed = 0.0
 	_crawl(dt, speed, turn)
 	_animate(dt, speed / maxf(size_mm, 0.1))
+
+
+func _update_size() -> void:
+	var sz: Array = LifeManager.INSTAR_SIZE[instar - 1]
+	var need: float = LifeManager.INSTAR_FOOD[instar - 1]
+	size_mm = lerpf(float(sz[0]), float(sz[1]), clampf(instar_food / need, 0.0, 1.0)) * genome.get_gene("size")
+	_body_root.scale = Vector3.ONE * size_mm
+
+
+func _finish_molt() -> void:
+	# deixa a cuticula velha (exuvia) para tras
+	var ex := MeshInstance3D.new()
+	var cap := CapsuleMesh.new()
+	cap.radius = size_mm * 0.12
+	cap.height = size_mm * 0.9
+	ex.mesh = cap
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.95, 0.93, 0.85, 0.35)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.2
+	ex.material_override = m
+	var parent: Node = surface_body if is_instance_valid(surface_body) else get_parent()
+	parent.add_child(ex)
+	ex.global_transform = Transform3D(global_basis * Basis(Vector3.RIGHT, PI * 0.5), global_position + _up * size_mm * 0.1)
+	get_tree().create_timer(LifeManager.DAY * 0.5, false).timeout.connect(ex.queue_free)
+	instar += 1
+	instar_t = 0.0
+	instar_food = 0.0
+	last_lesson = "trocou de pele: agora e L%d" % instar
+
+
+## Enterra/desenterra aos poucos (na polpa ou na terra).
+func _update_hidden(dt: float) -> void:
+	var prev := hidden
+	hidden = move_toward(hidden, _hide_goal, dt / (12.0 if _on_soil else 6.0))
+	_body_root.position.y = -hidden * size_mm * 0.3
+	if _on_soil and hidden > 0.3 and _mound == null:
+		_mound = MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 1.0
+		sm.height = 0.5
+		sm.radial_segments = 10
+		sm.rings = 4
+		_mound.mesh = sm
+		var mm := StandardMaterial3D.new()
+		mm.albedo_color = Color(0.3, 0.22, 0.14)
+		mm.roughness = 1.0
+		_mound.material_override = mm
+		add_child(_mound)
+	if _mound:
+		_mound.scale = Vector3(size_mm * 0.45, size_mm * 0.35, size_mm * 0.6) * clampf(hidden * 1.5, 0.0, 1.0)
+		if hidden < 0.1 and prev >= 0.1:
+			# saiu: fica o buraco
+			if LifeManager.instance:
+				LifeManager.instance.make_hole(global_position, _up, size_mm)
+			_mound.queue_free()
+			_mound = null
+
+
+## L3 errante: escolhe um lugar seguro, vai ate la e pupa (enterrada, se for
+## terra). Retorna [velocidade, giro] enquanto procura, ou [] se ja pupou.
+func _pupation(dt: float) -> Array:
+	_wander_t += dt
+	_site_t -= dt
+	if _site == Vector3.INF or _site_t <= 0.0:
+		_site = _choose_site()
+		_site_t = 90.0
+	var to := _site - global_position
+	to.y = 0.0
+	var crawl := 0.35 * size_mm * genome.get_gene("speed")
+	if to.length() > size_mm * 2.0 and _wander_t < 0.4 * LifeManager.DAY and _dig_t <= 0.0:
+		behavior = "L3 errante: indo ate um lugar seguro para pupar"
+		_leave_fruit_towards(_site)
+		return [crawl * 2.0, _steer_to(_site) * 2.0 + _turn_noise * 0.2]
+	if _on_soil:
+		_hide_goal = 0.7
+		behavior = "cavando para pupar enterrada"
+		_dig_t += dt
+		if hidden >= 0.65:
+			_become_pupa()
+			return []
+	else:
+		behavior = "grudando na superficie para pupar"
+		_dig_t += dt
+		if _dig_t > 20.0:
+			_become_pupa()
+			return []
+	return [0.0, 0.0]
+
+
+## Na lateral de uma fruta, querendo ir para outro lugar: se solta e cai no
+## chao (larvas fazem isso) em vez de ficar dando voltas na fruta.
+func _leave_fruit_towards(goal: Vector3) -> void:
+	var fr := surface_body as Fruit
+	if fr == null or _up.y > 0.35:
+		return
+	if goal.distance_to(fr.global_position) < fr.radius + 5.0:
+		return
+	var q := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.DOWN * 3000.0, WORLD_MASK, [fr.get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit:
+		var fwd := goal - global_position
+		fwd.y = 0.0
+		_up = hit.normal
+		global_transform = Transform3D(Fly._basis_from(_up, fwd if fwd.length() > 0.1 else Vector3.FORWARD), hit.position)
+		_attach(hit.collider)
+
+
+func _become_pupa() -> void:
+	if LifeManager.instance:
+		LifeManager.instance.pupate(self)
+	queue_free()
+
+
+## Lugar para pupar: longe de perigos lembrados, fora da area onde caem
+## frutas das arvores (pesa mais com o medo aprendido), fora da comida
+## (vai ser pisada e comida), na sombra e perto.
+func _choose_site() -> Vector3:
+	var gw := GardenWorld.instance
+	var best := global_position
+	var best_s := -INF
+	var hanging: Array = []
+	for n in get_tree().get_nodes_in_group("grabbable"):
+		if n is Fruit and (n as Fruit).hanging:
+			hanging.append((n as Fruit).global_position)
+	var fruits := get_tree().get_nodes_in_group("odor_source")
+	for k in 13:
+		var p := global_position
+		if k > 0:
+			var a := _rng.randf() * TAU
+			p += Vector3(cos(a), 0, sin(a)) * _rng.randf_range(40.0, 320.0)
+		if Vector2(p.x, p.z).length() > 2400.0:
+			continue
+		if gw:
+			p.y = gw.height_at(p.x, p.z)
+		var sc := -2.0 * mind.danger_at(p) - global_position.distance_to(p) / 700.0
+		var risk := 0.0
+		for h: Vector3 in hanging:
+			if h.y > p.y and Vector2(h.x - p.x, h.z - p.z).length() < 180.0:
+				risk += 0.35
+		sc -= minf(risk, 1.5) * (0.4 + 1.5 * mind.fall_fear)
+		for f in fruits:
+			if (f as Node3D).global_position.distance_to(p) < 70.0:
+				sc -= 0.6
+				break
+		if gw and gw.sun:
+			var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 3.0, p + gw.sun.global_basis.z * 3000.0, WORLD_MASK)
+			if get_world_3d().direct_space_state.intersect_ray(q):
+				sc += 0.3   # sombra
+		if sc > best_s:
+			best_s = sc
+			best = p
+	return best
 
 
 ## Selecao de acao da larva (mesma ideia da mosca): fome, medo, memoria e
@@ -325,8 +522,9 @@ func _decide(dt: float, fruit: Fruit, on_food: bool) -> void:
 	var th := Hazards.threat(global_position, size_mm + 6.0)
 	if not th.is_empty() and th["obj"] != _threat_obj:
 		_threat_obj = th["obj"]
+		_last_threat_t = age
 		var p_react := clampf(0.12 + 0.85 * mind.fall_fear, 0.0, 0.95)
-		if _rng.randf() < p_react:
+		if hidden < 0.6 and _rng.randf() < p_react:
 			decision = "desviar"
 			_dodge_t = 1.5
 			_dodge_dir = th["away"]
@@ -336,24 +534,32 @@ func _decide(dt: float, fruit: Fruit, on_food: bool) -> void:
 	if _decide_t > 0.0 and decision != "desviar":
 		return
 	_decide_t = 0.5
-	var ready := food >= LifeManager.LARVA_FOOD and age >= LifeManager.LARVA_MIN_TIME
+	var ready := instar == 3 and instar_t >= float(LifeManager.INSTAR_DAYS[2]) * LifeManager.DAY \
+			and instar_food >= float(LifeManager.INSTAR_FOOD[2])
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
+	var need: float = LifeManager.INSTAR_FOOD[instar - 1]
 	var sc := {"explorar": 0.25}
 	if ready:
-		sc["pupar"] = 1.2
+		sc["pupar"] = 1.4
 	var sweet := on_food and float(fruit.taste().get("sugar", 0.0)) > 0.0 and float(fruit.taste().get("bitter", 0.0)) <= 0.0
 	if sweet and not ready:
-		# larvas comem quase sem parar ate juntar reserva para a metamorfose
-		sc["comer"] = 0.6 + hunger + 0.4 * m_feed + (0.3 if food < LifeManager.LARVA_FOOD else 0.0)
-	if not on_food or not sweet:
+		# larvas comem quase sem parar: precisam de dias de comida para crescer
+		sc["comer"] = 0.7 + hunger + 0.4 * m_feed + (0.4 if instar_food < need else 0.0)
+	if not ready and (not on_food or not sweet):
 		var best := _best_food()
 		_target = best[0] if best.size() > 0 else null
-		sc["procurar comida"] = (0.4 + hunger) * (1.0 if ready == false else 0.2) * (1.0 if _target else 0.6)
+		sc["procurar comida"] = (0.4 + hunger) * (1.0 if _target else 0.6)
 	var dz := mind.danger_at(global_position)
 	var bad := 0.0
 	if on_food and float(fruit.taste().get("bitter", 0.0)) > 0.0:
 		bad = 1.0
 	sc["evitar"] = maxf(dz * 1.2, bad)
+	if _on_soil and not ready:
+		# cavar e se esconder: medo aprendido, ameaca recente e luz (fotofobia);
+		# a fome e o tempo escondida tiram a vontade
+		var recent := 0.6 if age - _last_threat_t < 20.0 else 0.0
+		sc["esconder"] = 0.9 * mind.fall_fear + recent + 0.2 * float(sense["light"]) / 80.0 + dz * 0.5 \
+			- 0.8 * hunger - _hide_t / 120.0
 	var pick := decision if sc.has(decision) else "explorar"
 	var pick_v := float(sc.get(pick, 0.0)) + 0.1
 	for k: String in sc:
@@ -413,12 +619,14 @@ func observe_taste(fruit: Node3D, us: float) -> void:
 		mind.learn_odor(fruit.call("memory_key"), us, _learn_rate() * 0.3, str(fruit.get("display_name")), true)
 
 
+## Metabolismo em escala de dias: a reserva (corpo gorduroso) dura ~1-2 dias
+## sem comer; a larva cresce so comendo (ver _update_size).
 func _physiology(dt: float) -> void:
-	energy -= dt / 400.0
-	var d := minf(gut, 0.02 * dt)
+	energy -= 0.0006 * size_mm * genome.get_gene("metabolism") * dt
+	var d := minf(gut, 0.005 * dt)
 	gut -= d
-	energy = minf(energy + d * 1.2, 1.0)
-	waste += d * 0.5
+	energy = minf(energy + d, 1.0)
+	waste += d * 0.3
 	if waste > 0.06:
 		waste = 0.0
 		if LifeManager.instance:
@@ -429,7 +637,7 @@ func _physiology(dt: float) -> void:
 	if energy <= 0.0:
 		energy = 0.0
 		_starve_t += dt
-		if _starve_t > 30.0:
+		if _starve_t > 0.2 * LifeManager.DAY:
 			_die("fome (larva)")
 	else:
 		_starve_t = 0.0
@@ -446,6 +654,8 @@ func hurt(amount: float) -> void:
 func _check_crush() -> void:
 	if Engine.get_physics_frames() < 180:
 		return  # frutas ainda se acomodando no inicio do mundo
+	if hidden >= 0.6:
+		return  # enterrada na polpa ou na terra: protegida
 	Hazards.refresh(get_tree())
 	var r := Hazards.check(global_position, size_mm * 0.25, size_mm * 0.5, surface_body)
 	if r.is_empty():
@@ -611,6 +821,12 @@ func crush(obj: Object = null) -> void:
 
 # manipulacao pelo espectador
 func grab() -> void:
+	hidden = 0.0
+	_hide_goal = 0.0
+	_body_root.position.y = 0.0
+	if _mound:
+		_mound.queue_free()
+		_mound = null
 	_touch = 1.0
 	pain = maxf(pain, 0.3)
 	_carried = true
@@ -632,7 +848,7 @@ func release(_vel: Vector3) -> void:
 
 
 func describe() -> String:
-	return "Larva (geracao %d, %.1f mm) — %s" % [generation, size_mm, behavior]
+	return "Larva L%d (geracao %d, %.1f mm, dia %.1f do estagio) — %s" % [instar, generation, size_mm, instar_t / LifeManager.DAY, behavior]
 
 
 func loom_radius() -> float:

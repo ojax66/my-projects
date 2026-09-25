@@ -37,8 +37,7 @@ static func save(main: Node) -> String:
 		"salvo_em": Time.get_datetime_string_from_system(),
 		"dia": gw.day, "hora": gw.hour,
 		"vida": {"nascimentos": lm.births, "mortes": lm.deaths, "geracao_max": lm.max_generation,
-			"uid": lm.uid_counter, "moscas_criadas": lm.fly_count, "linhagens": lm.lineages,
-			"heranca": lm.inherit_learning},
+			"uid": lm.uid_counter, "moscas_criadas": lm.fly_count, "linhagens": lm.lineages},
 		"camera": {"pos": _v(cam.global_position), "yaw": cam.yaw, "pitch": cam.pitch},
 		"graficos_leves": gw.low_quality,
 		"frutas": [], "pedras": [], "ovos": [], "pupas": [], "individuos": [],
@@ -57,7 +56,7 @@ static func save(main: Node) -> String:
 	for p: Pupa in tree.get_nodes_in_group("pupae"):
 		w["pupas"].append({"id": p.uid, "genes": p.genome.to_dict(), "memoria_sinapses": _pack(p.memory), "memoria": _mind(p.mind),
 			"fiacao": p.wiring, "pais": p.parents, "geracao": p.generation, "linhagem": p.lineage, "t": p.get("_t"),
-			"tamanho": p.size_mm, "pos": _v(p.global_position), "normal": _v(p.global_basis.y)})
+			"tamanho": p.size_mm, "enterrada": p.buried, "pos": _v(p.global_position), "normal": _v(p.global_basis.y)})
 	# um arquivo por individuo vivo; apaga os que nao existem mais
 	var alive := {}
 	for c in tree.get_nodes_in_group("creatures"):
@@ -122,6 +121,9 @@ static func individual(c: Node) -> Dictionary:
 		var l := c as Larva
 		d["comida"] = l.food
 		d["tamanho_mm"] = l.size_mm
+		d["estagio"] = l.instar
+		d["tempo_no_estagio_s"] = l.instar_t
+		d["comida_no_estagio"] = l.instar_food
 		d["memoria_herdada"] = _pack(l.memory)
 	return d
 
@@ -157,7 +159,6 @@ static func load_world(main: Node) -> bool:
 	lm.uid_counter = int(v.get("uid", 0))
 	lm.fly_count = int(v.get("moscas_criadas", 0))
 	lm.lineages = int(v.get("linhagens", 0))
-	lm.inherit_learning = bool(v.get("heranca", true))
 	gw.set_quality(bool(w.get("graficos_leves", gw.low_quality)))
 	# o mundo salvo substitui as frutas caidas e pedras iniciais
 	for n in tree.get_nodes_in_group("grabbable"):
@@ -186,9 +187,11 @@ static func load_world(main: Node) -> bool:
 		var p := Pupa.new()
 		_fill_stage(p, pd)
 		p.size_mm = float(pd.get("tamanho", 3.0))
+		p.buried = bool(pd.get("enterrada", false))
 		p.set("_t", float(pd.get("t", 0.0)))
 		lm.add_child(p)
 		p.global_transform = Transform3D(Fly._basis_from(_vec(pd.get("normal", [0, 1, 0])), Vector3.FORWARD), _vec(pd["pos"]))
+		p.attach(_fruit_at(tree, p.global_position))
 	var n_ind := 0
 	for id in w.get("individuos", []):
 		var d: Variant = _read(DIR + "/individuos/%d.json" % int(id))
@@ -228,6 +231,14 @@ static func _spawn_individual(main: Node, d: Dictionary) -> void:
 		l.gut = float(d.get("papo", 0.0))
 		l.health = float(d.get("saude", 1.0))
 		l.food = float(d.get("comida", 0.0))
+		if d.has("estagio"):
+			l.instar = int(d["estagio"])
+			l.instar_t = float(d.get("tempo_no_estagio_s", 0.0))
+			l.instar_food = float(d.get("comida_no_estagio", 0.0))
+		else:
+			# save antigo: estima o estagio pela comida que ja comeu
+			l.instar = 1 if l.food < 0.1 else (2 if l.food < 0.35 else 3)
+			l.instar_food = clampf(l.food - [0.0, 0.1, 0.35][l.instar - 1], 0.0, 1.0)
 		l.memory = _unpack(str(d.get("memoria_herdada", "")))
 		LifeManager.instance.add_child(l)
 		if l.brain and not syn.is_empty():
