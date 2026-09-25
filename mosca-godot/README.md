@@ -152,6 +152,33 @@ de hormônios e a população.
     hipotálamo (fome), pálio → estriado com dopamina de recompensa/punição.
   - `python3 tools/build_amphibian_brain.py --test` mostra as respostas (presa
     à esquerda → orientar à esquerda + língua; ameaça → fuga e pulo...).
+- **Corpo e órgãos de verdade** (`scripts/frog/`): a rã tem pele úmida com
+  dobras dorsolaterais, olhos com íris e pupila horizontal, pálpebra,
+  tímpano, narinas, saco vocal (machos), pernas nas proporções de *Rana*
+  (fêmur, tíbio-fíbula, tarso, pé com 5 dedos e membrana), músculos que
+  incham ao contrair, e por dentro coração, pulmões, fígado, estômago,
+  intestino, rins, corpos gordurosos, cérebro e medula (**Raio-X** mostra).
+  O girino tem barriga translúcida com o intestino em espiral, coração,
+  brânquias, bico córneo, espiráculo e a cauda com miômeros e nadadeiras.
+- **Sem animação pronta**: os motoneurônios do conectoma ativam os músculos.
+  Extensores (`hop_L/R`) esticam as pernas, e a perna esticando no chão
+  empurra o corpo: o pulo sai da força muscular. A diferença entre os lados
+  gira o corpo; na água os mesmos chutes nadam. A língua sai quando o
+  hipoglosso dispara. No girino, os motoneurônios E/D contraem os miômeros
+  em onda pela cauda, e a onda empurra a água; a Mauthner contrai um lado
+  inteiro (curva em C).
+- **Órgãos funcionando** (`organs.gd`): o coração bate no ritmo dos neurônios
+  simpático e vago do conectoma; o gerador respiratório move a garganta
+  (bomba bucal), que enche os pulmões só com a narina fora d'água; há
+  respiração pela pele e brânquias no girino. O O2 do sangue cai com o
+  esforço, e O2 baixo ativa os quimiorreceptores, que fazem respirar mais; a
+  presa vai para o estômago e é digerida.
+- **Olhos de raios** (`retina.gd`): cada olho amostra a cena com raios (luz,
+  sombra, algo grande chegando). Para os pontinhos que se mexem, lança um raio
+  de linha de visão (pedras e frutas tapam) e mede o movimento pela mudança
+  de posição entre as olhadas. Na faixa binocular da frente estima a
+  distância (presa perto → língua). O próprio movimento não conta como
+  ameaça. **Ouvidos**: os tímpanos E/D ouvem o canto das outras rãs.
 - **Rã**: caça "senta e espera" objetos pequenos que se mexem (moscas,
   larvas, girinos, até pedrinhas), pula até perto e dispara a língua (~70 ms);
   engole afundando os olhos. Aprende: mosca = comida; pedrinha = cospe e passa

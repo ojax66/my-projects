@@ -1,28 +1,29 @@
 class_name Frog
 extends Node3D
-## Ra adulta (anuro) com o conectoma sintetico da ra (brain/full/ra.*, ver
-## tools/build_amphibian_brain.py) na GPU.
+## Ra adulta com o conectoma sintetico da ra (brain/full/ra.*, ver
+## tools/build_amphibian_brain.py) na GPU, corpo com orgaos e musculos
+## (FrogModel + AmphibianOrgans) e olhos de raios (AmphibianRetina).
 ##
-## Como uma ra de verdade:
-##  - caca "senta e espera": objetos PEQUENOS em movimento (moscas, larvas,
-##    ate uma pedrinha rolando) ativam a retina R2 -> teto T5.2 -> ela vira o
-##    corpo (orient), se aproxima em pulinhos e dispara a lingua (hipoglosso)
-##    quando a presa esta a ~1 corpo de distancia e bem na frente
-##  - objetos GRANDES se aproximando (sua mao/camera, fruta caindo) ativam o
-##    pre-teto -> suprime a caca e dispara a fuga (pulo, de preferencia na agua)
-##  - engole piscando: os olhos afundam na boca e ajudam a empurrar a presa
-##  - aprende: gosto bom (mosca) -> dopamina de recompensa; gosto ruim
-##    (pedrinha) -> cospe e passa a ignorar esse tipo de "presa"; lembra
-##    lugares perigosos e ve os outros morrerem
-##  - pele umida: fora d'agua desidrata (mais rapido no sol), volta para o lago
-##  - de noite os machos cantam na beira do lago (saco vocal); a femea vai ate
-##    o canto, amplexo, e ela bota os ovos na agua
+## Nada aqui e animacao pronta. O ciclo, a cada tick:
+##   olhos (raios) + ouvidos + orgaos + pele -> canais sensoriais do conectoma
+##   conectoma -> motoneuronios: extensores de cada perna (hop_L/R),
+##     orientacao (orient_L/R), fuga, hipoglosso (lingua), gerador
+##     respiratorio (bomba bucal), simpatico/vago (coracao), vocal (canto)
+##   musculos: a ativacao dos extensores estica as pernas; perna esticando
+##     com os pes no chao empurra o corpo -> o pulo sai da forca do musculo;
+##     diferenca entre esquerda e direita vira giro; na agua os mesmos chutes
+##     dao impulso
+##   orgaos: coracao bate no ritmo do simpatico/vago, a garganta bombeia ar
+##     para os pulmoes, o O2 do sangue cai com o esforco; o estomago digere
+## A "decisao" (fome, sede de agua, medo, parceiro) so entra como impulso
+## nos canais de exploracao do cerebro (vontade de ir para um lado), como os
+## sinais que o prosencefalo manda para o tronco encefalico.
 
-enum State { SIT, HOP, SWIM, CARRIED, DEAD }
+enum State { SIT, AIR, SWIM, CARRIED, DEAD }
 
 const WORLD_MASK := 1 | 2
 const GRAV := 9800.0
-const SVL := 45.0          # comprimento focinho-cloaca (mm) do adulto
+const SVL := 45.0
 const PREY_KEYS := {
 	"mosca": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 	"larva": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
@@ -42,34 +43,40 @@ var wiring: Array = []
 var mind: CreatureMemory
 var brain
 var chem := NeuroChem.new()
+var org := AmphibianOrgans.new()
+var retina := AmphibianRetina.new()
+var model: FrogModel
 var state := State.SIT
 var behavior := "sentada"
 var decision := "explorar"
 var decision_scores := {}
 var last_lesson := ""
 var age := 0.0
-var growth := 1.0            # recem-metamorfoseada ~0.35 -> adulta 1
+var growth := 1.0
 var energy := 0.7
 var hydration := 1.0
 var health := 1.0
 var pain := 0.0
 var dead := false
 var death_reason := ""
-var mated := false
 var eggs_cooldown := 0.0
-var velocity := Vector3.ZERO   # usado pelo looming das moscas
-var sense := {"presa_L": 0.0, "presa_R": 0.0, "sombra_L": 0.0, "sombra_R": 0.0}
+var velocity := Vector3.ZERO
+var sense := {"presa_L": 0.0, "presa_R": 0.0, "sombra_L": 0.0, "sombra_R": 0.0, "presa_perto": 0.0, "som_L": 0.0, "som_R": 0.0}
+var ext := {"L": 0.0, "R": 0.0}          # extensao das pernas (0 dobrada, 1 esticada)
+var ext_v := {"L": 0.0, "R": 0.0}
+var act := {"L": 0.0, "R": 0.0}          # ativacao dos extensores
+var tongue_act := 0.0
 
 var _rng := RandomNumberGenerator.new()
 var _decide_t := 0.0
-var _scan_t := 0.0
-var _target: Node3D = null
-var _target_kind := ""
-var _threat_dir := Vector3.ZERO
-var _hop_cool := 0.0
+var _look_t := 0.0
+var _steer := 0.0                        # -1 esquerda .. 1 direita (vontade)
+var _drive := 0.0                        # 0..1 vontade de se mover
+var _goal := Vector3.INF
 var _tongue_t := -1.0
+var _tongue_cd := 0.0
 var _tongue_hit: Node3D = null
-var _tongue_target := Vector3.ZERO
+var _tongue_tip := Vector3.ZERO
 var _tongue_kind := ""
 var _swallow_t := 0.0
 var _reward_t := 0.0
@@ -77,23 +84,15 @@ var _punish_t := 0.0
 var _taste_good := 0.0
 var _taste_bad := 0.0
 var _carry_t := Transform3D.IDENTITY
+var _call := 0.0
 var _call_t := 0.0
 var _amplexus: Frog = null
-var _amplexus_t := 0.0
 var _dead_t := 0.0
 var _hit_t := -99.0
-var _hop_ext := 0.0
-var _swim_ph := 0.0
-var _breath := 0.0
-
-# corpo
-var _body: Node3D
-var _eyes: Array[Node3D] = []
-var _sac: MeshInstance3D
-var _legs := {}              # nome -> Node3D (juntas)
-var _tongue: Node3D
-var _tongue_mesh: MeshInstance3D
-var _skin: StandardMaterial3D
+var _blink := 0.0
+var _jaw := 0.0
+var _launch_cd := 0.0
+var _dive_t := 0.0
 
 
 func _ready() -> void:
@@ -114,19 +113,22 @@ func _ready() -> void:
 		brain = FlyBrain.from_dict(DefaultCircuit.build())
 	brain.set_wiring(int(wiring[0]), int(wiring[1]), int(wiring[2]), genome.get_gene("wiring_var"))
 	brain.set_mode(1)
-	_build_body()
+	model = FrogModel.new()
+	add_child(model)
+	model.build(SVL, sex == "M", genome.get_gene("hue"), uid)
+	_apply_scale()
 	var area := Area3D.new()
 	area.collision_layer = 4
 	area.collision_mask = 0
 	area.monitoring = false
 	var cs := CollisionShape3D.new()
 	var sh := SphereShape3D.new()
-	sh.radius = size() * 0.45
+	sh.radius = SVL * 0.45
 	cs.shape = sh
-	cs.position.y = size() * 0.2
+	cs.position.y = SVL * 0.2
 	area.add_child(cs)
 	area.set_meta("creature", self)
-	add_child(area)
+	model.add_child(area)
 	_snap.call_deferred()
 
 
@@ -134,134 +136,36 @@ func size() -> float:
 	return SVL * genome.get_gene("size") * lerpf(0.35, 1.0, growth)
 
 
+func _apply_scale() -> void:
+	model.scale = Vector3.ONE * size() / SVL
+	retina.near_range = size() * 1.25
+
+
 func _exit_tree() -> void:
 	if brain and brain.has_method("free_gpu"):
 		brain.free_gpu()
 
 
-# ---------------------------------------------------------------- corpo
-func _build_body() -> void:
-	_body = Node3D.new()
-	add_child(_body)
-	var hue := genome.get_gene("hue")
-	_skin = StandardMaterial3D.new()
-	_skin.albedo_color = Color.from_hsv(fposmod(0.28 + hue * 0.5, 1.0), 0.55, 0.5)
-	var nt := NoiseTexture2D.new()
-	var nz := FastNoiseLite.new()
-	nz.seed = uid
-	nz.frequency = 0.06
-	nt.noise = nz
-	nt.color_ramp = Gradient.new()
-	nt.color_ramp.set_color(0, Color(0.35, 0.3, 0.15))
-	nt.color_ramp.set_color(1, Color(1, 1, 1))
-	nt.color_ramp.add_point(0.45, Color(0.95, 0.95, 0.9))
-	_skin.albedo_texture = nt
-	_skin.roughness = 0.35
-	_skin.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
-	_skin.clearcoat_enabled = true
-	_skin.clearcoat = 0.6    # pele umida
-	var belly := StandardMaterial3D.new()
-	belly.albedo_color = Color(0.9, 0.88, 0.7)
-	belly.roughness = 0.5
-	var sph := SphereMesh.new()
-	sph.radius = 0.5
-	sph.height = 1.0
-	sph.radial_segments = 18
-	sph.rings = 10
-	# unidades: 1 = SVL; o no raiz e escalado por size()
-	_part(_body, sph, _skin, Vector3(0, 0.2, 0.05), Vector3(0.52, 0.32, 0.62))          # tronco
-	_part(_body, sph, belly, Vector3(0, 0.12, 0.05), Vector3(0.48, 0.2, 0.58))           # ventre
-	_part(_body, sph, _skin, Vector3(0, 0.25, -0.3), Vector3(0.46, 0.24, 0.38))          # cabeca
-	var mouth := StandardMaterial3D.new()
-	mouth.albedo_color = Color(0.25, 0.18, 0.1)
-	_part(_body, sph, mouth, Vector3(0, 0.2, -0.36), Vector3(0.44, 0.02, 0.3))           # linha da boca
-	_sac = _part(_body, sph, belly, Vector3(0, 0.12, -0.36), Vector3(0.22, 0.08, 0.18))  # saco vocal / garganta
-	var iris := StandardMaterial3D.new()
-	iris.albedo_color = Color(0.75, 0.55, 0.15)
-	iris.metallic_specular = 1.0
-	iris.roughness = 0.1
-	var pupil := StandardMaterial3D.new()
-	pupil.albedo_color = Color(0.02, 0.02, 0.02)
-	pupil.roughness = 0.05
-	for s in [-1, 1]:
-		var eye := Node3D.new()
-		eye.position = Vector3(0.14 * s, 0.36, -0.36)
-		_body.add_child(eye)
-		_part(eye, sph, iris, Vector3.ZERO, Vector3(0.13, 0.13, 0.13))
-		_part(eye, sph, pupil, Vector3(0.03 * s, 0.02, -0.035), Vector3(0.07, 0.045, 0.07))
-		_eyes.append(eye)
-		# membro anterior
-		var sh := _joint("braco_%d" % s, _body, Vector3(0.18 * s, 0.12, -0.15))
-		_limb(sh, sph, Vector3(0.05, -0.08, 0), Vector3(0.07, 0.18, 0.07))
-		var el := _joint("antebraco_%d" % s, sh, Vector3(0.0, -0.16, 0.0))
-		_limb(el, sph, Vector3(0, -0.07, -0.02), Vector3(0.06, 0.15, 0.06))
-		_limb(el, sph, Vector3(0, -0.14, -0.05), Vector3(0.1, 0.03, 0.1))
-		# membro posterior: coxa, canela, pe (dobrados em Z no repouso)
-		var hip := _joint("quadril_%d" % s, _body, Vector3(0.2 * s, 0.17, 0.3))
-		_limb(hip, sph, Vector3(0, 0, -0.14), Vector3(0.12, 0.11, 0.32))
-		var knee := _joint("joelho_%d" % s, hip, Vector3(0, 0, -0.28))
-		_limb(knee, sph, Vector3(0, 0, 0.14), Vector3(0.09, 0.08, 0.3))
-		var ankle := _joint("tornozelo_%d" % s, knee, Vector3(0, 0, 0.27))
-		_limb(ankle, sph, Vector3(0, -0.02, -0.14), Vector3(0.1, 0.03, 0.32))
-	# lingua (presa na frente da mandibula, estende ate a presa)
-	_tongue = Node3D.new()
-	_tongue.position = Vector3(0, 0.18, -0.46)
-	_body.add_child(_tongue)
-	_tongue_mesh = MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.025
-	cyl.bottom_radius = 0.035
-	cyl.height = 1.0
-	_tongue_mesh.mesh = cyl
-	var tm := StandardMaterial3D.new()
-	tm.albedo_color = Color(0.9, 0.45, 0.5)
-	tm.roughness = 0.2
-	_tongue_mesh.material_override = tm
-	_tongue_mesh.visible = false
-	_tongue.add_child(_tongue_mesh)
-	_apply_scale()
-	_pose(0.0)
-
-
-func _part(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, sc: Vector3) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.scale = sc
-	parent.add_child(mi)
-	return mi
-
-
-func _limb(parent: Node3D, mesh: Mesh, pos: Vector3, sc: Vector3) -> void:
-	_part(parent, mesh, _skin, pos, sc)
-
-
-func _joint(n: String, parent: Node3D, pos: Vector3) -> Node3D:
-	var j := Node3D.new()
-	j.name = n
-	j.position = pos
-	parent.add_child(j)
-	_legs[n] = j
-	return j
-
-
-func _apply_scale() -> void:
-	_body.scale = Vector3.ONE * size()
-
-
-## Postura: ext 0 = sentada (pernas dobradas), 1 = pernas esticadas (pulo).
-func _pose(ext: float) -> void:
-	for s in [-1, 1]:
-		var hip: Node3D = _legs["quadril_%d" % s]
-		var knee: Node3D = _legs["joelho_%d" % s]
-		var ankle: Node3D = _legs["tornozelo_%d" % s]
-		# repouso: coxa para frente-fora, canela para tras, pe para frente
-		hip.rotation = Vector3(lerpf(-0.25, 0.9, ext), lerpf(0.9, 0.25, ext) * s, 0)
-		knee.rotation = Vector3(lerpf(0.2, -0.05, ext), lerpf(-2.4, -0.2, ext) * s, 0)
-		ankle.rotation = Vector3(lerpf(-0.1, 0.4, ext), lerpf(2.2, 0.3, ext) * s, 0)
-		var arm: Node3D = _legs["braco_%d" % s]
-		arm.rotation = Vector3(lerpf(0.35, -0.9, ext), 0, 0.25 * s)
+## saida do conectoma (ou reflexo simples se nao ha GPU)
+func _out(n: String) -> float:
+	if brain is GpuBrain:
+		return brain.output(n)
+	match n:
+		"hop_L", "hop_R":
+			return _drive * 0.8 + 1.2 * maxf(sense["sombra_L"], sense["sombra_R"]) / 150.0
+		"orient_L":
+			return clampf(-_steer, 0.0, 1.0) + sense["presa_L"] / 160.0
+		"orient_R":
+			return clampf(_steer, 0.0, 1.0) + sense["presa_R"] / 160.0
+		"snap":
+			return sense["presa_perto"] / 150.0 * (1.0 - energy)
+		"respirar":
+			return (0.9 - org.o2) * 3.0
+		"escape_L":
+			return sense["sombra_L"] / 150.0
+		"escape_R":
+			return sense["sombra_R"] / 150.0
+	return 0.0
 
 
 # ---------------------------------------------------------------- principal
@@ -277,49 +181,49 @@ func _physics_process(dt: float) -> void:
 	var cam := get_viewport().get_camera_3d() as Spectator
 	var followed := cam != null and cam.follow == self
 	brain.focused = followed
-	brain.set_mode(0 if followed and Engine.time_scale <= 1.0 else 1)
+	brain.set_mode(1)   # conectoma sintetico calibrado no campo medio
 	mind.decay(dt)
-	_hop_cool = maxf(0.0, _hop_cool - dt)
 	_reward_t = maxf(0.0, _reward_t - dt)
 	_punish_t = maxf(0.0, _punish_t - dt)
+	_tongue_cd = maxf(0.0, _tongue_cd - dt)
+	_launch_cd = maxf(0.0, _launch_cd - dt)
 	eggs_cooldown = maxf(0.0, eggs_cooldown - dt)
-	if state == State.CARRIED:
-		global_transform = global_transform.interpolate_with(_carry_t, 1.0 - exp(-dt * 20.0))
-		pain = maxf(pain, 0.3)
-		_sense(dt)
-		brain.advance(dt)
-		_animate(dt)
-		return
 	_physiology(dt)
 	if dead:
 		return
-	_check_crush()
-	if dead:
-		return
+	if state == State.CARRIED:
+		global_transform = global_transform.interpolate_with(_carry_t, 1.0 - exp(-dt * 20.0))
+		pain = maxf(pain, 0.3)
+	else:
+		_check_crush()
+		if dead:
+			return
 	_sense(dt)
 	brain.advance(dt)
 	chem.update(dt, brain, energy, 0.5, _taste_good, _taste_bad)
 	brain.learning_gain = genome.get_gene("learning")
-	_decide(dt)
-	match state:
-		State.SIT: _sit(dt)
-		State.HOP: _hop(dt)
-		State.SWIM: _swim(dt)
-	_tongue_update(dt)
-	_animate(dt)
+	if state != State.CARRIED:
+		_decide(dt)
+		_muscles(dt)
+		_body_physics(dt)
+		_tongue_update(dt)
+	_draw_state(dt)
 
 
 func _physiology(dt: float) -> void:
 	var day := LifeManager.DAY
 	var dl := GardenWorld.instance.daylight() if GardenWorld.instance else 1.0
-	# ectotermo: gasta pouco; uma reserva cheia dura ~4 dias
-	energy -= dt / (4.0 * day) * genome.get_gene("metabolism") * (1.5 if state == State.HOP else 1.0)
 	var pd := Pond.at(global_position)
-	if state == State.SWIM or (pd and pd.depth_at(global_position) > 1.0):
+	var in_water := state == State.SWIM or (pd != null and pd.depth_at(global_position) > size() * 0.2)
+	var nostril_out := not in_water or (pd != null and global_position.y > pd.level - size() * 0.2 and _dive_t <= 0.0)
+	var temp := 16.0 + 10.0 * dl
+	# metabolismo basal (ectotermo) + digestao pelo estomago/intestino
+	energy -= dt / (4.0 * day) * genome.get_gene("metabolism") * (1.0 + org.work)
+	energy = minf(1.0, energy + org.step(dt, brain, nostril_out, in_water, hydration, temp))
+	if in_water:
 		hydration = minf(1.0, hydration + dt / 60.0)
 	else:
-		# pele permeavel: resseca fora d'agua, mais rapido ao sol
-		hydration -= dt / (0.6 * day) * (0.4 + 1.2 * dl)
+		hydration -= dt / (0.6 * day) * (0.4 + 1.2 * dl)   # pele resseca, mais no sol
 	pain = maxf(0.0, pain - dt * 0.6)
 	health = minf(1.0, health + dt / 600.0)
 	if growth < 1.0:
@@ -335,6 +239,10 @@ func _physiology(dt: float) -> void:
 		health -= dt / (0.1 * day)
 		if health <= 0.0:
 			die("desidratada")
+	if org.o2 < 0.15:
+		health -= dt / 120.0
+		if health <= 0.0:
+			die("asfixia (ra)")
 	if age > genome.get_gene("lifespan") * 4.0:
 		die("velhice (ra)")
 
@@ -346,7 +254,8 @@ func die(reason: String, cause: Object = null) -> void:
 	death_reason = reason
 	behavior = "morta (%s)" % reason
 	state = State.DEAD
-	_body.rotation.z = PI * 0.9
+	model.rotation.z = PI * 0.9
+	model.hide_tongue()
 	if LifeManager.instance:
 		LifeManager.instance.report_death(self, reason, cause)
 
@@ -362,7 +271,7 @@ func _check_crush() -> void:
 		var rb: RigidBody3D = r["crush"]
 		if rb.mass >= 0.15 * genome.get_gene("size"):
 			die("esmagada (ra)", rb)
-			_body.scale.y *= 0.35
+			model.scale.y *= 0.35
 			return
 		r = {"hit": 0.3, "obj": rb}
 	if age - _hit_t < 0.6:
@@ -381,25 +290,36 @@ func hurt(amount: float) -> void:
 
 
 # ---------------------------------------------------------------- sentidos
-func _eye_pos() -> Vector3:
-	return global_position + global_basis.y * size() * 0.36 - global_basis.z * size() * 0.3
+func _eyes() -> Array:
+	var ep := model.eye_positions()
+	var up := global_basis.y.normalized()
+	var fwd := (-global_basis.z).normalized()
+	var right := global_basis.x.normalized()
+	return [[ep[0], (fwd * 0.55 - right * 0.8 + up * 0.25), "L"], [ep[1], (fwd * 0.55 + right * 0.8 + up * 0.25), "R"]]
 
 
 func _sense(dt: float) -> void:
-	_scan_t -= dt
-	if _scan_t <= 0.0:
-		_scan_t = 0.05
-		_scan_prey()
-		_scan_threat()
-	var dl := GardenWorld.instance.daylight() if GardenWorld.instance else 1.0
+	_look_t -= dt
+	if _look_t <= 0.0:
+		retina.look(self, _eyes(), maxf(0.066, -_look_t + 0.066), _prey_candidates())
+		_look_t = 0.066
+		sense["presa_L"] = retina.prey["L"]
+		sense["presa_R"] = retina.prey["R"]
+		sense["presa_perto"] = retina.prey_near
+		sense["sombra_L"] = retina.threat["L"]
+		sense["sombra_R"] = retina.threat["R"]
+		_hear()
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
+	var inp := org.brain_inputs()
 	brain.set_input("presa_L", sense["presa_L"])
 	brain.set_input("presa_R", sense["presa_R"])
+	brain.set_input("presa_perto", sense["presa_perto"])
 	brain.set_input("sombra_L", sense["sombra_L"])
 	brain.set_input("sombra_R", sense["sombra_R"])
-	# de noite a retina dos anuros ainda ve (bastonetes muito sensiveis)
-	brain.set_input("luz_L", 20.0 + 90.0 * dl)
-	brain.set_input("luz_R", 20.0 + 90.0 * dl)
+	brain.set_input("luz_L", retina.light["L"])
+	brain.set_input("luz_R", retina.light["R"])
+	brain.set_input("som_L", sense["som_L"])
+	brain.set_input("som_R", sense["som_R"])
 	brain.set_input("fome", 100.0 * hunger)
 	brain.set_input("glicose", 110.0 * energy)
 	brain.set_input("paladar_bom", 150.0 * _taste_good)
@@ -408,166 +328,93 @@ func _sense(dt: float) -> void:
 	brain.set_input("punish", 140.0 if _punish_t > 0.0 else 0.0)
 	brain.set_input("dor", 200.0 * clampf(pain, 0.0, 1.0))
 	brain.set_input("tato", 150.0 if state == State.CARRIED else 0.0)
-	brain.set_input("equilibrio", 100.0 if state == State.HOP else 10.0)
-	var calls := 0.0
-	for f in get_tree().get_nodes_in_group("calling_frogs"):
-		if f != self and (f as Node3D).global_position.distance_to(global_position) < 1500.0:
-			calls += 60.0
-	brain.set_input("som", minf(calls, 180.0))
-	brain.set_input("temperatura", 40.0 + 60.0 * dl)
-	var ex := 25.0 if decision == "explorar" else 8.0
-	brain.set_input("explore_L", ex + _rng.randf() * 10.0)
-	brain.set_input("explore_R", ex + _rng.randf() * 10.0)
+	brain.set_input("equilibrio", 100.0 if state == State.AIR else 10.0)
+	brain.set_input("temperatura", 40.0 + 60.0 * (GardenWorld.instance.daylight() if GardenWorld.instance else 1.0))
+	brain.set_input("oxigenio_baixo", inp["oxigenio_baixo"])
+	brain.set_input("pulmao_cheio", inp["pulmao_cheio"])
+	# vontade vinda da decisao -> reticular (lado para onde quer ir)
+	var base := 10.0 + 90.0 * _drive
+	brain.set_input("explore_L", base * (1.0 + clampf(-_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
+	brain.set_input("explore_R", base * (1.0 + clampf(_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(-_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
 	_taste_good = maxf(0.0, _taste_good - dt * 0.8)
 	_taste_bad = maxf(0.0, _taste_bad - dt * 0.8)
 
 
-## Retina R2 / teto T5.2: objetos pequenos que se mexem (o formato "minhoca"
-## de Ewert: pequeno, em movimento na direcao do comprimento).
-func _scan_prey() -> void:
-	var eye := _eye_pos()
+## Ouvido (timpano de cada lado): canto das outras ras.
+func _hear() -> void:
 	var right := global_basis.x.normalized()
-	var fwd := -global_basis.z.normalized()
-	var pl := 0.0
-	var pr := 0.0
-	var best: Node3D = null
-	var best_s := 0.0
-	var best_kind := ""
-	var view := size() * 9.0
-	for c in _prey_candidates():
-		var node: Node3D = c[0]
-		var kind: String = c[1]
-		var spd: float = c[2]
-		var r: float = c[3]
-		var to := node.global_position - eye
-		var d := to.length()
-		if d > view or d < 1.0 or spd < 1.5:
+	var sl := 0.0
+	var sr := 0.0
+	for f in get_tree().get_nodes_in_group("calling_frogs"):
+		if f == self:
 			continue
-		var ang := r / d
-		if ang > 0.35:
-			continue   # grande demais para ser presa
-		var side := to.dot(right)
-		var front := to.dot(fwd)
-		if front < -d * 0.6:
-			continue   # atras (ponto cego)
-		var rate := 160.0 * clampf(spd / 25.0, 0.25, 1.0) * clampf(1.0 - d / view, 0.0, 1.0) * clampf(ang * 25.0, 0.3, 1.0)
-		if side < 0.0:
-			pl = maxf(pl, rate)
-		else:
-			pr = maxf(pr, rate)
-		var pv := mind.predict(PackedFloat32Array(PREY_KEYS[kind]))
-		var value := rate * (1.0 + pv.x * pv.y * 1.5 + (1.0 - pv.y) * 0.3)
-		if value > best_s:
-			best_s = value
-			best = node
-			best_kind = kind
-	sense["presa_L"] = pl
-	sense["presa_R"] = pr
-	_target = best
-	_target_kind = best_kind
+		var to := (f as Node3D).global_position - global_position
+		var d := to.length()
+		if d > 2500.0:
+			continue
+		var lvl := 180.0 * clampf(1.0 - d / 2500.0, 0.0, 1.0)
+		var side := right.dot(to.normalized())
+		sl = maxf(sl, lvl * clampf(0.6 - side * 0.5, 0.1, 1.0))
+		sr = maxf(sr, lvl * clampf(0.6 + side * 0.5, 0.1, 1.0))
+	sense["som_L"] = sl
+	sense["som_R"] = sr
 
 
 func _prey_candidates() -> Array:
 	var out: Array = []
 	for n in get_tree().get_nodes_in_group("flies"):
 		var f := n as Fly
-		if f.dead or f.state == Fly.State.CARRIED:
-			continue
-		out.append([f, "mosca", maxf(absf(f.speed), f._vel.length() * 0.3) + 3.0 * float(f.m_groom > 0.3), 1.2])
+		if not f.dead and f.state != Fly.State.CARRIED:
+			out.append([f, "mosca", 1.3])
 	for n in get_tree().get_nodes_in_group("larvae"):
 		var l := n as Larva
-		if l.dead or l.hidden > 0.5:
-			continue
-		out.append([l, "larva", absf(l._last_speed) * 3.0, l.size_mm * 0.3])
+		if not l.dead and l.hidden < 0.5:
+			out.append([l, "larva", l.size_mm * 0.3])
 	for n in get_tree().get_nodes_in_group("tadpoles"):
-		var t := n as Node3D
-		if t.get("dead"):
-			continue
-		out.append([t, "girino", (t.get("velocity") as Vector3).length(), float(t.call("body_len")) * 0.25])
+		if not n.get("dead"):
+			out.append([n, "girino", float(n.call("body_len")) * 0.25])
 	for n in get_tree().get_nodes_in_group("grabbable"):
 		var rb := n as RigidBody3D
-		if rb == null or rb.freeze:
-			continue
-		var rad: float = rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0
-		if rad > 14.0:
-			continue
-		out.append([rb, "fruta" if rb is Fruit else "pedra", rb.linear_velocity.length(), rad])
+		if rb and not rb.freeze:
+			var rad: float = rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0
+			if rad <= 14.0:
+				out.append([rb, "fruta" if rb is Fruit else "pedra", rad])
 	return out
 
 
-## Pre-teto TH3: coisas grandes chegando perto (mao/camera, fruta caindo).
-func _scan_threat() -> void:
-	var eye := _eye_pos()
-	var right := global_basis.x.normalized()
-	var tl := 0.0
-	var tr := 0.0
-	_threat_dir = Vector3.ZERO
-	var cam := get_viewport().get_camera_3d() as Spectator
-	var things: Array = []
-	if cam and cam.follow != self:
-		things.append([cam.global_position, cam.cam_velocity, 40.0])
-	for n in get_tree().get_nodes_in_group("grabbable"):
-		var rb := n as RigidBody3D
-		if rb and not rb.freeze and rb.linear_velocity.length() > 60.0:
-			things.append([rb.global_position, rb.linear_velocity, rb.call("loom_radius") if rb.has_method("loom_radius") else 20.0])
-	for t: Array in things:
-		var p: Vector3 = t[0]
-		var v: Vector3 = t[1]
-		var r: float = t[2]
-		var to := eye - p
-		var d := maxf(to.length() - r, 1.0)
-		if d > 600.0:
-			continue
-		var appr := v.dot(to.normalized())
-		var ang := r / d
-		if ang < 0.2:
-			continue
-		var rate := clampf(ang * 120.0 + maxf(appr, 0.0) * 0.4, 0.0, 220.0) * (1.0 / genome.get_gene("boldness"))
-		if rate < 30.0:
-			continue
-		if right.dot(p - eye) < 0.0:
-			tl = maxf(tl, rate)
-		else:
-			tr = maxf(tr, rate)
-		_threat_dir += to.normalized() * rate
-	sense["sombra_L"] = tl
-	sense["sombra_R"] = tr
-
-
-# ---------------------------------------------------------------- decisao
+# ---------------------------------------------------------------- decisao (vontade)
 func _decide(dt: float) -> void:
-	# fuga imediata: pre-teto -> reticular de fuga (do conectoma) ou ameaca forte
-	var esc := maxf(brain.output("escape_L"), brain.output("escape_R"))
-	var threat := maxf(sense["sombra_L"], sense["sombra_R"])
-	if (esc > 0.5 or threat > 120.0) and _hop_cool <= 0.0 and state != State.HOP and _tongue_t < 0.0:
-		decision = "fugir"
-		_flee()
-		return
 	_decide_t -= dt
-	if _decide_t > 0.0:
-		_act(dt)
-		return
-	_decide_t = 0.35
+	if _decide_t <= 0.0:
+		_decide_t = 0.35
+		_choose()
+	# direcao da vontade -> lado (esquerda/direita) para o reticular
+	_steer = 0.0
+	if _goal != Vector3.INF:
+		var to := _goal - global_position
+		to.y = 0.0
+		if to.length() > size() * 0.6:
+			var ang := (-global_basis.z).signed_angle_to(to, Vector3.UP)   # + = esquerda
+			_steer = clampf(-ang * 1.2, -1.0, 1.0)
+		else:
+			_drive *= 0.3
+
+
+func _choose() -> void:
 	var dl := GardenWorld.instance.daylight() if GardenWorld.instance else 1.0
 	var hunger := clampf(1.0 - energy, 0.0, 1.0)
-	var sc := {"explorar": 0.2}
-	if is_instance_valid(_target):
-		var pv := mind.predict(PackedFloat32Array(PREY_KEYS[_target_kind]))
-		var val := pv.x * pv.y + (1.0 - pv.y) * 0.5
-		# ras cacam mais no crepusculo e de noite
-		sc["cacar"] = (0.3 + 1.3 * hunger) * (0.3 + val) * (1.2 - 0.4 * dl) + 0.4 * brain.output("snap")
+	var sc := {"explorar": 0.2, "esperar presa": 0.3 + 0.6 * hunger}
 	sc["ir para a agua"] = (1.0 - hydration) * 1.6 + 0.3 * mind.danger_at(global_position)
+	sc["respirar"] = (0.6 - org.o2) * 3.0 if state == State.SWIM else 0.0
 	sc["evitar"] = mind.danger_at(global_position) * 1.1
 	sc["descansar"] = 0.25 + 0.35 * dl * (1.0 - hunger)
 	var mature := age > LifeManager.DAY * 3.0 and growth >= 0.95
 	var pd := Pond.nearest(global_position)
 	var near_water := pd != null and pd.dist_to_water(global_position) < 120.0
 	if mature and sex == "M" and dl < 0.35 and hunger < 0.6:
-		sc["cantar"] = 0.8 * (1.0 - dl) + (0.3 if near_water else -0.2) + 0.3 * brain.output("call")
-	if mature and sex == "F" and eggs_cooldown <= 0.0 and dl < 0.4 and hunger < 0.6:
-		var caller := _nearest_caller()
-		if caller:
-			sc["procurar parceiro"] = 0.9 + 0.2 * clampf(float(brain.output_rate_hz("call")) / 20.0, 0.0, 1.0)
+		sc["cantar"] = 0.8 * (1.0 - dl) + (0.3 if near_water else -0.2) + 0.3 * _out("call")
+	if mature and sex == "F" and eggs_cooldown <= 0.0 and dl < 0.4 and hunger < 0.6 and _nearest_caller():
+		sc["procurar parceiro"] = 0.9 + (sense["som_L"] + sense["som_R"]) / 400.0
 	var pick := decision if sc.has(decision) else "explorar"
 	var pick_v := float(sc.get(pick, 0.0)) + 0.1
 	for k: String in sc:
@@ -576,12 +423,45 @@ func _decide(dt: float) -> void:
 			pick = k
 	decision = pick
 	decision_scores = sc
-	_act(dt)
+	_goal = Vector3.INF
+	_drive = 0.0
+	if decision != "cantar":
+		remove_from_group("calling_frogs")
+	match decision:
+		"ir para a agua":
+			if pd:
+				_goal = Vector3(pd.center.x, 0, pd.center.y)
+				_drive = 0.9
+		"evitar":
+			var dz := mind.nearest_danger(global_position)
+			if dz != Vector3.INF:
+				_goal = global_position + (global_position - dz).normalized() * 400.0
+				_drive = 0.8
+		"cantar":
+			if pd and pd.dist_to_water(global_position) > 60.0 and state != State.SWIM:
+				_goal = pd.shore_point(global_position)
+				_drive = 0.7
+			else:
+				add_to_group("calling_frogs")
+		"procurar parceiro":
+			var m := _nearest_caller()
+			if m:
+				_goal = m.global_position
+				_drive = 0.8
+				if m.global_position.distance_to(global_position) < size() * 1.3:
+					_start_amplexus(m)
+		"explorar":
+			if _rng.randf() < 0.15:
+				var a := _rng.randf() * TAU
+				_goal = global_position + Vector3(cos(a), 0, sin(a)) * size() * 4.0
+				_drive = 0.5
+		"respirar":
+			_dive_t = 0.0
 
 
 func _nearest_caller() -> Frog:
 	var best: Frog = null
-	var bd := 2000.0
+	var bd := 2500.0
 	for f in get_tree().get_nodes_in_group("calling_frogs"):
 		var fr := f as Frog
 		if fr == self or fr.dead:
@@ -593,110 +473,27 @@ func _nearest_caller() -> Frog:
 	return best
 
 
-func _act(_dt: float) -> void:
-	if state == State.HOP or _tongue_t >= 0.0 or _swallow_t > 0.0:
-		return
-	if decision != "cantar":
-		remove_from_group("calling_frogs")
-	if _amplexus:
-		return
-	match decision:
-		"cacar":
-			if not is_instance_valid(_target):
-				return
-			var tp := _target.global_position
-			var to := tp - _eye_pos()
-			var d := to.length()
-			var fwd := -global_basis.z
-			var ang := fwd.signed_angle_to(Vector3(to.x, 0, to.z), Vector3.UP)
-			behavior = "cacando %s" % _target_kind
-			var reach := size() * 1.1
-			if absf(ang) > 0.3:
-				_turn_towards(tp, 0.35)   # orienta o corpo (reticular de orientacao)
-			elif d > reach:
-				if _hop_cool <= 0.0:
-					_jump_to(global_position + Vector3(to.x, 0, to.z).normalized() * minf(d - reach * 0.7, size() * 3.0), 0.5)
-			elif brain.output("snap") > 0.08 or clampf(1.0 - energy, 0.0, 1.0) > 0.25:
-				_strike(tp)
-		"ir para a agua":
-			var pd := Pond.nearest(global_position)
-			if pd and state != State.SWIM:
-				behavior = "indo para a agua (pele secando)"
-				var goal := Vector3(pd.center.x, 0, pd.center.y)
-				_hop_along(goal)
-			elif state == State.SWIM:
-				behavior = "na agua, se hidratando"
-		"evitar":
-			behavior = "saindo de um lugar perigoso"
-			var dz := mind.nearest_danger(global_position)
-			if dz != Vector3.INF:
-				_hop_along(global_position + (global_position - dz).normalized() * 300.0)
-		"cantar":
-			var pd := Pond.nearest(global_position)
-			if pd and pd.dist_to_water(global_position) > 60.0 and state != State.SWIM:
-				behavior = "indo cantar na beira do lago"
-				_hop_along(pd.shore_point(global_position))
-			else:
-				behavior = "cantando (saco vocal)"
-				add_to_group("calling_frogs")
-				_call_t += _dt
-		"procurar parceiro":
-			var m := _nearest_caller()
-			if m:
-				behavior = "seguindo o canto de %s" % m.fly_name
-				if m.global_position.distance_to(global_position) < size() * 1.2:
-					_start_amplexus(m)
-				else:
-					_hop_along(m.global_position)
-		"descansar":
-			behavior = "descansando" if state != State.SWIM else "boiando"
-		"explorar":
-			behavior = "explorando"
-			if _hop_cool <= 0.0 and _rng.randf() < 0.02:
-				var a := _rng.randf() * TAU
-				_jump_to(global_position + Vector3(cos(a), 0, sin(a)) * size() * 2.5, 0.4)
+# ---------------------------------------------------------------- musculos
+## Motoneuronios -> ativacao dos musculos (dinamica de ativacao ~20 ms) ->
+## extensao das pernas. Extensores fortes esticam rapido; sem ativacao os
+## flexores e a elasticidade dobram a perna de volta.
+func _muscles(dt: float) -> void:
+	var gain := genome.get_gene("motor_gain")
+	for s in ["L", "R"]:
+		var a_in := clampf(_out("hop_" + s) * gain, 0.0, 1.6)
+		act[s] = lerpf(act[s], a_in, 1.0 - exp(-dt / 0.02))
+		var target := clampf((act[s] - 0.2) * 2.6, 0.0, 1.0)
+		if state == State.AIR:
+			target = maxf(target, 0.85)    # no ar as pernas ficam esticadas
+		var tau := 0.035 if target > ext[s] else 0.16
+		var ne := move_toward(ext[s], target, dt / tau * absf(target - ext[s]) + dt * 0.5)
+		ext_v[s] = (ne - ext[s]) / dt
+		ext[s] = ne
+	org.work = maxf(org.work, (act["L"] + act["R"]) * 0.4)
+	tongue_act = lerpf(tongue_act, _out("snap"), 1.0 - exp(-dt / 0.03))
 
 
-func _hop_along(goal: Vector3) -> void:
-	var to := goal - global_position
-	to.y = 0.0
-	if to.length() < size() * 0.5:
-		return
-	var fwd := -global_basis.z
-	if absf(fwd.signed_angle_to(to, Vector3.UP)) > 0.4:
-		_turn_towards(goal, 0.5)
-	elif _hop_cool <= 0.0:
-		_jump_to(global_position + to.normalized() * minf(to.length(), size() * 3.5), 0.6)
-
-
-func _turn_towards(p: Vector3, amount: float) -> void:
-	var to := p - global_position
-	to.y = 0.0
-	if to.length() < 0.01:
-		return
-	var fwd := -global_basis.z
-	var ang := fwd.signed_angle_to(to, Vector3.UP)
-	rotate_y(clampf(ang, -amount, amount))
-
-
-func _flee() -> void:
-	var away := _threat_dir
-	away.y = 0.0
-	if away.length() < 0.01:
-		away = global_basis.z
-	# prefere pular para dentro d'agua se o lago estiver perto
-	var pd := Pond.nearest(global_position)
-	var goal := global_position + away.normalized() * size() * 5.0
-	if pd and pd.dist_to_water(global_position) < size() * 6.0 and state != State.SWIM:
-		goal = Vector3(pd.center.x, 0, pd.center.y)
-		goal = global_position + (goal - global_position).normalized() * size() * 5.0
-	behavior = "FUGA! (pulo)"
-	look_at(Vector3(goal.x, global_position.y, goal.z), Vector3.UP)
-	_jump_to(goal, 1.0)
-	_punish_t = 0.3
-
-
-# ---------------------------------------------------------------- movimento
+# ---------------------------------------------------------------- corpo (fisica)
 func _ground(p: Vector3) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 200.0, p + Vector3.DOWN * 3000.0, WORLD_MASK)
 	return get_world_3d().direct_space_state.intersect_ray(q)
@@ -713,86 +510,113 @@ func _snap() -> void:
 		global_position = hit.position
 
 
-func _jump_to(goal: Vector3, power: float) -> void:
-	var to := goal - global_position
-	to.y = 0.0
-	var dist := clampf(to.length(), size() * 0.8, size() * (6.0 + 4.0 * power) * genome.get_gene("speed"))
-	var dir := to.normalized() if to.length() > 0.01 else -global_basis.z
-	look_at(global_position + dir, Vector3.UP)
-	# balistico a ~45 graus: v = sqrt(g * d)
-	var v := sqrt(GRAV * dist)
-	velocity = dir * v * 0.707 + Vector3.UP * v * 0.707
-	if state == State.SWIM:
-		velocity = dir * v * 0.5 + Vector3.UP * v * 0.35
-	state = State.HOP
-	_hop_cool = 0.4 + _rng.randf() * 0.5
-	remove_from_group("calling_frogs")
-
-
-func _hop(dt: float) -> void:
-	velocity.y -= GRAV * dt
-	var np := global_position + velocity * dt
-	var pd := Pond.at(np)
-	if pd and pd.depth_at(np) > size() * 0.3 and np.y <= pd.level:
-		global_position = Vector3(np.x, pd.level - size() * 0.12, np.z)
-		velocity = Vector3.ZERO
-		state = State.SWIM
-		behavior = "caiu n'agua (splash)"
-		return
-	if velocity.y < 0.0:
-		var hit := _ground(np)
-		if hit and np.y <= (hit.position as Vector3).y:
-			global_position = hit.position
+func _body_physics(dt: float) -> void:
+	var leg := size() * 1.6                     # comprimento da perna esticada
+	var push := (maxf(ext_v["L"], 0.0) + maxf(ext_v["R"], 0.0)) * 0.5
+	var asym := maxf(ext_v["R"], 0.0) - maxf(ext_v["L"], 0.0)
+	# orientacao: reticular de orientacao (presa/vontade) e fuga (vira para longe)
+	var yaw := (_out("orient_L") - _out("orient_R")) * 2.2 + (_out("escape_R") - _out("escape_L")) * 2.5
+	match state:
+		State.SIT:
 			velocity = Vector3.ZERO
-			state = State.SIT
-			return
-	global_position = np
+			if _tongue_t < 0.0 and _swallow_t <= 0.0:
+				rotate_y(clampf(yaw, -4.0, 4.0) * dt)
+			# pernas esticando rapido com os pes no chao: decola
+			if push > 6.0 and (ext["L"] + ext["R"]) * 0.5 > 0.55 and _launch_cd <= 0.0 and _tongue_t < 0.0:
+				var v := leg * push * 0.32 * genome.get_gene("speed")
+				rotate_y(asym * 0.02)
+				var fwd := -global_basis.z
+				var pitch := deg_to_rad(38.0)
+				velocity = fwd * v * cos(pitch) + Vector3.UP * v * sin(pitch)
+				state = State.AIR
+				_launch_cd = 0.25
+				org.work = 1.2
+				remove_from_group("calling_frogs")
+			var pd := Pond.at(global_position)
+			if pd and pd.depth_at(global_position) > size() * 0.35:
+				state = State.SWIM
+		State.AIR:
+			velocity.y -= GRAV * dt
+			var np := global_position + velocity * dt
+			var pd := Pond.at(np)
+			if pd and pd.depth_at(np) > size() * 0.3 and np.y <= pd.level:
+				global_position = Vector3(np.x, pd.level - size() * 0.12, np.z)
+				velocity *= 0.3
+				state = State.SWIM
+				behavior = "mergulhou (splash)"
+				return
+			if velocity.y < 0.0:
+				var hit := _ground(np)
+				if hit and np.y <= (hit.position as Vector3).y:
+					global_position = hit.position
+					velocity = Vector3.ZERO
+					state = State.SIT
+					return
+			global_position = np
+		State.SWIM:
+			var pd := Pond.at(global_position)
+			if pd == null or pd.depth_at(global_position) < size() * 0.25:
+				state = State.SIT
+				_snap()
+				return
+			rotate_y(clampf(yaw * 0.6, -3.0, 3.0) * dt)
+			# chute sincrono das pernas: a extensao empurra a agua
+			velocity += -global_basis.z * push * leg * 0.045 * dt * 60.0
+			velocity *= exp(-dt * 2.2)
+			_dive_t = maxf(0.0, _dive_t - dt)
+			if maxf(_out("escape_L"), _out("escape_R")) > 0.5:
+				_dive_t = 6.0             # assustada: mergulha e fica no fundo
+			var depth_goal := pd.level - size() * 0.12
+			if _dive_t > 0.0 and GardenWorld.instance:
+				depth_goal = maxf(GardenWorld.instance.height_at(global_position.x, global_position.z) + size() * 0.3, pd.level - size() * 3.0)
+			global_position.y = lerpf(global_position.y, depth_goal, 1.0 - exp(-dt * 2.0))
+			global_position += Vector3(velocity.x, 0, velocity.z) * dt
+			behavior = "mergulhada (no fundo)" if _dive_t > 0.0 else ("nadando" if push > 1.0 else "boiando")
+	if state == State.SIT:
+		behavior = _sit_label()
 
 
-func _sit(_dt: float) -> void:
-	velocity = Vector3.ZERO
-	var pd := Pond.at(global_position)
-	if pd and pd.depth_at(global_position) > size() * 0.35:
-		state = State.SWIM
-
-
-func _swim(dt: float) -> void:
-	var pd := Pond.at(global_position)
-	if pd == null or pd.depth_at(global_position) < size() * 0.25:
-		state = State.SIT
-		_snap()
-		return
-	# boia com o focinho na superficie; a perna empurra em chutes
-	global_position.y = lerpf(global_position.y, pd.level - size() * 0.12, 1.0 - exp(-dt * 4.0))
-	velocity *= exp(-dt * 2.0)
-	global_position += Vector3(velocity.x, 0, velocity.z) * dt
-	_swim_ph += dt * velocity.length() * 0.1
+func _sit_label() -> String:
+	if _swallow_t > 0.0:
+		return "engolindo (olhos afundam)"
+	if is_in_group("calling_frogs"):
+		return "cantando (saco vocal)"
+	if sense["presa_perto"] > 20.0:
+		return "presa na frente (binocular)"
+	if maxf(sense["presa_L"], sense["presa_R"]) > 15.0:
+		return "de olho numa presa (%s)" % retina.target_kind
+	return {"ir para a agua": "indo para a agua (pele secando)", "evitar": "saindo de um lugar perigoso",
+		"procurar parceiro": "seguindo o canto", "descansar": "descansando", "esperar presa": "esperando presa (parada)",
+		"cantar": "indo cantar na beira"}.get(decision, "explorando")
 
 
 # ---------------------------------------------------------------- lingua
-## Lingua projetil (Nishikawa): sai em ~70 ms, gruda e volta com a presa.
-func _strike(p: Vector3) -> void:
-	_tongue_t = 0.0
-	_tongue_target = p
-	_tongue_kind = _target_kind
-	_tongue_hit = null
-	behavior = "LINGUA!"
-
-
+## Hipoglosso: quando os motoneuronios da lingua disparam, a boca abre e a
+## lingua e lancada (~70 ms) na direcao para onde os dois olhos estao fixos.
 func _tongue_update(dt: float) -> void:
 	if _swallow_t > 0.0:
 		_swallow_t -= dt
-		behavior = "engolindo (olhos afundam)"
 		if _swallow_t <= 0.0:
 			_swallowed()
 	if _tongue_t < 0.0:
-		_tongue_mesh.visible = false
-		return
+		if tongue_act > 0.22 and _tongue_cd <= 0.0 and _swallow_t <= 0.0 and state != State.AIR:
+			_tongue_t = 0.0
+			_tongue_cd = 0.6
+			_tongue_hit = null
+			var tg := retina.target
+			if is_instance_valid(tg) and tg.global_position.distance_to(global_position) < size() * 1.6:
+				_tongue_tip = tg.global_position
+				_tongue_kind = retina.target_kind
+			else:
+				_tongue_tip = model.tongue_root.global_position - global_basis.z * size() * 1.0
+				_tongue_kind = ""
+			org.work = maxf(org.work, 0.6)
+		else:
+			model.hide_tongue()
+			return
 	_tongue_t += dt
 	var out_t := 0.07
 	var back_t := 0.12
-	var root := _tongue.global_position
-	var tip := _tongue_target
 	var k := 0.0
 	if _tongue_t < out_t:
 		k = _tongue_t / out_t
@@ -802,41 +626,36 @@ func _tongue_update(dt: float) -> void:
 		k = 1.0 - (_tongue_t - out_t) / back_t
 	else:
 		_tongue_t = -1.0
-		_tongue_mesh.visible = false
+		model.hide_tongue()
 		if is_instance_valid(_tongue_hit):
 			_swallow_t = 1.2
 		return
+	_jaw = 1.0
 	if is_instance_valid(_tongue_hit):
-		_tongue_hit.global_position = root.lerp(tip, k)
-	var seg := (tip - root) * k
-	_tongue_mesh.visible = seg.length() > 0.5
-	if _tongue_mesh.visible:
-		var y := seg.normalized()
-		var x := y.cross(Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT).normalized()
-		var z := x.cross(y)
-		var w := size() * 0.7
-		_tongue_mesh.global_transform = Transform3D(Basis(x * w, y * seg.length(), z * w), root + seg * 0.5)
+		_tongue_hit.global_position = model.tongue_root.global_position.lerp(_tongue_tip, k)
+	model.show_tongue(_tongue_tip, k)
 
 
 func _try_catch() -> void:
-	if not is_instance_valid(_target):
+	var tg := retina.target
+	if _tongue_kind == "" or not is_instance_valid(tg):
+		behavior = "lingua no vazio"
 		return
-	var d := _target.global_position.distance_to(_tongue_target)
-	var ok := d < size() * 0.2 and _rng.randf() < 0.85
-	if not ok:
+	# a presa pode ter se mexido durante os 70 ms
+	if tg.global_position.distance_to(_tongue_tip) > size() * 0.18 or _rng.randf() > 0.85:
 		behavior = "errou a lingua"
 		return
-	_tongue_hit = _target
-	if _target is Fly:
-		(_target as Fly).die("comida por uma ra", self)
-		(_target as Fly).set_physics_process(false)
-	elif _target is Larva:
-		(_target as Larva).call("_die", "comida por uma ra", self)
-		(_target as Larva).set_physics_process(false)
-	elif _target.has_method("eaten"):
-		_target.call("eaten", self)
-	elif _target is RigidBody3D:
-		(_target as RigidBody3D).freeze = true
+	_tongue_hit = tg
+	if tg is Fly:
+		(tg as Fly).die("comida por uma ra", self)
+		(tg as Fly).set_physics_process(false)
+	elif tg is Larva:
+		(tg as Larva).call("_die", "comida por uma ra", self)
+		(tg as Larva).set_physics_process(false)
+	elif tg.has_method("eaten"):
+		tg.call("eaten", self)
+	elif tg is RigidBody3D:
+		(tg as RigidBody3D).freeze = true
 
 
 func _swallowed() -> void:
@@ -847,15 +666,15 @@ func _swallowed() -> void:
 	var key := PackedFloat32Array(PREY_KEYS[_tongue_kind])
 	var rate := clampf(0.35 * genome.get_gene("learning") * (0.6 + chem.get_level("dopamina+")), 0.05, 0.8)
 	if _tongue_kind in ["mosca", "larva", "girino"]:
-		# engoliu: gosto bom -> dopamina de recompensa
-		energy = minf(1.0, energy + (0.06 if _tongue_kind == "mosca" else 0.05) / maxf(growth, 0.4))
+		# vai para o estomago; o gosto bom libera dopamina de recompensa
+		var units: float = {"mosca": 0.06, "larva": 0.05, "girino": 0.12}[_tongue_kind]
+		org.eat(units / maxf(growth, 0.4))
 		_taste_good = 1.0
 		_reward_t = 1.0
 		mind.learn_odor(key, 1.0, rate, _tongue_kind)
 		last_lesson = "comeu uma %s" % _tongue_kind
 		prey.queue_free()
 	else:
-		# pedra/fruta: gosto ruim, cospe e aprende
 		_taste_bad = 1.0
 		_punish_t = 1.0
 		mind.learn_odor(key, -1.0, rate, _tongue_kind)
@@ -863,7 +682,7 @@ func _swallowed() -> void:
 		if prey is RigidBody3D:
 			var rb := prey as RigidBody3D
 			rb.freeze = false
-			rb.global_position = _tongue.global_position - global_basis.z * size() * 0.3
+			rb.global_position = model.tongue_root.global_position - global_basis.z * size() * 0.3
 			rb.linear_velocity = -global_basis.z * 200.0
 
 
@@ -886,9 +705,7 @@ func _end_amplexus() -> void:
 	if is_instance_valid(m):
 		m._amplexus = null
 		m.remove_from_group("calling_frogs")
-		m.behavior = "descansando depois do amplexo"
 		m.decision = "descansar"
-	behavior = "botando os ovos na agua"
 	decision = "descansar"
 	if dead:
 		return
@@ -903,20 +720,25 @@ func _end_amplexus() -> void:
 		last_lesson = "botou uma desova no lago"
 
 
-# ---------------------------------------------------------------- animacao
-func _animate(dt: float) -> void:
-	var ext_goal := 1.0 if state == State.HOP else (0.5 + 0.5 * sin(_swim_ph * 6.0) if state == State.SWIM and velocity.length() > 20.0 else 0.0)
-	_hop_ext = lerpf(_hop_ext, ext_goal, 1.0 - exp(-dt * 18.0))
-	_pose(_hop_ext)
-	# respiracao pela garganta; saco vocal inflando no canto
-	_breath += dt * 5.0
-	var sac := 1.0 + 0.12 * sin(_breath)
+# ---------------------------------------------------------------- corpo visivel
+func _draw_state(dt: float) -> void:
+	for s in ["L", "R"]:
+		model.set_leg(s, ext[s], act[s])
+		model.set_arm(s, 1.0 if state == State.AIR else 0.0)
 	if is_in_group("calling_frogs"):
-		sac = 1.6 + 0.9 * maxf(0.0, sin(_call_t * 9.0))
-	_sac.scale = Vector3(0.22, 0.08, 0.18) * sac
-	# olhos afundam para ajudar a engolir
-	for e in _eyes:
-		e.position.y = lerpf(e.position.y, 0.26 if _swallow_t > 0.0 else 0.36, 1.0 - exp(-dt * 12.0))
+		_call_t += dt
+		_call = maxf(0.0, sin(_call_t * 9.0)) * clampf(0.6 + _out("call") * 3.0, 0.0, 1.0)
+	else:
+		_call = move_toward(_call, 0.0, dt * 4.0)
+	_blink = maxf(0.0, _blink - dt * 6.0)
+	if _rng.randf() < dt * 0.3:
+		_blink = 1.0
+	_jaw = move_toward(_jaw, 0.0, dt * 8.0)
+	var sw := 1.0 if _swallow_t > 0.0 else 0.0
+	model.set_state(org, _call, sw, maxf(_blink, sw), _jaw, energy)
+	# postura sentada: cabeca levantada; no ar: corpo esticado
+	var pitch_goal := -0.25 if state == State.SIT else (0.1 if state == State.AIR else 0.05)
+	model.rotation.x = lerpf(model.rotation.x, pitch_goal, 1.0 - exp(-dt * 10.0))
 	if _amplexus and sex == "M" and is_instance_valid(_amplexus):
 		global_transform = _amplexus.global_transform.translated_local(Vector3(0, _amplexus.size() * 0.3, _amplexus.size() * 0.08))
 
@@ -939,9 +761,13 @@ func carry_to(t: Transform3D) -> void:
 func release(vel: Vector3) -> void:
 	if dead:
 		return
-	state = State.HOP
+	state = State.AIR
 	velocity = vel
 	global_rotation = Vector3(0, global_rotation.y, 0)
+
+
+func set_xray(on: bool) -> void:
+	model.set_xray(on)
 
 
 func sight_range() -> float:

@@ -167,6 +167,23 @@ def tadpole():
     b.pop("boca", 150, "CPG da boca (raspar)", 2, out="feed")
     b.pop("rafe", 30, "rafe (serotonina)", 2, out="serotonin")
     b.pop("lc", 30, "locus coeruleus (noradrenalina)", 2, out="octopamine")
+    # respiracao: quimiorreceptores de O2/CO2 -> gerador ritmico do rombencefalo
+    # -> bombeamento bucal (agua pelas branquias; ar para o pulmao quando existe)
+    b.pop("quimio", 60, "quimiorreceptores (O2/CO2)", 0, chan="oxigenio_baixo")
+    b.pop("estiramento", 40, "receptores de estiramento", 0, chan="pulmao_cheio")
+    b.pop("resp", 120, "gerador respiratorio", 2, out="respirar")
+    b.pop("resp_inh", 40, "gerador respiratorio", sign=-1)
+    b.pop("simpatico", 30, "coracao: simpatico", 2, out="coracao_acelera")
+    b.pop("vago", 30, "coracao: vago", 2, out="coracao_freia")
+    b.conn("quimio", "resp", 0.3, (2, 4))
+    b.conn("explore", "resp", 0.05, (1, 2), "both")
+    b.conn("estiramento", "resp_inh", 0.4, (2, 4))
+    b.conn("resp_inh", "resp", 0.3, (2, 4))
+    b.conn("lc", "simpatico", 0.4, (2, 3))
+    b.conn("quimio", "simpatico", 0.1, (1, 2))
+    b.conn("dor", "simpatico", 0.2, (1, 2))
+    b.conn("glicose", "vago", 0.2, (1, 2))
+    b.conn("estiramento", "vago", 0.1, (1, 2))
     # medula
     b.conn("RB", "dlc", 0.12, (2, 4), "ipsi")
     b.conn("RB", "dla", 0.12, (2, 4), "ipsi")
@@ -250,7 +267,9 @@ def frog():
     b.pop("tato", 400, "tato", 0, chan="tato")
     b.pop("dor", 200, "nociceptores", 0, chan="dor")
     b.pop("vest", 150, "vestibular", 0, chan="equilibrio")
-    b.pop("audit", 300, "auditivo (papila)", 0, chan="som")
+    b.pop("audit", 150, "auditivo (timpano -> papila)", 0, chan="som_{s}", sided=S)
+    b.pop("ret_perto", 300, "retina: presa perto (binocular)", 0, chan="presa_perto")
+    b.pop("T52_front", 400, "teto optico T5.2 frontal (binocular)")
     b.pop("temp", 80, "termorreceptores", 0, chan="temperatura")
     b.pop("fome", 100, "hipotalamo (fome/NPY)", 1, chan="fome")
     b.pop("glicose", 60, "hipotalamo (fome/NPY)", 1, chan="glicose")
@@ -265,7 +284,7 @@ def frog():
     b.pop("aprox", 300, "reticular: aproximacao", 2, out="approach")
     b.pop("hipoglosso", 200, "hipoglosso (lingua)", 2, out="snap")
     b.pop("fuga", 300, "reticular: fuga", 2, out="escape_{s}", sided=S)
-    b.pop("mp_ext", 500, "medula: membros posteriores", 2, out="hop", sided=S)
+    b.pop("mp_ext", 500, "motoneuronios: extensores das pernas", 2, out="hop_{s}", sided=S)
     b.pop("mp_flex", 500, "medula: membros posteriores", sided=S)
     b.pop("mp_inh", 200, "medula: interneuronios", sign=-1, sided=S)
     b.pop("vpg", 200, "gerador vocal", 2, out="call")
@@ -286,7 +305,7 @@ def frog():
     b.conn("ret_R2", "T52", 0.03, (1, 3), "contra")
     b.conn("ret_R34", "T6", 0.03, (1, 3), "contra")
     b.conn("ret_R34", "TH3", 0.04, (1, 3), "contra")
-    b.conn("ret_luz", "TH3", 0.01, (1, 2), "contra")
+    b.conn("ret_luz", "isthmi", 0.01, (1, 2), "contra")   # luz ambiente so modula a atencao
     b.conn("T52", "teto_inh", 0.02, (1, 2), "ipsi")
     b.conn("teto_inh", "T52", 0.02, (1, 2), "ipsi")
     b.conn("TH3", "pret_inh", 0.05, (1, 3), "ipsi")
@@ -296,8 +315,18 @@ def frog():
     # presa na esquerda -> teto direito -> orientacao para a esquerda
     b.conn("T52", "orient", 0.03, (1, 3), "contra")
     b.conn("T52", "aprox", 0.01, (1, 2))
-    b.conn("T52", "hipoglosso", 0.012, (1, 2))
-    b.conn("aprox", "mp_ext", 0.02, (1, 2), "both")
+    b.conn("T52", "hipoglosso", 0.004, (1, 2))
+    # presa perto e centrada (os dois olhos veem): teto frontal -> hipoglosso
+    b.conn("ret_perto", "T52_front", 0.05, (1, 3))
+    b.conn("T52_front", "hipoglosso", 0.05, (2, 3))
+    b.conn("T52_front", "aprox", 0.0, (1, 1))
+    b.pop("front_inh", 80, "teto: interneuronios", sign=-1)
+    b.conn("T52_front", "front_inh", 0.1, (1, 2))
+    b.conn("front_inh", "aprox", 0.3, (2, 4))     # perto: para de se aproximar, ataca
+    b.conn("hip", "T52_front", 0.02, (1, 2))
+    b.conn("pret_inh", "T52_front", 0.04, (2, 4), "both")
+    b.conn("saciedade", "T52_front", 0.05, (1, 2))
+    b.conn("aprox", "mp_ext", 0.15, (2, 4), "both")
     # fome facilita a caca (NPY sobre o teto), saciedade inibe
     b.conn("fome", "hip", 0.2, (1, 3))
     b.conn("hip", "T52", 0.01, (1, 2), "both")
@@ -322,11 +351,14 @@ def frog():
     b.conn("mp_ext", "mp_inh", 0.03, (1, 2), "ipsi")
     b.conn("mp_inh", "mp_flex", 0.05, (1, 3), "ipsi")
     b.conn("mp_flex", "mp_inh", 0.02, (1, 2), "ipsi")
-    b.conn("explore", "mp_ext", 0.02, (1, 2), "ipsi")
-    b.conn("explore", "orient", 0.02, (1, 2), "ipsi")
+    b.conn("explore", "mp_ext", 0.1, (2, 3), "ipsi")
+    b.conn("explore", "orient", 0.08, (1, 3), "ipsi")
     b.conn("vest", "orient", 0.01, (1, 2), "both")
     # vocal: canto de outras ras e estado
-    b.conn("audit", "vpg", 0.05, (1, 2))
+    b.conn("audit", "vpg", 0.05, (1, 2), "both")
+    b.pop("toro", 200, "toro semicircular (audicao)", sided=S)
+    b.conn("audit", "toro", 0.08, (1, 3), "ipsi")
+    b.conn("toro", "orient", 0.05, (1, 3), "ipsi")   # fonotaxia: vira para o canto
     b.conn("explore", "vpg", 0.02, (1, 2), "both")
     b.conn("amig", "vpg", 0.0, (1, 1))
     b.pop("vpg_inh", 60, "gerador vocal", sign=-1)
@@ -362,6 +394,25 @@ def frog():
     b.conn("lc", "fuga", 0.01, (1, 2), "both")
     b.conn("glicose", "rafe", 0.2, (1, 2))
     b.conn("temp", "explore", 0.02, (1, 2), "both")
+    # respiracao: quimiorreceptores -> gerador respiratorio -> bomba bucal
+    # (garganta sobe e desce e empurra ar para os pulmoes); pulmao cheio inibe
+    b.pop("quimio", 100, "quimiorreceptores (O2/CO2)", 0, chan="oxigenio_baixo")
+    b.pop("estiramento", 80, "receptores de estiramento (pulmao)", 0, chan="pulmao_cheio")
+    b.pop("resp", 250, "gerador respiratorio (bomba bucal)", 2, out="respirar")
+    b.pop("resp_inh", 80, "gerador respiratorio (bomba bucal)", sign=-1)
+    b.conn("quimio", "resp", 0.2, (2, 4))
+    b.conn("explore", "resp", 0.03, (1, 2), "both")
+    b.conn("estiramento", "resp_inh", 0.3, (2, 4))
+    b.conn("resp_inh", "resp", 0.2, (2, 4))
+    b.conn("fuga", "resp", 0.02, (1, 2), "both")
+    # coracao: simpatico acelera (medo, esforco, falta de ar), vago freia
+    b.pop("simpatico", 60, "coracao: simpatico", 2, out="coracao_acelera")
+    b.pop("vago", 60, "coracao: vago", 2, out="coracao_freia")
+    b.conn("lc", "simpatico", 0.3, (2, 3))
+    b.conn("fuga", "simpatico", 0.02, (1, 2), "both")
+    b.conn("quimio", "simpatico", 0.1, (1, 2))
+    b.conn("glicose", "vago", 0.1, (1, 2))
+    b.conn("estiramento", "vago", 0.1, (1, 2))
     return b
 
 
@@ -421,19 +472,24 @@ def main():
         b = fn()
         sp, sign, _, _ = b.export(tag, name, params, args)
         if args.test:
-            base = {"explore_L": 20, "explore_R": 20, "fome": 60, "glicose": 20}
+            base = {"explore_L": 20, "explore_R": 20, "fome": 60, "glicose": 20, "luz_L": 80, "luz_R": 80}
             cases = {"repouso": {}}
             if tag == "ra":
-                cases |= {"presa a esquerda": {"presa_L": 120}, "presa, saciada": {"presa_L": 120, "fome": 0, "glicose": 120},
-                          "ameaca grande a direita": {"sombra_R": 150}, "presa + ameaca": {"presa_L": 120, "sombra_L": 150}}
-                keys = ["orient_L", "orient_R", "aprox", "hipoglosso", "fuga_L", "fuga_R", "mp_ext_L", "mp_ext_R"]
+                cases |= {"presa longe a esquerda": {"presa_L": 120}, "presa perto e centrada": {"presa_L": 60, "presa_R": 60, "presa_perto": 150},
+                          "presa perto, saciada": {"presa_perto": 150, "presa_L": 60, "presa_R": 60, "fome": 0, "glicose": 120},
+                          "ameaca grande a direita": {"sombra_R": 150}, "presa + ameaca": {"presa_L": 120, "sombra_L": 150},
+                          "falta de ar": {"oxigenio_baixo": 150}, "pulmao cheio": {"oxigenio_baixo": 40, "pulmao_cheio": 150},
+                          "canto a direita": {"som_R": 150}, "vontade de ir (explorar 100)": {"explore_L": 100, "explore_R": 100},
+                          "vontade de ir a esquerda": {"explore_L": 160, "explore_R": 20}}
+                keys = ["orient_L", "orient_R", "aprox", "hipoglosso", "fuga_L", "mp_ext_L", "mp_ext_R", "resp", "simpatico", "vpg"]
             else:
                 cases |= {"toque a esquerda": {"tato_L": 150}, "onda na linha lateral direita": {"linha_lateral_R": 150},
                           "alga (paladar)": {"paladar_bom": 120}, "sombra (pineal)": {"escuro_pineal": 120},
                           "procurando (explorar)": {"explore_L": 90, "explore_R": 90},
                           "virando a esquerda": {"explore_L": 30, "explore_R": 110},
                           "cabeca encostou": {"explore_L": 90, "explore_R": 90, "tato_cabeca": 150}}
-                keys = ["MN_L", "MN_R", "mauthner_L", "mauthner_R", "boca", "MHR"]
+                cases |= {"falta de oxigenio": {"oxigenio_baixo": 150}}
+                keys = ["MN_L", "MN_R", "mauthner_L", "mauthner_R", "boca", "MHR", "resp", "simpatico"]
             for cname, inp in cases.items():
                 res = simulate(b, sp, sign, params["w_syn"], base | inp)
                 print(f"  {tag} {cname:28s} " + "  ".join(f"{k} {res[k]:5.1f}" for k in keys))

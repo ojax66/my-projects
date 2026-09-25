@@ -53,11 +53,15 @@ var _bump := 0.0
 var _feeding := 0.0
 var _last_ll := 0.0
 var _hit_t := -99.0
-var _body: Node3D
-var _tail: Array[MeshInstance3D] = []
-var _legs_h: Array[MeshInstance3D] = []
-var _legs_f: Array[MeshInstance3D] = []
-static var _mat: StandardMaterial3D
+var model: TadpoleModel
+var org := AmphibianOrgans.new()
+var _cpg := 0.0                      # fase do meio-centro medular
+var _angles := PackedFloat32Array()
+var _act_l := PackedFloat32Array()
+var _act_r := PackedFloat32Array()
+var _steer := 0.0
+var _drive := 0.0
+var _pitch_goal := 0.0
 
 
 func _ready() -> void:
@@ -104,56 +108,16 @@ func _exit_tree() -> void:
 
 
 func _build_body() -> void:
-	if _mat == null:
-		_mat = StandardMaterial3D.new()
-		_mat.albedo_color = Color(0.22, 0.2, 0.12)
-		_mat.roughness = 0.3
-		_mat.clearcoat_enabled = true
-		_mat.clearcoat = 0.7
-	_body = Node3D.new()
-	add_child(_body)
-	var sph := SphereMesh.new()
-	sph.radius = 0.5
-	sph.height = 1.0
-	sph.radial_segments = 14
-	sph.rings = 7
-	var head := MeshInstance3D.new()
-	head.mesh = sph
-	head.material_override = _mat
-	head.scale = Vector3(0.28, 0.22, 0.36)
-	head.position = Vector3(0, 0, -0.3)
-	head.name = "cabeca"
-	_body.add_child(head)
-	var eye_m := StandardMaterial3D.new()
-	eye_m.albedo_color = Color(0.7, 0.6, 0.3)
-	for s in [-1, 1]:
-		var e := MeshInstance3D.new()
-		e.mesh = sph
-		e.material_override = eye_m
-		e.scale = Vector3.ONE * 0.06
-		e.position = Vector3(0.1 * s, 0.07, -0.4)
-		_body.add_child(e)
-	var fin := StandardMaterial3D.new()
-	fin.albedo_color = Color(0.35, 0.33, 0.25, 0.7)
-	fin.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	for i in 7:
-		var t := MeshInstance3D.new()
-		t.mesh = sph
-		t.material_override = _mat if i < 2 else fin
-		_body.add_child(t)
-		_tail.append(t)
-	var leg_m := _mat
-	for s in [-1, 1]:
-		var lh := MeshInstance3D.new()
-		lh.mesh = sph
-		lh.material_override = leg_m
-		_body.add_child(lh)
-		_legs_h.append(lh)
-		var lf := MeshInstance3D.new()
-		lf.mesh = sph
-		lf.material_override = leg_m
-		_body.add_child(lf)
-		_legs_f.append(lf)
+	model = TadpoleModel.new()
+	add_child(model)
+	model.build(uid)
+	_angles.resize(TadpoleModel.SEGS)
+	_act_l.resize(TadpoleModel.SEGS)
+	_act_r.resize(TadpoleModel.SEGS)
+
+
+func set_xray(on: bool) -> void:
+	model.set_xray(on)
 
 
 # ---------------------------------------------------------------- principal
@@ -164,12 +128,11 @@ func _physics_process(dt: float) -> void:
 	if _carried:
 		global_transform = global_transform.interpolate_with(_carry_t, 1.0 - exp(-dt * 20.0))
 		pain = maxf(pain, 0.2)
-		_animate(dt, 3.0)
 		return
 	var cam := get_viewport().get_camera_3d() as Spectator
 	var followed := cam != null and cam.follow == self
 	brain.focused = followed
-	brain.set_mode(0 if followed and Engine.time_scale <= 1.0 else 1)
+	brain.set_mode(1)   # conectoma sintetico calibrado no campo medio
 	mind.decay(dt)
 	_reward_t = maxf(0.0, _reward_t - dt)
 	_punish_t = maxf(0.0, _punish_t - dt)
@@ -192,7 +155,18 @@ func _physics_process(dt: float) -> void:
 
 
 func _physiology(dt: float) -> void:
-	energy -= dt / (1.5 * DAY) * genome.get_gene("metabolism")
+	energy -= dt / (1.5 * DAY) * genome.get_gene("metabolism") * (1.0 + org.work * 0.5)
+	# branquias sempre; o pulmao se forma na segunda metade do girino e ele
+	# passa a subir para engolir ar na superficie
+	org.has_gills = climax < 0.7
+	org.has_lungs = growth > 0.5
+	var at_surface := pond != null and global_position.y > pond.level - body_len() * 0.25
+	energy = minf(1.0, energy + org.step(dt, brain, at_surface, true, 1.0, 18.0))
+	if org.o2 < 0.12:
+		health -= dt / 90.0
+		if health <= 0.0:
+			_die("asfixia (girino)")
+			return
 	pain = maxf(0.0, pain - dt)
 	health = minf(1.0, health + dt / 600.0)
 	if growth >= 1.0 and climax < 1.0:
@@ -220,7 +194,7 @@ func _die(reason: String, cause: Object = null) -> void:
 		return
 	dead = true
 	behavior = "morto (%s)" % reason
-	_body.rotation.z = PI
+	model.rotation.z = PI
 	if LifeManager.instance:
 		LifeManager.instance.report_death(self, reason, cause)
 	get_tree().create_timer(DAY * 0.3, false).timeout.connect(queue_free)
@@ -288,9 +262,13 @@ func _sense(dt: float) -> void:
 	brain.set_input("tato_cabeca", 150.0 * _bump)
 	brain.set_input("tato_L", 0.0)
 	brain.set_input("tato_R", 0.0)
-	var ex := 60.0 if decision in ["comer", "esconder", "subir para a margem"] else 30.0
-	brain.set_input("explore_L", ex + _rng.randf() * 15.0)
-	brain.set_input("explore_R", ex + _rng.randf() * 15.0)
+	var inp := org.brain_inputs()
+	brain.set_input("oxigenio_baixo", inp["oxigenio_baixo"])
+	brain.set_input("pulmao_cheio", inp["pulmao_cheio"])
+	# vontade da decisao -> reticulospinais de cada lado (girar para o alvo)
+	var base := 15.0 + 75.0 * _drive
+	brain.set_input("explore_L", base * (1.0 + clampf(-_steer, 0.0, 1.0)) * (1.0 - 0.85 * clampf(_steer, 0.0, 1.0)) + _rng.randf() * 8.0)
+	brain.set_input("explore_R", base * (1.0 + clampf(_steer, 0.0, 1.0)) * (1.0 - 0.85 * clampf(-_steer, 0.0, 1.0)) + _rng.randf() * 8.0)
 	_bump = maxf(0.0, _bump - dt * 3.0)
 	# o que chega na linha lateral de repente assusta (e ensina o lugar)
 	var ll := maxf(ll_l, ll_r)
@@ -327,6 +305,8 @@ func _decide(dt: float) -> void:
 	else:
 		sc["subir para a margem"] = climax * 2.0
 	sc["esconder"] = mind.fall_fear * 0.8 + mind.danger_at(global_position) * 0.8
+	if org.has_lungs:
+		sc["subir para respirar"] = (0.75 - org.o2) * 4.0
 	var pick := decision if sc.has(decision) else "explorar"
 	var pick_v := float(sc.get(pick, 0.0)) + 0.1
 	for k: String in sc:
@@ -361,20 +341,75 @@ func _best_food() -> Array:
 	return [best, best_v] if best else []
 
 
-# ---------------------------------------------------------------- nado
+# ---------------------------------------------------------------- nado (musculos)
+## Medula: os motoneuronios esquerdo/direito (swim_L/R do conectoma) dao a
+## forca de cada lado; o meio-centro alterna os lados e a contracao desce a
+## cauda com atraso (onda rostro-caudal). O angulo de cada segmento sai da
+## diferenca de contracao direita x esquerda; a onda empurra a agua (empuxo)
+## e a curvatura media gira o corpo. A Mauthner contrai um lado inteiro de
+## uma vez (curva em C) e o girino dispara para o outro lado.
 func _move(dt: float) -> void:
 	var len := body_len()
-	var mn_l: float = brain.output("swim_L")
-	var mn_r: float = brain.output("swim_R")
-	var drive := clampf(mn_l + mn_r, 0.0, 2.0)
-	var goal := Vector3.INF
-	var spd := 0.0
 	_feeding = maxf(0.0, _feeding - dt)
+	_plan(dt)
+	var mn_l := clampf(brain.output("swim_L") if brain is GpuBrain else _drive + clampf(-_steer, 0, 1) * 0.5, 0.0, 2.0)
+	var mn_r := clampf(brain.output("swim_R") if brain is GpuBrain else _drive + clampf(_steer, 0, 1) * 0.5, 0.0, 2.0)
+	var esc_l: float = brain.output("escape_L") if brain is GpuBrain else 0.0
+	var esc_r: float = brain.output("escape_R") if brain is GpuBrain else 0.0
+	var drive := clampf((mn_l + mn_r) * 0.5, 0.0, 1.5)
+	var freq := 2.0 + 14.0 * drive                      # Hz (girinos: 10-25 Hz nadando forte)
+	_cpg += dt * freq * TAU
+	var n := TadpoleModel.SEGS
+	var mean_bend := 0.0
+	var tip := 0.0
+	for i in n:
+		var ph := _cpg - float(i) * 0.55
+		var s := sin(ph)
+		var al := mn_l * maxf(s, 0.0) + esc_r * 1.5      # Mauthner D contrai a esquerda
+		var ar := mn_r * maxf(-s, 0.0) + esc_l * 1.5     # Mauthner E contrai a direita
+		_act_l[i] = lerpf(_act_l[i], clampf(al, 0.0, 2.0), 1.0 - exp(-dt / 0.01))
+		_act_r[i] = lerpf(_act_r[i], clampf(ar, 0.0, 2.0), 1.0 - exp(-dt / 0.01))
+		var goal := (_act_r[i] - _act_l[i]) * 0.35 * (0.6 + float(i) / n)
+		_angles[i] = lerpf(_angles[i], clampf(goal, -0.9, 0.9), 1.0 - exp(-dt / 0.015))
+		mean_bend += _angles[i]
+		if i >= n - 3:
+			tip += absf(_angles[i])
+	mean_bend /= n
+	tip /= 3.0
+	org.work = maxf(org.work, drive)
+	# empuxo pela onda da cauda (~ frequencia x amplitude^2) e arrasto
+	var thrust := len * freq * tip * tip * 6.0 * (1.0 - climax * 0.8)
+	var fwd := -global_basis.z
+	velocity += fwd * thrust * dt
+	velocity *= exp(-dt * 3.0)
+	# curvatura media para a direita -> o corpo gira para a direita
+	rotate_y(-mean_bend * 9.0 * dt)
+	rotation.x = lerpf(rotation.x, _pitch_goal, 1.0 - exp(-dt * 2.5))
+	var np := global_position + velocity * dt
+	var ground := GardenWorld.instance.height_at(np.x, np.z) if GardenWorld.instance else pond.level - pond.depth
+	var lo := ground + len * 0.12
+	var hi := pond.level - len * 0.08
+	if hi - lo < len * 0.15 and decision != "subir para a margem":
+		_bump = 1.0   # encostou na margem: tato na cabeca -> MHR para
+		velocity = -velocity * 0.3
+		np = global_position
+	np.y = clampf(np.y, lo, maxf(hi, lo))
+	global_position = np
+	model.scale = Vector3.ONE * len
+	model.set_tail(_angles, _act_l, _act_r, climax)
+	model.set_state(org, growth, climax, _feeding, energy)
+
+
+## Vontade: para onde ir (vira o lado do reticular) e em que profundidade.
+func _plan(dt: float) -> void:
+	var len := body_len()
+	var goal := Vector3.INF
+	_drive = 0.2
 	match decision:
 		"fugir":
 			_escape_t -= dt
-			spd = len * 9.0
 			goal = global_position + _escape_dir * 100.0
+			_drive = 1.0
 			if _escape_t <= 0.0:
 				decision = "esconder"
 		"comer":
@@ -382,59 +417,46 @@ func _move(dt: float) -> void:
 				goal = _target.global_position + Vector3.UP * 2.0
 				var d := goal.distance_to(global_position)
 				if d < len * 0.6:
-					spd = len * 0.3
+					_drive = 0.05
+					# raspa com o bico: quanto o CPG da boca (feed) dispara
+					var feed: float = brain.output("feed") if brain is GpuBrain else 0.8
 					var got := 0.0
 					if _target is Algae:
-						got = (_target as Algae).graze(0.00006 * len * dt * (0.5 + brain.output("feed")))
+						got = (_target as Algae).graze(0.00008 * len * dt * clampf(feed, 0.1, 1.5))
 					elif _target is Fruit:
 						got = (_target as Fruit).consume(0.00003 * len * dt)
 					if got > 0.0:
 						_eat(got, dt)
-					behavior = "raspando algas" if _target is Algae else "comendo fruta na agua"
+						org.eat(got * 4.0, false)
+					behavior = "raspando algas (bico corneo)" if _target is Algae else "comendo fruta na agua"
 				else:
-					spd = len * (1.2 + drive)
+					_drive = 0.6
 					behavior = "nadando ate a comida"
+		"subir para respirar":
+			goal = Vector3(global_position.x, pond.level, global_position.z) - global_basis.z * len
+			_drive = 0.6
+			behavior = "subindo para engolir ar"
 		"subir para a margem":
 			behavior = "metamorfose: saindo do lago (%d%%)" % int(climax * 100)
 			goal = pond.shore_point(global_position)
-			spd = len * 0.8
+			_drive = 0.5
 			if pond.depth_at(global_position) < len * 0.4 and climax > 0.95:
 				_become_frog()
 				return
 		"esconder":
 			behavior = "escondido no fundo"
-			var deep := Vector3(pond.center.x, pond.level - pond.depth * 0.9, pond.center.y)
-			goal = deep
-			spd = len * 0.8
+			goal = Vector3(pond.center.x, pond.level - pond.depth * 0.9, pond.center.y)
+			_drive = 0.4
 		_:
-			behavior = "nadando" if drive > 0.2 else "parado na agua"
-			spd = len * (0.4 + drive * 1.5)
-	# o conectoma curva a cauda: diferenca entre os lados vira giro
-	var turn: float = (mn_r - mn_l) * 0.8
-	var fwd := -global_basis.z
+			behavior = "nadando" if _drive > 0.2 else "parado na agua"
+	_steer = 0.0
+	_pitch_goal = 0.0
 	if goal != Vector3.INF:
-		var to := (goal - global_position)
+		var to := goal - global_position
 		if to.length() > 0.5:
-			var tn := to.normalized()
-			var yaw := fwd.signed_angle_to(Vector3(tn.x, 0, tn.z), Vector3.UP)
-			turn = clampf(yaw * 3.0, -4.0, 4.0) + turn * 0.3
-			var pitch_goal := asin(clampf(tn.y, -0.8, 0.8))
-			rotation.x = lerpf(rotation.x, pitch_goal, 1.0 - exp(-dt * 3.0))
-	rotate_y(turn * dt)
-	fwd = -global_basis.z
-	velocity = velocity.lerp(fwd * spd, 1.0 - exp(-dt * 4.0))
-	var np := global_position + velocity * dt
-	# fica dentro d'agua: entre o fundo e a superficie, longe da margem
-	var ground := GardenWorld.instance.height_at(np.x, np.z) if GardenWorld.instance else pond.level - pond.depth
-	var lo := ground + len * 0.12
-	var hi := pond.level - len * 0.1
-	if hi - lo < len * 0.15 and decision != "subir para a margem":
-		_bump = 1.0   # encostou na margem: MHR para, vira
-		rotate_y(PI * 0.6 * dt * 5.0)
-		np = global_position
-	np.y = clampf(np.y, lo, maxf(hi, lo))
-	global_position = np
-	_animate(dt, spd / maxf(len, 0.1))
+			var ang := (-global_basis.z).signed_angle_to(Vector3(to.x, 0, to.z), Vector3.UP)
+			_steer = clampf(-ang * 1.5, -1.0, 1.0)
+			_pitch_goal = clampf(asin(clampf(to.normalized().y, -0.8, 0.8)), -0.6, 0.6)
 
 
 func _eat(got: float, dt: float) -> void:
@@ -445,36 +467,6 @@ func _eat(got: float, dt: float) -> void:
 	if _rng.randf() < 0.02:
 		_reward_t = 0.5
 		mind.learn_odor((_target as Node).call("food_key") if _target.has_method("food_key") else (_target as Fruit).memory_key(), 1.0, 0.1, "alga" if _target is Algae else "fruta")
-
-
-# ---------------------------------------------------------------- animacao
-func _animate(dt: float, rel_speed: float) -> void:
-	var len := body_len()
-	_body.scale = Vector3.ONE * len
-	_tail_ph += dt * (3.0 + rel_speed * 2.5)
-	var tail_len := 0.62 * (1.0 - climax)
-	var n := _tail.size()
-	for i in n:
-		var t := float(i + 1) / n
-		var amp := 0.06 + 0.12 * t
-		var z := -0.12 + t * tail_len
-		var x := sin(_tail_ph * TAU * 0.5 - t * 4.0) * amp * clampf(rel_speed * 0.3, 0.2, 1.0)
-		var mi := _tail[i]
-		mi.position = Vector3(x, 0.0, z)
-		var w := lerpf(0.14, 0.02, t) * (1.0 - climax * 0.8)
-		mi.scale = Vector3(0.03 + 0.03 * (1.0 - t), w * 2.2, tail_len / n * 1.6)
-		mi.visible = tail_len > 0.02
-	var lh := smoothstep(0.55, 0.85, growth)
-	var lf := smoothstep(0.85, 1.0, growth) * 0.8 + climax * 0.2
-	for i in 2:
-		var s := -1.0 if i == 0 else 1.0
-		_legs_h[i].visible = lh > 0.01
-		_legs_h[i].position = Vector3(0.12 * s, -0.06, -0.05)
-		_legs_h[i].scale = Vector3(0.05, 0.05, 0.25) * lh
-		_legs_h[i].rotation.y = 0.5 * s
-		_legs_f[i].visible = lf > 0.01
-		_legs_f[i].position = Vector3(0.13 * s, -0.07, -0.3)
-		_legs_f[i].scale = Vector3(0.04, 0.04, 0.14) * lf
 
 
 # ---------------------------------------------------------------- manipulacao

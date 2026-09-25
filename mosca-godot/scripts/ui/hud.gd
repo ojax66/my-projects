@@ -111,20 +111,20 @@ func _process(dt: float) -> void:
 		if followed is Frog:
 			var fr := followed as Frog
 			var fb = fr.brain
-			_status.text += "\nenergia %d%%  pele (hidratacao) %d%%  saude %d%%  idade %.1f dias  %s\ncerebro: %s (%d neuronios)   presa E/D %.0f/%.0f  ameaca E/D %.0f/%.0f\nsaidas: orientar E/D %.2f/%.2f  aproximar %.2f  LINGUA %.2f  fuga %.2f/%.2f  pulo %.2f  canto %.2f" % [
+			_status.text += "\nenergia %d%%  pele (hidratacao) %d%%  saude %d%%  idade %.1f dias  %s\ncerebro: %s (%d neuronios)   presa E/D %.0f/%.0f  ameaca E/D %.0f/%.0f\nmusculos extensores E/D %.2f/%.2f  pernas E/D %.2f/%.2f  orientar E/D %.2f/%.2f  LINGUA %.2f  fuga %.2f/%.2f  canto %.2f\norgaos: %s" % [
 				int(fr.energy * 100), int(fr.hydration * 100), int(fr.health * 100), fr.age / LifeManager.DAY, "jovem" if fr.growth < 0.95 else "adulta",
 				fb.name, fb.n, fr.sense["presa_L"], fr.sense["presa_R"], fr.sense["sombra_L"], fr.sense["sombra_R"],
-				fb.output("orient_L"), fb.output("orient_R"), fb.output("approach"), fb.output("snap"), fb.output("escape_L"), fb.output("escape_R"),
-				fb.output("hop"), fb.output("call")]
+				fr.act["L"], fr.act["R"], fr.ext["L"], fr.ext["R"], fb.output("orient_L"), fb.output("orient_R"), fb.output("snap"),
+				fb.output("escape_L"), fb.output("escape_R"), fb.output("call"), fr.org.summary()]
 			_life.text = "ra #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [fr.uid, fr.decision.to_upper(), _scores(fr.decision_scores),
 				fr.mind.summary(), ("ultima licao: " + fr.last_lesson) if fr.last_lesson != "" else ""]
 		elif followed is Tadpole:
 			var tp := followed as Tadpole
 			var tb = tp.brain
-			_status.text += "\nenergia %d%%  crescimento %d%%  metamorfose %d%%  idade %.1f dias\ncerebro: %s (%d neuronios)   linha lateral E/D %.0f/%.0f  sombra %.0f\nsaidas: nado E/D %.2f/%.2f  Mauthner E/D %.2f/%.2f  boca %.2f" % [
+			_status.text += "\nenergia %d%%  crescimento %d%%  metamorfose %d%%  idade %.1f dias\ncerebro: %s (%d neuronios)   linha lateral E/D %.0f/%.0f  sombra %.0f\nsaidas: nado E/D %.2f/%.2f  Mauthner E/D %.2f/%.2f  boca %.2f\norgaos: %s" % [
 				int(tp.energy * 100), int(tp.growth * 100), int(tp.climax * 100), tp.age / LifeManager.DAY, tb.name, tb.n,
 				tp.sense["linha_lateral_L"], tp.sense["linha_lateral_R"], tp.sense["sombra"],
-				tb.output("swim_L"), tb.output("swim_R"), tb.output("escape_L"), tb.output("escape_R"), tb.output("feed")]
+				tb.output("swim_L"), tb.output("swim_R"), tb.output("escape_L"), tb.output("escape_R"), tb.output("feed"), tp.org.summary()]
 			_life.text = "girino #%d  decisao: %s   (%s)\nmemoria: %s\n%s" % [tp.uid, tp.decision.to_upper(), _scores(tp.decision_scores),
 				tp.mind.summary(), ("ultima licao: " + tp.last_lesson) if tp.last_lesson != "" else ""]
 		if followed is Larva:
@@ -381,6 +381,7 @@ func _build_action_bar() -> void:
 	quick.add_child(_text_button("Ir ate a mosca", func(): spectator.teleport_to_fly(), "Teleportar para perto da mosca e segui-la (I)"))
 	quick.add_child(_text_button("Seguir", func(): spectator.cycle_follow(), "Seguir mosca/larva ou camera livre (C)"))
 	quick.add_child(_text_button("Soprar", func(): spectator.air_puff(), "Sopro de ar (F)"))
+	quick.add_child(_text_button("Raio-X", _toggle_xray, "Ver os orgaos da ra/girino seguido (coracao, pulmoes, estomago...)"))
 	quick.add_child(_text_button("Menu", _toggle_menu, "Criar coisas e opcoes"))
 	add_child(quick)
 
@@ -437,6 +438,16 @@ func _build_action_bar() -> void:
 
 
 var _brain_was_visible := true
+
+
+func _toggle_xray() -> void:
+	var f: Node = spectator.follow if spectator and is_instance_valid(spectator.follow) else null
+	if f and f.has_method("set_xray"):
+		var on := not bool(f.get("model").is_xray()) if f.get("model") else true
+		f.call("set_xray", on)
+		toast("Raio-X " + ("ligado: orgaos a mostra" if on else "desligado"))
+	else:
+		toast("Siga uma ra ou um girino (Seguir) para ver os orgaos")
 
 
 func _toggle_menu() -> void:
