@@ -439,7 +439,7 @@ def frog():
     # vira para a esquerda; quanto mais lateral, mais neuronios, giro maior
     C("T52", "orient", 30, (1, 3), "contra", topo=("acima", 0.12))
     C("T53", "orient", 10, (1, 2), "contra", topo=("acima", 0.12))
-    C("T52", "aprox", 15, (1, 2), E, src_range=(0.0, 0.5))
+    C("T52", "aprox", 28, (1, 3), E, src_range=(0.0, 0.5))
     C("T52", "T52_front", 6, (1, 2), E, src_range=(0.0, 0.18))
     C("T52", "tal_lat", 3, (1, 2))
     C("T52", "hipoglosso", 1, (1, 2), E, src_range=(0.0, 0.2))
@@ -464,7 +464,7 @@ def frog():
     C("glicose", "rafe", 30, (1, 2))
     # ---- aproximacao, fuga e locomocao
     C("aprox", "rs", 10, (1, 3), E)
-    C("aprox", "salto", 12, (2, 4), E)
+    C("aprox", "salto", 22, (2, 4), E)
     C("TH3", "fuga", 36, (1, 3), "contra")
     C("T6", "fuga", 20, (1, 2), "ipsi")
     C("dor", "fuga", 16, (1, 3), E)

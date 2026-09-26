@@ -2,9 +2,9 @@
  "name": "Conectoma sintetico da ra v2 (regras: Ewert, Roth, Nishikawa, Wilczynski, Kelley)",
  "tag": "ra",
  "neurons": 217810,
- "edges": 6851596,
- "plastic": 316178,
- "mbon_dan": 212597,
+ "edges": 6901487,
+ "plastic": 316303,
+ "mbon_dan": 212478,
  "raster_rows": 1457,
  "channels": [
   "presa_s0",
@@ -460,5 +460,5 @@
   "ref_rate": 40.0
  },
  "min_syn": 1,
- "synapses": 14505510
+ "synapses": 14638181
 }
