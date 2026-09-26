@@ -23,8 +23,10 @@ extends Node3D
 ## O shader de tecido (shaders/organ.gdshaderinc) desenha vasos, alveolos,
 ## lobulos e fibras. Tudo visivel no modo raio-X.
 ##
-## Nao ha animacao: Frog calcula extensao das pernas, ativacao dos musculos,
-## garganta, pulmoes, coracao e lingua; aqui so se mostra esse estado.
+## Nao ha animacao: cada junta (quadril, joelho, tornozelo, tarso, dedos do
+## pe um a um, ombro, cotovelo, punho, dedos da mao) recebe um angulo que
+## Frog calcula dos motoneuronios do conectoma; garganta, pulmoes, coracao e
+## lingua tambem vem do estado do corpo; aqui so se mostra esse estado.
 
 const SKIN := "res://frog/frog_skin.bin"
 const META := "res://frog/frog_skin.json"
@@ -47,6 +49,7 @@ var _body: MeshInstance3D
 var _bone := {}              # nome -> indice
 var _rest := {}              # nome -> [cabeca, ponta] (espaco do modelo)
 var _parent := {}
+var _sit := {}               # osso -> rotacao (modelo) da pose de modelagem para a sentada
 var _xray := false
 var _xray_nodes: Array[Node3D] = []
 var _muscles := {}           # "femur_L" -> MeshInstance3D
@@ -139,6 +142,8 @@ func _skeleton() -> void:
 		var t: Array = b["ponta"]
 		_rest[n] = [Vector3(h[0], h[1], h[2]), Vector3(t[0], t[1], t[2])]
 		_parent[n] = b["pai"]
+		var q: Array = b.get("sentado", [0, 0, 0, 1])
+		_sit[n] = Quaternion(q[0], q[1], q[2], q[3]).normalized()
 	for b: Dictionary in _meta_cache["ossos"]:
 		var n: String = b["nome"]
 		var p = b["pai"]
@@ -149,6 +154,10 @@ func _skeleton() -> void:
 		else:
 			_skel.set_bone_rest(_bone[n], Transform3D(Basis(), head))
 	_skel.reset_bone_poses()
+	# a malha foi esculpida com os membros esticados; a postura sentada e o angulo 0
+	for n in _bone:
+		_rot(n, Quaternion.IDENTITY)
+	_joint_axes()
 	for s in ["L", "R"]:
 		_eyes_rest[s] = (_rest["olho_" + s][0] as Vector3) - (_rest["cabeca"][0] as Vector3)
 
@@ -333,62 +342,141 @@ func _tongue() -> void:
 
 
 # ---------------------------------------------------------------- estado vindo da fisica
-func _q(from: Vector3, to: Vector3) -> Quaternion:
-	var a := from.normalized()
-	var b := to.normalized()
-	if a.dot(b) > 0.9999:
-		return Quaternion.IDENTITY
-	if a.dot(b) < -0.9999:
-		return Quaternion(Vector3.UP, PI)
-	return Quaternion(a, b)
+# ---------------------------------------------------------------- juntas (cinematica direta)
+## Cada junta e uma dobradica (ou duas, no quadril e no ombro) com o eixo
+## tirado da propria pose sentada do esqueleto. Angulo 0 = postura sentada do
+## modelo; positivo = estende (abre a junta). Nada de pose pronta: quem da os
+## angulos e a dinamica dos musculos em Frog, a partir dos motoneuronios.
+## A malha foi esculpida com os membros esticados (pose de modelagem); "sentado"
+## (do json) leva cada osso para a postura sentada, que e o angulo 0 de tudo.
+const BACK := Vector3(0, 0, 1)
+const FWD := Vector3(0, 0, -1)
+const DOWN := Vector3(0, -1, 0)
+const TOES := 5
+const FINGERS := 4
+var _ax := {}                # eixo de cada dobradica
+var _limb_act := {"L": 0.0, "R": 0.0}
 
 
-## Orienta uma cadeia de ossos para as direcoes pedidas (espaco do modelo).
-func _chain(names: Array, dirs: Array) -> void:
-	var parent_q := Quaternion.IDENTITY
-	for i in names.size():
-		var n: String = names[i]
-		var rest_dir: Vector3 = (_rest[n][1] as Vector3) - (_rest[n][0] as Vector3)
-		var gq := _q(rest_dir, dirs[i])
-		_skel.set_bone_pose_rotation(_bone[n], parent_q.inverse() * gq)
-		parent_q = gq
+## Direcao do osso na postura sentada (espaco do modelo).
+func _dir(n: String) -> Vector3:
+	return (_sit[n] as Quaternion) * ((_rest[n][1] as Vector3) - (_rest[n][0] as Vector3)).normalized()
 
 
-## ext 0 = pata dobrada (sentada, como o modelo), 1 = esticada para tras.
-func set_leg(s: String, ext: float, act: float) -> void:
-	var sx := 1.0 if s == "R" else -1.0
-	var e := clampf(ext, 0.0, 1.0)
-	var names := ["femur_" + s, "tibia_" + s, "tarso_" + s, "pe_" + s]
-	var ext_dirs := [Vector3(0.25 * sx, -0.12, 1), Vector3(0.12 * sx, -0.18, 1), Vector3(0.05 * sx, -0.25, 1), Vector3(0.05 * sx, -0.3, 1)]
-	var dirs := []
-	for i in names.size():
-		var rd: Vector3 = ((_rest[names[i]][1] as Vector3) - (_rest[names[i]][0] as Vector3)).normalized()
-		dirs.append(rd.slerp((ext_dirs[i] as Vector3).normalized(), e))
-	_chain(names, dirs)
-	# os ventres dos musculos incham e avermelham quando contraem (shader)
+func _hinge(c: Vector3, p: Vector3) -> Vector3:
+	# girar o filho em torno de c x p o leva na direcao do pai: abre a junta
+	var a := c.cross(p)
+	return a.normalized() if a.length() > 1e-4 else Vector3.RIGHT
+
+
+func _joint_axes() -> void:
+	for s in ["L", "R"]:
+		var fe := _dir("femur_" + s)
+		var ti := _dir("tibia_" + s)
+		var ta := _dir("tarso_" + s)
+		_ax["quadril_" + s] = _hinge(fe, BACK)            # femur vai para tras
+		_ax["quadril_baixo_" + s] = _hinge(fe, DOWN)      # e desce (perna para baixo do corpo)
+		_ax["joelho_" + s] = _hinge(ti, fe)
+		_ax["tornozelo_" + s] = _hinge(ta, ti)
+		_ax["tarso_" + s] = _ax["tornozelo_" + s]         # dobradica paralela
+		var mid := _dir("dedo_pe2_" + s)
+		for i in TOES:
+			var d := _dir("dedo_pe%d_%s" % [i, s])
+			_ax["dedo_pe%d_%s" % [i, s]] = _hinge(d, DOWN)          # dobra o dedo para baixo
+			_ax["abre_pe%d_%s" % [i, s]] = mid.cross(d).normalized() if i != 2 else Vector3.UP
+		var um := _dir("umero_" + s)
+		var an := _dir("antebraco_" + s)
+		_ax["ombro_" + s] = _hinge(um, FWD)               # umero para a frente (+) / tras (-)
+		_ax["ombro_baixo_" + s] = _hinge(um, DOWN)        # umero empurra para baixo
+		_ax["cotovelo_" + s] = _hinge(an, um)
+		_ax["punho_" + s] = _ax["cotovelo_" + s]
+		for i in FINGERS:
+			_ax["dedo_mao%d_%s" % [i, s]] = _hinge(_dir("dedo_mao%d_%s" % [i, s]), DOWN)
+
+
+## q: rotacao da junta no espaco do modelo sentado (em volta dos eixos de
+## _joint_axes). Local = sentado(pai)^-1 * q * sentado(osso).
+func _rot(bone: String, q: Quaternion) -> void:
+	if missing.has(bone):
+		return
+	var p = _parent[bone]
+	var ps: Quaternion = _sit[p] if p != null else Quaternion.IDENTITY
+	_skel.set_bone_pose_rotation(_bone[bone], ps.inverse() * q * (_sit[bone] as Quaternion))
+
+
+## q: quadril, joelho, tornozelo, tarso (rad, + estende), dedos (+ dobra
+## para baixo); spread 0..1 abre os dedos (membrana esticada); act 0..1 so
+## para o shader dos musculos.
+func set_leg_joints(s: String, q: Dictionary, spread: float, act: float) -> void:
+	var hip: float = q["quadril"]
+	_rot("femur_" + s, Quaternion(_ax["quadril_baixo_" + s], clampf(hip, 0.0, 2.0) * 0.28) * Quaternion(_ax["quadril_" + s], hip))
+	_rot("tibia_" + s, Quaternion(_ax["joelho_" + s], q["joelho"]))
+	_rot("tarso_" + s, Quaternion(_ax["tornozelo_" + s], q["tornozelo"]))
+	_rot("pe_" + s, Quaternion(_ax["tarso_" + s], q["tarso"]))
+	for i in TOES:
+		var sp := (i - 2) * 0.5 * 0.32 * spread
+		_rot("dedo_pe%d_%s" % [i, s], Quaternion(_ax["abre_pe%d_%s" % [i, s]], absf(sp)) * Quaternion(_ax["dedo_pe%d_%s" % [i, s]], q["dedos"]))
+	_limb_act[s] = act
 	var k := clampf(act, 0.0, 1.3)
 	for b in ["femur_" + s, "tibia_" + s]:
 		for m: MeshInstance3D in _muscles.get(b, []):
 			m.set_instance_shader_parameter("activation", k)
 
 
-## Braco: lift = esticado para a frente (salto); wipe = mao passando no
-## rosto (reflexo de limpar); clasp = abraco do amplexo (bracos por baixo da
-## femea, maos para dentro).
-func set_arm(s: String, lift: float, wipe := 0.0, clasp := 0.0) -> void:
-	var sx := 1.0 if s == "R" else -1.0
-	var names := ["umero_" + s, "antebraco_" + s, "mao_" + s]
-	var lift_dirs := [Vector3(0.4 * sx, -0.3, -0.8), Vector3(0.1 * sx, -0.4, -0.9), Vector3(0.0, -0.3, -1.0)]
-	var wipe_dirs := [Vector3(0.35 * sx, 0.55, -0.75), Vector3(-0.45 * sx, 0.5, 0.25), Vector3(-0.5 * sx, 0.2, 0.4)]
-	var clasp_dirs := [Vector3(0.55 * sx, -0.25, -0.8), Vector3(-0.85 * sx, -0.35, -0.2), Vector3(-0.9 * sx, -0.3, 0.2)]
-	var dirs := []
-	for i in names.size():
-		var rd: Vector3 = ((_rest[names[i]][1] as Vector3) - (_rest[names[i]][0] as Vector3)).normalized()
-		var d := rd.slerp((lift_dirs[i] as Vector3).normalized(), clampf(lift, 0.0, 1.0))
-		d = d.slerp((clasp_dirs[i] as Vector3).normalized(), clampf(clasp, 0.0, 1.0))
-		d = d.slerp((wipe_dirs[i] as Vector3).normalized(), clampf(wipe, 0.0, 1.0))
-		dirs.append(d)
-	_chain(names, dirs)
+## q: ombro (+ frente / - tras), ombro_baixo (+ empurra para baixo),
+## cotovelo (+ estende), punho (+ estende), dedos (+ fecha).
+func set_arm_joints(s: String, q: Dictionary) -> void:
+	_rot("umero_" + s, Quaternion(_ax["ombro_baixo_" + s], q["ombro_baixo"]) * Quaternion(_ax["ombro_" + s], q["ombro"]))
+	_rot("antebraco_" + s, Quaternion(_ax["cotovelo_" + s], q["cotovelo"]))
+	_rot("mao_" + s, Quaternion(_ax["punho_" + s], q["punho"]))
+	for i in FINGERS:
+		_rot("dedo_mao%d_%s" % [i, s], Quaternion(_ax["dedo_mao%d_%s" % [i, s]], q["dedos"]))
+
+
+## Ponto de um osso (t = 0 cabeca, 1 ponta) no espaco deste no (FrogModel).
+func point(bone: String, t := 1.0) -> Vector3:
+	var gp := _skel.get_bone_global_pose(_bone[bone])
+	var local: Vector3 = ((_rest[bone][1] as Vector3) - (_rest[bone][0] as Vector3)) * t
+	return _scale_root.transform * (gp * local)
+
+
+func _rest_point(bone: String, p: Vector3) -> Vector3:
+	var gp := _skel.get_bone_global_pose(_bone[bone])
+	return _scale_root.transform * (gp * (p - (_rest[bone][0] as Vector3)))
+
+
+## Pontos que podem encostar no chao, no espaco deste no.
+func contacts() -> Dictionary:
+	var out := {"pe_L": [], "pe_R": [], "mao_L": [], "mao_R": [], "barriga": []}
+	for s in ["L", "R"]:
+		if not missing.has("femur_" + s):
+			var f: Array = out["pe_" + s]
+			f.append(point("pe_" + s, 0.0))
+			for i in TOES:
+				f.append(point("dedo_pe%d_%s" % [i, s]))
+		var h: Array = out["mao_" + s]
+		h.append(point("mao_" + s, 1.0))
+		h.append(point("antebraco_" + s, 1.0))
+		for i in FINGERS:
+			h.append(point("dedo_mao%d_%s" % [i, s]))
+	var bl: Array = out["barriga"]
+	for p in [Vector3(0, 0.028, 0.3), Vector3(0, 0.028, 0.02), Vector3(0, 0.03, -0.1)]:
+		bl.append(_rest_point("corpo", p))
+	for p in [Vector3(0, 0.045, -0.2), Vector3(0, 0.11, -0.3)]:
+		bl.append(_rest_point("peito", p))
+	for p in [Vector3(0, 0.19, -0.36), Vector3(0, 0.23, -0.52)]:
+		bl.append(_rest_point("cabeca", p))
+	return out
+
+
+## Quadril (cabeca do femur) no espaco deste no.
+func hip(s: String) -> Vector3:
+	return point("femur_" + s, 0.0)
+
+
+## Centro da membrana do pe (para o empuxo na agua).
+func web_center(s: String) -> Vector3:
+	return (point("pe_" + s, 1.0) + point("dedo_pe2_" + s, 0.6) + point("dedo_pe3_" + s, 0.6)) / 3.0
 
 
 ## Pele: secrecao (brilho do muco), escurecer (MSH, melanoforos), inflar.

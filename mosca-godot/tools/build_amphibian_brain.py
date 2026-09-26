@@ -394,19 +394,10 @@ def frog():
     P("vago", 300, "coracao: vago", 2, out="coracao_freia")
     P("simpatico", 300, "coracao: simpatico", 2, out="coracao_acelera")
     P("nts", 1500, "nucleo do trato solitario")
-    # -------------------------------------------------- medula
-    P("br_exc", 1600, "medula braquial: CPG", sided=S)
-    P("br_inh", 800, "medula braquial: inibicao", sign=-1, sided=S)
-    P("br_mn", 300, "motoneuronios do braco", 2, out="braco_{s}", sided=S)
+    # -------------------------------------------------- medula (juntas: ver frog_spinal)
     P("limpar", 500, "medula: reflexo de limpar", 2, out="limpar_{s}", sided=S)
-    P("abraco", 250, "motoneuronios do abraco (amplexo)", 2, out="abraco_{s}", sided=S)
-    P("lomb_exc", 3000, "medula lombar: CPG", sided=S)
-    P("lomb_com", 1200, "medula lombar: comissurais", sign=-1, sided=S)
-    P("lomb_ia", 700, "medula lombar: Ia (reciproca)", sign=-1, sided=S)
-    P("renshaw", 400, "medula lombar: Renshaw", sign=-1, sided=S)
-    P("mn_ext", 1200, "motoneuronios: extensores das pernas", 2, out="hop_{s}", sided=S)
-    P("mn_flex", 900, "motoneuronios: flexores das pernas", 2, out="recolher_{s}", sided=S)
-    P("mn_passo", 500, "motoneuronios: passo (andar)", 2, out="andar_{s}", sided=S)
+    P("abraco", 250, "medula: abraco do amplexo", 2, out="abraco_{s}", sided=S)
+    frog_spinal(b)
     P("glandulas", 200, "glandulas da pele (secrecao)", 2, out="secrecao")
 
     # ================================================== LIGACOES
@@ -473,13 +464,13 @@ def frog():
     C("glicose", "rafe", 30, (1, 2))
     # ---- aproximacao, fuga e locomocao
     C("aprox", "rs", 10, (1, 3), E)
-    C("aprox", "mn_ext", 16, (2, 4), E)
+    C("aprox", "salto", 12, (2, 4), E)
     C("TH3", "fuga", 36, (1, 3), "contra")
     C("T6", "fuga", 20, (1, 2), "ipsi")
     C("dor", "fuga", 16, (1, 3), E)
     C("tato_corpo", "fuga", 12, (1, 2), E)
     C("saculo", "fuga", 6, (1, 2), "contra")     # vibracao forte no chao: foge
-    C("fuga", "mn_ext", 30, (2, 4), E)
+    C("fuga", "salto", 30, (2, 4), E)
     C("fuga", "rs", 16, (1, 3), "ipsi")
     C("fuga", "amig_cent", 6, (1, 2), E)
     C("fuga", "fuga_inh", 12, (1, 2), E)
@@ -490,43 +481,26 @@ def frog():
     C("amig_cent", "fuga", 6, (1, 2), E)
     C("explore", "mlr", 30, (2, 3), "ipsi")
     C("mlr", "rs", 20, (2, 3), "ipsi")
-    C("mlr", "mn_ext", 10, (2, 3), "ipsi")
+    C("mlr", "salto", 8, (2, 3), "ipsi")
+    C("mlr", "passo", 10, (1, 3), "ipsi")
     C("explore", "orient", 12, (1, 3), "ipsi")
-    C("rs", "lomb_exc", 16, (1, 3), "ipsi")
-    C("rs", "br_exc", 10, (1, 2), "ipsi")
+    C("rs", "salto", 6, (1, 3), "ipsi")
+    C("rs", "passo", 4, (1, 2), "ipsi")
     C("vest_nuc", "vestspin", 20, (1, 3))
-    C("vestspin", "lomb_exc", 6, (1, 2))
-    C("vestspin", "br_exc", 6, (1, 2))
+    C("vestspin", "recolher", 4, (1, 2))
+    C("vestspin", "apoio", 8, (1, 2))
     C("canais", "vest_nuc", 25, (1, 3))
     C("utriculo", "vest_nuc", 15, (1, 3))
     C("saculo", "vest_nuc", 8, (1, 2))
     C("vest_nuc", "orient", 2, (1, 2), E)
     C("vest_nuc", "oculomotor", 6, (1, 2), E)
-    # ---- medula das pernas: CPG com inibicao reciproca e alternancia
-    C("lomb_exc", "lomb_exc", 6, (1, 2), "ipsi")
-    C("lomb_exc", "mn_ext", 14, (1, 3), "ipsi")
-    C("lomb_exc", "lomb_ia", 10, (1, 2), "ipsi")
-    C("lomb_ia", "mn_flex", 14, (1, 3), "ipsi")
-    C("mn_flex", "lomb_ia", 3, (1, 2), "ipsi")
-    C("mn_ext", "renshaw", 10, (1, 2), "ipsi")
-    C("renshaw", "mn_ext", 6, (1, 2), "ipsi")
-    C("lomb_exc", "lomb_com", 8, (1, 2), "ipsi")
-    C("lomb_com", "mn_passo", 12, (1, 3), "contra")     # passo: alterna os lados
-    C("mlr", "mn_passo", 6, (1, 2), "ipsi")
-    C("proprio", "lomb_exc", 4, (1, 2), "ipsi")
-    C("proprio", "lomb_ia", 4, (1, 2), "ipsi")
-    C("proprio", "cb_gran", 1, (1, 2))
-    # ---- bracos: limpar o rosto e abraco do amplexo (reflexos da medula)
+    # ---- reflexos dos bracos (premotores; as juntas estao em frog_spinal)
     C("irritante", "limpar", 30, (1, 3), "ipsi")
     C("tato_cabeca", "limpar", 6, (1, 2), E)
     C("gust_ruim", "limpar", 20, (1, 3), E)     # engoliu algo ruim: limpa a boca com as maos
-    C("limpar", "br_mn", 12, (1, 3), "ipsi")
-    C("br_exc", "br_mn", 10, (1, 3), "ipsi")
-    C("br_exc", "br_inh", 6, (1, 2), "ipsi")
-    C("br_inh", "br_mn", 6, (1, 2), "contra")
     C("polegar", "abraco", 36, (2, 4))
     C("gnrh", "abraco", 8, (1, 2))
-    C("abraco", "br_mn", 8, (1, 2), "ipsi")
+    C("proprio", "cb_gran", 1, (1, 2))
     # ---- lingua, boca e engolir
     C("hipoglosso", "boca_abre", 16, (1, 3))
     C("hipoglosso", "hipo_ret", 6, (1, 2))
@@ -673,7 +647,7 @@ def frog():
     C("lc", "simpatico", 30, (2, 3))
     C("lc", "T52", 0.5, (1, 2), E)
     C("rafe", "hip_npy", 3, (1, 2))
-    C("rafe", "lomb_exc", 1, (1, 2), E)
+    C("rafe", "salto", 1, (1, 2), E)
     C("amig_med", "vmh", 8, (1, 2), E)
     C("amig_lat", "amig_cent", 10, (1, 2), "ipsi")
     C("T6", "amig_lat", 2, (1, 2), "ipsi")
@@ -695,6 +669,131 @@ def frog():
     C("estiramento", "vago", 10, (1, 2))
     C("baro", "vago", 20, (1, 3))
     return b
+
+
+def frog_spinal(b):
+    """Medula da ra: motoneuronios de cada junta (extensor e flexor) e os
+    geradores que os coordenam. Pernas: 'salto' (sinergia extensora,
+    proximal -> distal) e 'recolher' (flexores) sao dois meio-centros que se
+    inibem (Ia) e se cansam (adaptacao): com comando continuo alternam (chute
+    de nado, pulos seguidos), com um comando curto dao um pulo so. Na agua os
+    comissurais excitatorios deixam os dois lados em sincronia (chute de ra);
+    em terra, com pouco comando, o 'passo' alterna os lados (andar).
+    Bracos: 'apoio' (sustenta a frente do corpo contra a gravidade), 'pouso'
+    (no ar, bracos para a frente para receber o chao), bracos para tras na
+    agua, 'limpar' e 'abraco'. (Giszter 1993; Kiehn 2006; Kamel 1996;
+    Cox & Gillis 2015 - pouso sobre os bracos; Nauwelaerts 2005 - nado.)"""
+    P, C, E = b.pop, b.conn, "both"
+    S = True
+    P("no_ar", 200, "vestibular: queda livre (no ar)", 0, chan="no_ar")
+    P("imerso", 200, "pele/pressao: dentro d'agua", 0, chan="imerso")
+    P("carga_maos", 200, "carga nas maos (apoio)", 0, chan="apoio_maos_{s}", sided=S)
+    # premotores da perna
+    P("salto", 900, "medula lombar: sinergia de salto/chute", sided=S)
+    P("recolher", 700, "medula lombar: recolher (flexores)", sided=S)
+    P("ia_ext", 300, "medula lombar: Ia do extensor", sign=-1, sided=S)
+    P("ia_flex", 300, "medula lombar: Ia do flexor", sign=-1, sided=S)
+    P("sincro", 300, "medula lombar: comissurais (sincronia)", sided=S)
+    P("passo", 700, "medula lombar: passo", sided=S)
+    P("alterna", 300, "medula lombar: comissurais (alternancia)", sign=-1, sided=S)
+    P("renshaw", 300, "medula lombar: Renshaw", sign=-1, sided=S)
+    # motoneuronios de cada junta da perna
+    for j, nome, n_e, n_f in (("quadril", "quadril", 260, 200), ("joelho", "joelho", 260, 200),
+                              ("tornozelo", "tornozelo", 240, 200), ("tarso", "tarso-metatarso", 160, 120)):
+        P(f"mn_{j}_ext", n_e, f"motoneuronios: {nome} (extensores)", 2, out=f"{j}_ext_{{s}}", sided=S)
+        P(f"mn_{j}_flex", n_f, f"motoneuronios: {nome} (flexores)", 2, out=f"{j}_flex_{{s}}", sided=S)
+    P("mn_dedos", 120, "motoneuronios: abrir os dedos do pe", 2, out="dedos_abrir_{s}", sided=S)
+    # premotores e motoneuronios do braco
+    P("apoio", 400, "medula braquial: apoio (antigravidade)", sided=S)
+    P("pouso", 300, "medula braquial: pouso (bracos a frente)", sided=S)
+    P("braco_nado", 250, "medula braquial: bracos para tras (nado)", sided=S)
+    P("br_inh", 300, "medula braquial: inibicao", sign=-1, sided=S)
+    for j, nome, n in (("ombro_frente", "ombro (para a frente)", 160), ("ombro_tras", "ombro (para tras)", 160),
+                       ("ombro_baixo", "ombro (empurra para baixo)", 160), ("ombro_cima", "ombro (levanta o braco)", 120), ("cotovelo_ext", "cotovelo (estende)", 160),
+                       ("cotovelo_flex", "cotovelo (dobra)", 160), ("punho_ext", "punho (estende)", 90),
+                       ("punho_flex", "punho (dobra)", 90), ("dedos_mao", "dedos da mao (fecha)", 70)):
+        P(f"mn_{j}", n, f"motoneuronios: {nome}", 2, out=f"{j}_{{s}}", sided=S)
+    # --- perna: meio-centros
+    C("salto", "ia_ext", 14, (1, 3), "ipsi")
+    C("ia_ext", "recolher", 30, (2, 4), "ipsi")
+    C("recolher", "ia_flex", 14, (1, 3), "ipsi")
+    C("ia_flex", "salto", 30, (2, 4), "ipsi")
+    # o comando de locomocao liga os dois meio-centros: o que ganhar cansa e o outro assume (ritmo)
+    C("mlr", "recolher", 10, (1, 3), "ipsi")
+    C("imerso", "recolher", 6, (1, 3))
+    C("rs", "recolher", 3, (1, 2), "ipsi")
+    C("utriculo", "recolher", 14, (1, 3))                   # sentada: tonus flexor (pernas dobradas)
+    C("no_ar", "recolher", 16, (1, 3))                      # no ar: recolhe as pernas para pousar
+    C("no_ar", "salto", 0, (1, 1))
+    C("proprio", "recolher", 3, (1, 2), "ipsi")             # perna esticada ao maximo -> recolhe
+    # sincronia (salto e chute: as duas pernas juntas); na agua mais forte
+    C("salto", "sincro", 10, (1, 3), "ipsi")
+    C("sincro", "salto", 8, (1, 2), "contra")
+    C("imerso", "sincro", 10, (1, 3))
+    C("imerso", "salto", 4, (1, 2))
+    C("imerso", "mn_dedos", 20, (1, 3))                     # na agua: dedos abertos (membrana)
+    # passo: alternado, so em terra e com pouco comando
+    C("passo", "alterna", 10, (1, 3), "ipsi")
+    C("alterna", "passo", 20, (2, 4), "contra")
+    C("salto", "passo", 0, (1, 1))
+    P("passo_inh", 200, "medula lombar: salto inibe o passo", sign=-1, sided=S)
+    C("salto", "passo_inh", 4, (1, 2), "ipsi")
+    C("passo_inh", "passo", 30, (2, 4), "ipsi")
+    C("imerso", "passo_inh", 20, (1, 3))
+    C("no_ar", "passo_inh", 20, (1, 3))
+    # sinergia de salto nas juntas (proximal forte, distal um pouco depois)
+    C("salto", "mn_quadril_ext", 18, (2, 3), "ipsi")
+    C("salto", "mn_joelho_ext", 16, (2, 3), "ipsi")
+    C("salto", "mn_tornozelo_ext", 14, (2, 3), "ipsi")
+    C("salto", "mn_tarso_ext", 12, (2, 3), "ipsi")
+    C("salto", "mn_dedos", 4, (1, 2), "ipsi")
+    C("mn_quadril_ext", "renshaw", 8, (1, 2), "ipsi")
+    C("renshaw", "mn_quadril_ext", 6, (1, 2), "ipsi")
+    C("renshaw", "mn_joelho_ext", 6, (1, 2), "ipsi")
+    for j in ("quadril", "joelho", "tornozelo", "tarso"):
+        C("recolher", f"mn_{j}_flex", 14, (2, 3), "ipsi")
+        C("ia_ext", f"mn_{j}_flex", 10, (1, 3), "ipsi")
+        C("ia_flex", f"mn_{j}_ext", 10, (1, 3), "ipsi")
+    # passo: quadril e joelho, pouco
+    C("passo", "mn_quadril_ext", 6, (1, 2), "ipsi")
+    C("passo", "mn_joelho_ext", 4, (1, 2), "ipsi")
+    C("alterna", "mn_quadril_flex", 0, (1, 1))
+    C("passo", "mn_quadril_flex", 5, (1, 2), "contra")
+    # --- bracos
+    C("utriculo", "apoio", 20, (1, 3))                      # a gravidade liga o apoio
+    C("carga_maos", "apoio", 16, (1, 3), "ipsi")
+    C("apoio", "mn_ombro_baixo", 14, (2, 3), "ipsi")
+    C("apoio", "mn_cotovelo_ext", 14, (2, 3), "ipsi")
+    C("apoio", "mn_punho_ext", 10, (1, 3), "ipsi")
+    C("no_ar", "pouso", 30, (2, 4))
+    C("pouso", "mn_ombro_frente", 16, (2, 3), "ipsi")
+    C("pouso", "mn_cotovelo_ext", 14, (2, 3), "ipsi")
+    C("pouso", "mn_punho_ext", 10, (1, 3), "ipsi")
+    C("imerso", "braco_nado", 30, (2, 4))
+    C("braco_nado", "mn_ombro_tras", 16, (2, 3), "ipsi")
+    C("braco_nado", "mn_cotovelo_flex", 10, (1, 3), "ipsi")
+    C("limpar", "mn_ombro_frente", 14, (2, 3), "ipsi")
+    C("limpar", "mn_cotovelo_flex", 18, (2, 3), "ipsi")
+    C("limpar", "mn_ombro_cima", 18, (2, 3), "ipsi")
+    C("mn_ombro_cima", "br_inh", 3, (1, 2), "ipsi")
+    C("limpar", "mn_punho_flex", 12, (1, 3), "ipsi")
+    C("abraco", "mn_ombro_frente", 10, (1, 3), "ipsi")
+    C("abraco", "mn_cotovelo_flex", 20, (2, 3), "ipsi")
+    C("abraco", "mn_dedos_mao", 20, (2, 3), "ipsi")
+    C("passo", "mn_ombro_frente", 5, (1, 2), "contra")      # andar: braco do lado oposto vai a frente
+    C("passo", "mn_ombro_tras", 5, (1, 2), "ipsi")
+    # o que usa o braco desliga o apoio (e o apoio nao briga com o pouso)
+    for src in ("no_ar", "imerso"):
+        C(src, "br_inh", 20, (1, 3))
+    C("limpar", "br_inh", 12, (1, 3), "ipsi")
+    C("abraco", "br_inh", 12, (1, 3), "ipsi")
+    C("br_inh", "apoio", 30, (2, 4), "ipsi")
+    C("br_inh", "mn_ombro_baixo", 12, (1, 3), "ipsi")
+    # ombro: frente x tras se inibem
+    P("ombro_inh", 150, "medula braquial: frente x tras", sign=-1, sided=S)
+    C("mn_ombro_frente", "ombro_inh", 6, (1, 2), "ipsi")
+    C("ombro_inh", "mn_ombro_tras", 10, (1, 3), "ipsi")
+    C("mn_cotovelo_flex", "br_inh", 2, (1, 2), "ipsi")
 
 
 # ================================================================ GIRINO
@@ -863,7 +962,8 @@ def tadpole():
 
 
 # ================================================================ teste (campo medio, igual ao shader)
-def simulate(b, chan_names, sign, w_syn, inputs, steps=60, dt=20.0):
+def simulate(b, chan_names, sign, w_syn, inputs, steps=60, dt=20.0, trace=None):
+    """inputs: dict fixo ou funcao passo -> dict. trace: populacoes para gravar a cada passo."""
     N = b.N
     A = b.agg
     pre, post = A.pre, A.post
@@ -873,10 +973,14 @@ def simulate(b, chan_names, sign, w_syn, inputs, steps=60, dt=20.0):
         c = b.meta[nm]["chan"]
         if c:
             chan[a0:a0 + n] = chan_names.index(c)
-    ir = np.zeros(N)
-    for c, v in inputs.items():
-        if c in chan_names:
-            ir[chan == chan_names.index(c)] = v
+    def drive(inp):
+        ir = np.zeros(N)
+        for c, v in inp.items():
+            if c in chan_names:
+                ir[chan == chan_names.index(c)] = v
+        return ir
+    ir = drive(inputs) if not callable(inputs) else None
+    rows = []
     r = np.zeros(N)
     ad = np.zeros(N)
     dep = np.ones(N)
@@ -887,7 +991,9 @@ def simulate(b, chan_names, sign, w_syn, inputs, steps=60, dt=20.0):
         return 1.0 / (0.0022 + 0.02 * np.log(xe / (xe - th)))
 
     base = lif(np.zeros(1))
-    for _ in range(steps):
+    for step in range(steps):
+        if callable(inputs):
+            ir = drive(inputs(step))
         g = np.bincount(post, weights=r[pre] * dep[pre] * 0.005 * w_syn * w, minlength=N)
         ad += (r - ad) * dt / (dt + 400)
         x = g - 0.1 * ad - 0.3 * np.maximum(0, ad - 80)
@@ -896,10 +1002,37 @@ def simulate(b, chan_names, sign, w_syn, inputs, steps=60, dt=20.0):
         tgt = np.minimum(tgt, 200)
         r += (tgt - r) * dt / (dt + 30)
         dep = np.clip((dep + dt / 300) / (1 + dt / 300 + 0.06 * r * dt / 1000), 0.02, 1)
+        if trace:
+            rows.append([float(r[b.pops[k][0]:b.pops[k][0] + b.pops[k][1]].mean()) for k in trace])
+    if trace:
+        return np.array(rows)
     res = {}
     for nm, (a0, n) in b.pops.items():
         res[nm] = float(r[a0:a0 + n].mean())
     return res
+
+
+def motor_test(b, chans, sign, w_syn, base):
+    """Series no tempo da medula: salto (comando curto), chute de nado (comando continuo
+    na agua), andar (pouco comando em terra), queda (no ar)."""
+    tr = ["salto_L", "salto_R", "recolher_L", "passo_L", "passo_R", "mn_quadril_ext_L", "mn_quadril_flex_L",
+          "mn_dedos_L", "apoio_L", "pouso_L", "braco_nado_L", "mn_ombro_baixo_L", "mn_ombro_frente_L", "mn_ombro_tras_L"]
+    g = base | {"equilibrio": 10, "apoio_maos_L": 100, "apoio_maos_R": 100}
+    cases = {
+        "parada": lambda t: g,
+        "fuga curta (salto)": lambda t: g | ({"sombra_s5": 160, "sombra_s6": 160} if 10 <= t < 16 else {}),
+        "nado (agua + ir)": lambda t: base | {"imerso": 120, "explore_L": 110, "explore_R": 110},
+        "andar (ir devagar)": lambda t: g | {"explore_L": 70, "explore_R": 70},
+        "no ar": lambda t: base | {"no_ar": 120},
+        "ir (explorar 110)": lambda t: g | {"explore_L": 110, "explore_R": 110},
+    }
+    for nm, f in cases.items():
+        X = simulate(b, chans, sign, w_syn, f, steps=150, trace=tr)
+        print(f"  motor {nm}")
+        for i, k in enumerate(tr):
+            v = X[:, i]
+            line = "".join(" .:-=+*#%@"[min(9, int(x / 8))] for x in v[::2])
+            print(f"    {k:18s} max {v.max():5.1f} |{line}|")
 
 
 def sectors(v, ks):
@@ -914,6 +1047,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--test", action="store_true")
     ap.add_argument("--only", choices=["ra", "girino"])
+    ap.add_argument("--motor", action="store_true", help="so o teste da medula da ra (nao grava)")
     args = ap.parse_args()
     specs = [
         ("girino", "Conectoma sintetico do girino v2 (regras: Roberts et al.)", tadpole, {"w_syn": 2.0, "ref_rate": 40.0}),
@@ -923,6 +1057,12 @@ def main():
         if args.only and tag != args.only:
             continue
         b = fn()
+        if args.motor:
+            chans = sorted({m["chan"] for m in b.meta.values() if m["chan"]})
+            sign = np.concatenate([np.full(n, b.meta[k]["sign"], float) for k, (a0, n) in sorted(b.pops.items(), key=lambda kv: kv[1][0])])
+            base = {"explore_L": 20, "explore_R": 20, "fome": 60, "glicose": 20, "luz_L": 80, "luz_R": 80, "luz_pineal": 80}
+            motor_test(b, chans, sign, params["w_syn"], base)
+            continue
         chans, sign = b.export(tag, name, params)
         if not args.test:
             continue
@@ -949,7 +1089,7 @@ def main():
                      "pele secando": {"pele_seca": 150},
                      "noite (pineal escuro)": {"luz_pineal": 0, "escuro_pineal": 120, "luz_L": 5, "luz_R": 5},
                      "macho na epoca de reproducao": {"reproducao": 120, "luz_pineal": 0, "escuro_pineal": 120}}
-            keys = ["orient_L", "orient_R", "aprox", "hipoglosso", "boca_abre", "retrator", "fuga_L", "fuga_R", "mn_ext_L", "mn_ext_R",
+            keys = ["orient_L", "orient_R", "aprox", "hipoglosso", "boca_abre", "retrator", "fuga_L", "fuga_R", "salto_L", "salto_R", "mn_quadril_ext_L", "apoio_L", "pouso_L",
                     "bucal", "pulmonar", "simpatico", "dtam", "limpar_L", "abraco_L", "socorro", "sede", "melat", "pvn_crh", "gnrh"]
         else:
             cases = {"repouso": {}, "toque a esquerda": {"tato_L": 150}, "onda na linha lateral direita": {"linha_lateral_R": 150},
@@ -961,6 +1101,8 @@ def main():
                      "segurado (dor + toque)": {"tato_L": 150, "tato_R": 150, "dor": 150},
                      "falta de oxigenio": {"oxigenio_baixo": 150}, "bem alimentado": {"glicose": 150, "fome": 0}}
             keys = ["MN_L", "MN_R", "mauthner_L", "mauthner_R", "debater_L", "boca", "MHR", "bucal", "simpatico", "trh"]
+        if tag == "ra":
+            motor_test(b, chans, sign, params["w_syn"], base)
         for cname, inp in cases.items():
             res = simulate(b, chans, sign, params["w_syn"], base | inp)
             print(f"  {tag} {cname:38s} " + "  ".join(f"{k} {res[k]:5.1f}" for k in keys))

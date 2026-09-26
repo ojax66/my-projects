@@ -805,9 +805,31 @@ def skeleton(skin, bones):
     sdf_mesh("esterno", "corpo", "cartilagem", st, [-0.06, 0.08, -0.33], [0.06, 0.16, -0.07], 0.0025)
     # ossos dos membros (no espaco do proprio osso)
     for s in ("R", "L"):
-        for b in ("femur", "tibia", "tarso", "pe", "umero", "antebraco", "mao"):
+        for b in ("femur", "tibia", "tarso", "umero", "antebraco"):
             a, t = bones[b + "_" + s]
             limb_bone(b, s, a, t)
+        # metatarsos / metacarpos (no osso do pe / da mao) ate a base de cada dedo
+        for b, dig, n in (("pe", "dedo_pe", 5), ("mao", "dedo_mao", 4)):
+            a, _ = bones[f"{b}_{s}"]
+            bases = [bones[f"{dig}{i}_{s}"][0] for i in range(n)]
+            def meta(p, a=a, bases=bases):
+                d = None
+                for q in bases:
+                    c = capsule(p, a, q, 0.0045, 0.0045)
+                    c = smin(c, np.linalg.norm(p - q, axis=1) - 0.0055, 0.002)
+                    d = c if d is None else np.minimum(d, c)
+                return d
+            lo = np.minimum(a, np.min(bases, 0)) - 0.03
+            hi = np.maximum(a, np.max(bases, 0)) + 0.03
+            sdf_mesh(f"osso_{b}_{s}", f"{b}_{s}", "osso", meta, lo, hi, 0.0022, pivot=a)
+            # falanges: cada dedo no seu osso (dobra na sua junta)
+            for i in range(n):
+                h, t = bones[f"{dig}{i}_{s}"]
+                def phal(p, h=h, t=t):
+                    m = h + (t - h) * 0.55
+                    c = smin(capsule(p, h, m, 0.004, 0.0035), capsule(p, m, t, 0.0035, 0.0025), 0.002)
+                    return smin(c, np.linalg.norm(p - m, axis=1) - 0.0045, 0.002)
+                sdf_mesh(f"osso_{dig}{i}_{s}", f"{dig}{i}_{s}", "osso", phal, np.minimum(h, t) - 0.02, np.maximum(h, t) + 0.02, 0.0018, pivot=h)
 
 
 def perp(d):

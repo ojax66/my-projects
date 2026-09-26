@@ -6,15 +6,21 @@ extends Node3D
 ##
 ## Nada aqui e animacao pronta. O ciclo, a cada tick:
 ##   olhos (raios) + ouvidos + orgaos + pele -> canais sensoriais do conectoma
-##   conectoma -> motoneuronios: extensores de cada perna (hop_L/R),
-##     orientacao (orient_L/R), fuga, hipoglosso (lingua), gerador
-##     respiratorio (bomba bucal), simpatico/vago (coracao), vocal (canto)
-##   medula: o comando continuo de salto do tronco encefalico vira surtos
-##     dos extensores (gerador de salto espinhal) com uma fase de recolher
-##   musculos: a ativacao dos extensores estica as pernas; perna esticando
-##     com os pes no chao empurra o corpo -> o pulo sai da forca do musculo;
-##     diferenca entre esquerda e direita vira giro; na agua os mesmos chutes
-##     dao impulso
+##   conectoma -> motoneuronios de cada junta (quadril, joelho, tornozelo,
+##     tarso, dedos do pe; ombro para frente/tras/baixo/cima, cotovelo,
+##     punho, dedos da mao), orientacao (orient_L/R), hipoglosso (lingua),
+##     gerador respiratorio (bomba bucal), simpatico/vago (coracao), vocal
+##   medula (no conectoma): sinergia de salto, recolher, passo, apoio dos
+##     bracos, pouso (bracos a frente no ar), bracos para tras no nado,
+##     limpar e abraco; o ritmo do chute e dos pulos seguidos sai dos
+##     meio-centros que se inibem e se cansam
+##   musculos (FrogLimbs): cada par de motoneuronios move a sua junta
+##   corpo: o esqueleto e posto no chao pelos pontos que encostam (pes,
+##     maos, barriga, queixo) e inclina para onde o peso assenta; pe
+##     encostado que vai para tras empurra o corpo para a frente; perna
+##     esticando rapido lanca o corpo na direcao pe -> quadril (com a
+##     catapulta dos tendoes); na agua a membrana dos pes empurra a agua
+##     (arrasto) e o corpo desliza
 ##   orgaos: coracao bate no ritmo do simpatico/vago, a garganta bombeia ar
 ##     para os pulmoes, o O2 do sangue cai com o esforco; o estomago digere
 ## A "decisao" (fome, sede de agua, medo, parceiro) so entra como impulso
@@ -64,7 +70,9 @@ var death_reason := ""
 var eggs_cooldown := 0.0
 var velocity := Vector3.ZERO
 var sense := {"presa_L": 0.0, "presa_R": 0.0, "sombra_L": 0.0, "sombra_R": 0.0, "presa_perto": 0.0, "som_L": 0.0, "som_R": 0.0}
-var ext := {"L": 0.0, "R": 0.0}          # extensao das pernas (0 dobrada, 1 esticada)
+var limbs := FrogLimbs.new()
+var test_inputs := {}                    # testes: canais forcados
+var ext := {"L": 0.0, "R": 0.0}          # extensao das pernas (0 dobrada, 1 esticada), medida no esqueleto
 var ext_v := {"L": 0.0, "R": 0.0}
 var act := {"L": 0.0, "R": 0.0}          # ativacao dos extensores
 var tongue_act := 0.0
@@ -103,15 +111,23 @@ var _hops_goal := 2
 var _forage_goal := Vector3.INF
 var _food_spots: Array = []              # [posicao, forca] onde ja comeu
 var _land_vy := 0.0
-var _hop_ref := 0.0
-var _hop_burst := 0.0
-var _hop_amp := 1.0
-var _hop_scale := 1.0        # pulo longo (viagem/fuga) ou curto (aproximar da presa)
+# corpo apoiado nos pontos de contato
+var _pitch := 0.0
+var _lift := 0.0
+var _pts := {}                           # grupo -> pontos no espaco do corpo (quadro anterior)
+var _touch := {}                         # grupo -> encostando no chao
+var _leg_len := {"L": -1.0, "R": -1.0}
+var _leg_len0 := {"L": 0.0, "R": 0.0}    # dobrada e esticada (medidas no esqueleto)
+var _leg_len1 := {"L": 1.0, "R": 1.0}
+var _push_peak := 0.0
+var _push_dir := Vector3.ZERO
+var _web_prev := {}
+var _yaw_v := 0.0
+const CATAPULT := 3.2                    # os tendoes guardam energia e soltam de uma vez (Astley & Roberts 2012)
 var defects := {}                        # defeitos visiveis/funcionais (genetica)
 var _last_yaw := 0.0
 var _last_cam := Vector3.ZERO
 var _irritate_t := 0.0                   # algo ruim na boca/pele: reflexo de limpar
-var _wipe := {"L": 0.0, "R": 0.0}
 var _dark := 0.0
 var _walking := 0.0
 
@@ -208,8 +224,6 @@ func _out(n: String) -> float:
 	if brain is GpuBrain:
 		return brain.output(n)
 	match n:
-		"hop_L", "hop_R":
-			return _drive * 0.8 + 1.2 * maxf(sense["sombra_L"], sense["sombra_R"]) / 150.0
 		"orient_L":
 			return clampf(-_steer, 0.0, 1.0) + sense["presa_L"] / 160.0
 		"orient_R":
@@ -407,6 +421,8 @@ func _sense(dt: float) -> void:
 	brain.set_input("dor", 200.0 * clampf(pain, 0.0, 1.0))
 	brain.set_input("tato", 150.0 if state == State.CARRIED else 0.0)
 	brain.set_input("equilibrio", 100.0 if state == State.AIR else 10.0)
+	brain.set_input("no_ar", 120.0 if state == State.AIR else 0.0)
+	brain.set_input("imerso", 120.0 if state == State.SWIM else 0.0)
 	brain.set_input("temperatura", 40.0 + 60.0 * (GardenWorld.instance.daylight() if GardenWorld.instance else 1.0))
 	brain.set_input("oxigenio_baixo", inp["oxigenio_baixo"])
 	brain.set_input("pulmao_cheio", inp["pulmao_cheio"])
@@ -434,7 +450,8 @@ func _sense(dt: float) -> void:
 	brain.set_input("irritante_R", 150.0 if _irritate_t > 0.0 else 0.0)
 	brain.set_input("polegar", 150.0 if _amplexus and sex == "M" else 0.0)
 	for sd in ["L", "R"]:
-		brain.set_input("proprio_" + sd, clampf(absf(ext_v[sd]) * 8.0, 0.0, 150.0))
+		brain.set_input("proprio_" + sd, 120.0 * clampf(ext[sd], 0.0, 1.0))      # fusos: perna esticada
+		brain.set_input("apoio_maos_" + sd, 100.0 if _touch.get("mao_" + sd, false) else 0.0)
 	# epoca de reproducao: hormonios sexuais dos adultos maduros, mais a noite
 	var mature := age > LifeManager.DAY * 3.0 and growth >= 0.95
 	var repro := 0.0
@@ -446,6 +463,8 @@ func _sense(dt: float) -> void:
 	var base := 10.0 + 90.0 * _drive
 	brain.set_input("explore_L", base * (1.0 + clampf(-_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
 	brain.set_input("explore_R", base * (1.0 + clampf(_steer, 0.0, 1.0)) * (1.0 - 0.8 * clampf(-_steer, 0.0, 1.0)) + _rng.randf() * 6.0)
+	for k in test_inputs:
+		brain.set_input(k, float(test_inputs[k]))    # so para testes
 	_taste_good = maxf(0.0, _taste_good - dt * 0.8)
 	_taste_bad = maxf(0.0, _taste_bad - dt * 0.8)
 
@@ -681,47 +700,37 @@ func _nearest_caller() -> Frog:
 
 
 # ---------------------------------------------------------------- musculos
-## Motoneuronios -> ativacao dos musculos (dinamica de ativacao ~20 ms) ->
-## extensao das pernas. Extensores fortes esticam rapido; sem ativacao os
-## flexores e a elasticidade dobram a perna de volta.
+## Motoneuronios de cada junta -> musculos -> angulos das juntas no
+## esqueleto (FrogLimbs). O proprio esqueleto mede quanto a perna esticou.
 func _muscles(dt: float) -> void:
 	var gain := genome.get_gene("motor_gain")
-	# gerador de salto da medula: um comando continuo do tronco encefalico
-	# (hop_L/R) vira surtos dos extensores (~90 ms), seguidos da fase em que os
-	# flexores recolhem as pernas (refratario); com mais comando, surto mais forte
-	var cmd := (_out("hop_L") + _out("hop_R")) * 0.5 * gain
-	_hop_ref = maxf(0.0, _hop_ref - dt)
-	_hop_burst = maxf(0.0, _hop_burst - dt)
-	# o salto sai quando ha motivo: fuga, presa a frente, ou indo para um lugar
-	# ja virada para ele (a ra gira primeiro, depois pula)
-	var fleeing: bool = _out("escape_L") + _out("escape_R") > 0.4 or _dive_t > 0.0 or pain > 0.5
-	# presa vista mas fora do alcance da lingua: pulinhos curtos de aproximacao
-	var in_reach: bool = float(sense["presa_perto"]) > 10.0
-	var chasing: bool = not in_reach and maxf(sense["presa_L"], sense["presa_R"]) > 25.0 and energy < 0.9
-	var going: bool = _drive > 0.2 and absf(_steer) < 0.45
-	if in_reach and not fleeing:
-		cmd = 0.0             # presa ao alcance: fica parada e usa a lingua
-	if cmd > 0.3 and _hop_ref <= 0.0 and (state == State.SIT or state == State.SWIM) and _tongue_t < 0.0 and (fleeing or chasing or going or state == State.SWIM):
-		_hop_scale = 1.0 if (fleeing or going or state == State.SWIM) else 0.32
-		_hop_burst = 0.09
-		_hop_ref = 0.09 + lerpf(0.9, 0.35, clampf(cmd, 0.0, 1.0)) / maxf(vigor(), 0.3)
-		_hop_amp = clampf(0.7 + cmd * 0.6, 0.8, 1.35)
+	limbs.step(dt, func(n: String) -> float: return _out(n) * gain, vigor(), defects.get("perna_ausente", ""))
+	_pose_model()
 	for s in ["L", "R"]:
-		var a_in := clampf(_out("hop_" + s) * gain, 0.0, 1.6) * 0.3       # tonus postural
-		if _hop_burst > 0.0:
-			a_in = _hop_amp * clampf(0.75 + 0.5 * _out("hop_" + s) / maxf(cmd, 0.05), 0.6, 1.25)
-		if defects.get("perna_ausente", "") == s:
-			a_in = 0.0            # sem a perna: nada a contrair
-		act[s] = lerpf(act[s], a_in, 1.0 - exp(-dt / 0.02))
-		var target := clampf((act[s] - 0.2) * 2.6, 0.0, 1.0)
-		if state == State.AIR:
-			target = maxf(target, 0.85)    # no ar as pernas ficam esticadas
-		var tau := 0.035 if target > ext[s] else 0.16
-		var ne := move_toward(ext[s], target, dt / tau * absf(target - ext[s]) + dt * 0.5)
-		ext_v[s] = (ne - ext[s]) / dt
-		ext[s] = ne
-	org.work = maxf(org.work, (act["L"] + act["R"]) * 0.4)
+		act[s] = limbs.leg_act(s)
+		var l := (model.hip(s) - model.point("pe_" + s, 1.0)).length()
+		if _leg_len[s] < 0.0:
+			_leg_len[s] = l
+			_leg_len0[s] = l
+			_leg_len1[s] = l * 3.2
+		var rate: float = (l - _leg_len[s]) / dt
+		_leg_len[s] = l
+		ext_v[s] = rate * model.scale.x
+		ext[s] = clampf((l - _leg_len0[s]) / maxf(_leg_len1[s] - _leg_len0[s], 1e-3), 0.0, 1.2)
+	org.work = maxf(org.work, (act["L"] + act["R"]) * 0.25 + (limbs.arm_act("L") + limbs.arm_act("R")) * 0.05)
 	tongue_act = lerpf(tongue_act, _out("snap"), 1.0 - exp(-dt / 0.03))
+
+
+func _pose_model() -> void:
+	for s in ["L", "R"]:
+		var q: Dictionary = limbs.leg[s].duplicate()
+		# dedos do pe: no chao ficam deitados quando o calcanhar sobe
+		if state == State.SIT:
+			q["dedos"] = -clampf(float(q["tarso"]) + 0.5 * float(q["tornozelo"]), 0.0, 1.4) * 0.7
+		else:
+			q["dedos"] = 0.15 * (1.0 - limbs.spread[s])
+		model.set_leg_joints(s, q, limbs.spread[s], act[s])
+		model.set_arm_joints(s, limbs.arm[s])
 
 
 # ---------------------------------------------------------------- corpo (fisica)
@@ -749,10 +758,70 @@ func _snap() -> void:
 		global_position = hit.position
 
 
+## Pontos que podem encostar (pes, maos, barriga) no espaco do no do modelo.
+func _contact_raw() -> Dictionary:
+	var c := model.contacts()
+	var k := model.scale.x
+	for g in c:
+		var arr: Array = c[g]
+		for i in arr.size():
+			arr[i] = (arr[i] as Vector3) * k
+	return c
+
+
+## Inclinacao em que o corpo assenta: a que deixa o centro de massa mais
+## baixo com todos os pontos acima do chao (a gravidade acomoda o corpo sobre
+## os apoios que houver: pes, maos, barriga).
+func _settle(c: Dictionary) -> float:
+	var com := Vector3(0, 0.2, 0.05) * SVL * model.scale.x
+	var best := _pitch
+	var best_y := INF
+	for i in 25:
+		var th := -0.6 + i * 0.065
+		var cs := cos(th)
+		var sn := sin(th)
+		var mn := INF
+		for g in c:
+			for p: Vector3 in c[g]:
+				mn = minf(mn, p.y * cs - p.z * sn)
+		var cy := com.y * cs - com.z * sn - mn + absf(th - _pitch) * 0.02 * SVL
+		if cy < best_y:
+			best_y = cy
+			best = th
+	return best
+
+
+func _lowest(c: Dictionary, th: float) -> float:
+	var cs := cos(th)
+	var sn := sin(th)
+	var mn := INF
+	for g in c:
+		for p: Vector3 in c[g]:
+			mn = minf(mn, p.y * cs - p.z * sn)
+	return mn
+
+
+## Pontos no espaco do corpo (no Frog) com a inclinacao e a altura atuais.
+func _placed(c: Dictionary) -> Dictionary:
+	var t := Transform3D(Basis(Vector3.RIGHT, _pitch), Vector3(0, _lift, 0))
+	var out := {}
+	for g in c:
+		var arr := []
+		for p: Vector3 in c[g]:
+			arr.append(t * p)
+		out[g] = arr
+	return out
+
+
+func _mean(arr: Array) -> Vector3:
+	var m := Vector3.ZERO
+	for p: Vector3 in arr:
+		m += p
+	return m / maxf(arr.size(), 1.0)
+
+
 func _body_physics(dt: float) -> void:
-	var leg := size() * 1.6                     # comprimento da perna esticada
-	var push := (maxf(ext_v["L"], 0.0) + maxf(ext_v["R"], 0.0)) * 0.5
-	var asym := maxf(ext_v["R"], 0.0) - maxf(ext_v["L"], 0.0)
+	var c := _contact_raw()
 	# orientacao: reticular de orientacao (presa/vontade) e fuga (vira para longe)
 	var yaw := (_out("orient_L") - _out("orient_R")) * 5.0 + (_out("escape_R") - _out("escape_L")) * 2.5
 	match state:
@@ -760,51 +829,63 @@ func _body_physics(dt: float) -> void:
 			velocity = Vector3.ZERO
 			if _tongue_t < 0.0 and _swallow_t <= 0.0:
 				rotate_y(clampf(yaw, -4.0, 4.0) * dt)
-			# pernas esticando rapido com os pes no chao: decola
-			if push > 6.0 and (ext["L"] + ext["R"]) * 0.5 > 0.55 and _launch_cd <= 0.0 and _tongue_t < 0.0:
-				# ~2 m/s num pulo forte: 5-10 comprimentos do corpo, como uma ra de verdade
-				var v := leg * minf(push, 30.0) * 0.95 * genome.get_gene("speed") * vigor() * _hop_scale
-				if defects.has("perna_ausente"):
-					v *= 1.4          # compensa um pouco com a perna que sobrou (o empurrao e de uma so)
-				rotate_y(asym * 0.02)
-				var fwd := -global_basis.z
-				var pitch := deg_to_rad(38.0)
-				velocity = fwd * v * cos(pitch) + Vector3.UP * v * sin(pitch)
-				state = State.AIR
-				_launch_cd = 0.25
-				org.work = 1.2
-				remove_from_group("calling_frogs")
-			# andar: o sapo-banjo tambem anda devagar (passos alternados da medula)
-			var walk := clampf((_out("andar_L") + _out("andar_R")) * 0.5 - 0.25, 0.0, 1.0)
-			if walk > 0.0 and _drive > 0.2 and absf(_steer) < 0.6 and _tongue_t < 0.0 and state == State.SIT:
-				var step := -global_basis.z * size() * 0.9 * walk * vigor() * dt
-				var np := global_position + step
+			_pitch = lerpf(_pitch, _settle(c), 1.0 - exp(-dt / 0.06))
+			_lift = -_lowest(c, _pitch)
+			var P := _placed(c)
+			# pe (ou mao) encostado que vai para tras empurra o corpo para a frente;
+			# o que vai para a frente esta no ar (recuperando) e desliza
+			var push := 0.0
+			var turn := 0.0
+			for g in P:
+				var arr: Array = P[g]
+				var mn := INF
+				for p: Vector3 in arr:
+					mn = minf(mn, p.y)
+				_touch[g] = mn < 1.2 * model.scale.x
+				if _touch[g] and _pts.has(g) and g != "barriga":
+					var d := _mean(arr) - _mean(_pts[g])
+					if d.z > 0.0:
+						push = maxf(push, d.z)
+						if g.begins_with("pe_"):
+							turn += d.z * (1.0 if g == "pe_L" else -1.0)
+			_pts = P
+			if push > size() * 0.002 and _tongue_t < 0.0:
+				var np := global_position - global_basis.z * push
+				rotate_y(clampf(-turn / (size() * 0.6), -0.2, 0.2))
 				var hit := _ground(np)
-				if hit:
+				# degrau alto demais (tronco, pedra grande) nao se sobe andando
+				if hit and absf((hit.position as Vector3).y - global_position.y) < size() * 0.4:
 					global_position = hit.position
-				_walking = walk
+				_walking = clampf(push / dt / size(), 0.0, 1.0)
 			else:
 				_walking = 0.0
+			_takeoff(dt, P)
 			var pd := Pond.at(global_position)
 			if pd and pd.depth_at(global_position) > size() * 0.35:
 				state = State.SWIM
+				_web_prev.clear()
 		State.AIR:
 			velocity.y -= GRAV * dt
 			var np := global_position + velocity * dt
+			var hs := Vector2(velocity.x, velocity.z).length()
+			_pitch = lerpf(_pitch, clampf(atan2(velocity.y, maxf(hs, 1.0)) * 0.7, -0.7, 0.7), 1.0 - exp(-dt / 0.1))
 			var pd := Pond.at(np)
 			if pd and pd.depth_at(np) > size() * 0.3 and np.y <= pd.level:
 				global_position = Vector3(np.x, pd.level - size() * 0.12, np.z)
 				velocity *= 0.3
 				state = State.SWIM
+				_web_prev.clear()
 				behavior = "mergulhou (splash)"
 				return
 			if velocity.y < 0.0:
 				var hit := _ground(np)
-				if hit and np.y <= (hit.position as Vector3).y:
+				# pousa quando o ponto mais baixo do corpo (maos a frente, pes) toca o chao
+				if hit and np.y + _lift + _lowest(c, _pitch) <= (hit.position as Vector3).y:
 					global_position = hit.position
 					_landed(-velocity.y)
 					velocity = Vector3.ZERO
 					state = State.SIT
+					_pts.clear()
 					return
 			global_position = np
 		State.SWIM:
@@ -814,9 +895,9 @@ func _body_physics(dt: float) -> void:
 				_snap()
 				return
 			rotate_y(clampf(yaw * 0.6, -3.0, 3.0) * dt)
-			# chute sincrono das pernas: a extensao empurra a agua
-			velocity += -global_basis.z * push * leg * 0.045 * dt * 60.0
-			velocity *= exp(-dt * 2.2)
+			_pitch = lerpf(_pitch, 0.04, 1.0 - exp(-dt / 0.2))       # corpo deitado na agua
+			_lift = lerpf(_lift, 0.0, 1.0 - exp(-dt / 0.2))
+			_swim(dt)
 			_dive_t = maxf(0.0, _dive_t - dt)
 			if maxf(_out("escape_L"), _out("escape_R")) > 0.5:
 				_dive_t = 6.0             # assustada: mergulha e fica no fundo
@@ -825,9 +906,90 @@ func _body_physics(dt: float) -> void:
 				depth_goal = maxf(GardenWorld.instance.height_at(global_position.x, global_position.z) + size() * 0.3, pd.level - size() * 3.0)
 			global_position.y = lerpf(global_position.y, depth_goal, 1.0 - exp(-dt * 2.0))
 			global_position += Vector3(velocity.x, 0, velocity.z) * dt
-			behavior = "mergulhada (no fundo)" if _dive_t > 0.0 else ("nadando" if push > 1.0 else "boiando")
+			var sp := Vector2(velocity.x, velocity.z).length()
+			behavior = "mergulhada (no fundo)" if _dive_t > 0.0 else ("nadando (chute das pernas)" if sp > size() * 1.5 else "boiando")
+	model.transform = Transform3D(Basis(Vector3.RIGHT, _pitch).scaled(Vector3.ONE * model.scale.x), Vector3(0, _lift, 0))
 	if state == State.SIT:
 		behavior = _sit_label()
+
+
+## Decolagem: a perna esticando rapido com o pe no chao lanca o corpo. A
+## velocidade sai da velocidade de extensao medida no esqueleto (vezes a
+## catapulta dos tendoes) e a direcao, da linha pe -> quadril: o angulo do
+## pulo depende da postura (bracos levantando a frente, pernas por baixo).
+func _takeoff(dt: float, P: Dictionary) -> void:
+	var legs := []
+	for s in ["L", "R"]:
+		if defects.get("perna_ausente", "") != s:
+			legs.append(s)
+	if legs.is_empty():
+		return
+	var rate := 0.0
+	var dir := Vector3.ZERO
+	var extended := 0.0
+	for s: String in legs:
+		rate += maxf(float(ext_v[s]), 0.0) / legs.size()
+		extended += float(ext[s]) / legs.size()
+		var hip_p := Transform3D(Basis(Vector3.RIGHT, _pitch), Vector3(0, _lift, 0)) * (model.hip(s) * model.scale.x)
+		dir += hip_p - _mean(P.get("pe_" + s, [hip_p]))
+	var thr := size() * 0.8
+	if rate > thr and _tongue_t < 0.0:
+		if rate > _push_peak:
+			_push_peak = rate
+			_push_dir = dir
+		return
+	if _push_peak > thr * 2.0 and (rate < _push_peak * 0.5 or extended > 0.85):
+		var v := _push_peak * CATAPULT * genome.get_gene("speed")
+		var d := (global_basis * _push_dir).normalized()
+		# o pe escorrega se o empurrao for muito deitado; muito em pe perde alcance
+		var hz := Vector2(d.x, d.z)
+		var el := clampf(atan2(d.y, hz.length()), 0.3, 1.1)
+		var hd := hz.normalized() if hz.length() > 1e-3 else Vector2(-global_basis.z.x, -global_basis.z.z).normalized()
+		velocity = Vector3(hd.x * cos(el), sin(el), hd.y * cos(el)) * v
+		state = State.AIR
+		org.work = 1.2
+		remove_from_group("calling_frogs")
+		global_position.y += 0.5
+	_push_peak = 0.0
+
+
+## Nado: cada pe e uma nadadeira. A membrana (dedos abertos pelo conectoma)
+## empurra a agua quando o pe vai para tras; na volta os dedos fecham e ela
+## quase nao freia. O arrasto do corpo e pequeno para a frente e grande de
+## lado (o corpo desliza entre os chutes). Unidades SI no calculo.
+func _swim(dt: float) -> void:
+	var k := size() / SVL
+	var mass := 0.02 * k * k * k                              # kg
+	var vb := global_basis.inverse() * velocity               # mm/s no corpo
+	var f := Vector3.ZERO
+	var torque := 0.0
+	var t := model.transform
+	for s in ["L", "R"]:
+		if defects.get("perna_ausente", "") == s:
+			continue
+		var w := t * model.web_center(s)
+		if _web_prev.has(s):
+			var dp := (w - (_web_prev[s] as Vector3)) / dt
+			var vr := (vb + dp) / 1000.0
+			vr.y = 0.0
+			var area: float = (60.0 + 220.0 * limbs.spread[s]) * k * k * 1e-6
+			if dp.z < 0.0:
+				area *= 0.3                                      # volta: dedos fechados
+			var fs: Vector3 = -0.5 * 1000.0 * 1.8 * area * vr.length() * vr      # remo com a borda solta: Cd alto
+			f += fs
+			torque += (w.z * fs.x - w.x * fs.z) / 1000.0
+		_web_prev[s] = w
+	var vm := vb / 1000.0
+	var ab := 250.0 * k * k * 1e-6
+	f.x += -0.5 * 1000.0 * 1.6 * ab * absf(vm.x) * vm.x
+	f.z += -0.5 * 1000.0 * 0.3 * ab * absf(vm.z) * vm.z
+	var acc := f / mass * 1000.0                              # mm/s2
+	acc.y = 0.0
+	velocity += global_basis * acc * dt
+	var inertia := mass * pow(0.012 * k, 2.0)
+	_yaw_v += torque / inertia * dt
+	_yaw_v *= exp(-dt * 6.0)
+	rotate_y(clampf(_yaw_v, -6.0, 6.0) * dt)
 
 
 ## Pouso: pulos normais nao machucam; uma queda de muito alto (ou ser
@@ -852,11 +1014,11 @@ func _landed(vy: float) -> void:
 func _sit_label() -> String:
 	if _swallow_t > 0.0:
 		return "engolindo (olhos afundam)"
-	if maxf(_wipe["L"], _wipe["R"]) > 0.3:
+	if maxf(_out("limpar_L"), _out("limpar_R")) > 0.4:
 		return "limpando a boca com as maos"
 	if _out("inflar") > 0.4:
 		return "inflada (defesa)"
-	if _walking > 0.0:
+	if _walking > 0.15:
 		return "andando"
 	if is_in_group("calling_frogs"):
 		return "cantando (saco vocal)"
@@ -1015,12 +1177,6 @@ func _end_amplexus() -> void:
 
 # ---------------------------------------------------------------- corpo visivel
 func _draw_state(dt: float) -> void:
-	for s in ["L", "R"]:
-		model.set_leg(s, ext[s], act[s])
-		# bracos: esticados no salto; limpar o rosto e o abraco sao reflexos da medula
-		_wipe[s] = lerpf(_wipe[s], clampf(_out("limpar_" + s) * 1.6, 0.0, 1.0) * (0.6 + 0.4 * sin(age * 14.0)), 1.0 - exp(-dt * 12.0))
-		var clasp := clampf(_out("abraco_" + s) * 1.3, 0.0, 1.0) if _amplexus else 0.0
-		model.set_arm(s, 1.0 if state == State.AIR else 0.0, _wipe[s], clasp)
 	if is_in_group("calling_frogs"):
 		_call_t += dt
 		_call = maxf(0.0, sin(_call_t * 9.0)) * clampf(0.6 + _out("call") * 3.0, 0.0, 1.0)
@@ -1036,9 +1192,6 @@ func _draw_state(dt: float) -> void:
 	model.set_state(org, _call, sw, maxf(_blink, sw), _jaw, energy)
 	model.set_skin(_out("secrecao") * 1.5, _dark, _out("inflar") * 1.4)
 	_dark = lerpf(_dark, clampf(_out("escurecer") * 1.5, 0.0, 1.0), 1.0 - exp(-dt / 20.0))   # cor muda devagar
-	# postura sentada: cabeca levantada; no ar: corpo esticado
-	var pitch_goal := -0.25 if state == State.SIT else (0.1 if state == State.AIR else 0.05)
-	model.rotation.x = lerpf(model.rotation.x, pitch_goal, 1.0 - exp(-dt * 10.0))
 	if _amplexus and sex == "M" and is_instance_valid(_amplexus):
 		global_transform = _amplexus.global_transform.translated_local(Vector3(0, _amplexus.size() * 0.3, _amplexus.size() * 0.08))
 

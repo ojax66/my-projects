@@ -161,8 +161,14 @@ de hormônios e a população.
       nictitante;
     - gerador vocal (canto de anúncio, de soltura e grito de socorro),
       geradores respiratórios bucal e pulmonar, coração;
-    - medula dos braços (limpar o rosto, abraço do amplexo) e das pernas
-      (CPG, comissurais, Ia, Renshaw, extensores, flexores, passo);
+    - medula com motoneurônios de cada junta: quadril, joelho, tornozelo,
+      tarso e dedos do pé; ombro (frente, trás, baixo, cima), cotovelo,
+      punho e dedos da mão. Os geradores da medula são: salto
+      (sinergia extensora), recolher, meio-centros com Ia e cansaço (dão o
+      ritmo do chute e dos pulos seguidos), comissurais de sincronia (as
+      duas pernas juntas) e de alternância (passo), Renshaw, apoio dos
+      braços, pouso (braços à frente no ar), braços para trás no nado,
+      limpar o rosto e abraço do amplexo;
     - glândulas da pele e defesa inflando o corpo.
   - **girino: 38.766 neurônios, 2,5 milhões de sinapses**. Tem:
     - medula de Roberts et al.: Rohon-Beard, dlc/dla, dIN, cIN, aIN,
@@ -177,8 +183,8 @@ de hormônios e a população.
     - os 8 setores dos olhos e o fluxo óptico do próprio giro;
     - vibração (fruta caindo, o jogador andando perto), a pele secando, o
       estômago cheio e a pressão;
-    - a propriocepção das pernas, o polegar no amplexo, a irritação depois
-      de um gosto ruim;
+    - a propriocepção das pernas, a carga nas mãos, se está no ar ou dentro
+      d'água, o polegar no amplexo, a irritação depois de um gosto ruim;
     - a luz na pineal e os hormônios da época de reprodução.
   - E faz o que o cérebro manda:
     - gira, pula, anda, usa a língua e abre a boca;
@@ -266,14 +272,22 @@ de hormônios e a população.
   - ou um rumo novo.
   Caça mais no crepúsculo e à noite, e no sol forte do meio-dia se abriga
   na sombra das árvores.
-- **Sem animação pronta**: os motoneurônios do conectoma ativam os músculos.
-  O comando de salto do tronco encefálico (`hop_L/R`) passa pelo gerador
-  de salto da medula, que o transforma em surtos dos extensores seguidos da
-  fase de recolher as pernas. A perna esticando no chão empurra o corpo: o
-  pulo sai da força muscular (~2 m/s, 5 a 10 corpos de distância). A rã
-  gira primeiro para o alvo e depois pula. A diferença entre os lados
-  gira o corpo; na água os mesmos chutes nadam. A língua sai quando o
-  hipoglosso dispara. No girino, os motoneurônios E/D contraem os miômeros
+- **Sem animação pronta** (`frog_limbs.gd`, `frog.gd`): cada junta tem o
+  seu par de motoneurônios no conectoma (extensor e flexor), e o músculo leva
+  a junta ao ângulo de equilíbrio entre os dois. O salto, o recolher, o
+  passo, o apoio dos braços, o pouso e o nado saem da medula do conectoma,
+  não do script. O corpo é esculpido com os membros esticados e separados.
+  Cada osso tem a sua junta: fêmur, tíbia, tarso, pé, os 5 dedos do pé, úmero,
+  antebraço, mão e os 4 dedos da mão. A postura sentada é só o ângulo 0.
+  No chão, o esqueleto assenta nos pontos que encostam (pés, mãos,
+  barriga, queixo), então a mão não atravessa o chão. Pé encostado que vai
+  para trás empurra o corpo para a frente. A perna esticando rápido lança o
+  corpo na linha pé → quadril, com a catapulta dos tendões (~1,7 m/s, uns
+  8 corpos). No ar, os braços vão à frente e recebem o chão. Na água o
+  corpo deita, os braços vão para trás e as duas pernas chutam juntas. A
+  membrana dos pés (dedos abertos pelo conectoma) empurra a água pelo
+  arrasto, fecha na volta, e o corpo desliza entre os chutes. A língua sai
+  quando o hipoglosso dispara. No girino, os motoneurônios E/D contraem os miômeros
   em onda pela cauda, e a onda empurra a água; a Mauthner contrai um lado
   inteiro (curva em C).
 - **Órgãos funcionando** (`organs.gd`): o coração bate no ritmo dos neurônios

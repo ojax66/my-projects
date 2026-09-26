@@ -51,15 +51,118 @@ for s, sg in (("R", 1.0), ("L", -1.0)):
         f"punho_{s}": (0.295 * sg, 0.033, -0.303), f"mao_{s}": (0.279 * sg, 0.008, -0.426),
     }
 J = {k: np.array(v) for k, v in J.items()}
+TOE_LENS = [0.42, 0.6, 0.85, 1.12, 0.78]        # dedos do pe 1 (medial) .. 5; o 4o e o maior
+TOE_SPREAD = [-0.42, -0.2, 0.0, 0.2, 0.42]
+FIN_LENS = [0.55, 0.7, 1.0, 0.72]               # dedos da mao II..V
+FIN_SPREAD = [-0.55, -0.18, 0.12, 0.45]
+
+
+def digit_geometry(s):
+    """Base (junta metatarso-falange) e ponta de cada dedo, iguais as do SDF."""
+    sg = 1 if s == "R" else -1
+    tar, toe = J["tarso_" + s], J["dedos_" + s]
+    d = toe - tar
+    L = np.linalg.norm(d)
+    d = d / L
+    lat = np.cross(d, [0, 1, 0]) * sg
+    base = tar + d * L * 0.3 + np.array([0, -0.012, 0])
+    toes = []
+    for i in range(5):
+        dir_ = d * np.cos(TOE_SPREAD[i]) + lat * np.sin(TOE_SPREAD[i])
+        b0 = base + lat * (i - 2) * 0.012
+        tip = b0 + dir_ * L * 0.95 * TOE_LENS[i]
+        tip[1] = 0.009
+        toes.append((b0, tip))
+    wr, ht = J["punho_" + s], J["mao_" + s]
+    dh = ht - wr
+    Lh = np.linalg.norm(dh)
+    dh = dh / Lh
+    lat_h = np.cross(dh, [0, 1, 0]) * sg
+    palm = wr + dh * Lh * 0.45 + np.array([0, -0.012, 0])
+    fins = []
+    for i in range(4):
+        dir_ = dh * np.cos(FIN_SPREAD[i]) + lat_h * np.sin(FIN_SPREAD[i])
+        b0 = palm + lat_h * (i - 1.5) * 0.01
+        tip = b0 + dir_ * 0.12 * FIN_LENS[i]
+        tip[1] = 0.008
+        fins.append((b0, tip))
+    return base, toes, palm, fins
+
+
+for s in ("R", "L"):
+    base, toes, palm, fins = digit_geometry(s)
+    J[f"base_pe_{s}"] = base
+    J[f"palma_{s}"] = palm
+    for i, (b0, tip) in enumerate(toes):
+        J[f"dpe{i}_{s}"], J[f"dpe{i}t_{s}"] = b0, tip
+    for i, (b0, tip) in enumerate(fins):
+        J[f"dmao{i}_{s}"], J[f"dmao{i}t_{s}"] = b0, tip
+
+# ------------------------------------------------------------------ pose de modelagem (bind)
+# A malha e esculpida com os membros esticados e separados do corpo (como um
+# modelo de verdade para esqueleto): coxa, perna, pe e dedos nao se encostam,
+# entao cada junta dobra sem arrastar a pele do vizinho. A pose sentada vira
+# so uma rotacao de cada osso ("sentado" no json), que o jogo aplica como
+# angulo 0 das juntas.
+J_SIT = {k: v.copy() for k, v in J.items()}
+
+
+def frame(d, up=(0.0, 1.0, 0.0)):
+    d = d / np.linalg.norm(d)
+    u = np.asarray(up, float) - d * (d @ np.asarray(up, float))
+    if np.linalg.norm(u) < 1e-6:
+        u = np.array([1.0, 0, 0]) - d * d[0]
+    u /= np.linalg.norm(u)
+    return np.stack([d, u, np.cross(d, u)], 1)
+
+
+def rot_to(d_from, d_to):
+    """Rotacao que leva a direcao sentada para a de modelagem mantendo o lado de cima em cima."""
+    return frame(d_to) @ frame(d_from).T
+
+
+Q = {}          # osso -> rotacao (sentada -> modelagem)
+for s, sg in (("R", 1.0), ("L", -1.0)):
+    m = np.array([sg, 1.0, 1.0])
+    chain = [("femur", "quadril", "joelho", m * [0.62, -0.02, 0.78]), ("tibia", "joelho", "tornozelo", m * [0.5, -0.02, 0.86]),
+             ("tarso", "tornozelo", "tarso", m * [0.42, -0.02, 0.9]), ("pe", "tarso", "base_pe", m * [0.4, -0.02, 0.92])]
+    arm = [("umero", "ombro", "cotovelo", m * [0.92, -0.18, -0.34]), ("antebraco", "cotovelo", "punho", m * [0.62, -0.22, -0.75]),
+           ("mao", "punho", "palma", m * [0.45, -0.2, -0.87])]
+    for ch in (chain, arm):
+        head = J[f"{ch[0][1]}_{s}"].copy()
+        for bone, a, b, tgt in ch:
+            ka, kb = f"{a}_{s}", (f"{b}_{s}")
+            R = rot_to(J_SIT[kb] - J_SIT[ka], np.asarray(tgt, float))
+            Q[f"{bone}_{s}"] = R
+            J[kb] = head + R @ (J_SIT[kb] - J_SIT[ka])
+            J[ka] = head
+            head = J[kb]
+    # dedos (e a ponta 'dedos'/'mao') seguem rigidos a planta / a mao
+    for key, bone, piv in ([(f"dpe{i}_{s}", "pe", "tarso") for i in range(5)] + [(f"dpe{i}t_{s}", "pe", "tarso") for i in range(5)]
+                           + [(f"dedos_{s}", "pe", "tarso")] + [(f"dmao{i}_{s}", "mao", "punho") for i in range(4)]
+                           + [(f"dmao{i}t_{s}", "mao", "punho") for i in range(4)] + [(f"mao_{s}", "mao", "punho")]):
+        J[key] = J[f"{piv}_{s}"] + Q[f"{bone}_{s}"] @ (J_SIT[key] - J_SIT[f"{piv}_{s}"])
+    for i in range(5):
+        Q[f"dedo_pe{i}_{s}"] = Q[f"pe_{s}"]
+    for i in range(4):
+        Q[f"dedo_mao{i}_{s}"] = Q[f"mao_{s}"]
+
+
+def QR(bone):
+    return Q.get(bone, np.eye(3))
+
+
 BONES = [("corpo", "corpo", "peito", None), ("peito", "peito", "cabeca", "corpo"), ("cabeca", "cabeca", "focinho", "peito"),
          ("garganta", "garganta", "garganta", "cabeca")]
 for s in ("R", "L"):
     BONES += [(f"olho_{s}", f"olho_{s}", f"olho_{s}", "cabeca")]
 for s in ("R", "L"):
     BONES += [(f"femur_{s}", f"quadril_{s}", f"joelho_{s}", "corpo"), (f"tibia_{s}", f"joelho_{s}", f"tornozelo_{s}", f"femur_{s}"),
-              (f"tarso_{s}", f"tornozelo_{s}", f"tarso_{s}", f"tibia_{s}"), (f"pe_{s}", f"tarso_{s}", f"dedos_{s}", f"tarso_{s}"),
+              (f"tarso_{s}", f"tornozelo_{s}", f"tarso_{s}", f"tibia_{s}"), (f"pe_{s}", f"tarso_{s}", f"base_pe_{s}", f"tarso_{s}"),
               (f"umero_{s}", f"ombro_{s}", f"cotovelo_{s}", "peito"), (f"antebraco_{s}", f"cotovelo_{s}", f"punho_{s}", f"umero_{s}"),
-              (f"mao_{s}", f"punho_{s}", f"mao_{s}", f"antebraco_{s}")]
+              (f"mao_{s}", f"punho_{s}", f"palma_{s}", f"antebraco_{s}")]
+    BONES += [(f"dedo_pe{i}_{s}", f"dpe{i}_{s}", f"dpe{i}t_{s}", f"pe_{s}") for i in range(5)]
+    BONES += [(f"dedo_mao{i}_{s}", f"dmao{i}_{s}", f"dmao{i}t_{s}", f"mao_{s}") for i in range(4)]
 BONE_IDX = {b[0]: i for i, b in enumerate(BONES)}
 EYE_R = 0.066          # raio do globo ocular (malha separada no jogo)
 
@@ -79,6 +182,11 @@ def ellipsoid(p, c, r):
     k0 = np.linalg.norm(q, axis=1)
     k1 = np.linalg.norm(q / np.asarray(r, float), axis=1)
     return k0 * (k0 - 1.0) / np.maximum(k1, 1e-9)
+
+
+def rot_ellipsoid(p, c, r, R):
+    """Elipsoide com os eixos girados junto com o osso (R: sentada -> modelagem)."""
+    return ellipsoid((p - c) @ R + c, c, r)
 
 
 def capsule(p, a, b, ra, rb):
@@ -162,66 +270,42 @@ class Frog:
         for sg, s in ((1, "R"), (-1, "L")):
             m = np.array([sg, 1, 1])
             hip, knee, ank, tar, toe = J["quadril_" + s], J["joelho_" + s], J["tornozelo_" + s], J["tarso_" + s], J["dedos_" + s]
-            thigh = capsule(p, hip + m * [0.0, 0.01, -0.01], knee, 0.105, 0.064)
-            thigh = smin(thigh, ellipsoid(p, (hip + knee) * 0.5 + m * [0.0, 0.02, 0.025], [0.11, 0.085, 0.13]), 0.05)   # coxa musculosa
+            Rf, Rt = QR("femur_" + s), QR("tibia_" + s)
+            thigh = capsule(p, hip + Rf @ (m * [0.0, 0.01, -0.01]), knee, 0.105, 0.064)
+            thigh = smin(thigh, rot_ellipsoid(p, (hip + knee) * 0.5 + Rf @ (m * [0.0, 0.02, 0.025]), [0.11, 0.085, 0.13], Rf), 0.05)   # coxa musculosa
             out["femur_" + s] = thigh
             shank = capsule(p, knee, ank, 0.064, 0.037)
-            shank = smin(shank, ellipsoid(p, knee * 0.62 + ank * 0.38 - m * [0.0, 0.01, 0.0], [0.06, 0.055, 0.085]), 0.03)   # panturrilha
+            shank = smin(shank, rot_ellipsoid(p, knee * 0.62 + ank * 0.38 - Rt @ (m * [0.0, 0.01, 0.0]), [0.06, 0.055, 0.085], Rt), 0.03)   # panturrilha
             # glandula tibial do sapo-banjo (bulbo no dorso da perna)
-            gl = ellipsoid(p, knee * 0.55 + ank * 0.45 + m * [0.018, 0.02, 0.0], [0.035, 0.03, 0.06])
+            gl = rot_ellipsoid(p, knee * 0.55 + ank * 0.45 + Rt @ (m * [0.018, 0.02, 0.0]), [0.035, 0.03, 0.06], Rt)
             out["tibia_" + s] = smin(shank, gl, 0.02)
-            out["tarso_" + s] = flat_capsule(p, ank, tar, 0.04, 0.033, 0.7)
-            # pe: planta + 5 dedos compridos com membrana na base
-            d = toe - tar
-            L = np.linalg.norm(d)
-            d /= L
-            lat = np.cross(d, [0, 1, 0]) * sg     # para fora
-            base = tar + d * L * 0.3 + [0, -0.012, 0]
-            foot = flat_capsule(p, tar, base, 0.03, 0.036, 0.4)
-            toes = None
-            lens = [0.42, 0.6, 0.85, 1.12, 0.78]            # 1 (medial) .. 5 (lateral); o 4o e o maior
-            spread = [-0.42, -0.2, 0.0, 0.2, 0.42]
-            tips = []
-            for i in range(5):
-                ang = spread[i]
-                dir_ = d * np.cos(ang) + lat * np.sin(ang)
-                b0 = base + lat * (i - 2) * 0.012
-                tip = b0 + dir_ * L * 0.95 * lens[i]
-                tip[1] = 0.009
-                tips.append(tip)
-                t_ = flat_capsule(p, b0, tip, 0.014, 0.008, 0.55)
+            out["tarso_" + s] = flat_capsule(p, ank, tar, 0.04, 0.033, 0.7, QR("tarso_" + s) @ [0, 1, 0])
+            # pe: planta (metatarsos) + 5 dedos compridos, cada um com a sua junta, e membrana
+            base, palm = J["base_pe_" + s], J["palma_" + s]
+            toe_g = [(J[f"dpe{i}_{s}"], J[f"dpe{i}t_{s}"]) for i in range(5)]
+            fin_g = [(J[f"dmao{i}_{s}"], J[f"dmao{i}t_{s}"]) for i in range(4)]
+            up_pe = QR("pe_" + s) @ [0, 1, 0]
+            out["pe_" + s] = flat_capsule(p, tar, base, 0.03, 0.036, 0.4, up_pe)
+            for i, (b0, tip) in enumerate(toe_g):
+                t_ = flat_capsule(p, b0, tip, 0.014, 0.008, 0.55, up_pe)
                 t_ = smin(t_, np.linalg.norm(p - tip, axis=1) - 0.0085, 0.004)     # ponta arredondada
-                toes = t_ if toes is None else np.minimum(toes, t_)
-            web = None
-            for i in range(4):
-                a0 = base + lat * (i - 2) * 0.012
-                w = flat_capsule(p, a0 + (tips[i] - a0) * 0.35, a0 + (tips[i + 1] - a0) * 0.35, 0.006, 0.006, 0.45)
-                tri = flat_capsule(p, a0, (tips[i] + tips[i + 1] - 2 * a0) * 0.18 + a0, 0.012, 0.01, 0.4)
-                w = smin(w, tri, 0.01)
-                web = w if web is None else np.minimum(web, w)
-            out["pe_" + s] = smin(smin(foot, toes, 0.012), web, 0.006)
+                if i < 4:   # membrana ate um terco do dedo vizinho
+                    n0, n1 = toe_g[i + 1]
+                    w = flat_capsule(p, b0 + (tip - b0) * 0.35, n0 + (n1 - n0) * 0.35, 0.006, 0.006, 0.45, up_pe)
+                    w = smin(w, flat_capsule(p, b0, (tip + n1 - b0 - n0) * 0.18 + b0, 0.012, 0.01, 0.4, up_pe), 0.01)
+                    t_ = smin(t_, w, 0.006)
+                out[f"dedo_pe{i}_{s}"] = t_
             # braco
             sh, el, wr, ht = J["ombro_" + s], J["cotovelo_" + s], J["punho_" + s], J["mao_" + s]
-            out["umero_" + s] = smin(capsule(p, sh, el, 0.058, 0.042), ellipsoid(p, sh * 0.5 + el * 0.5 + [0, 0.01, 0], [0.07, 0.052, 0.055]), 0.03)
+            Ru, Ra, Rm = QR("umero_" + s), QR("antebraco_" + s), QR("mao_" + s)
+            out["umero_" + s] = smin(capsule(p, sh, el, 0.058, 0.042), rot_ellipsoid(p, sh * 0.5 + el * 0.5 + Ru @ [0, 0.01, 0], [0.07, 0.052, 0.055], Ru), 0.03)
             fore = capsule(p, el, wr, 0.045, 0.03)
-            out["antebraco_" + s] = smin(fore, ellipsoid(p, el * 0.62 + wr * 0.38, [0.05, 0.047, 0.065]), 0.025)
-            dh = ht - wr
-            Lh = np.linalg.norm(dh)
-            dh /= Lh
-            lat_h = np.cross(dh, [0, 1, 0]) * sg
-            palm_end = wr + dh * Lh * 0.45 + [0, -0.012, 0]
-            hand = flat_capsule(p, wr, palm_end, 0.03, 0.03, 0.5)
-            flens = [0.55, 0.7, 1.0, 0.72]                   # dedos II..V
-            fspread = [-0.55, -0.18, 0.12, 0.45]              # apontam para dentro/frente
-            for i in range(4):
-                dir_ = dh * np.cos(fspread[i]) + lat_h * np.sin(fspread[i])
-                b0 = palm_end + lat_h * (i - 1.5) * 0.01
-                tip = b0 + dir_ * 0.12 * flens[i]
-                tip[1] = 0.008
-                f_ = flat_capsule(p, b0, tip, 0.011, 0.0075, 0.6)
-                f_ = smin(f_, np.linalg.norm(p - tip, axis=1) - 0.0075, 0.003)
-                hand = smin(hand, f_, 0.006)
-            out["mao_" + s] = hand
+            out["antebraco_" + s] = smin(fore, rot_ellipsoid(p, el * 0.62 + wr * 0.38, [0.05, 0.047, 0.065], Ra), 0.025)
+            up_m = Rm @ [0, 1, 0]
+            out["mao_" + s] = flat_capsule(p, wr, palm, 0.03, 0.03, 0.5, up_m)
+            for i, (b0, tip) in enumerate(fin_g):
+                f_ = flat_capsule(p, b0, tip, 0.011, 0.0075, 0.6, up_m)
+                out[f"dedo_mao{i}_{s}"] = smin(f_, np.linalg.norm(p - tip, axis=1) - 0.0075, 0.003)
         return out
 
     BLEND = {"peito": 0.07, "cabeca": 0.07, "garganta": 0.05, "femur": 0.05, "tibia": 0.02, "tarso": 0.012, "pe": 0.012,
@@ -236,6 +320,10 @@ class Frog:
             for chain_ in (("femur", "tibia", "tarso", "pe"), ("umero", "antebraco", "mao")):
                 for b in chain_[1:]:
                     d = smin(d, parts[f"{b}_{s}"], self.BLEND[b])
+            for i in range(5):
+                d = smin(d, parts[f"dedo_pe{i}_{s}"], 0.012)
+            for i in range(4):
+                d = smin(d, parts[f"dedo_mao{i}_{s}"], 0.006)
         # abertura dos olhos (o globo fica dentro), timpano e narinas
         for sg in (-1, 1):
             e = J["olho_R"] * [sg, 1, 1]
@@ -255,8 +343,9 @@ class Frog:
 
 # ------------------------------------------------------------------ poligonizacao
 def polygonize(fr, h=0.0032):
-    lo = np.array([-0.47, -0.02, -0.64])
-    hi = np.array([0.47, 0.58, 0.48])
+    A = np.array(list(J.values()))
+    lo = np.minimum(A.min(0) - 0.07, [-0.47, -0.02, -0.64])
+    hi = np.maximum(A.max(0) + 0.07, [0.47, 0.58, 0.48])
     # passo grosso para achar a casca
     hc = h * 3
     nc = np.ceil((hi - lo) / hc).astype(int) + 1
@@ -278,7 +367,7 @@ def polygonize(fr, h=0.0032):
     print("  marching cubes: %d vertices, %d triangulos" % (len(V), len(F)))
     sm = pyfqmr.Simplify()
     sm.setMesh(V.astype(np.float64), F.astype(np.int32))
-    sm.simplify_mesh(target_count=52000, aggressiveness=6, preserve_border=True, verbose=False)
+    sm.simplify_mesh(target_count=60000, aggressiveness=6, preserve_border=True, verbose=False)
     V, F, _ = sm.getMesh()
     return V, F
 
@@ -295,16 +384,43 @@ def main():
     tri_n = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
     if np.mean(np.sum(tri_n * N[F[:, 0]], 1)) > 0:
         F = F[:, [0, 2, 1]]
-    # ---- pesos: cada parte do SDF puxa os vertices do seu osso
+    # ---- pesos: cada vertice pertence a parte mais proxima (segmentacao nitida,
+    # a coxa nao arrasta a pele do flanco); so perto de cada junta a pele
+    # dobra suave entre os dois ossos (mistura ao longo do eixo da junta)
     names = [b[0] for b in BONES]
     W = np.zeros((len(V), len(BONES)))
-    sigma = {"corpo": 0.05, "peito": 0.05, "cabeca": 0.03, "garganta": 0.02}
+    D = np.full((len(V), len(BONES)), 9.0)
+    for bi, name in enumerate(names):
+        if name in parts:
+            D[:, bi] = np.maximum(parts[name], 0.0)
+    dmin = D.min(1, keepdims=True)
+    trunk = [BONE_IDX[n] for n in ("corpo", "peito", "cabeca", "garganta")]
     for bi, name in enumerate(names):
         if name.startswith("olho"):
             continue
-        d = np.maximum(parts[name], 0.0)
-        sg = sigma.get(name, 0.012)
-        W[:, bi] = np.exp(-d / sg)
+        sg = 0.03 if bi in trunk else 0.004
+        W[:, bi] = np.exp(-(D[:, bi] - dmin[:, 0]) / sg)
+    W /= np.maximum(W.sum(1, keepdims=True), 1e-9)
+    JOINTS = []   # (pai, filho, ponto da junta, raio)
+    for s in ("R", "L"):
+        JOINTS += [("corpo", f"femur_{s}", J[f"quadril_{s}"], 0.075), (f"femur_{s}", f"tibia_{s}", J[f"joelho_{s}"], 0.05),
+                   (f"tibia_{s}", f"tarso_{s}", J[f"tornozelo_{s}"], 0.035), (f"tarso_{s}", f"pe_{s}", J[f"tarso_{s}"], 0.03),
+                   ("peito", f"umero_{s}", J[f"ombro_{s}"], 0.055), (f"umero_{s}", f"antebraco_{s}", J[f"cotovelo_{s}"], 0.04),
+                   (f"antebraco_{s}", f"mao_{s}", J[f"punho_{s}"], 0.028)]
+        JOINTS += [(f"pe_{s}", f"dedo_pe{i}_{s}", J[f"dpe{i}_{s}"], 0.014) for i in range(5)]
+        JOINTS += [(f"mao_{s}", f"dedo_mao{i}_{s}", J[f"dmao{i}_{s}"], 0.01) for i in range(4)]
+    head_of = {b[0]: (J[b[1]], J[b[2]]) for b in BONES}
+    for par, chi, jp, R in JOINTS:
+        pi, ci = BONE_IDX[par], BONE_IDX[chi]
+        h, t = head_of[chi]
+        cdir = (t - h) / max(np.linalg.norm(t - h), 1e-9)
+        own = (W[:, pi] + W[:, ci])
+        near = (np.linalg.norm(V - jp, axis=1) < R * 1.6) & (own > 0.5)
+        u = np.clip(0.5 + ((V[near] - jp) @ cdir) / (2 * R), 0, 1)
+        u = u * u * (3 - 2 * u)
+        tot = own[near]
+        W[near, ci] = tot * u
+        W[near, pi] = tot * (1 - u)
     # palpebras e pele em volta dos olhos seguem o olho (afunda ao engolir)
     for s in ("R", "L"):
         dd = np.linalg.norm(V - J["olho_" + s], axis=1)
@@ -315,12 +431,18 @@ def main():
     tw = np.where(tw < 0.02 * tw[:, :1], 0.0, tw)
     tw /= tw.sum(1, keepdims=True)
     main_bone = np.array(names)[top[:, 0]]
+    # normal na pose sentada (para o lado de cima/baixo dos membros)
+    Ns = np.zeros_like(N)
+    for k in range(4):
+        Rk = np.stack([QR(names[b]).T for b in top[:, k]])
+        Ns += tw[:, k:k + 1] * np.einsum("nij,nj->ni", Rk, N)
+    Ns /= np.maximum(np.linalg.norm(Ns, axis=1, keepdims=True), 1e-9)
     # ---- mascaras para o shader
     limb = np.array([n.split("_")[0] in ("femur", "tibia", "tarso", "umero", "antebraco") for n in main_bone])
-    digits = np.array([n.split("_")[0] in ("pe", "mao") for n in main_bone])
+    digits = np.array([n.split("_")[0] in ("pe", "mao") or n.startswith("dedo") for n in main_bone])
     dorsal = np.clip(N[:, 1] * 0.9 + (V[:, 1] - 0.09) * 5.5, 0, 1)
     # membros: o lado de cima (e de fora) e escuro, o de baixo claro
-    limb_d = np.clip(N[:, 1] * 1.3 + 0.35 + 0.3 * np.abs(N[:, 0]), 0, 1)
+    limb_d = np.clip(Ns[:, 1] * 1.3 + 0.35 + 0.3 * np.abs(Ns[:, 0]), 0, 1)
     dorsal = np.where(limb | digits, limb_d, dorsal)
     dorsal = np.where(digits, dorsal * 0.7, dorsal)
     lip = np.exp(-((V[:, 1] - lip_z_to_y(V[:, 2]) - 0.012) / 0.014) ** 2) * (V[:, 2] < -0.26)
@@ -350,7 +472,12 @@ def main():
         f.write(F.astype("<i4").tobytes())
         f.write(top.astype("<i4").tobytes())
         f.write(tw.astype("<f4").tobytes())
-    bones = [{"nome": n, "pai": p, "cabeca": J[a].round(5).tolist(), "ponta": J[b].round(5).tolist()} for n, a, b, p in BONES]
+    def quat(R):
+        w = np.sqrt(max(1e-12, 1 + R[0, 0] + R[1, 1] + R[2, 2])) / 2
+        return [float((R[2, 1] - R[1, 2]) / (4 * w)), float((R[0, 2] - R[2, 0]) / (4 * w)), float((R[1, 0] - R[0, 1]) / (4 * w)), float(w)]
+    # "sentado": rotacao (espaco do modelo) que leva o osso da pose de modelagem a pose sentada
+    bones = [{"nome": n, "pai": p, "cabeca": J[a].round(5).tolist(), "ponta": J[b].round(5).tolist(),
+              "sentado": [round(x, 6) for x in quat(QR(n).T)]} for n, a, b, p in BONES]
     extra = {"olho_R": J["olho_R"].tolist(), "olho_L": J["olho_L"].tolist(), "boca": [0.0, 0.33, -0.575], "raio_olho": EYE_R}
     (OUT / "frog_skin.json").write_text(json.dumps({"fonte": "tools/build_frog_body.py (feito do zero)", "ossos": bones, "pontos": extra}, indent=1))
     dom = np.bincount(top[:, 0], minlength=len(BONES))
