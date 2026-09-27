@@ -1,6 +1,7 @@
 import { CommandPermissionLevel, CustomCommandStatus, system, world } from "@minecraft/server";
 import { createTerrainGenerator } from "./world_generator_API.js";
-import { canGenerateChunk, ensureBaseY, generateColumn, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
+import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
+import { startSpawner } from "./rick01/spawner.js";
 
 export const DIMENSION_ID = "rick:01";
 // marcador de chunk gerado da API (trocado do barrier para os chunks das
@@ -32,9 +33,17 @@ const terrain = createTerrainGenerator({
   canGenerateChunk,
   markerBlockId: MARKER_BLOCK,
   registerDimension: false,
+  // até onde o jogador enxerga, como no Galactic Horizons; quantos chunks
+  // cabem por tick é decidido pelo orçamento de tempo em overworld_copy.js
+  genRadiusChunks: GEN_RADIUS_CHUNKS,
+  chunksPerTick: 16,
+  tickingRadius: 32 + (GEN_RADIUS_CHUNKS + 1) * 16,
+  // nunca desiste de um chunk
+  maxChunkAttempts: Infinity,
   onError: reportError,
 });
 terrain.start();
+startSpawner((x, z) => terrain.isChunkReady(x, z));
 
 // Gera na hora o chunk onde o jogador vai chegar, para ele não cair no vazio.
 async function generateSpawnChunk(dim) {

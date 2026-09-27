@@ -1,17 +1,29 @@
 import { BlockVolume, StructureSaveMode, system, world } from "@minecraft/server";
 import { BUILD_BOX, BUILD_CHUNKS } from "./tiles.js";
 
+export const DIMENSION_ID = "rick:01";
+
 // Terreno da rick:01 = cópia exata do overworld deste mundo, nas mesmas
 // coordenadas. O próprio jogo gera o chunk do overworld a partir da seed
 // (ticking area temporária) e ele é copiado inteiro para a rick:01 com
 // structureManager — mesmos blocos, minérios, cavernas, árvores, água,
-// baús de estruturas etc.
+// baús de estruturas e as entidades que estiverem no chunk.
 //
 // Nos chunks do quadrado da construção, o pedaço dela (um .mcstructure por
 // chunk) é colocado junto, na altura do chão do overworld no centro do
 // quadrado; abaixo dela vem o overworld copiado, acima só o céu.
 
-const MAX_PENDING = 8; // chunks do overworld carregando ao mesmo tempo
+// Velocidade: uma ticking area grande no overworld acompanha cada jogador que
+// está na rick:01 (o "espelho"), então os chunks do overworld em volta dele já
+// estão carregados quando chega a vez deles e a cópia é imediata. Se algum
+// chunk ficar fora do espelho, ele é pedido sozinho (MAX_PENDING de cada vez).
+export const GEN_RADIUS_CHUNKS = 7;
+const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 32, (GEN_RADIUS_CHUNKS + 1) * 16, GEN_RADIUS_CHUNKS * 16];
+const MIRROR_RECENTER = 32;
+// milissegundos por tick gastos copiando chunks (o resto fica para o jogo)
+const TICK_BUDGET_MS = 30;
+
+const MAX_PENDING = 8; // chunks do overworld carregando sozinhos ao mesmo tempo
 const STALE_TICKS = 400; // libera ticking areas de chunks que saíram da fila
 const BASE_PROP = "rick01:build_base_y";
 
@@ -127,6 +139,104 @@ function requestOverworldChunk(cx, cz) {
 
 const inBuild = (cx, cz) => BUILD_CHUNKS[key(cx, cz)] !== undefined;
 
+// ------------------------------------------------ espelho no overworld
+
+const mirrors = new Map(); // player.id -> { id, x, z }
+const mirrorBusy = new Set();
+let mirrorN = 0;
+
+async function syncMirror(player) {
+  if (mirrorBusy.has(player.id)) return;
+  const loc = player.location;
+  const cur = mirrors.get(player.id);
+  if (cur && Math.abs(loc.x - cur.x) < MIRROR_RECENTER && Math.abs(loc.z - cur.z) < MIRROR_RECENTER) return;
+
+  mirrorBusy.add(player.id);
+  const manager = world.tickingAreaManager;
+  const ow = overworld();
+  const hr = ow.heightRange;
+  const id = "rick01_mirror_" + ++mirrorN;
+  try {
+    let options = null;
+    for (const r of MIRROR_RADII) {
+      const o = {
+        dimension: ow,
+        from: { x: Math.floor(loc.x - r), y: hr.min, z: Math.floor(loc.z - r) },
+        to: { x: Math.floor(loc.x + r), y: hr.max - 1, z: Math.floor(loc.z + r) },
+      };
+      if (manager.hasCapacity(o)) {
+        options = o;
+        break;
+      }
+    }
+    // sem espaço nem para o menor: solta o espelho antigo e usa o menor
+    if (!options) {
+      if (cur && manager.hasTickingArea(cur.id)) manager.removeTickingArea(cur.id);
+      mirrors.delete(player.id);
+      const r = MIRROR_RADII[MIRROR_RADII.length - 1];
+      options = {
+        dimension: ow,
+        from: { x: Math.floor(loc.x - r), y: hr.min, z: Math.floor(loc.z - r) },
+        to: { x: Math.floor(loc.x + r), y: hr.max - 1, z: Math.floor(loc.z + r) },
+      };
+    }
+    await manager.createTickingArea(id, options);
+    const old = mirrors.get(player.id);
+    if (old && manager.hasTickingArea(old.id)) manager.removeTickingArea(old.id);
+    mirrors.set(player.id, { id, x: loc.x, z: loc.z });
+  } catch (e) {
+    // tenta de novo no próximo tick
+    if (manager.hasTickingArea(id)) manager.removeTickingArea(id);
+    console.warn("[rick:01] espelho do overworld: " + e);
+  } finally {
+    mirrorBusy.delete(player.id);
+  }
+}
+
+function dropMirror(playerId) {
+  const cur = mirrors.get(playerId);
+  if (cur && world.tickingAreaManager.hasTickingArea(cur.id)) world.tickingAreaManager.removeTickingArea(cur.id);
+  mirrors.delete(playerId);
+}
+
+// Todo tick: espelho para quem está na rick:01, solta o de quem saiu.
+system.runInterval(() => {
+  let players;
+  try {
+    players = world.getDimension(DIMENSION_ID).getPlayers();
+  } catch {
+    return;
+  }
+  const inside = new Set();
+  for (const p of players) {
+    inside.add(p.id);
+    syncMirror(p);
+  }
+  for (const id of [...mirrors.keys()]) if (!inside.has(id) && !mirrorBusy.has(id)) dropMirror(id);
+}, 1);
+
+// ------------------------------------------------ orçamento de tempo por tick
+
+let budgetTick = -1;
+let spentMs = 0;
+function budgetLeft() {
+  if (system.currentTick !== budgetTick) {
+    budgetTick = system.currentTick;
+    spentMs = 0;
+  }
+  return spentMs < TICK_BUDGET_MS;
+}
+
+// o chunk do overworld e os vizinhos (árvores/estruturas que cruzam a borda) carregados
+function overworldReady(ow, cx, cz) {
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (!ow.isChunkLoaded({ x: (cx + dx) * 16, y: 0, z: (cz + dz) * 16 })) return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Hook da API: o chunk só é gerado quando o mesmo chunk do overworld já está
  * carregado (e, no quadrado da construção, quando a altura dela é conhecida).
@@ -136,7 +246,9 @@ export function canGenerateChunk(dim, cx, cz) {
     ensureBaseY().catch((e) => console.warn("[rick:01] altura da construção: " + e));
     return false;
   }
-  return requestOverworldChunk(cx, cz)?.ready ?? false;
+  if (overworldReady(overworld(), cx, cz)) return budgetLeft();
+  // fora do espelho (ou ele ainda carregando): pede só esse chunk
+  return (requestOverworldChunk(cx, cz)?.ready ?? false) && budgetLeft();
 }
 
 /** Espera o overworld carregar esses chunks (usado antes do teleporte). Tenta até conseguir. */
@@ -173,10 +285,10 @@ function copyRect(ow, dim, r, minY, maxY) {
     ow,
     from,
     { x: r.x1, y: maxY, z: r.z1 },
-    { includeEntities: false, saveMode: StructureSaveMode.Memory },
+    { includeEntities: true, saveMode: StructureSaveMode.Memory },
   );
   try {
-    world.structureManager.place(structure, dim, from, { includeEntities: false });
+    world.structureManager.place(structure, dim, from, { includeEntities: true });
   } finally {
     world.structureManager.delete(structure);
   }
@@ -230,7 +342,13 @@ export function generateColumn(dim, x, z) {
   const lz = ((z % 16) + 16) % 16;
   if (lx !== 0 || lz !== 0) return undefined;
   const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
-  copyChunk(dim, cx, cz);
+  const t0 = Date.now();
+  try {
+    copyChunk(dim, cx, cz);
+  } finally {
+    budgetLeft();
+    spentMs += Date.now() - t0;
+  }
   // só solta o overworld depois de copiar; se falhar, a área fica para a próxima tentativa
   releaseArea(key(cx, cz));
   return undefined;

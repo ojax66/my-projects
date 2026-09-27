@@ -8,10 +8,14 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
 - Cria a dimensão customizada **`rick:01`** com a Custom Dimension API do `@minecraft/server`
   (`dimensionRegistry.registerCustomDimension` no startup, igual ao exemplo oficial
   [microsoft/minecraft-samples/custom_dimensions](https://github.com/microsoft/minecraft-samples/tree/main/custom_dimensions)).
-- O terreno é gerado pela `world_generator_API.js` **em volta do jogador, do chunk mais perto para
-  o mais longe**, e é uma **cópia exata do overworld deste mundo nas mesmas coordenadas**: o jogo
-  carrega/gera o mesmo chunk do overworld pela seed e ele é copiado inteiro (minérios, cavernas,
-  árvores, água, vilas, baús…). Mobs não são copiados.
+- O terreno é gerado pela `world_generator_API.js` (versão do Galactic Horizons) **até onde o jogador
+  enxerga (raio de 7 chunks), primeiro o que está na frente dele**, e é uma **cópia exata do overworld
+  deste mundo nas mesmas coordenadas**: uma ticking area no overworld acompanha o jogador, o jogo
+  gera aqueles chunks pela seed e cada um é copiado inteiro (minérios, cavernas, árvores, água, vilas,
+  baús e as entidades que estiverem nele). Um orçamento de 30 ms por tick decide quantos chunks cabem
+  em cada tick.
+- Mobs nascem como no overworld: animais do bioma (lido do overworld) de dia, monstros no escuro,
+  slimes nos slime chunks e em pântanos, peixes e lulas na água.
 - A construção do `RAMNeighbourhood.mcworld` (o quadrado dos prints, X -293…203, Z -278…244) fica
   com o centro em X 0 / Z 0, cortada em um pedaço por chunk que nasce junto com o terreno. A altura
   é a do chão do overworld no centro do quadrado (medida na primeira vez); abaixo dela vem o
