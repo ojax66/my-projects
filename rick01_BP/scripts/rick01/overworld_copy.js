@@ -51,12 +51,12 @@ export function ensureBaseY() {
   baseYPromise ??= (async () => {
     const ow = overworld();
     const id = "rick01_base";
-    await world.tickingAreaManager.createTickingArea(id, {
-      dimension: ow,
-      from: { x: -24, y: ow.heightRange.min, z: -24 },
-      to: { x: 24, y: ow.heightRange.max - 1, z: 24 },
-    });
     try {
+      await world.tickingAreaManager.createTickingArea(id, {
+        dimension: ow,
+        from: { x: -24, y: ow.heightRange.min, z: -24 },
+        to: { x: 24, y: ow.heightRange.max - 1, z: 24 },
+      });
       const ys = [];
       for (let x = -24; x <= 24; x += 8) for (let z = -24; z <= 24; z += 8) {
         const y = groundY(ow, x, z);
@@ -139,15 +139,21 @@ export function canGenerateChunk(dim, cx, cz) {
   return requestOverworldChunk(cx, cz)?.ready ?? false;
 }
 
-/** Espera o overworld carregar esses chunks (usado antes do teleporte). */
+/** Espera o overworld carregar esses chunks (usado antes do teleporte). Tenta até conseguir. */
 export async function preloadChunks(chunks) {
   for (const [cx, cz] of chunks) {
-    let entry = requestOverworldChunk(cx, cz);
-    while (!entry) {
-      await system.waitTicks(5);
-      entry = requestOverworldChunk(cx, cz);
+    for (;;) {
+      const entry = requestOverworldChunk(cx, cz);
+      if (entry) {
+        try {
+          await entry.promise;
+          break;
+        } catch {
+          // falhou: tenta de novo abaixo
+        }
+      }
+      await system.waitTicks(10);
     }
-    await entry.promise;
   }
 }
 

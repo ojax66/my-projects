@@ -19,7 +19,7 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
 
 ### Comando
 
-`/rick:01` — leva você para o meio da construção, na dimensão `rick:01`.
+`/rick:rick01` — leva você para o meio da construção, na dimensão `rick:01`.
 
 ### Como ativar
 
@@ -28,7 +28,8 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
    Minecraft 1.26.10 ou mais novo).
 3. Deixe o addon **Portal Gun** ativo também: a construção tem blocos dele (`ram_pg:beaker`, soluções…).
 
-Se algo der errado, o erro aparece no chat com `[rick:01]`.
+Erros (ex.: ticking area sem espaço) não aparecem no chat: vão para o log de conteúdo com
+`[rick:01]`, e a etapa que falhou é tentada de novo sozinha.
 
 ### Regerar a construção
 

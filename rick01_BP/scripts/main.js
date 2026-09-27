@@ -1,4 +1,4 @@
-import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus, system, world } from "@minecraft/server";
+import { CommandPermissionLevel, CustomCommandStatus, system, world } from "@minecraft/server";
 import { createTerrainGenerator } from "./world_generator_API.js";
 import { canGenerateChunk, ensureBaseY, generateColumn, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
 
@@ -7,15 +7,21 @@ export const DIMENSION_ID = "rick:01";
 // versões antigas do addon serem gerados de novo)
 const MARKER_BLOCK = "minecraft:structure_void";
 
-// Erros aparecem no chat (até alguns por sessão), para dar para ver o que falhou no celular.
-const errors = [];
-let worldLoaded = false;
+// Erros vão só para o log de conteúdo (nada no chat); tudo que falha é tentado de novo.
 function reportError(ctx, err) {
-  const msg = "§c[rick:01] " + ctx + ": " + err;
-  console.warn(msg);
-  if (errors.length >= 5) return;
-  errors.push(msg);
-  if (worldLoaded) world.sendMessage(msg);
+  console.warn("[rick:01] " + ctx + ": " + err);
+}
+
+// Repete uma etapa até dar certo (ex.: ticking area que falhou por falta de espaço).
+async function retry(fn) {
+  for (;;) {
+    try {
+      return await fn();
+    } catch (e) {
+      reportError("tentando de novo", e);
+      await system.waitTicks(20);
+    }
+  }
 }
 
 // A world_generator_API só cuida do terreno (copiado do overworld: mesma seed,
@@ -52,9 +58,9 @@ async function generateSpawnChunk(dim) {
 async function goToRick(player) {
   const dim = world.getDimension(DIMENSION_ID);
   player.onScreenDisplay.setActionBar("§aAbrindo portal para rick:01...");
-  await ensureBaseY();
+  await retry(() => ensureBaseY());
   await preloadChunks([[0, 0]]);
-  await generateSpawnChunk(dim);
+  await retry(() => generateSpawnChunk(dim));
   player.teleport(spawnPoint(), { dimension: dim });
 }
 
@@ -67,37 +73,22 @@ system.beforeEvents.startup.subscribe((event) => {
     reportError("criação da dimensão", e);
   }
 
-  // O Minecraft lê "/rick:01" como o comando "rick" seguido de ":01" (o nome
-  // depois dos dois-pontos não pode começar com número). Por isso existe o
-  // comando rick:rick (chamado como /rick), que aceita o ":01" como texto.
-  // O rick:01 continua registrado também.
-  const commands = [
-    { name: "rick:01" },
-    { name: "rick:rick", optionalParameters: [{ type: CustomCommandParamType.String, name: "destino" }] },
-  ];
-  for (const extra of commands) {
-    try {
-      event.customCommandRegistry.registerCommand(
-        {
-          description: "Teleporta para a construção na dimensão rick:01",
-          permissionLevel: CommandPermissionLevel.Any,
-          cheatsRequired: false,
-          ...extra,
-        },
-        (origin) => {
-          const player = origin.sourceEntity ?? origin.initiator;
-          if (player?.typeId !== "minecraft:player") return { status: CustomCommandStatus.Failure, message: "Use o comando como jogador." };
-          system.run(() => goToRick(player).catch((e) => reportError("/rick:01", e)));
-          return { status: CustomCommandStatus.Success };
-        },
-      );
-    } catch (e) {
-      reportError("registro do comando /" + extra.name, e);
-    }
+  try {
+    event.customCommandRegistry.registerCommand(
+      {
+        name: "rick:rick01",
+        description: "Teleporta para a construção na dimensão rick:01",
+        permissionLevel: CommandPermissionLevel.Any,
+        cheatsRequired: false,
+      },
+      (origin) => {
+        const player = origin.sourceEntity ?? origin.initiator;
+        if (player?.typeId !== "minecraft:player") return { status: CustomCommandStatus.Failure, message: "Use o comando como jogador." };
+        system.run(() => goToRick(player).catch((e) => reportError("/rick:rick01", e)));
+        return { status: CustomCommandStatus.Success };
+      },
+    );
+  } catch (e) {
+    reportError("registro do comando /rick:rick01", e);
   }
-});
-
-world.afterEvents.worldLoad.subscribe(() => {
-  worldLoaded = true;
-  for (const msg of errors) world.sendMessage(msg);
 });

@@ -74,7 +74,8 @@ export function createTerrainGenerator(config) {
   // para eles já irem se preparando.
   const canGenerateChunk = config.canGenerateChunk ?? null;
   const prefetchChunks = config.prefetchChunks ?? 6;
-  const maxRetries = config.maxRetries ?? 3;
+  // quanto esperar (ticks) antes de tentar de novo um chunk ou ticking area que falhou
+  const retryDelayTicks = config.retryDelayTicks ?? 40;
   const chunkSize = config.chunkSize ?? 16;
   const genRadiusChunks = config.genRadiusChunks ?? 3;
   const chunksPerTick = config.chunksPerTick ?? 1;
@@ -194,43 +195,76 @@ export function createTerrainGenerator(config) {
         n++;
       }
     }
+    const now = system.currentTick;
     for (let i = 0; i < chunksPerTick; i++) {
-      const next = q[0];
-      if (!next) return;
-      const k = key(next.cx, next.cz);
-      if (done.has(k)) {
-        q.shift();
-        i--;
-        continue;
+      // o mais perto primeiro; chunks que falharam esperam um pouco e são tentados de novo
+      let idx = -1;
+      for (let j = 0; j < q.length; j++) {
+        if (done.has(key(q[j].cx, q[j].cz))) {
+          q.splice(j--, 1);
+          continue;
+        }
+        if ((q[j].retryAt ?? 0) <= now) {
+          idx = j;
+          break;
+        }
       }
-      // sempre o mais perto primeiro: se ele não está pronto, espera
+      if (idx < 0) return;
+      const next = q[idx];
+      // se o mais perto ainda não está pronto, espera por ele
       if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) return;
-      q.shift();
       const r = genChunk(dim, next.cx, next.cz);
-      if (!r.hadError) done.add(k);
-      else if (canGenerateChunk && (next.tries = (next.tries ?? 0) + 1) < maxRetries) q.unshift(next);
+      if (!r.hadError) {
+        done.add(key(next.cx, next.cz));
+        q.splice(idx, 1);
+      } else {
+        next.retryAt = now + retryDelayTicks;
+      }
     }
   }
 
   const tickAreas = new Map();
   let tickAreaN = 0;
 
+  const syncing = new Set();
+  const syncRetryAt = new Map();
+
   async function syncTickingArea(dim, player) {
+    // uma de cada vez: sem isso uma ticking area nova era criada a cada tick
+    // enquanto a anterior carregava, até estourar o limite
+    if (syncing.has(player.id)) return;
+    if ((syncRetryAt.get(player.id) ?? 0) > system.currentTick) return;
     const loc = player.location;
     const cur = tickAreas.get(player.id);
     if (cur && Math.abs(loc.x - cur.x) < recenterMargin && Math.abs(loc.z - cur.z) < recenterMargin) return;
 
+    const manager = world.tickingAreaManager;
     const hr = getHeightRangeOf(dim);
     const id = "wgen_" + dimensionId.replace(/[^a-zA-Z0-9]/g, "_") + "_" + (++tickAreaN);
-
-    await world.tickingAreaManager.createTickingArea(id, {
+    const options = {
       dimension: dim,
-      from: { x: loc.x - tickingRadius, y: hr.min, z: loc.z - tickingRadius },
-      to: { x: loc.x + tickingRadius, y: hr.max, z: loc.z + tickingRadius },
-    });
+      from: { x: Math.floor(loc.x - tickingRadius), y: hr.min, z: Math.floor(loc.z - tickingRadius) },
+      to: { x: Math.floor(loc.x + tickingRadius), y: hr.max - 1, z: Math.floor(loc.z + tickingRadius) },
+    };
 
-    if (cur && world.tickingAreaManager.hasTickingArea(cur.id)) world.tickingAreaManager.removeTickingArea(cur.id);
-    tickAreas.set(player.id, { id, x: loc.x, z: loc.z });
+    syncing.add(player.id);
+    try {
+      // sem espaço para as duas ao mesmo tempo: tira a antiga antes
+      if (cur && !manager.hasCapacity(options)) {
+        if (manager.hasTickingArea(cur.id)) manager.removeTickingArea(cur.id);
+        tickAreas.delete(player.id);
+      }
+      await manager.createTickingArea(id, options);
+      const old = tickAreas.get(player.id);
+      if (old && manager.hasTickingArea(old.id)) manager.removeTickingArea(old.id);
+      tickAreas.set(player.id, { id, x: loc.x, z: loc.z });
+    } catch (e) {
+      if (manager.hasTickingArea(id)) manager.removeTickingArea(id);
+      syncRetryAt.set(player.id, system.currentTick + retryDelayTicks);
+      throw e;
+    } finally {
+      syncing.delete(player.id);
+    }
   }
 
   function dropPlayer(player) {
@@ -241,6 +275,7 @@ export function createTerrainGenerator(config) {
     }
     queues.delete(player.id);
     lastChunk.delete(player.id);
+    syncRetryAt.delete(player.id);
   }
 
   function spiral(r) {
@@ -265,7 +300,7 @@ export function createTerrainGenerator(config) {
     await world.tickingAreaManager.createTickingArea(tickingId, {
       dimension: dim,
       from: { x: targetX - half, y: hr.min, z: targetZ - half },
-      to: { x: targetX + half, y: hr.max, z: targetZ + half },
+      to: { x: targetX + half, y: hr.max - 1, z: targetZ + half },
     });
 
     const baseCx = Math.floor(targetX / chunkSize);
