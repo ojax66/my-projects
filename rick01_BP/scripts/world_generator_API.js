@@ -68,9 +68,12 @@ export function createTerrainGenerator(config) {
   const dimensionId = config.dimensionId;
   const generateColumn = config.generateColumn;
   const getHeight = config.getHeight ?? null;
-  // opcional: (dim, cx, cz) => boolean. Enquanto devolver false o chunk volta
-  // para o fim da fila (ex.: esperando outro chunk carregar).
+  // opcional: (dim, cx, cz) => boolean. Enquanto devolver false a fila espera
+  // esse chunk (ex.: esperando outro chunk carregar), sem pular a ordem por
+  // distância. É chamado também para os próximos `prefetchChunks` da fila,
+  // para eles já irem se preparando.
   const canGenerateChunk = config.canGenerateChunk ?? null;
+  const prefetchChunks = config.prefetchChunks ?? 6;
   const maxRetries = config.maxRetries ?? 3;
   const chunkSize = config.chunkSize ?? 16;
   const genRadiusChunks = config.genRadiusChunks ?? 3;
@@ -184,18 +187,28 @@ export function createTerrainGenerator(config) {
   function drainQueue(dim, player) {
     const q = queues.get(player.id);
     if (!q || !q.length) return;
+    if (canGenerateChunk) {
+      for (let i = 0, n = 0; i < q.length && n < prefetchChunks; i++) {
+        if (done.has(key(q[i].cx, q[i].cz))) continue;
+        canGenerateChunk(dim, q[i].cx, q[i].cz);
+        n++;
+      }
+    }
     for (let i = 0; i < chunksPerTick; i++) {
-      const next = q.shift();
+      const next = q[0];
       if (!next) return;
       const k = key(next.cx, next.cz);
-      if (done.has(k)) continue;
-      if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) {
-        q.push(next);
+      if (done.has(k)) {
+        q.shift();
+        i--;
         continue;
       }
+      // sempre o mais perto primeiro: se ele não está pronto, espera
+      if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) return;
+      q.shift();
       const r = genChunk(dim, next.cx, next.cz);
       if (!r.hadError) done.add(k);
-      else if (canGenerateChunk && (next.tries = (next.tries ?? 0) + 1) < maxRetries) q.push(next);
+      else if (canGenerateChunk && (next.tries = (next.tries ?? 0) + 1) < maxRetries) q.unshift(next);
     }
   }
 

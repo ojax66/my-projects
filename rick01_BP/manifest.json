@@ -2,23 +2,23 @@
   "format_version": 2,
   "header": {
     "name": "§aRick 01§r - Dimensão",
-    "description": "Dimensão rick:01 com o bairro do Rick em 0 107 0 e terreno copiado do overworld. /rick:01 e /rick:voltar",
+    "description": "Dimensão rick:01: cópia do overworld com o bairro do Rick no centro. Comando /rick:01",
     "uuid": "628d8536-18d1-4936-98a3-3e240225798e",
-    "version": [1, 0, 2],
+    "version": [1, 0, 3],
     "min_engine_version": [1, 26, 10]
   },
   "modules": [
     {
       "type": "data",
       "uuid": "ad286b84-03a9-4a6d-be0b-4aa8273e1c2a",
-      "version": [1, 0, 2]
+      "version": [1, 0, 3]
     },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "a9f20331-daf5-4f4a-8de2-520b17c9de86",
       "entry": "scripts/main.js",
-      "version": [1, 0, 2]
+      "version": [1, 0, 3]
     }
   ],
   "dependencies": [
