@@ -33,15 +33,15 @@ const terrain = createTerrainGenerator({
   canGenerateChunk,
   markerBlockId: MARKER_BLOCK,
   registerDimension: false,
-  // raio em volta do jogador (primeiro o que ele está vendo); no máximo 2
+  // raio em volta do jogador (primeiro o que ele está vendo); no máximo 3
   // chunks por tick, e menos se o orçamento de tempo de overworld_copy.js acabar
   genRadiusChunks: GEN_RADIUS_CHUNKS,
-  chunksPerTick: 2,
-  // ticking area do tamanho mínimo que a API aceita, e solta quando não há
-  // mais nada para gerar em volta (volta sozinha quando precisa)
+  chunksPerTick: 3,
+  // ticking area do tamanho mínimo que a API aceita. Fica ligada enquanto o
+  // jogador está na dimensão: soltar e recriar fazia os chunks descarregarem
+  // e recarregarem (geração parando e blocos sem aparecer).
   tickingRecenterMargin: 16,
   tickingRadius: 16 + (GEN_RADIUS_CHUNKS + 1) * 16,
-  releaseIdleTicks: 60,
   // nunca desiste de um chunk
   maxChunkAttempts: Infinity,
   onError: reportError,

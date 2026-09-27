@@ -13,18 +13,15 @@ export const DIMENSION_ID = "rick:01";
 // chunk) é colocado junto, na altura do chão do overworld no centro do
 // quadrado; abaixo dela vem o overworld copiado, acima só o céu.
 
-// Velocidade: enquanto houver chunk para gerar, uma ticking area no overworld
-// acompanha cada jogador que está na rick:01 (o "espelho"), então os chunks do
-// overworld já estão carregados quando chega a vez deles. Quando tudo em volta
-// já foi gerado, o espelho é solto (senão o overworld fica simulando centenas
-// de chunks à toa). Chunk que ficar fora do espelho é pedido sozinho.
+// Velocidade: uma ticking area no overworld acompanha cada jogador que está
+// na rick:01 (o "espelho"), então os chunks do overworld já estão carregados
+// quando chega a vez deles. Chunk que ficar fora do espelho é pedido sozinho.
 export const GEN_RADIUS_CHUNKS = 6;
 const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 16, GEN_RADIUS_CHUNKS * 16];
 const MIRROR_RECENTER = 16;
-const MIRROR_IDLE_TICKS = 60; // sem chunk para gerar por 3 s: solta o espelho
-// Milissegundos de script por tick copiando chunks. Baixo de propósito: o jogo
-// ainda gasta tempo dele colocando os blocos depois, fora dessa conta.
-const TICK_BUDGET_MS = 10;
+// Milissegundos de script por tick copiando chunks. O jogo ainda gasta tempo
+// dele colocando os blocos depois, fora dessa conta.
+const TICK_BUDGET_MS = 15;
 
 const MAX_PENDING = 8; // chunks do overworld carregando sozinhos ao mesmo tempo
 const STALE_TICKS = 400; // libera ticking areas de chunks que saíram da fila
@@ -202,11 +199,7 @@ function dropMirror(playerId) {
   mirrors.delete(playerId);
 }
 
-// último tick em que a geração pediu algum chunk (a API só pergunta enquanto tem fila)
-let lastDemand = -Infinity;
-
-// Todo tick: espelho para quem está na rick:01 enquanto tem chunk para gerar;
-// solta o de quem saiu e o de todo mundo quando não há mais nada para gerar.
+// Todo tick: espelho para quem está na rick:01, solta o de quem saiu.
 system.runInterval(() => {
   let players;
   try {
@@ -214,13 +207,12 @@ system.runInterval(() => {
   } catch {
     return;
   }
-  const busy = system.currentTick - lastDemand < MIRROR_IDLE_TICKS;
   const inside = new Set();
   for (const p of players) {
     inside.add(p.id);
-    if (busy) syncMirror(p);
+    syncMirror(p);
   }
-  for (const id of [...mirrors.keys()]) if ((!busy || !inside.has(id)) && !mirrorBusy.has(id)) dropMirror(id);
+  for (const id of [...mirrors.keys()]) if (!inside.has(id) && !mirrorBusy.has(id)) dropMirror(id);
 }, 1);
 
 // ------------------------------------------------ orçamento de tempo por tick
@@ -250,7 +242,6 @@ function overworldReady(ow, cx, cz) {
  * carregado (e, no quadrado da construção, quando a altura dela é conhecida).
  */
 export function canGenerateChunk(dim, cx, cz) {
-  lastDemand = system.currentTick;
   if (inBuild(cx, cz) && baseY === null) {
     ensureBaseY().catch((e) => console.warn("[rick:01] altura da construção: " + e));
     return false;
