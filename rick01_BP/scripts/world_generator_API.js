@@ -68,6 +68,10 @@ export function createTerrainGenerator(config) {
   const dimensionId = config.dimensionId;
   const generateColumn = config.generateColumn;
   const getHeight = config.getHeight ?? null;
+  // opcional: (dim, cx, cz) => boolean. Enquanto devolver false o chunk volta
+  // para o fim da fila (ex.: esperando outro chunk carregar).
+  const canGenerateChunk = config.canGenerateChunk ?? null;
+  const maxRetries = config.maxRetries ?? 3;
   const chunkSize = config.chunkSize ?? 16;
   const genRadiusChunks = config.genRadiusChunks ?? 3;
   const chunksPerTick = config.chunksPerTick ?? 1;
@@ -185,8 +189,13 @@ export function createTerrainGenerator(config) {
       if (!next) return;
       const k = key(next.cx, next.cz);
       if (done.has(k)) continue;
+      if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) {
+        q.push(next);
+        continue;
+      }
       const r = genChunk(dim, next.cx, next.cz);
       if (!r.hadError) done.add(k);
+      else if (canGenerateChunk && (next.tries = (next.tries ?? 0) + 1) < maxRetries) q.push(next);
     }
   }
 

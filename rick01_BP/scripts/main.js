@@ -1,14 +1,14 @@
 import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus, system, world } from "@minecraft/server";
 import { createTerrainGenerator } from "./world_generator_API.js";
-import { generateColumn, getHeight } from "./rick01/terrain.js";
+import { canGenerateChunk, generateColumn } from "./rick01/overworld_copy.js";
 import { placeAll, placeAround, resumeBuild } from "./rick01/build.js";
 
 export const DIMENSION_ID = "rick:01";
 const SPAWN = { x: 0.5, y: 107, z: 0.5 };
 const RETURN_PROP = "rick01:return";
 
-// Registra a dimensão rick:01 e liga o gerador procedural nela.
-const terrain = createTerrainGenerator({ dimensionId: DIMENSION_ID, generateColumn, getHeight });
+// Registra a dimensão rick:01; o terreno é copiado do overworld (mesma seed, mesmas coordenadas).
+const terrain = createTerrainGenerator({ dimensionId: DIMENSION_ID, generateColumn, canGenerateChunk });
 terrain.start();
 
 async function goToRick(player) {

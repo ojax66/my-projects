@@ -10,10 +10,16 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
   o quadrado dos prints (X -293…203, Z -278…244) vira X -248…248, Z -261…261, e o chão de
   grama fica em Y 106, então você chega em pé no gramado. Vêm junto baús, placas, estantes,
   molduras, suportes de armadura, pinturas e carrinhos com baú.
-- O resto da dimensão é gerado com a `world_generator_API.js`: terreno estilo overworld
-  (oceanos, rios, praias, colinas, montanhas com neve, planície, floresta, bétula, taiga,
-  neve, deserto, savana, cavernas, minérios, árvores e flores). Perto da construção o terreno
-  sobe devagar até o nível dela.
+- O resto da dimensão é uma **cópia exata do overworld deste mundo, nas mesmas coordenadas**
+  (usando a `world_generator_API.js`). Quando um chunk da `rick:01` vai ser gerado, o script
+  faz o próprio jogo carregar/gerar o mesmo chunk do overworld pela seed e copia ele inteiro:
+  se em uma coordenada do overworld tem um diamante, na `rick:01` tem o mesmo diamante —
+  e o mesmo vale para cavernas, árvores, água, vilas e baús de estruturas.
+  - Dentro do quadrado da construção só é copiado o que fica abaixo dela (até Y 102); o espaço
+    entre o chão do overworld e a construção vira pedra com terra em cima.
+  - Mobs não são copiados.
+  - O que for gerado no overworld por causa disso fica salvo no overworld também (é o jogo
+    gerando aqueles chunks), e alterações feitas no overworld antes da cópia vêm junto.
 
 ### Comandos
 
