@@ -1,9 +1,9 @@
 # Dragon-forge-
 Addon
 
-## Rick — 55 dimensões `rick:01` … `rick:55`
+## Rick's Multiverse — 55 dimensões `rick:01` … `rick:55`
 
-Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_BP.mcpack`](dist/rick01_BP.mcpack)).
+Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/Ricks_Multiverse.mcpack`](dist/Ricks_Multiverse.mcpack)).
 
 - Cria **55 dimensões customizadas**, `rick:01` até `rick:55`, com a Custom Dimension API do
   `@minecraft/server` (`dimensionRegistry.registerCustomDimension` no startup, igual ao exemplo oficial
@@ -38,7 +38,7 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
 
 ### Como ativar
 
-1. Abra o `dist/rick01_BP.mcpack` para importar.
+1. Abra o `dist/Ricks_Multiverse.mcpack` para importar.
 2. Nas configurações do mundo, ative o pack (API estável `@minecraft/server` `2.8.0`,
    Minecraft 1.26.10 ou mais novo).
 3. Deixe o addon **Portal Gun** ativo também: a construção tem blocos dele (`ram_pg:beaker`, soluções…).
