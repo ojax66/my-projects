@@ -25,8 +25,8 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
 
 | Comando | O que faz |
 | --- | --- |
-| `/rick:tp01` | Teleporta você para `0 107 0` na dimensão `rick:01` |
-| `/rick:tp01 @p` | Mesmo, para outro jogador (funciona em bloco de comando) |
+| `/rick:01` | Teleporta você para `0 107 0` na dimensão `rick:01` |
+| `/rick:01 @p` | Mesmo, para outro jogador (funciona em bloco de comando) |
 | `/rick:voltar` | Volta para onde você estava antes do teleporte |
 
 Na primeira vez a construção é colocada aos poucos (72 pedaços de 64×64); a barra de ação mostra
@@ -35,12 +35,11 @@ o progresso. Se o mundo fechar no meio, continua de onde parou.
 ### Como ativar
 
 1. Abra o `dist/rick01_BP.mcpack` para importar.
-2. Nas configurações do mundo, ative o pack e o experimento **APIs Beta** (e ative os cheats para
-   usar os comandos).
+2. Nas configurações do mundo, ative o pack (não precisa de experimento nenhum).
 3. Deixe o addon **Portal Gun** ativo também: a construção tem blocos dele (`ram_pg:beaker`, soluções…).
 
-Feito para o Minecraft **1.26.44** (`@minecraft/server` `2.10.0-beta`). No 1.26.5x, troque em
-`rick01_BP/manifest.json` a versão para `2.11.0-beta`.
+Usa a API estável `@minecraft/server` `2.8.0` (Minecraft 1.26.10 ou mais novo). Se algo der
+errado (por exemplo, a dimensão não ser criada), o erro aparece no chat com `[rick:01]`.
 
 ### Regerar a construção
 

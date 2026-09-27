@@ -7,8 +7,19 @@ export const DIMENSION_ID = "rick:01";
 const SPAWN = { x: 0.5, y: 107, z: 0.5 };
 const RETURN_PROP = "rick01:return";
 
+// Erros aparecem no chat (até alguns por sessão), para dar para ver o que falhou no celular.
+const errors = [];
+let worldLoaded = false;
+function reportError(ctx, err) {
+  const msg = "§c[rick:01] " + ctx + ": " + err;
+  console.warn(msg);
+  if (errors.length >= 5) return;
+  errors.push(msg);
+  if (worldLoaded) world.sendMessage(msg);
+}
+
 // Registra a dimensão rick:01; o terreno é copiado do overworld (mesma seed, mesmas coordenadas).
-const terrain = createTerrainGenerator({ dimensionId: DIMENSION_ID, generateColumn, canGenerateChunk });
+const terrain = createTerrainGenerator({ dimensionId: DIMENSION_ID, generateColumn, canGenerateChunk, onError: reportError });
 terrain.start();
 
 async function goToRick(player) {
@@ -21,7 +32,7 @@ async function goToRick(player) {
   // o pedaço da construção em volta do ponto de chegada é colocado antes do teleporte
   await placeAround(dim, SPAWN.x, SPAWN.z, 32);
   player.teleport(SPAWN, { dimension: dim });
-  placeAll(dim).catch((e) => console.warn("[rick:01] " + e));
+  placeAll(dim).catch((e) => reportError("construção", e));
 }
 
 function goBack(player) {
@@ -40,7 +51,7 @@ function goBack(player) {
   player.addEffect("slow_falling", 20 * 30, { showParticles: false });
 }
 
-// Jogadores alvo: os do seletor (ex.: /rick:tp01 @p num bloco de comando) ou quem digitou.
+// Jogadores alvo: os do seletor (ex.: /rick:01 @p num bloco de comando) ou quem digitou.
 function targets(origin, selected) {
   if (selected?.length) return selected;
   const self = origin.sourceEntity ?? origin.initiator;
@@ -52,7 +63,7 @@ function register(registry, name, description, action) {
     {
       name,
       description,
-      permissionLevel: CommandPermissionLevel.GameDirectors,
+      permissionLevel: CommandPermissionLevel.Any,
       cheatsRequired: false,
       optionalParameters: [{ type: CustomCommandParamType.PlayerSelector, name: "jogador" }],
     },
@@ -60,7 +71,7 @@ function register(registry, name, description, action) {
       const players = targets(origin, selected);
       if (!players.length) return { status: CustomCommandStatus.Failure, message: "Nenhum jogador para teleportar." };
       system.run(() => {
-        for (const p of players) Promise.resolve().then(() => action(p)).catch((e) => console.warn("[rick:01] " + name + ": " + e));
+        for (const p of players) Promise.resolve().then(() => action(p)).catch((e) => reportError("/" + name, e));
       });
       return { status: CustomCommandStatus.Success };
     },
@@ -68,10 +79,28 @@ function register(registry, name, description, action) {
 }
 
 system.beforeEvents.startup.subscribe((event) => {
-  register(event.customCommandRegistry, "rick:tp01", "Teleporta para a dimensão rick:01 (0 107 0)", goToRick);
-  register(event.customCommandRegistry, "rick:voltar", "Volta da dimensão rick:01 para onde você estava", goBack);
+  const commands = [
+    ["rick:01", "Teleporta para a dimensão rick:01 (0 107 0)", goToRick],
+    ["rick:voltar", "Volta da dimensão rick:01 para onde você estava", goBack],
+  ];
+  for (const [name, description, action] of commands) {
+    try {
+      register(event.customCommandRegistry, name, description, action);
+    } catch (e) {
+      reportError("registro do comando /" + name, e);
+    }
+  }
 });
 
 world.afterEvents.worldLoad.subscribe(() => {
-  resumeBuild(world.getDimension(DIMENSION_ID));
+  worldLoaded = true;
+  for (const msg of errors) world.sendMessage(msg);
+  let dim;
+  try {
+    dim = world.getDimension(DIMENSION_ID);
+  } catch (e) {
+    reportError("a dimensão não foi criada", e);
+    return;
+  }
+  resumeBuild(dim);
 });
