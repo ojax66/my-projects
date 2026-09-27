@@ -86,6 +86,10 @@ export function createTerrainGenerator(config) {
   // vezes (limite para um erro que não some na hora não travar o jogo) e
   // depois de novo nos ticks seguintes
   const sameTickAttempts = config.sameTickAttempts ?? 5;
+  // opcional: depois de quantos ticks sem nada para gerar em volta do jogador a
+  // ticking area dele é solta (ela volta sozinha quando aparece chunk novo).
+  // Sem isso a área fica ligada para sempre, simulando centenas de chunks.
+  const releaseIdleTicks = config.releaseIdleTicks ?? null;
 
   const maxReach = recenterMargin + (genRadiusChunks + 1) * chunkSize;
   const tickingRadius = config.tickingRadius ?? (maxReach + 32);
@@ -383,7 +387,17 @@ export function createTerrainGenerator(config) {
     }
   }
 
+  const idleSince = new Map();
+
+  function releaseTickingArea(player) {
+    const cur = tickAreas.get(player.id);
+    if (!cur || pendingSync.has(player.id)) return;
+    if (world.tickingAreaManager.hasTickingArea(cur.id)) world.tickingAreaManager.removeTickingArea(cur.id);
+    tickAreas.delete(player.id);
+  }
+
   function dropPlayer(player) {
+    idleSince.delete(player.id);
     const cur = tickAreas.get(player.id);
     if (cur) {
       if (world.tickingAreaManager.hasTickingArea(cur.id)) world.tickingAreaManager.removeTickingArea(cur.id);
@@ -469,8 +483,17 @@ export function createTerrainGenerator(config) {
         const players = dim.getPlayers();
         if (!players.length) return;
         for (const player of players) {
-          syncTickingArea(dim, player).catch((e) => onError("syncTickingArea", e));
           refillQueue(dim, player);
+          const q = queues.get(player.id);
+          const pending = !!q && q.some((c) => !done.has(key(c.cx, c.cz)));
+          if (pending || releaseIdleTicks === null) {
+            idleSince.delete(player.id);
+            syncTickingArea(dim, player).catch((e) => onError("syncTickingArea", e));
+          } else {
+            const since = idleSince.get(player.id) ?? system.currentTick;
+            idleSince.set(player.id, since);
+            if (system.currentTick - since >= releaseIdleTicks) releaseTickingArea(player);
+          }
           drainQueue(dim, player);
         }
       } catch (e) {

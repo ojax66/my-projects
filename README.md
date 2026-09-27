@@ -9,11 +9,11 @@ Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_
   (`dimensionRegistry.registerCustomDimension` no startup, igual ao exemplo oficial
   [microsoft/minecraft-samples/custom_dimensions](https://github.com/microsoft/minecraft-samples/tree/main/custom_dimensions)).
 - O terreno é gerado pela `world_generator_API.js` (versão do Galactic Horizons) **até onde o jogador
-  enxerga (raio de 7 chunks), primeiro o que está na frente dele**, e é uma **cópia exata do overworld
+  enxerga (raio de 6 chunks), primeiro o que está na frente dele**, e é uma **cópia exata do overworld
   deste mundo nas mesmas coordenadas**: uma ticking area no overworld acompanha o jogador, o jogo
   gera aqueles chunks pela seed e cada um é copiado inteiro (minérios, cavernas, árvores, água, vilas,
-  baús e as entidades que estiverem nele). Um orçamento de 30 ms por tick decide quantos chunks cabem
-  em cada tick.
+  baús e as entidades que estiverem nele). No máximo 2 chunks por tick (menos se passar de 10 ms de
+  script), e as ticking areas são soltas quando não há mais nada para gerar em volta do jogador.
 - Mobs nascem como no overworld: animais do bioma (lido do overworld) de dia, monstros no escuro,
   slimes nos slime chunks e em pântanos, peixes e lulas na água.
 - A construção do `RAMNeighbourhood.mcworld` (o quadrado dos prints, X -293…203, Z -278…244) fica

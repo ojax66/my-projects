@@ -13,15 +13,18 @@ export const DIMENSION_ID = "rick:01";
 // chunk) é colocado junto, na altura do chão do overworld no centro do
 // quadrado; abaixo dela vem o overworld copiado, acima só o céu.
 
-// Velocidade: uma ticking area grande no overworld acompanha cada jogador que
-// está na rick:01 (o "espelho"), então os chunks do overworld em volta dele já
-// estão carregados quando chega a vez deles e a cópia é imediata. Se algum
-// chunk ficar fora do espelho, ele é pedido sozinho (MAX_PENDING de cada vez).
-export const GEN_RADIUS_CHUNKS = 7;
-const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 32, (GEN_RADIUS_CHUNKS + 1) * 16, GEN_RADIUS_CHUNKS * 16];
-const MIRROR_RECENTER = 32;
-// milissegundos por tick gastos copiando chunks (o resto fica para o jogo)
-const TICK_BUDGET_MS = 30;
+// Velocidade: enquanto houver chunk para gerar, uma ticking area no overworld
+// acompanha cada jogador que está na rick:01 (o "espelho"), então os chunks do
+// overworld já estão carregados quando chega a vez deles. Quando tudo em volta
+// já foi gerado, o espelho é solto (senão o overworld fica simulando centenas
+// de chunks à toa). Chunk que ficar fora do espelho é pedido sozinho.
+export const GEN_RADIUS_CHUNKS = 6;
+const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 16, GEN_RADIUS_CHUNKS * 16];
+const MIRROR_RECENTER = 16;
+const MIRROR_IDLE_TICKS = 60; // sem chunk para gerar por 3 s: solta o espelho
+// Milissegundos de script por tick copiando chunks. Baixo de propósito: o jogo
+// ainda gasta tempo dele colocando os blocos depois, fora dessa conta.
+const TICK_BUDGET_MS = 10;
 
 const MAX_PENDING = 8; // chunks do overworld carregando sozinhos ao mesmo tempo
 const STALE_TICKS = 400; // libera ticking areas de chunks que saíram da fila
@@ -199,7 +202,11 @@ function dropMirror(playerId) {
   mirrors.delete(playerId);
 }
 
-// Todo tick: espelho para quem está na rick:01, solta o de quem saiu.
+// último tick em que a geração pediu algum chunk (a API só pergunta enquanto tem fila)
+let lastDemand = -Infinity;
+
+// Todo tick: espelho para quem está na rick:01 enquanto tem chunk para gerar;
+// solta o de quem saiu e o de todo mundo quando não há mais nada para gerar.
 system.runInterval(() => {
   let players;
   try {
@@ -207,12 +214,13 @@ system.runInterval(() => {
   } catch {
     return;
   }
+  const busy = system.currentTick - lastDemand < MIRROR_IDLE_TICKS;
   const inside = new Set();
   for (const p of players) {
     inside.add(p.id);
-    syncMirror(p);
+    if (busy) syncMirror(p);
   }
-  for (const id of [...mirrors.keys()]) if (!inside.has(id) && !mirrorBusy.has(id)) dropMirror(id);
+  for (const id of [...mirrors.keys()]) if ((!busy || !inside.has(id)) && !mirrorBusy.has(id)) dropMirror(id);
 }, 1);
 
 // ------------------------------------------------ orçamento de tempo por tick
@@ -242,6 +250,7 @@ function overworldReady(ow, cx, cz) {
  * carregado (e, no quadrado da construção, quando a altura dela é conhecida).
  */
 export function canGenerateChunk(dim, cx, cz) {
+  lastDemand = system.currentTick;
   if (inBuild(cx, cz) && baseY === null) {
     ensureBaseY().catch((e) => console.warn("[rick:01] altura da construção: " + e));
     return false;
@@ -328,10 +337,20 @@ function copyChunk(dim, cx, cz) {
 
   const build = BUILD_CHUNKS[key(cx, cz)];
   const { outside, inside } = splitChunk(x0, z0, x0 + 15, z0 + 15, build);
-  for (const r of outside) copyRect(ow, dim, r, minY, maxY);
+  // acima do bloco mais alto do chunk é só ar (a rick:01 já é vazia): não copia
+  let top = minY;
+  for (let x = x0; x < x0 + 16; x++) {
+    for (let z = z0; z < z0 + 16; z++) {
+      const b = ow.getTopmostBlock({ x, z });
+      if (b && b.y > top) top = b.y;
+    }
+  }
+  top = Math.min(top, maxY);
+  for (const r of outside) copyRect(ow, dim, r, minY, top);
   if (inside) {
     copyRect(ow, dim, inside, minY, baseY - 1);
-    clearAbove(dim, inside, baseY + BUILD_BOX.height, maxY);
+    // limpa restos das versões antigas (construção no Y 103–144 e camadas embaixo)
+    clearAbove(dim, inside, baseY + BUILD_BOX.height, Math.min(maxY, 150));
     world.structureManager.place(build.id, dim, { x: build.x, y: baseY, z: build.z });
   }
 }

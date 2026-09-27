@@ -7,14 +7,14 @@ import { system, world } from "@minecraft/server";
 // (abaixo do Y 40) e em pântanos à noite, e peixes/lulas na água.
 
 const DIMENSION_ID = "rick:01";
-const INTERVAL = 10; // ticks entre rodadas
-const ATTEMPTS = 4; // tentativas por jogador por rodada
+const INTERVAL = 40; // ticks entre rodadas
+const ATTEMPTS = 2; // tentativas por jogador por rodada
 const MIN_DIST = 24;
 const MAX_DIST = 64;
-const CAP_RADIUS = 96;
-const CAP_HOSTILE = 30;
-const CAP_PASSIVE = 12;
-const CAP_WATER = 8;
+const CAP_RADIUS = 64;
+const CAP_HOSTILE = 15;
+const CAP_PASSIVE = 8;
+const CAP_WATER = 5;
 
 const overworld = () => world.getDimension("minecraft:overworld");
 
@@ -157,7 +157,7 @@ function attempt(dim, isReady, player, cap) {
     const list = byBiome(WATER_BY_BIOME, biome, null);
     if (!list) return;
     const id = pick(list);
-    spawn(dim, id, { x, y: top.y - 1, z }, id.includes("fish") || id === "minecraft:cod" || id === "minecraft:salmon" ? 3 : 1);
+    spawn(dim, id, { x, y: top.y - 1, z }, id.includes("fish") || id === "minecraft:cod" || id === "minecraft:salmon" ? 2 : 1);
     cap.water++;
     return;
   }
@@ -200,7 +200,7 @@ function attempt(dim, isReady, player, cap) {
     let id = pick(HOSTILE);
     if (!underground && biome.includes("desert") && id === "minecraft:zombie") id = "minecraft:husk";
     if (!underground && /frozen|ice|snow/.test(biome) && id === "minecraft:skeleton") id = "minecraft:stray";
-    spawn(dim, id, pos, id === "minecraft:enderman" || id === "minecraft:witch" ? 1 : 1 + Math.floor(Math.random() * 3));
+    spawn(dim, id, pos, id === "minecraft:enderman" || id === "minecraft:witch" ? 1 : 1 + Math.floor(Math.random() * 2));
     cap.hostile++;
     return;
   }
@@ -209,7 +209,7 @@ function attempt(dim, isReady, player, cap) {
   if (underground || isNight() || cap.passive >= CAP_PASSIVE) return;
   if (!GROUND_FOR_ANIMALS.test(top.typeId) || light < 9) return;
   const id = pick(byBiome(PASSIVE_BY_BIOME, biome, PASSIVE_DEFAULT));
-  spawn(dim, id, pos, 2 + Math.floor(Math.random() * 3));
+  spawn(dim, id, pos, 2 + Math.floor(Math.random() * 2));
   cap.passive++;
 }
 

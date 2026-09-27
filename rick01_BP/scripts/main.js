@@ -33,11 +33,15 @@ const terrain = createTerrainGenerator({
   canGenerateChunk,
   markerBlockId: MARKER_BLOCK,
   registerDimension: false,
-  // até onde o jogador enxerga, como no Galactic Horizons; quantos chunks
-  // cabem por tick é decidido pelo orçamento de tempo em overworld_copy.js
+  // raio em volta do jogador (primeiro o que ele está vendo); no máximo 2
+  // chunks por tick, e menos se o orçamento de tempo de overworld_copy.js acabar
   genRadiusChunks: GEN_RADIUS_CHUNKS,
-  chunksPerTick: 16,
-  tickingRadius: 32 + (GEN_RADIUS_CHUNKS + 1) * 16,
+  chunksPerTick: 2,
+  // ticking area do tamanho mínimo que a API aceita, e solta quando não há
+  // mais nada para gerar em volta (volta sozinha quando precisa)
+  tickingRecenterMargin: 16,
+  tickingRadius: 16 + (GEN_RADIUS_CHUNKS + 1) * 16,
+  releaseIdleTicks: 60,
   // nunca desiste de um chunk
   maxChunkAttempts: Infinity,
   onError: reportError,
