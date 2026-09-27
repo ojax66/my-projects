@@ -18,8 +18,15 @@ function reportError(ctx, err) {
   if (worldLoaded) world.sendMessage(msg);
 }
 
-// Registra a dimensão rick:01; o terreno é copiado do overworld (mesma seed, mesmas coordenadas).
-const terrain = createTerrainGenerator({ dimensionId: DIMENSION_ID, generateColumn, canGenerateChunk, onError: reportError });
+// A world_generator_API só cuida do terreno (copiado do overworld: mesma seed,
+// mesmas coordenadas). A dimensão é criada no startup abaixo.
+const terrain = createTerrainGenerator({
+  dimensionId: DIMENSION_ID,
+  generateColumn,
+  canGenerateChunk,
+  registerDimension: false,
+  onError: reportError,
+});
 terrain.start();
 
 async function goToRick(player) {
@@ -79,6 +86,14 @@ function register(registry, name, description, action) {
 }
 
 system.beforeEvents.startup.subscribe((event) => {
+  // Cria a dimensão rick:01 (Custom Dimension API do @minecraft/server,
+  // como no exemplo oficial microsoft/minecraft-samples/custom_dimensions).
+  try {
+    event.dimensionRegistry.registerCustomDimension(DIMENSION_ID);
+  } catch (e) {
+    reportError("criação da dimensão", e);
+  }
+
   const commands = [
     ["rick:01", "Teleporta para a dimensão rick:01 (0 107 0)", goToRick],
     ["rick:voltar", "Volta da dimensão rick:01 para onde você estava", goBack],

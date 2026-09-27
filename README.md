@@ -5,7 +5,10 @@ Addon
 
 Behavior pack em [`rick01_BP/`](rick01_BP) (pronto para instalar: [`dist/rick01_BP.mcpack`](dist/rick01_BP.mcpack)).
 
-- Cria a dimensão customizada **`rick:01`**.
+- Cria a dimensão customizada **`rick:01`** com a Custom Dimension API do `@minecraft/server`
+  (`dimensionRegistry.registerCustomDimension` no startup, igual ao exemplo oficial
+  [microsoft/minecraft-samples/custom_dimensions](https://github.com/microsoft/minecraft-samples/tree/main/custom_dimensions)).
+  A `world_generator_API.js` é usada só para a geração do terreno.
 - Coloca a construção inteira do `RAMNeighbourhood.mcworld` com o **centro em `0 107 0`**:
   o quadrado dos prints (X -293…203, Z -278…244) vira X -248…248, Z -261…261, e o chão de
   grama fica em Y 106, então você chega em pé no gramado. Vêm junto baús, placas, estantes,
