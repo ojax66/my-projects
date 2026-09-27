@@ -21,7 +21,7 @@ const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 16, GEN_RADIUS_CHUNKS * 16]
 const MIRROR_RECENTER = 16;
 // Milissegundos de script por tick copiando chunks. O jogo ainda gasta tempo
 // dele colocando os blocos depois, fora dessa conta.
-const TICK_BUDGET_MS = 15;
+const TICK_BUDGET_MS = 12;
 
 const MAX_PENDING = 8; // chunks do overworld carregando sozinhos ao mesmo tempo
 const STALE_TICKS = 400; // libera ticking areas de chunks que saíram da fila
@@ -315,35 +315,118 @@ function clearAbove(dim, r, fromY, maxY) {
   }
 }
 
-function copyChunk(dim, cx, cz) {
+// ------------------------------------------------ cópia em fatias
+//
+// Um chunk não é mais copiado numa operação só (dezenas de milhares de
+// blocos numa chamada, que no celular passava do tempo do vigia de script e
+// derrubava o mundo). Ele vira uma lista de passos pequenos — fatias de
+// 16x16x16 (4096 blocos) — e cada tick faz só alguns. Acabou o orçamento do
+// tick, o chunk para onde estava e continua dali no próximo tick (cursor).
+
+/** Erro de "orçamento do tick acabou": não é falha, o chunk continua depois. */
+export const BUDGET = Object.assign(new Error("orçamento do tick acabou"), { isBudget: true });
+export const isBudgetError = (e) => e?.isBudget === true;
+
+const SLICE = 16; // altura de cada fatia
+const OPS_PER_TICK = 10; // fatias por tick, somando todos os chunks (~40 mil blocos)
+
+let opsTick = -1;
+let opsDone = 0;
+function takeOp() {
+  if (system.currentTick !== opsTick) {
+    opsTick = system.currentTick;
+    opsDone = 0;
+  }
+  if (opsDone >= OPS_PER_TICK || !budgetLeft()) return false;
+  opsDone++;
+  return true;
+}
+
+const jobs = new Map(); // "cx,cz" -> { steps, i }
+
+function planChunk(dim, cx, cz) {
   const ow = overworld();
   const minY = Math.max(ow.heightRange.min, dim.heightRange.min);
   const maxY = Math.min(ow.heightRange.max, dim.heightRange.max) - 1;
   const x0 = cx * 16, z0 = cz * 16;
-  if (!ow.isChunkLoaded({ x: x0, y: 0, z: z0 })) {
-    // descarregou: pede a ticking area de novo
-    releaseArea(key(cx, cz));
-    throw new Error("chunk do overworld não carregado");
-  }
-
   const build = BUILD_CHUNKS[key(cx, cz)];
   const { outside, inside } = splitChunk(x0, z0, x0 + 15, z0 + 15, build);
-  // acima do bloco mais alto do chunk é só ar (a rick:01 já é vazia): não copia
+  const steps = [];
+
+  // 1) altura do bloco mais alto do chunk (acima disso é só ar: não copia)
   let top = minY;
-  for (let x = x0; x < x0 + 16; x++) {
-    for (let z = z0; z < z0 + 16; z++) {
-      const b = ow.getTopmostBlock({ x, z });
-      if (b && b.y > top) top = b.y;
+  for (let q = 0; q < 4; q++) {
+    steps.push({
+      cheap: true, // só leitura: não gasta o limite de fatias
+      run() {
+        for (let x = x0 + q * 4; x < x0 + q * 4 + 4; x++) {
+          for (let z = z0; z < z0 + 16; z++) {
+            const b = ow.getTopmostBlock({ x, z });
+            if (b && b.y > top) top = b.y;
+          }
+        }
+      },
+    });
+  }
+
+  // 2) fatias do overworld, de baixo para cima
+  // (quando uma fatia já passa do topo, as de cima do mesmo retângulo são puladas)
+  const slices = (r, yTop) => {
+    const group = {};
+    for (let y = minY; y <= maxY; y += SLICE) {
+      const y0 = y;
+      steps.push({
+        group,
+        run() {
+          const y1 = Math.min(y0 + SLICE - 1, yTop(), maxY);
+          if (y1 < y0) return "acima-do-topo";
+          copyRect(ow, dim, r, y0, y1);
+        },
+      });
     }
-  }
-  top = Math.min(top, maxY);
-  for (const r of outside) copyRect(ow, dim, r, minY, top);
+  };
+  for (const r of outside) slices(r, () => top);
   if (inside) {
-    copyRect(ow, dim, inside, minY, baseY - 1);
-    // limpa restos das versões antigas (construção no Y 103–144 e camadas embaixo)
-    clearAbove(dim, inside, baseY + BUILD_BOX.height, Math.min(maxY, 150));
-    world.structureManager.place(build.id, dim, { x: build.x, y: baseY, z: build.z });
+    slices(inside, () => baseY - 1);
+    // 3) limpa restos das versões antigas (construção no Y 103–144 e camadas embaixo)
+    for (let y = baseY + BUILD_BOX.height; y <= Math.min(maxY, 150); y += SLICE) {
+      const y0 = y;
+      steps.push({ run: () => clearAbove(dim, inside, y0, Math.min(y0 + SLICE - 1, maxY, 150)) });
+    }
+    // 4) o pedaço da construção (16x42x16)
+    steps.push({ run: () => world.structureManager.place(build.id, dim, { x: build.x, y: baseY, z: build.z }) });
   }
+  return { steps, i: 0 };
+}
+
+function runChunk(dim, cx, cz) {
+  const ow = overworld();
+  const k = key(cx, cz);
+  if (!ow.isChunkLoaded({ x: cx * 16, y: 0, z: cz * 16 })) {
+    // descarregou: pede a ticking area de novo (o cursor continua salvo)
+    releaseArea(k);
+    throw new Error("chunk do overworld não carregado");
+  }
+  let job = jobs.get(k);
+  if (!job) {
+    job = planChunk(dim, cx, cz);
+    jobs.set(k, job);
+  }
+  while (job.i < job.steps.length) {
+    const step = job.steps[job.i];
+    if (step.cheap ? !budgetLeft() : !takeOp()) throw BUDGET;
+    const t0 = Date.now();
+    let r;
+    try {
+      r = step.run();
+    } finally {
+      spentMs += Date.now() - t0;
+    }
+    job.i++;
+    // fatia acima do topo: as próximas desse retângulo também são só ar
+    if (r === "acima-do-topo") while (job.steps[job.i]?.group === step.group) job.i++;
+  }
+  jobs.delete(k);
 }
 
 /** generateColumn da API: a cópia é feita por chunk, na primeira coluna. */
@@ -352,14 +435,8 @@ export function generateColumn(dim, x, z) {
   const lz = ((z % 16) + 16) % 16;
   if (lx !== 0 || lz !== 0) return undefined;
   const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
-  const t0 = Date.now();
-  try {
-    copyChunk(dim, cx, cz);
-  } finally {
-    budgetLeft();
-    spentMs += Date.now() - t0;
-  }
-  // só solta o overworld depois de copiar; se falhar, a área fica para a próxima tentativa
+  runChunk(dim, cx, cz);
+  // só solta o overworld depois de terminar; se parar no meio, a área fica
   releaseArea(key(cx, cz));
   return undefined;
 }

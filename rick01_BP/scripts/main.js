@@ -1,6 +1,6 @@
 import { CommandPermissionLevel, CustomCommandStatus, system, world } from "@minecraft/server";
 import { createTerrainGenerator } from "./world_generator_API.js";
-import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
+import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, isBudgetError, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
 import { startSpawner } from "./rick01/spawner.js";
 
 export const DIMENSION_ID = "rick:01";
@@ -10,6 +10,7 @@ const MARKER_BLOCK = "minecraft:structure_void";
 
 // Erros vão só para o log de conteúdo (nada no chat); tudo que falha é tentado de novo.
 function reportError(ctx, err) {
+  if (isBudgetError(err)) return; // orçamento do tick acabou: normal, continua no próximo
   console.warn("[rick:01] " + ctx + ": " + err);
 }
 
@@ -33,10 +34,13 @@ const terrain = createTerrainGenerator({
   canGenerateChunk,
   markerBlockId: MARKER_BLOCK,
   registerDimension: false,
-  // raio em volta do jogador (primeiro o que ele está vendo); no máximo 3
-  // chunks por tick, e menos se o orçamento de tempo de overworld_copy.js acabar
+  // raio em volta do jogador (primeiro o que ele está vendo). O trabalho por
+  // tick é limitado em overworld_copy.js (fatias pequenas + tempo); um chunk
+  // que não terminou continua no próximo tick de onde parou.
   genRadiusChunks: GEN_RADIUS_CHUNKS,
-  chunksPerTick: 3,
+  chunksPerTick: 4,
+  // "orçamento acabou" não é erro: não é repetido no mesmo tick
+  isBudgetError,
   // ticking area do tamanho mínimo que a API aceita. Fica ligada enquanto o
   // jogador está na dimensão: soltar e recriar fazia os chunks descarregarem
   // e recarregarem (geração parando e blocos sem aparecer).
@@ -61,7 +65,16 @@ async function generateSpawnChunk(dim) {
   });
   try {
     if (dim.getBlock(marker)?.typeId === MARKER_BLOCK) return;
-    generateColumn(dim, 0, 0);
+    // a cópia é em fatias: vai continuando a cada tick até terminar
+    for (;;) {
+      try {
+        generateColumn(dim, 0, 0);
+        break;
+      } catch (e) {
+        if (!isBudgetError(e)) throw e;
+        await system.waitTicks(1);
+      }
+    }
     dim.getBlock(marker)?.setType(MARKER_BLOCK);
   } finally {
     if (world.tickingAreaManager.hasTickingArea(id)) world.tickingAreaManager.removeTickingArea(id);

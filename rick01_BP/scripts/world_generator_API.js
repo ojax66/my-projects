@@ -86,6 +86,9 @@ export function createTerrainGenerator(config) {
   // vezes (limite para um erro que não some na hora não travar o jogo) e
   // depois de novo nos ticks seguintes
   const sameTickAttempts = config.sameTickAttempts ?? 5;
+  // opcional: (erro) => boolean. true = "orçamento do tick acabou" — não é
+  // falha: o chunk continua no próximo tick e não é repetido no mesmo tick.
+  const isBudgetError = config.isBudgetError ?? (() => false);
   // opcional: depois de quantos ticks sem nada para gerar em volta do jogador a
   // ticking area dele é solta (ela volta sozinha quando aparece chunk novo).
   // Sem isso a área fica ligada para sempre, simulando centenas de chunks.
@@ -146,6 +149,7 @@ export function createTerrainGenerator(config) {
     const sx = cx * chunkSize, sz = cz * chunkSize;
     const heights = [];
     let hadError = false;
+    let budget = false;
 
     // Uma chunk que volta pra mesa DEPOIS DE PRONTA é trabalho jogado fora, e
     // é assim que a geração fica lenta sem nunca dar erro.
@@ -162,6 +166,7 @@ export function createTerrainGenerator(config) {
           heights.push({ x, z, h: generateColumn(dim, x, z) });
         } catch (e) {
           hadError = true;
+          if (isBudgetError(e)) budget = true;
           onError("generateColumn " + x + "," + z, e);
         }
       }
@@ -180,7 +185,7 @@ export function createTerrainGenerator(config) {
       }
     }
 
-    return { heights, hadError };
+    return { heights, hadError, budget };
   }
 
   function pureHeights(cx, cz) {
@@ -314,7 +319,7 @@ export function createTerrainGenerator(config) {
       if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) return;
 
       let r = genChunk(dim, next.cx, next.cz);
-      for (let t = 1; r.hadError && t < sameTickAttempts; t++) r = genChunk(dim, next.cx, next.cz);
+      for (let t = 1; r.hadError && !r.budget && t < sameTickAttempts; t++) r = genChunk(dim, next.cx, next.cz);
       if (!r.hadError) {
         done.add(k);
         attempts.delete(k);
