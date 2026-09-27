@@ -208,7 +208,11 @@ function copyChunk(dim, cx, cz) {
   const minY = Math.max(ow.heightRange.min, dim.heightRange.min);
   const maxY = Math.min(ow.heightRange.max, dim.heightRange.max) - 1;
   const x0 = cx * 16, z0 = cz * 16;
-  if (!ow.isChunkLoaded({ x: x0, y: 0, z: z0 })) throw new Error("chunk do overworld não carregado");
+  if (!ow.isChunkLoaded({ x: x0, y: 0, z: z0 })) {
+    // descarregou: pede a ticking area de novo
+    releaseArea(key(cx, cz));
+    throw new Error("chunk do overworld não carregado");
+  }
 
   const build = BUILD_CHUNKS[key(cx, cz)];
   const { outside, inside } = splitChunk(x0, z0, x0 + 15, z0 + 15, build);
@@ -226,10 +230,8 @@ export function generateColumn(dim, x, z) {
   const lz = ((z % 16) + 16) % 16;
   if (lx !== 0 || lz !== 0) return undefined;
   const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
-  try {
-    copyChunk(dim, cx, cz);
-  } finally {
-    releaseArea(key(cx, cz));
-  }
+  copyChunk(dim, cx, cz);
+  // só solta o overworld depois de copiar; se falhar, a área fica para a próxima tentativa
+  releaseArea(key(cx, cz));
   return undefined;
 }

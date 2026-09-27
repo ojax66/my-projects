@@ -74,8 +74,12 @@ export function createTerrainGenerator(config) {
   // para eles já irem se preparando.
   const canGenerateChunk = config.canGenerateChunk ?? null;
   const prefetchChunks = config.prefetchChunks ?? 6;
-  // quanto esperar (ticks) antes de tentar de novo um chunk ou ticking area que falhou
-  const retryDelayTicks = config.retryDelayTicks ?? 40;
+  // Chunk que dá erro é tentado de novo no mesmo tick (até sameTickAttempts
+  // vezes, para um erro que não some na hora não travar o jogo) e depois de novo
+  // nos ticks seguintes, até dar certo. O próximo só é gerado depois dele.
+  const sameTickAttempts = config.sameTickAttempts ?? 5;
+  // ticking area que falhou é pedida de novo depois de quantos ticks (0 = no próximo)
+  const retryDelayTicks = config.retryDelayTicks ?? 0;
   const chunkSize = config.chunkSize ?? 16;
   const genRadiusChunks = config.genRadiusChunks ?? 3;
   const chunksPerTick = config.chunksPerTick ?? 1;
@@ -195,31 +199,21 @@ export function createTerrainGenerator(config) {
         n++;
       }
     }
-    const now = system.currentTick;
     for (let i = 0; i < chunksPerTick; i++) {
-      // o mais perto primeiro; chunks que falharam esperam um pouco e são tentados de novo
-      let idx = -1;
-      for (let j = 0; j < q.length; j++) {
-        if (done.has(key(q[j].cx, q[j].cz))) {
-          q.splice(j--, 1);
-          continue;
-        }
-        if ((q[j].retryAt ?? 0) <= now) {
-          idx = j;
-          break;
-        }
-      }
-      if (idx < 0) return;
-      const next = q[idx];
-      // se o mais perto ainda não está pronto, espera por ele
+      // tira da frente o que já foi gerado
+      while (q.length && done.has(key(q[0].cx, q[0].cz))) q.shift();
+      const next = q[0];
+      if (!next) return;
+      // sempre o mais perto primeiro: se ele não está pronto, espera por ele
       if (canGenerateChunk && !canGenerateChunk(dim, next.cx, next.cz)) return;
-      const r = genChunk(dim, next.cx, next.cz);
-      if (!r.hadError) {
-        done.add(key(next.cx, next.cz));
-        q.splice(idx, 1);
-      } else {
-        next.retryAt = now + retryDelayTicks;
+      let ok = false;
+      for (let attempt = 0; attempt < sameTickAttempts && !ok; attempt++) {
+        ok = !genChunk(dim, next.cx, next.cz).hadError;
       }
+      // deu errado: continua na frente da fila e é tentado de novo no próximo tick
+      if (!ok) return;
+      done.add(key(next.cx, next.cz));
+      q.shift();
     }
   }
 
@@ -233,7 +227,7 @@ export function createTerrainGenerator(config) {
     // uma de cada vez: sem isso uma ticking area nova era criada a cada tick
     // enquanto a anterior carregava, até estourar o limite
     if (syncing.has(player.id)) return;
-    if ((syncRetryAt.get(player.id) ?? 0) > system.currentTick) return;
+    if ((syncRetryAt.get(player.id) ?? 0) > system.currentTick) return; // tenta de novo no próximo tick
     const loc = player.location;
     const cur = tickAreas.get(player.id);
     if (cur && Math.abs(loc.x - cur.x) < recenterMargin && Math.abs(loc.z - cur.z) < recenterMargin) return;
