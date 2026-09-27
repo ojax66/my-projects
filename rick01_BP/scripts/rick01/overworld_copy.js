@@ -1,11 +1,10 @@
 import { BlockVolume, StructureSaveMode, system, world } from "@minecraft/server";
 import { BUILD_BOX, BUILD_CHUNKS } from "./tiles.js";
+import { isRickDimension } from "./dimensions.js";
 
-export const DIMENSION_ID = "rick:01";
-
-// Terreno da rick:01 = cópia exata do overworld deste mundo, nas mesmas
-// coordenadas. O próprio jogo gera o chunk do overworld a partir da seed
-// (ticking area temporária) e ele é copiado inteiro para a rick:01 com
+// Terreno das dimensões rick:NN = cópia exata do overworld deste mundo, nas
+// mesmas coordenadas. O próprio jogo gera o chunk do overworld a partir da
+// seed (ticking area temporária) e ele é copiado inteiro para a dimensão com
 // structureManager — mesmos blocos, minérios, cavernas, árvores, água,
 // baús de estruturas e as entidades que estiverem no chunk.
 //
@@ -13,8 +12,13 @@ export const DIMENSION_ID = "rick:01";
 // chunk) é colocado junto, na altura do chão do overworld no centro do
 // quadrado; abaixo dela vem o overworld copiado, acima só o céu.
 
+// Tudo aqui é COMPARTILHADO pelas 55 dimensões: um orçamento por tick só (55
+// gerando juntas nunca fazem mais trabalho por tick que uma sozinha), os
+// pedidos de chunk do overworld (duas dimensões precisando do mesmo chunk usam
+// a mesma ticking area) e a altura da construção.
+//
 // Velocidade: uma ticking area no overworld acompanha cada jogador que está
-// na rick:01 (o "espelho"), então os chunks do overworld já estão carregados
+// numa rick:NN (o "espelho"), então os chunks do overworld já estão carregados
 // quando chega a vez deles. Chunk que ficar fora do espelho é pedido sozinho.
 export const GEN_RADIUS_CHUNKS = 6;
 const MIRROR_RADII = [(GEN_RADIUS_CHUNKS + 1) * 16 + 16, GEN_RADIUS_CHUNKS * 16];
@@ -88,7 +92,7 @@ export function ensureBaseY() {
   return baseYPromise;
 }
 
-/** Ponto de chegada do /rick:01: em pé na grama no centro da construção. */
+/** Ponto de chegada do /rick:rickNN: em pé na grama no centro da construção. */
 export function spawnPoint() {
   return { x: 0.5, y: baseY + BUILD_BOX.grassOffset + 1, z: 0.5 };
 }
@@ -128,7 +132,7 @@ function requestOverworldChunk(cx, cz) {
       entry.since = system.currentTick;
     },
     (e) => {
-      console.warn("[rick:01] ticking area do overworld " + k + ": " + e);
+      console.warn("[rick] ticking area do overworld " + k + ": " + e);
       releaseArea(k);
       throw e;
     },
@@ -187,7 +191,7 @@ async function syncMirror(player) {
   } catch (e) {
     // tenta de novo no próximo tick
     if (manager.hasTickingArea(id)) manager.removeTickingArea(id);
-    console.warn("[rick:01] espelho do overworld: " + e);
+    console.warn("[rick] espelho do overworld: " + e);
   } finally {
     mirrorBusy.delete(player.id);
   }
@@ -199,20 +203,22 @@ function dropMirror(playerId) {
   mirrors.delete(playerId);
 }
 
-// Todo tick: espelho para quem está na rick:01, solta o de quem saiu.
+// Todo tick: espelho para quem está em alguma rick:NN, solta o de quem saiu.
+// (uma passada só pelos jogadores, não uma por dimensão)
 system.runInterval(() => {
-  let players;
-  try {
-    players = world.getDimension(DIMENSION_ID).getPlayers();
-  } catch {
-    return;
-  }
   const inside = new Set();
-  for (const p of players) {
+  for (const p of world.getAllPlayers()) {
+    let id;
+    try {
+      id = p.dimension.id;
+    } catch {
+      continue;
+    }
+    if (!isRickDimension(id)) continue;
     inside.add(p.id);
     syncMirror(p);
   }
-  for (const id of [...mirrors.keys()]) if (!inside.has(id) && !mirrorBusy.has(id)) dropMirror(id);
+  if (mirrors.size) for (const id of [...mirrors.keys()]) if (!inside.has(id) && !mirrorBusy.has(id)) dropMirror(id);
 }, 1);
 
 // ------------------------------------------------ orçamento de tempo por tick
@@ -243,7 +249,7 @@ function overworldReady(ow, cx, cz) {
  */
 export function canGenerateChunk(dim, cx, cz) {
   if (inBuild(cx, cz) && baseY === null) {
-    ensureBaseY().catch((e) => console.warn("[rick:01] altura da construção: " + e));
+    ensureBaseY().catch((e) => console.warn("[rick] altura da construção: " + e));
     return false;
   }
   if (overworldReady(overworld(), cx, cz)) return budgetLeft();
@@ -342,7 +348,7 @@ function takeOp() {
   return true;
 }
 
-const jobs = new Map(); // "cx,cz" -> { steps, i }
+const jobs = new Map(); // "dimensão|cx,cz" -> { steps, i }
 
 function planChunk(dim, cx, cz) {
   const ow = overworld();
@@ -388,8 +394,10 @@ function planChunk(dim, cx, cz) {
   for (const r of outside) slices(r, () => top);
   if (inside) {
     slices(inside, () => baseY - 1);
-    // 3) limpa restos das versões antigas (construção no Y 103–144 e camadas embaixo)
-    for (let y = baseY + BUILD_BOX.height; y <= Math.min(maxY, 150); y += SLICE) {
+    // 3) limpa restos das versões antigas do addon (construção no Y 103–144 e
+    //    camadas embaixo) — só existiram na rick:01
+    const cleanTop = dim.id === "rick:01" ? Math.min(maxY, 150) : -Infinity;
+    for (let y = baseY + BUILD_BOX.height; y <= cleanTop; y += SLICE) {
       const y0 = y;
       steps.push({ run: () => clearAbove(dim, inside, y0, Math.min(y0 + SLICE - 1, maxY, 150)) });
     }
@@ -407,10 +415,13 @@ function runChunk(dim, cx, cz) {
     releaseArea(k);
     throw new Error("chunk do overworld não carregado");
   }
-  let job = jobs.get(k);
+  const jk = dim.id + "|" + k;
+  let job = jobs.get(jk);
   if (!job) {
+    // chunk abandonado (jogador foi embora) não fica acumulando
+    if (jobs.size >= 256) jobs.delete(jobs.keys().next().value);
     job = planChunk(dim, cx, cz);
-    jobs.set(k, job);
+    jobs.set(jk, job);
   }
   while (job.i < job.steps.length) {
     const step = job.steps[job.i];
@@ -426,7 +437,7 @@ function runChunk(dim, cx, cz) {
     // fatia acima do topo: as próximas desse retângulo também são só ar
     if (r === "acima-do-topo") while (job.steps[job.i]?.group === step.group) job.i++;
   }
-  jobs.delete(k);
+  jobs.delete(jk);
 }
 
 /** generateColumn da API: a cópia é feita por chunk, na primeira coluna. */

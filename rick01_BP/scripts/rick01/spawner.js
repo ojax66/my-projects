@@ -1,12 +1,12 @@
 import { system, world } from "@minecraft/server";
+import { isRickDimension } from "./dimensions.js";
 
-// Mobs na rick:01. Os que já existem no chunk do overworld vêm junto na cópia;
+// Mobs nas dimensões rick:NN. Os que já existem no chunk do overworld vêm junto na cópia;
 // este spawner faz o resto nascer como no overworld: animais de dia no chão do
 // bioma certo (o bioma é lido do overworld, na mesma coordenada), monstros no
 // escuro (à noite na superfície ou em cavernas), slimes nos slime chunks
 // (abaixo do Y 40) e em pântanos à noite, e peixes/lulas na água.
 
-const DIMENSION_ID = "rick:01";
 const INTERVAL = 40; // ticks entre rodadas
 const ATTEMPTS = 2; // tentativas por jogador por rodada
 const MIN_DIST = 24;
@@ -213,28 +213,32 @@ function attempt(dim, isReady, player, cap) {
   cap.passive++;
 }
 
-/** Liga o spawner. `isReady(x, z)` diz se aquele chunk da rick:01 já foi gerado. */
+/**
+ * Liga o spawner (um só para as 55 dimensões: uma passada pelos jogadores a
+ * cada rodada, só nas dimensões onde tem alguém).
+ * `isReady(dimId, x, z)` diz se aquele chunk da dimensão já foi gerado.
+ */
 export function startSpawner(isReady) {
   system.runInterval(() => {
-    let dim;
-    try {
-      dim = world.getDimension(DIMENSION_ID);
-    } catch {
-      return;
-    }
-    const players = dim.getPlayers();
-    if (!players.length) return;
     try {
       if (world.gameRules.doMobSpawning === false) return;
     } catch {
       // sem gamerule: segue
     }
-    for (const player of players) {
+    for (const player of world.getAllPlayers()) {
+      let dim;
       try {
+        dim = player.dimension;
+        if (!isRickDimension(dim.id)) continue;
+      } catch {
+        continue;
+      }
+      try {
+        const ready = (x, z) => isReady(dim.id, x, z);
         const cap = counts(dim, player.location);
-        for (let i = 0; i < ATTEMPTS; i++) attempt(dim, isReady, player, cap);
+        for (let i = 0; i < ATTEMPTS; i++) attempt(dim, ready, player, cap);
       } catch (e) {
-        console.warn("[rick:01] spawner: " + e);
+        console.warn("[rick] spawner: " + e);
       }
     }
   }, INTERVAL);

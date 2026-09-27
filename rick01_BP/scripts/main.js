@@ -2,8 +2,8 @@ import { CommandPermissionLevel, CustomCommandStatus, system, world } from "@min
 import { createTerrainGenerator } from "./world_generator_API.js";
 import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, isBudgetError, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
 import { startSpawner } from "./rick01/spawner.js";
+import { DIMENSIONS, isRickDimension } from "./rick01/dimensions.js";
 
-export const DIMENSION_ID = "rick:01";
 // marcador de chunk gerado da API (trocado do barrier para os chunks das
 // versões antigas do addon serem gerados de novo)
 const MARKER_BLOCK = "minecraft:structure_void";
@@ -11,7 +11,7 @@ const MARKER_BLOCK = "minecraft:structure_void";
 // Erros vão só para o log de conteúdo (nada no chat); tudo que falha é tentado de novo.
 function reportError(ctx, err) {
   if (isBudgetError(err)) return; // orçamento do tick acabou: normal, continua no próximo
-  console.warn("[rick:01] " + ctx + ": " + err);
+  console.warn("[rick] " + ctx + ": " + err);
 }
 
 // Repete uma etapa até dar certo (ex.: ticking area que falhou por falta de espaço).
@@ -26,38 +26,53 @@ async function retry(fn) {
   }
 }
 
-// A world_generator_API só cuida do terreno (copiado do overworld: mesma seed,
-// mesmas coordenadas, com a construção junto). A dimensão é criada no startup abaixo.
-const terrain = createTerrainGenerator({
-  dimensionId: DIMENSION_ID,
-  generateColumn,
-  canGenerateChunk,
-  markerBlockId: MARKER_BLOCK,
-  registerDimension: false,
-  // raio em volta do jogador (primeiro o que ele está vendo). O trabalho por
-  // tick é limitado em overworld_copy.js (fatias pequenas + tempo); um chunk
-  // que não terminou continua no próximo tick de onde parou.
-  genRadiusChunks: GEN_RADIUS_CHUNKS,
-  chunksPerTick: 4,
-  // "orçamento acabou" não é erro: não é repetido no mesmo tick
-  isBudgetError,
-  // ticking area do tamanho mínimo que a API aceita. Fica ligada enquanto o
-  // jogador está na dimensão: soltar e recriar fazia os chunks descarregarem
-  // e recarregarem (geração parando e blocos sem aparecer).
-  tickingRecenterMargin: 16,
-  tickingRadius: 16 + (GEN_RADIUS_CHUNKS + 1) * 16,
-  // nunca desiste de um chunk
-  maxChunkAttempts: Infinity,
-  onError: reportError,
-});
-terrain.start();
-startSpawner((x, z) => terrain.isChunkReady(x, z));
+// Um gerador da world_generator_API por dimensão (a API só cuida do terreno:
+// cópia do overworld com a construção junto). O trabalho por tick é limitado
+// em overworld_copy.js, num orçamento só para todas as dimensões juntas.
+const generators = new Map();
+for (const d of DIMENSIONS) {
+  generators.set(
+    d.id,
+    createTerrainGenerator({
+      dimensionId: d.id,
+      generateColumn,
+      canGenerateChunk,
+      markerBlockId: MARKER_BLOCK,
+      registerDimension: false,
+      // raio em volta do jogador (primeiro o que ele está vendo); um chunk que
+      // não terminou continua no próximo tick de onde parou
+      genRadiusChunks: GEN_RADIUS_CHUNKS,
+      chunksPerTick: 4,
+      // "orçamento acabou" não é erro: não é repetido no mesmo tick
+      isBudgetError,
+      // ticking area do tamanho mínimo que a API aceita. Fica ligada enquanto
+      // o jogador está na dimensão: soltar e recriar fazia os chunks
+      // descarregarem e recarregarem (geração parando e blocos sem aparecer).
+      tickingRecenterMargin: 16,
+      tickingRadius: 16 + (GEN_RADIUS_CHUNKS + 1) * 16,
+      // nunca desiste de um chunk
+      maxChunkAttempts: Infinity,
+      onError: reportError,
+    }),
+  );
+}
+
+// Cada gerador só é ligado quando alguém entra na dimensão dele: as que
+// ninguém visitou não gastam nada (nem o loop por tick da API).
+const started = new Set();
+function ensureStarted(dimId) {
+  if (started.has(dimId) || !generators.has(dimId)) return;
+  started.add(dimId);
+  generators.get(dimId).start();
+}
+
+startSpawner((dimId, x, z) => generators.get(dimId)?.isChunkReady(x, z) ?? false);
 
 // Gera na hora o chunk onde o jogador vai chegar, para ele não cair no vazio.
-async function generateSpawnChunk(dim) {
+async function generateSpawnChunk(dim, n) {
   const hr = dim.heightRange;
   const marker = { x: 0, y: hr.min, z: 0 };
-  const id = "rick01_spawn";
+  const id = "rick_spawn_" + n;
   await world.tickingAreaManager.createTickingArea(id, {
     dimension: dim,
     from: { x: 0, y: hr.min, z: 0 },
@@ -81,40 +96,61 @@ async function generateSpawnChunk(dim) {
   }
 }
 
-async function goToRick(player) {
-  const dim = world.getDimension(DIMENSION_ID);
-  player.onScreenDisplay.setActionBar("§aAbrindo portal para rick:01...");
+async function goTo(player, d) {
+  const dim = world.getDimension(d.id);
+  player.onScreenDisplay.setActionBar("§aAbrindo portal para " + d.id + "...");
+  ensureStarted(d.id);
   await retry(() => ensureBaseY());
   await preloadChunks([[0, 0]]);
-  await retry(() => generateSpawnChunk(dim));
+  await retry(() => generateSpawnChunk(dim, d.n));
   player.teleport(spawnPoint(), { dimension: dim });
 }
 
-system.beforeEvents.startup.subscribe((event) => {
-  // Cria a dimensão rick:01 (Custom Dimension API do @minecraft/server,
-  // como no exemplo oficial microsoft/minecraft-samples/custom_dimensions).
+// Quem chega numa rick:NN por outro caminho (/tp, entrou no mundo já lá dentro)
+// também liga o gerador daquela dimensão.
+function checkPlayer(player) {
   try {
-    event.dimensionRegistry.registerCustomDimension(DIMENSION_ID);
-  } catch (e) {
-    reportError("criação da dimensão", e);
+    const id = player.dimension.id;
+    if (isRickDimension(id)) ensureStarted(id);
+  } catch {
+    // jogador saindo
   }
+}
+world.afterEvents.playerDimensionChange.subscribe((e) => {
+  if (isRickDimension(e.toDimension.id)) ensureStarted(e.toDimension.id);
+});
+world.afterEvents.playerSpawn.subscribe((e) => checkPlayer(e.player));
+world.afterEvents.worldLoad.subscribe(() => {
+  for (const p of world.getAllPlayers()) checkPlayer(p);
+});
 
-  try {
-    event.customCommandRegistry.registerCommand(
-      {
-        name: "rick:rick01",
-        description: "Teleporta para a construção na dimensão rick:01",
-        permissionLevel: CommandPermissionLevel.Any,
-        cheatsRequired: false,
-      },
-      (origin) => {
-        const player = origin.sourceEntity ?? origin.initiator;
-        if (player?.typeId !== "minecraft:player") return { status: CustomCommandStatus.Failure, message: "Use o comando como jogador." };
-        system.run(() => goToRick(player).catch((e) => reportError("/rick:rick01", e)));
-        return { status: CustomCommandStatus.Success };
-      },
-    );
-  } catch (e) {
-    reportError("registro do comando /rick:rick01", e);
+system.beforeEvents.startup.subscribe((event) => {
+  for (const d of DIMENSIONS) {
+    // Cria a dimensão (Custom Dimension API do @minecraft/server, como no
+    // exemplo oficial microsoft/minecraft-samples/custom_dimensions).
+    try {
+      event.dimensionRegistry.registerCustomDimension(d.id);
+    } catch (e) {
+      reportError("criação da dimensão " + d.id, e);
+    }
+
+    try {
+      event.customCommandRegistry.registerCommand(
+        {
+          name: d.command,
+          description: "Teleporta para a construção na dimensão " + d.id,
+          permissionLevel: CommandPermissionLevel.Any,
+          cheatsRequired: false,
+        },
+        (origin) => {
+          const player = origin.sourceEntity ?? origin.initiator;
+          if (player?.typeId !== "minecraft:player") return { status: CustomCommandStatus.Failure, message: "Use o comando como jogador." };
+          system.run(() => goTo(player, d).catch((e) => reportError("/" + d.command, e)));
+          return { status: CustomCommandStatus.Success };
+        },
+      );
+    } catch (e) {
+      reportError("registro do comando /" + d.command, e);
+    }
   }
 });
