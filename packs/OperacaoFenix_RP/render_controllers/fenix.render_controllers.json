@@ -39,13 +39,14 @@
             "Texture.skin_0",
             "Texture.skin_1",
             "Texture.skin_2",
-            "Texture.skin_3"
+            "Texture.skin_3",
+            "Texture.skin_4"
           ]
         }
       },
       "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 3)]"
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 4)]"
       ],
       "materials": [
         {
@@ -71,13 +72,14 @@
             "Texture.skin_0",
             "Texture.skin_1",
             "Texture.skin_2",
-            "Texture.skin_3"
+            "Texture.skin_3",
+            "Texture.skin_4"
           ]
         }
       },
       "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 3)]"
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 4)]"
       ],
       "materials": [
         {
@@ -98,7 +100,8 @@
             "Texture.skin_0",
             "Texture.skin_1",
             "Texture.skin_2",
-            "Texture.skin_3"
+            "Texture.skin_3",
+            "Texture.skin_4"
           ]
         }
       },
@@ -109,7 +112,7 @@
         }
       ],
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 3)]"
+        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 4)]"
       ],
       "part_visibility": [
         {
@@ -142,7 +145,8 @@
             "Texture.skin_0",
             "Texture.skin_1",
             "Texture.skin_2",
-            "Texture.skin_3"
+            "Texture.skin_3",
+            "Texture.skin_4"
           ]
         }
       },
@@ -153,7 +157,7 @@
         }
       ],
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 3)]"
+        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 4)]"
       ],
       "part_visibility": [
         {
@@ -207,7 +211,8 @@
             "Texture.skin_0",
             "Texture.skin_1",
             "Texture.skin_2",
-            "Texture.skin_3"
+            "Texture.skin_3",
+            "Texture.skin_4"
           ]
         }
       },
@@ -218,7 +223,7 @@
         }
       ],
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 3)]"
+        "Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, 4)]"
       ],
       "part_visibility": [
         {
