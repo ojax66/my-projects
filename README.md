@@ -7,7 +7,7 @@ Add-on para **Minecraft Bedrock** (1.21.90+, Script API `@minecraft/server` 2.0.
 ### Instalação
 
 ```bash
-python3 tools/build.py          # gera dist/OperacaoFenix.mcaddon
+python3 tools/build.py          # gera dist/OperacaoFenix.mcaddon e o plugin .whl
 ```
 
 Abra o `.mcaddon` no Minecraft e ative os dois packs (comportamento + recursos) no mundo. Não precisa de experimentos.
@@ -38,10 +38,25 @@ Tempos e raios ficam em `packs/OperacaoFenix_BP/scripts/config.js`.
 
 ### Skins (corpo e clone na cápsula)
 
-O Bedrock **não deixa add-ons lerem a skin real do jogador**. Por isso o corpo no chão e o clone dentro do vidro usam skins registradas no pack:
+O Bedrock **não deixa add-ons lerem a skin dos jogadores**, mas o servidor recebe essa skin quando o jogador entra. Por isso há dois jeitos:
 
-1. Coloque a skin em `skins/<Gamertag>.png` (ou `skins/<Gamertag>.slim.png` para braços finos, estilo Alex).
-2. Rode `node tools/sync-skins.mjs`.
+#### Servidor dedicado com Endstone (automático)
+
+O plugin `server_plugin/` captura a skin real de cada jogador ao entrar (e quando ele troca de skin) e a grava no resource pack da Operação Fênix.
+
+1. Instale o [Endstone](https://endstone.dev) no servidor dedicado (Bedrock Dedicated Server, Linux ou Windows).
+2. Instale os dois packs no mundo.
+3. Copie `dist/endstone_operacao_fenix-1.0.0-py3-none-any.whl` para a pasta `plugins/` do servidor.
+4. Inicie o servidor. Cada jogador que entrar tem a skin registrada automaticamente.
+
+Uma skin nova ou trocada aparece **depois do próximo reinício do servidor**. É quando o servidor recarrega os packs e os jogadores baixam a versão nova. O plugin sobe a versão do resource pack sozinho e guarda as skins em `plugins/operacao_fenix/`, então atualizar o add-on não apaga nada.
+
+Funciona com skins clássicas (64x64, 64x32 antigas e HD 128x128), largas ou slim (detectadas sozinhas). Skins do **criador de personagem** (persona) usam um modelo próprio que não cabe no corpo padrão; esses jogadores aparecem como Steve.
+
+#### Sem servidor dedicado (manual)
+
+1. Coloque a skin em `skins/<Gamertag>.png` (ou `skins/<Gamertag>.slim.png` para braços finos).
+2. Rode `python3 tools/sync_skins.py`.
 3. Gere o `.mcaddon` de novo.
 
 Quem não tem skin registrada aparece com o Steve.
@@ -55,6 +70,7 @@ packs/OperacaoFenix_BP/   comportamento: entidades, itens, receitas e scripts
   scripts/corpse.js         corpo com os itens
   scripts/ui.js             formulários
 packs/OperacaoFenix_RP/   recursos: modelos, texturas, UI (ui/server_form.json)
-tools/                    build do .mcaddon e gerador de skins
+server_plugin/            plugin Endstone que captura as skins reais
+tools/                    build (.mcaddon + plugin) e registro manual de skins
 skins/                    skins dos jogadores (entrada do sync-skins)
 ```

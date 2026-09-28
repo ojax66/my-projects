@@ -1,0 +1,210 @@
+"""Gera os arquivos do add-on que desenham o corpo e o clone com a skin de cada jogador.
+
+Usado pelo plugin do servidor (skins capturadas automaticamente) e por
+tools/sync_skins.py (skins colocadas à mão na pasta skins/). Só usa a
+biblioteca padrão do Python.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import struct
+import zlib
+from dataclasses import dataclass
+from pathlib import Path
+
+# Índices 0 e 1 são sempre as skins vanilla (quem não tem skin registrada usa o Steve).
+VANILLA = [("textures/entity/steve", False), ("textures/entity/alex", True)]
+MAX_SKINS = 256
+SKIN_DIR = Path("textures/entity/fenix/skins")
+
+
+@dataclass
+class SkinEntry:
+    name: str  # gamertag
+    index: int
+    slim: bool
+    png: bytes
+
+
+def encode_png(width: int, height: int, rgba: bytes) -> bytes:
+    """Codifica pixels RGBA (8 bits por canal) como PNG."""
+    stride = width * 4
+    raw = b"".join(b"\x00" + rgba[y * stride : (y + 1) * stride] for y in range(height))
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+
+
+def _json(data) -> bytes:
+    return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode()
+
+
+def _render_files(entries: list[SkinEntry]) -> dict[Path, bytes]:
+    """Arquivos gerados, relativos à raiz do resource pack (RP/) ou do behavior pack (BP/)."""
+    top = max([len(VANILLA) - 1] + [e.index for e in entries])
+    textures: dict[str, str] = {}
+    for i in range(top + 1):
+        textures[f"skin_{i}"] = VANILLA[i][0] if i < len(VANILLA) else VANILLA[0][0]
+    for e in entries:
+        textures[f"skin_{e.index}"] = (SKIN_DIR / f"skin_{e.index}").as_posix()
+
+    skin_array = [f"Texture.skin_{i}" for i in range(top + 1)]
+    bodies = {"Array.bodies": ["Geometry.body", "Geometry.body_slim"]}
+    body_geometry = "Array.bodies[q.property('fenix:slim') ? 1 : 0]"
+    skin_texture = f"Array.skins[math.clamp(q.property('fenix:skin'), 0, {top})]"
+    body_geometries = {"body": "geometry.fenix_body", "body_slim": "geometry.fenix_body_slim"}
+
+    render_controllers = {
+        "format_version": "1.10.0",
+        "render_controllers": {
+            "controller.render.fenix.capsule": {
+                "geometry": "Geometry.capsule",
+                "textures": ["Texture.capsule"],
+                "materials": [{"*": "Material.default"}, {"capsule": "Material.glass"}],
+            },
+            "controller.render.fenix.panel": {
+                "geometry": "Geometry.default",
+                "textures": ["Texture.default"],
+                "materials": [{"*": "Material.default"}],
+            },
+            "controller.render.fenix.occupant": {
+                "arrays": {"geometries": bodies, "textures": {"Array.skins": skin_array}},
+                "geometry": body_geometry,
+                "textures": [skin_texture],
+                "materials": [{"*": "Material.default"}],
+                "part_visibility": [{"*": "q.property('fenix:clone') > 0"}],
+            },
+            "controller.render.fenix.corpse": {
+                "arrays": {"geometries": bodies, "textures": {"Array.skins": skin_array}},
+                "geometry": body_geometry,
+                "textures": [skin_texture],
+                "materials": [{"*": "Material.default"}],
+            },
+        },
+    }
+
+    capsule = {
+        "format_version": "1.10.0",
+        "minecraft:client_entity": {
+            "description": {
+                "identifier": "fenix:capsule",
+                "materials": {"default": "entity_alphatest", "glass": "entity_alphablend"},
+                "textures": {"capsule": "textures/entity/fenix/capsule", **textures},
+                "geometry": {"capsule": "geometry.fenix_capsule", **body_geometries},
+                "animations": {"occupant": "animation.fenix.capsule.occupant"},
+                "scripts": {"animate": ["occupant"]},
+                # O clone é desenhado antes do vidro para aparecer através dele.
+                "render_controllers": ["controller.render.fenix.occupant", "controller.render.fenix.capsule"],
+            }
+        },
+    }
+    corpse = {
+        "format_version": "1.10.0",
+        "minecraft:client_entity": {
+            "description": {
+                "identifier": "fenix:corpse",
+                "materials": {"default": "entity_alphatest"},
+                "textures": textures,
+                "geometry": body_geometries,
+                "animations": {"lie": "animation.fenix.corpse.lie"},
+                "scripts": {"animate": ["lie"]},
+                "render_controllers": ["controller.render.fenix.corpse"],
+            }
+        },
+    }
+    panel = {
+        "format_version": "1.10.0",
+        "minecraft:client_entity": {
+            "description": {
+                "identifier": "fenix:panel",
+                "materials": {"default": "entity_alphatest"},
+                "textures": {"default": "textures/entity/fenix/panel"},
+                "geometry": {"default": "geometry.fenix_panel"},
+                "animations": {"idle": "animation.fenix.panel.idle"},
+                "scripts": {"animate": ["idle"]},
+                "render_controllers": ["controller.render.fenix.panel"],
+            }
+        },
+    }
+
+    players = {e.name.lower(): {"skin": e.index, "slim": e.slim} for e in sorted(entries, key=lambda e: e.index)}
+    skins_js = (
+        "// Arquivo gerado (plugin do servidor ou tools/sync_skins.py) — não edite à mão.\n"
+        "// Gamertag (minúsculo) -> índice da skin no resource pack.\n"
+        f"export const SKINS = {json.dumps(players, indent=2, ensure_ascii=False)};\n"
+    ).encode()
+
+    files = {
+        Path("RP/render_controllers/fenix.render_controllers.json"): _json(render_controllers),
+        Path("RP/entity/fenix_capsule.entity.json"): _json(capsule),
+        Path("RP/entity/fenix_corpse.entity.json"): _json(corpse),
+        Path("RP/entity/fenix_panel.entity.json"): _json(panel),
+        Path("BP/scripts/skins.js"): skins_js,
+    }
+    for e in entries:
+        files[Path("RP") / SKIN_DIR / f"skin_{e.index}.png"] = e.png
+    return files
+
+
+def write_packs(bp: Path, rp: Path, entries: list[SkinEntry]) -> bool:
+    """Escreve as skins e os arquivos gerados nos packs. Retorna True se algo mudou."""
+    if len(VANILLA) + len(entries) > MAX_SKINS:
+        raise ValueError(f"Máximo de {MAX_SKINS - len(VANILLA)} skins de jogadores.")
+    roots = {"BP": bp, "RP": rp}
+    wanted = {roots[rel.parts[0]] / Path(*rel.parts[1:]): data for rel, data in _render_files(entries).items()}
+
+    changed = False
+    skin_dir = rp / SKIN_DIR
+    if skin_dir.exists():
+        for old in skin_dir.iterdir():
+            if old not in wanted:
+                if old.is_dir():
+                    shutil.rmtree(old)
+                else:
+                    old.unlink()
+                changed = True
+    for path, data in wanted.items():
+        if path.exists() and path.read_bytes() == data:
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        changed = True
+    return changed
+
+
+def bump_version(rp: Path, bp: Path | None, world_dirs: list[Path], min_patch: int = 0) -> list[int]:
+    """Aumenta a versão do resource pack para os jogadores baixarem as skins novas.
+
+    `min_patch` garante que a versão nunca volte para trás (ex.: add-on reinstalado).
+    """
+    manifest_path = rp / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    uuid = manifest["header"]["uuid"]
+    version = list(manifest["header"]["version"])
+    version[2] = max(version[2], min_patch) + 1
+    manifest["header"]["version"] = version
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    if bp is not None:
+        bp_manifest_path = bp / "manifest.json"
+        bp_manifest = json.loads(bp_manifest_path.read_text(encoding="utf-8"))
+        for dep in bp_manifest.get("dependencies", []):
+            if dep.get("uuid") == uuid:
+                dep["version"] = version
+        bp_manifest_path.write_text(json.dumps(bp_manifest, indent=2) + "\n", encoding="utf-8")
+
+    for world in world_dirs:
+        stack_path = world / "world_resource_packs.json"
+        if not stack_path.exists():
+            continue
+        stack = json.loads(stack_path.read_text(encoding="utf-8"))
+        for entry in stack:
+            if entry.get("pack_id") == uuid:
+                entry["version"] = version
+        stack_path.write_text(json.dumps(stack, indent=2) + "\n", encoding="utf-8")
+    return version

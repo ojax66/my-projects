@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-operacao-fenix"
+version = "1.0.0"
+description = "Operação Fênix: captura a skin real dos jogadores para o corpo e o clone da cápsula."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.entry-points."endstone"]
+operacao-fenix = "endstone_operacao_fenix:OperacaoFenixPlugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_operacao_fenix"]
