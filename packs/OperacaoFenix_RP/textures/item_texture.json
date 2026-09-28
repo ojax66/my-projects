@@ -1,0 +1,12 @@
+{
+  "resource_pack_name": "operacao_fenix",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "fenix_capsule": {
+      "textures": "textures/items/fenix_capsule"
+    },
+    "fenix_panel": {
+      "textures": "textures/items/fenix_panel"
+    }
+  }
+}

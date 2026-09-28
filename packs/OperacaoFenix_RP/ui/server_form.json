@@ -1,0 +1,705 @@
+{
+  "namespace": "server_form",
+  "long_form": {
+    "type": "panel",
+    "size": [
+      "100%",
+      "100%"
+    ],
+    "controls": [
+      {
+        "vanilla_long_form@common_dialogs.main_panel_no_buttons": {
+          "$title_panel": "common_dialogs.standard_title_label",
+          "$title_size": [
+            "100% - 14px",
+            10
+          ],
+          "size": [
+            225,
+            200
+          ],
+          "$text_name": "#title_text",
+          "$title_text_binding_type": "none",
+          "$child_control": "server_form.long_form_panel",
+          "layer": 2,
+          "bindings": [
+            {
+              "binding_name": "#title_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "((#title_text - '§f§e§n§x') = #title_text)",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "fenix_form@server_form.fenix_form": {}
+      }
+    ]
+  },
+  "fenix_form": {
+    "type": "panel",
+    "size": [
+      236,
+      158
+    ],
+    "layer": 2,
+    "bindings": [
+      {
+        "binding_name": "#title_text"
+      },
+      {
+        "binding_type": "view",
+        "source_property_name": "(not ((#title_text - '§f§e§n§x') = #title_text))",
+        "target_property_name": "#visible"
+      }
+    ],
+    "controls": [
+      {
+        "background": {
+          "type": "image",
+          "texture": "textures/ui/fenix/window",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 0
+        }
+      },
+      {
+        "header_icon": {
+          "type": "image",
+          "texture": "textures/ui/fenix/capsule",
+          "size": [
+            16,
+            16
+          ],
+          "offset": [
+            6,
+            4
+          ],
+          "layer": 2,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "title": {
+          "type": "label",
+          "text": "#text",
+          "color": [
+            0.47,
+            0.9,
+            0.86
+          ],
+          "shadow": true,
+          "offset": [
+            26,
+            9
+          ],
+          "layer": 2,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#title_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(#title_text - '§f§e§n§x')",
+              "target_property_name": "#text"
+            }
+          ]
+        }
+      },
+      {
+        "close@server_form.fenix_close_button": {
+          "offset": [
+            -8,
+            6
+          ],
+          "anchor_from": "top_right",
+          "anchor_to": "top_right",
+          "layer": 3
+        }
+      },
+      {
+        "divider": {
+          "type": "image",
+          "texture": "textures/ui/fenix/divider",
+          "uv": [
+            0,
+            1
+          ],
+          "uv_size": [
+            3,
+            2
+          ],
+          "size": [
+            224,
+            2
+          ],
+          "offset": [
+            0,
+            24
+          ],
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "layer": 1
+        }
+      },
+      {
+        "info@server_form.fenix_info_panel": {
+          "offset": [
+            7,
+            31
+          ],
+          "layer": 1,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "actions@server_form.fenix_actions": {
+          "offset": [
+            -7,
+            32
+          ],
+          "anchor_from": "top_right",
+          "anchor_to": "top_right",
+          "layer": 1
+        }
+      },
+      {
+        "notify@server_form.fenix_notify": {
+          "offset": [
+            7,
+            -9
+          ],
+          "anchor_from": "bottom_left",
+          "anchor_to": "bottom_left",
+          "layer": 1
+        }
+      },
+      {
+        "uses@server_form.fenix_uses": {
+          "offset": [
+            -8,
+            -10
+          ],
+          "anchor_from": "bottom_right",
+          "anchor_to": "bottom_right",
+          "layer": 1
+        }
+      }
+    ]
+  },
+  "fenix_data_label": {
+    "type": "label",
+    "text": "#form_button_text",
+    "color": [
+      0.82,
+      0.85,
+      0.88
+    ],
+    "layer": 2,
+    "anchor_from": "top_left",
+    "anchor_to": "top_left",
+    "bindings": [
+      {
+        "binding_name": "#form_button_text",
+        "binding_type": "collection",
+        "binding_collection_name": "form_buttons"
+      }
+    ]
+  },
+  "fenix_data_icon": {
+    "type": "image",
+    "layer": 2,
+    "anchor_from": "top_left",
+    "anchor_to": "top_left",
+    "bindings": [
+      {
+        "binding_name": "#form_button_texture",
+        "binding_type": "collection",
+        "binding_collection_name": "form_buttons",
+        "binding_name_override": "#texture"
+      },
+      {
+        "binding_name": "#form_button_texture_file_system",
+        "binding_type": "collection",
+        "binding_collection_name": "form_buttons",
+        "binding_name_override": "#texture_file_system"
+      },
+      {
+        "binding_type": "view",
+        "source_property_name": "(not ((#texture = '') or (#texture = 'loading')))",
+        "target_property_name": "#visible"
+      }
+    ]
+  },
+  "fenix_info_panel": {
+    "type": "panel",
+    "size": [
+      104,
+      92
+    ],
+    "collection_name": "form_buttons",
+    "controls": [
+      {
+        "background": {
+          "type": "image",
+          "texture": "textures/ui/fenix/panel_inner",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 0
+        }
+      },
+      {
+        "header": {
+          "type": "label",
+          "text": "#form_text",
+          "color": [
+            0.62,
+            0.66,
+            0.7
+          ],
+          "offset": [
+            8,
+            7
+          ],
+          "layer": 2,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            }
+          ]
+        }
+      },
+      {
+        "status_icon@server_form.fenix_data_icon": {
+          "collection_index": 0,
+          "size": [
+            16,
+            16
+          ],
+          "offset": [
+            6,
+            17
+          ]
+        }
+      },
+      {
+        "status_text@server_form.fenix_data_label": {
+          "collection_index": 0,
+          "offset": [
+            25,
+            21
+          ]
+        }
+      },
+      {
+        "location@server_form.fenix_data_label": {
+          "collection_index": 1,
+          "offset": [
+            7,
+            37
+          ],
+          "font_scale_factor": 0.85
+        }
+      },
+      {
+        "bar@server_form.fenix_data_icon": {
+          "collection_index": 1,
+          "size": [
+            90,
+            4
+          ],
+          "offset": [
+            7,
+            50
+          ]
+        }
+      },
+      {
+        "integrity@server_form.fenix_data_label": {
+          "collection_index": 2,
+          "offset": [
+            7,
+            62
+          ],
+          "font_scale_factor": 0.85
+        }
+      },
+      {
+        "link_icon@server_form.fenix_data_icon": {
+          "collection_index": 3,
+          "size": [
+            16,
+            16
+          ],
+          "offset": [
+            5,
+            71
+          ]
+        }
+      },
+      {
+        "link_text@server_form.fenix_data_label": {
+          "collection_index": 3,
+          "offset": [
+            23,
+            75
+          ]
+        }
+      }
+    ]
+  },
+  "fenix_action_button": {
+    "type": "button",
+    "size": [
+      110,
+      17
+    ],
+    "default_control": "default",
+    "hover_control": "hover",
+    "pressed_control": "pressed",
+    "sound_name": "random.click",
+    "button_mappings": [
+      {
+        "from_button_id": "button.menu_select",
+        "to_button_id": "button.form_button_click",
+        "mapping_type": "pressed"
+      },
+      {
+        "from_button_id": "button.menu_ok",
+        "to_button_id": "button.form_button_click",
+        "mapping_type": "focused"
+      }
+    ],
+    "bindings": [
+      {
+        "binding_type": "collection_details",
+        "binding_collection_name": "form_buttons"
+      }
+    ],
+    "controls": [
+      {
+        "default": {
+          "type": "image",
+          "texture": "textures/ui/fenix/button",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      },
+      {
+        "hover": {
+          "type": "image",
+          "texture": "textures/ui/fenix/button_hover",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      },
+      {
+        "pressed": {
+          "type": "image",
+          "texture": "textures/ui/fenix/button_pressed",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      },
+      {
+        "text": {
+          "type": "label",
+          "text": "#form_button_text",
+          "color": [
+            0.9,
+            0.92,
+            0.94
+          ],
+          "shadow": true,
+          "offset": [
+            7,
+            0
+          ],
+          "anchor_from": "left_middle",
+          "anchor_to": "left_middle",
+          "layer": 3,
+          "bindings": [
+            {
+              "binding_name": "#form_button_text",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "fenix_actions": {
+    "type": "stack_panel",
+    "orientation": "vertical",
+    "size": [
+      110,
+      86
+    ],
+    "collection_name": "form_buttons",
+    "controls": [
+      {
+        "link@server_form.fenix_action_button": {
+          "collection_index": 4
+        }
+      },
+      {
+        "gap_0": {
+          "type": "panel",
+          "size": [
+            "100%",
+            6
+          ]
+        }
+      },
+      {
+        "network@server_form.fenix_action_button": {
+          "collection_index": 5
+        }
+      },
+      {
+        "gap_1": {
+          "type": "panel",
+          "size": [
+            "100%",
+            6
+          ]
+        }
+      },
+      {
+        "unlink@server_form.fenix_action_button": {
+          "collection_index": 6
+        }
+      },
+      {
+        "gap_2": {
+          "type": "panel",
+          "size": [
+            "100%",
+            6
+          ]
+        }
+      },
+      {
+        "close@server_form.fenix_action_button": {
+          "collection_index": 7
+        }
+      }
+    ]
+  },
+  "fenix_icon_button": {
+    "type": "button",
+    "default_control": "default",
+    "hover_control": "hover",
+    "pressed_control": "pressed",
+    "sound_name": "random.click",
+    "button_mappings": [
+      {
+        "from_button_id": "button.menu_select",
+        "to_button_id": "button.form_button_click",
+        "mapping_type": "pressed"
+      },
+      {
+        "from_button_id": "button.menu_ok",
+        "to_button_id": "button.form_button_click",
+        "mapping_type": "focused"
+      }
+    ],
+    "bindings": [
+      {
+        "binding_type": "collection_details",
+        "binding_collection_name": "form_buttons"
+      }
+    ],
+    "$icon_size|default": [
+      14,
+      14
+    ],
+    "controls": [
+      {
+        "default": {
+          "type": "panel"
+        }
+      },
+      {
+        "hover": {
+          "type": "image",
+          "texture": "textures/ui/fenix/button_hover",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "alpha": 0.3,
+          "layer": 1
+        }
+      },
+      {
+        "pressed": {
+          "type": "image",
+          "texture": "textures/ui/fenix/button_pressed",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "alpha": 0.5,
+          "layer": 1
+        }
+      },
+      {
+        "icon@server_form.fenix_data_icon": {
+          "size": "$icon_size",
+          "anchor_from": "left_middle",
+          "anchor_to": "left_middle",
+          "layer": 2
+        }
+      },
+      {
+        "text": {
+          "type": "label",
+          "text": "#form_button_text",
+          "color": [
+            0.72,
+            0.76,
+            0.8
+          ],
+          "offset": [
+            20,
+            1
+          ],
+          "anchor_from": "left_middle",
+          "anchor_to": "left_middle",
+          "layer": 3,
+          "bindings": [
+            {
+              "binding_name": "#form_button_text",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "fenix_notify": {
+    "type": "panel",
+    "size": [
+      176,
+      16
+    ],
+    "collection_name": "form_buttons",
+    "controls": [
+      {
+        "toggle@server_form.fenix_icon_button": {
+          "collection_index": 8,
+          "size": [
+            "100%",
+            "100%"
+          ]
+        }
+      }
+    ]
+  },
+  "fenix_uses": {
+    "type": "panel",
+    "size": [
+      30,
+      16
+    ],
+    "collection_name": "form_buttons",
+    "controls": [
+      {
+        "counter@server_form.fenix_icon_button": {
+          "collection_index": 9,
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "$icon_size": [
+            16,
+            16
+          ]
+        }
+      }
+    ]
+  },
+  "fenix_close_button": {
+    "type": "button",
+    "size": [
+      12,
+      12
+    ],
+    "default_control": "default",
+    "hover_control": "hover",
+    "pressed_control": "pressed",
+    "sound_name": "random.click",
+    "button_mappings": [
+      {
+        "from_button_id": "button.menu_select",
+        "to_button_id": "button.menu_exit",
+        "mapping_type": "pressed"
+      },
+      {
+        "from_button_id": "button.menu_ok",
+        "to_button_id": "button.menu_exit",
+        "mapping_type": "focused"
+      }
+    ],
+    "controls": [
+      {
+        "default": {
+          "type": "image",
+          "texture": "textures/ui/fenix/close",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      },
+      {
+        "hover": {
+          "type": "image",
+          "texture": "textures/ui/fenix/close_hover",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      },
+      {
+        "pressed": {
+          "type": "image",
+          "texture": "textures/ui/fenix/close_hover",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "layer": 1
+        }
+      }
+    ]
+  }
+}

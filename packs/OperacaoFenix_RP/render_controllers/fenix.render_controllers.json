@@ -1,0 +1,85 @@
+{
+  "format_version": "1.10.0",
+  "render_controllers": {
+    "controller.render.fenix.capsule": {
+      "geometry": "Geometry.capsule",
+      "textures": [
+        "Texture.capsule"
+      ],
+      "materials": [
+        {
+          "*": "Material.default"
+        },
+        {
+          "capsule": "Material.glass"
+        }
+      ]
+    },
+    "controller.render.fenix.panel": {
+      "geometry": "Geometry.default",
+      "textures": [
+        "Texture.default"
+      ],
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ]
+    },
+    "controller.render.fenix.occupant": {
+      "arrays": {
+        "geometries": {
+          "Array.bodies": [
+            "Geometry.body",
+            "Geometry.body_slim"
+          ]
+        },
+        "textures": {
+          "Array.skins": [
+            "Texture.skin_0",
+            "Texture.skin_1"
+          ]
+        }
+      },
+      "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
+      "textures": [
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 1)]"
+      ],
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "part_visibility": [
+        {
+          "*": "q.property('fenix:clone') > 0"
+        }
+      ]
+    },
+    "controller.render.fenix.corpse": {
+      "arrays": {
+        "geometries": {
+          "Array.bodies": [
+            "Geometry.body",
+            "Geometry.body_slim"
+          ]
+        },
+        "textures": {
+          "Array.skins": [
+            "Texture.skin_0",
+            "Texture.skin_1"
+          ]
+        }
+      },
+      "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
+      "textures": [
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 1)]"
+      ],
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ]
+    }
+  }
+}

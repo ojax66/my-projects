@@ -1,0 +1,8 @@
+pack.name=Operação Fênix
+pack.description=Cloning capsules replace the bed as your respawn point.
+item.fenix:capsule_kit.name=Phoenix Capsule
+item.fenix:panel_kit.name=Phoenix Panel
+entity.fenix:capsule.name=Phoenix Capsule
+entity.fenix:panel.name=Phoenix Panel
+entity.fenix:corpse.name=Body
+action.interact.fenix=Use

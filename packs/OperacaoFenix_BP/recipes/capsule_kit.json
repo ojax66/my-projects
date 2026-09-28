@@ -1,0 +1,38 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "fenix:capsule_kit"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "GGG",
+      "GDG",
+      "IRI"
+    ],
+    "key": {
+      "G": {
+        "item": "minecraft:glass"
+      },
+      "D": {
+        "item": "minecraft:diamond"
+      },
+      "I": {
+        "item": "minecraft:iron_block"
+      },
+      "R": {
+        "item": "minecraft:redstone_block"
+      }
+    },
+    "unlock": [
+      {
+        "item": "minecraft:glass"
+      }
+    ],
+    "result": {
+      "item": "fenix:capsule_kit"
+    }
+  }
+}

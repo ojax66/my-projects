@@ -1,0 +1,103 @@
+{
+  "format_version": "1.10.0",
+  "animations": {
+    "animation.fenix.capsule.occupant": {
+      "loop": true,
+      "bones": {
+        "fenix_body": {
+          "position": [
+            0,
+            "7.7 + math.sin(q.life_time * 45) * 0.35",
+            0
+          ],
+          "scale": "0.35 + 0.55 * q.property('fenix:clone')"
+        },
+        "head": {
+          "rotation": [
+            "2 + math.sin(q.life_time * 30) * 2",
+            0,
+            0
+          ]
+        },
+        "rightArm": {
+          "rotation": [
+            0,
+            0,
+            "4"
+          ]
+        },
+        "leftArm": {
+          "rotation": [
+            0,
+            0,
+            "-4"
+          ]
+        }
+      }
+    },
+    "animation.fenix.corpse.lie": {
+      "loop": true,
+      "bones": {
+        "fenix_body": {
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            2.1,
+            0
+          ]
+        },
+        "head": {
+          "rotation": [
+            0,
+            0,
+            -12
+          ]
+        },
+        "rightArm": {
+          "rotation": [
+            0,
+            0,
+            28
+          ]
+        },
+        "leftArm": {
+          "rotation": [
+            0,
+            0,
+            -22
+          ]
+        },
+        "rightLeg": {
+          "rotation": [
+            0,
+            0,
+            6
+          ]
+        },
+        "leftLeg": {
+          "rotation": [
+            0,
+            0,
+            -8
+          ]
+        }
+      }
+    },
+    "animation.fenix.panel.idle": {
+      "loop": true,
+      "bones": {
+        "screen": {
+          "scale": [
+            1,
+            "1 + (q.property('fenix:active') ? math.sin(q.life_time * 90) * 0.01 : 0)",
+            1
+          ]
+        }
+      }
+    }
+  }
+}

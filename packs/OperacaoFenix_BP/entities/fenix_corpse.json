@@ -1,0 +1,89 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "fenix:corpse",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "is_experimental": false,
+      "properties": {
+        "fenix:skin": {
+          "type": "int",
+          "range": [
+            0,
+            255
+          ],
+          "default": 0,
+          "client_sync": true
+        },
+        "fenix:slim": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": false
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:persistent": {},
+      "minecraft:fire_immune": {},
+      "minecraft:body_rotation_blocked": {},
+      "minecraft:movement": {
+        "value": 0
+      },
+      "minecraft:nameable": {
+        "always_show": false,
+        "allow_name_tag_renaming": false
+      },
+      "minecraft:interact": {
+        "interactions": [
+          {
+            "on_interact": {
+              "event": "fenix:interacted",
+              "target": "self"
+            },
+            "interact_text": "action.interact.fenix"
+          }
+        ]
+      },
+      "minecraft:type_family": {
+        "family": [
+          "fenix",
+          "fenix_corpse",
+          "inanimate"
+        ]
+      },
+      "minecraft:health": {
+        "value": 1,
+        "max": 1
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "cause": "all",
+            "deals_damage": "no"
+          }
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 0.9,
+        "height": 0.4
+      },
+      "minecraft:inventory": {
+        "container_type": "inventory",
+        "inventory_size": 45,
+        "private": true
+      }
+    },
+    "events": {
+      "fenix:interacted": {}
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "fenix:panel",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/entity/fenix/panel"
+      },
+      "geometry": {
+        "default": "geometry.fenix_panel"
+      },
+      "animations": {
+        "idle": "animation.fenix.panel.idle"
+      },
+      "scripts": {
+        "animate": [
+          "idle"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.fenix.panel"
+      ]
+    }
+  }
+}

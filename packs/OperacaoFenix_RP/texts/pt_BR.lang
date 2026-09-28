@@ -1,0 +1,8 @@
+pack.name=Operação Fênix
+pack.description=Cápsulas de clonagem substituem a cama como ponto de renascimento.
+item.fenix:capsule_kit.name=Cápsula Fênix
+item.fenix:panel_kit.name=Painel Fênix
+entity.fenix:capsule.name=Cápsula Fênix
+entity.fenix:panel.name=Painel Fênix
+entity.fenix:corpse.name=Corpo
+action.interact.fenix=Usar

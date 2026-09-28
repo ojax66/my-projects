@@ -1,0 +1,92 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "fenix:panel",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "is_experimental": false,
+      "properties": {
+        "fenix:active": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": false
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:persistent": {},
+      "minecraft:fire_immune": {},
+      "minecraft:body_rotation_blocked": {},
+      "minecraft:movement": {
+        "value": 0
+      },
+      "minecraft:nameable": {
+        "always_show": false,
+        "allow_name_tag_renaming": false
+      },
+      "minecraft:interact": {
+        "interactions": [
+          {
+            "on_interact": {
+              "event": "fenix:interacted",
+              "target": "self"
+            },
+            "interact_text": "action.interact.fenix"
+          }
+        ]
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "cause": "entity_attack",
+            "deals_damage": "yes"
+          },
+          {
+            "cause": "projectile",
+            "deals_damage": "yes"
+          },
+          {
+            "cause": "entity_explosion",
+            "deals_damage": "yes"
+          },
+          {
+            "cause": "block_explosion",
+            "deals_damage": "yes"
+          },
+          {
+            "cause": "all",
+            "deals_damage": "no"
+          }
+        ]
+      },
+      "minecraft:type_family": {
+        "family": [
+          "fenix",
+          "fenix_panel",
+          "inanimate"
+        ]
+      },
+      "minecraft:health": {
+        "value": 30,
+        "max": 30
+      },
+      "minecraft:collision_box": {
+        "width": 1.0,
+        "height": 1.7
+      },
+      "minecraft:is_collidable": {}
+    },
+    "events": {
+      "fenix:interacted": {}
+    }
+  }
+}
