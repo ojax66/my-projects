@@ -62,10 +62,10 @@ export async function openPanel(player, capsuleId) {
     else action = isReady(c) ? "Entrar no corpo original" : "Revivendo...";
   }
   const form = new ActionFormData()
-    .title(`${FORM_MARKER}OPERAÇÃO FÊNIX`)
+    .title(`${FORM_MARKER}OPERACAO FENIX`)
     .body(p.mode === "foreign" ? "CORPO ORIGINAL" : "SEU CLONE")
     .button(st.text, st.icon)
-    .button(`Cápsula ${coords(c)}`, ICONS.bar(progress(c)))
+    .button(`Capsula ${coords(c)}`, ICONS.bar(progress(c)))
     .button(`Integridade ${pct(c.integrity)}`)
     .button(linked ? "§bVinculado" : "§7Desvinculado", linked ? ICONS.link : undefined)
     .button(action)
