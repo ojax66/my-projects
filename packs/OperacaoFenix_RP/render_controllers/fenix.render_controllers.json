@@ -37,13 +37,14 @@
         "textures": {
           "Array.skins": [
             "Texture.skin_0",
-            "Texture.skin_1"
+            "Texture.skin_1",
+            "Texture.skin_2"
           ]
         }
       },
       "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 1)]"
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 2)]"
       ],
       "materials": [
         {
@@ -67,13 +68,14 @@
         "textures": {
           "Array.skins": [
             "Texture.skin_0",
-            "Texture.skin_1"
+            "Texture.skin_1",
+            "Texture.skin_2"
           ]
         }
       },
       "geometry": "Array.bodies[q.property('fenix:slim') ? 1 : 0]",
       "textures": [
-        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 1)]"
+        "Array.skins[math.clamp(q.property('fenix:skin'), 0, 2)]"
       ],
       "materials": [
         {
