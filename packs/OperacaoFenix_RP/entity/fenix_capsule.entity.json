@@ -11,7 +11,8 @@
         "capsule": "textures/entity/fenix/capsule",
         "skin_0": "textures/entity/steve",
         "skin_1": "textures/entity/alex",
-        "skin_2": "textures/entity/fenix/skins/skin_2"
+        "skin_2": "textures/entity/fenix/skins/skin_2",
+        "skin_3": "textures/entity/fenix/skins/skin_3"
       },
       "geometry": {
         "capsule": "geometry.fenix_capsule",

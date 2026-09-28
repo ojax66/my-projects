@@ -4,5 +4,9 @@ export const SKINS = {
   "ojax9723": {
     "skin": 2,
     "slim": false
+  },
+  "evengold2679416": {
+    "skin": 3,
+    "slim": false
   }
 };
