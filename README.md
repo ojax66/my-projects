@@ -72,5 +72,5 @@ packs/OperacaoFenix_BP/   comportamento: entidades, itens, receitas e scripts
 packs/OperacaoFenix_RP/   recursos: modelos, texturas, UI (ui/server_form.json)
 server_plugin/            plugin Endstone que captura as skins reais
 tools/                    build (.mcaddon + plugin) e registro manual de skins
-skins/                    skins dos jogadores (entrada do sync-skins)
+skins/                    skins dos jogadores (entrada do tools/sync_skins.py)
 ```
