@@ -53,13 +53,20 @@ Uma skin nova ou trocada aparece **depois do próximo reinício do servidor**. �
 
 Funciona com skins clássicas (64x64, 64x32 antigas e HD 128x128), largas ou slim (detectadas sozinhas). Skins do **criador de personagem** (persona) usam um modelo próprio que não cabe no corpo padrão; esses jogadores aparecem como Steve.
 
-#### Sem servidor dedicado (manual)
+#### Aternos e outros servidores sem plugin (busca automática)
 
-1. Coloque a skin em `skins/<Gamertag>.png` (ou `skins/<Gamertag>.slim.png` para braços finos).
-2. Rode `python3 tools/sync_skins.py`.
-3. Gere o `.mcaddon` de novo.
+Os add-ons de cabeça de jogador fazem assim: baixam a skin pelo gamertag e colocam no pack. A ferramenta abaixo faz o mesmo para o corpo e o clone. Rode no seu computador (precisa de internet e Python 3):
 
-Quem não tem skin registrada aparece com o Steve.
+1. Escreva os gamertags em `skins/players.txt`, um por linha. Use `java:Nome` para pegar a skin de uma conta do Minecraft Java.
+2. Rode `python3 tools/fetch_skins.py`. Ele baixa as skins e gera `dist/OperacaoFenix.mcaddon` atualizado.
+3. Envie os packs para o servidor (no Aternos: aba Arquivos → pasta `packs`) e reinicie.
+
+De onde vem cada skin:
+- **Gamertag do Bedrock** → API global da GeyserMC. Ela só conhece a skin de quem **já entrou em algum servidor com Geyser**. Quem nunca entrou aparece como Steve.
+- **`java:Nome`** → conta do Minecraft Java com esse nome.
+- **Manual** → `skins/<Gamertag>.png` (ou `.slim.png` para braços finos) sempre tem prioridade. Serve para quem não foi encontrado. Depois rode `python3 tools/sync_skins.py` e `python3 tools/build.py`.
+
+Cada jogador mantém sempre o mesmo número de skin (`skins/index.json`), então adicionar gente nova não troca a skin dos corpos e cápsulas que já existem no mundo.
 
 ### Estrutura
 
@@ -72,5 +79,5 @@ packs/OperacaoFenix_BP/   comportamento: entidades, itens, receitas e scripts
 packs/OperacaoFenix_RP/   recursos: modelos, texturas, UI (ui/server_form.json)
 server_plugin/            plugin Endstone que captura as skins reais
 tools/                    build (.mcaddon + plugin) e registro manual de skins
-skins/                    skins dos jogadores (entrada do tools/sync_skins.py)
+skins/                    players.txt, skins manuais e baixadas (auto/)
 ```

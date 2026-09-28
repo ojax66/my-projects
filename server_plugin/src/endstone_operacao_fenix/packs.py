@@ -40,6 +40,79 @@ def encode_png(width: int, height: int, rgba: bytes) -> bytes:
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
 
 
+def decode_png(data: bytes) -> tuple[int, int, bytes] | None:
+    """Lê um PNG RGB/RGBA de 8 bits sem entrelaçamento. Retorna (largura, altura, RGBA)."""
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    pos, idat, w = 8, b"", 0
+    h = color = depth = interlace = 0
+    while pos < len(data):
+        length = int.from_bytes(data[pos : pos + 4], "big")
+        tag, body = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + length]
+        pos += 12 + length
+        if tag == b"IHDR":
+            w, h, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", body)
+        elif tag == b"IDAT":
+            idat += body
+        elif tag == b"IEND":
+            break
+    if depth != 8 or interlace or color not in (2, 6):
+        return None
+    bpp = 4 if color == 6 else 3
+    raw, stride = zlib.decompress(idat), w * bpp
+    out, prev, i = bytearray(), bytearray(stride), 0
+    for _ in range(h):
+        ftype, line = raw[i], bytearray(raw[i + 1 : i + 1 + stride])
+        i += 1 + stride
+        for x in range(stride):
+            a = line[x - bpp] if x >= bpp else 0
+            b = prev[x]
+            c = prev[x - bpp] if x >= bpp else 0
+            if ftype == 1:
+                line[x] = (line[x] + a) & 0xFF
+            elif ftype == 2:
+                line[x] = (line[x] + b) & 0xFF
+            elif ftype == 3:
+                line[x] = (line[x] + (a + b) // 2) & 0xFF
+            elif ftype == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                line[x] = (line[x] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 0xFF
+        prev = line
+        if bpp == 4:
+            out += line
+        else:
+            for x in range(w):
+                out += line[x * 3 : x * 3 + 3] + b"\xff"
+    return w, h, bytes(out)
+
+
+def legacy_to_modern(w: int, h: int, px: bytes) -> tuple[int, int, bytes]:
+    """Skins antigas (64x32) não têm braço/perna esquerdos: copia os direitos."""
+    if h * 2 != w:
+        return w, h, px
+    s = w // 64
+    out = bytearray(w * w * 4)
+    out[: len(px)] = px
+
+    def copy(sx, sy, dx, dy, cw, ch):
+        for y in range(ch * s):
+            src = ((sy * s + y) * w + sx * s) * 4
+            dst = ((dy * s + y) * w + dx * s) * 4
+            out[dst : dst + cw * s * 4] = px[src : src + cw * s * 4]
+
+    copy(0, 16, 16, 48, 16, 16)  # perna direita -> esquerda
+    copy(40, 16, 32, 48, 16, 16)  # braço direito -> esquerdo
+    return w, w, bytes(out)
+
+
+def normalize_png(data: bytes) -> bytes:
+    """Converte skins antigas (64x32) para o formato 64x64 que o modelo do corpo usa."""
+    decoded = decode_png(data)
+    if decoded is None or decoded[1] * 2 != decoded[0]:
+        return data
+    return encode_png(*legacy_to_modern(*decoded))
+
+
 def _json(data) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode()
 

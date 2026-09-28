@@ -20,7 +20,7 @@ from endstone import Player
 from endstone.event import PlayerJoinEvent, PlayerSkinChangeEvent, event_handler
 from endstone.plugin import Plugin
 
-from .packs import MAX_SKINS, VANILLA, SkinEntry, bump_version, encode_png, write_packs
+from .packs import MAX_SKINS, VANILLA, SkinEntry, bump_version, encode_png, legacy_to_modern, write_packs
 
 __all__ = ["OperacaoFenixPlugin"]
 
@@ -37,23 +37,6 @@ def _to_rgba(image) -> tuple[int, int, bytes] | None:
         if len(data) == w * h * 4:
             return w, h, data
     return None
-
-
-def _legacy_to_modern(w: int, h: int, px: bytes) -> tuple[int, int, bytes]:
-    """Skins antigas (64x32) não têm braço/perna esquerdos: copia os direitos."""
-    s = w // 64
-    out = bytearray(w * w * 4)
-    out[: len(px)] = px
-
-    def copy(sx, sy, dx, dy, cw, ch):
-        for y in range(ch * s):
-            src = ((sy * s + y) * w + sx * s) * 4
-            dst = ((dy * s + y) * w + dx * s) * 4
-            out[dst : dst + cw * s * 4] = px[src : src + cw * s * 4]
-
-    copy(0, 16, 16, 48, 16, 16)  # perna direita -> esquerda
-    copy(40, 16, 32, 48, 16, 16)  # braço direito -> esquerdo
-    return w, w, bytes(out)
 
 
 def _is_slim(w: int, px: bytes) -> bool:
@@ -103,7 +86,7 @@ class OperacaoFenixPlugin(Plugin):
             return
         w, h, px = converted
         if h * 2 == w:
-            w, h, px = _legacy_to_modern(w, h, px)
+            w, h, px = legacy_to_modern(w, h, px)
         digest = hashlib.sha1(px).hexdigest()
 
         key = player.name.lower()

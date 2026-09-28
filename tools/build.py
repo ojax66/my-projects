@@ -15,8 +15,10 @@ print(out.relative_to(root))
 # Plugin do servidor dedicado (Endstone): dist/endstone_operacao_fenix-*.whl
 import subprocess, sys
 
-subprocess.run(
+result = subprocess.run(
     [sys.executable, "-m", "pip", "wheel", "--quiet", "--no-deps", "-w", str(out.parent), str(root / "server_plugin")],
-    check=True,
 )
-print(*sorted(p.relative_to(root) for p in out.parent.glob("*.whl")))
+if result.returncode == 0:
+    print(*sorted(p.relative_to(root) for p in out.parent.glob("*.whl")))
+else:
+    print("(plugin do servidor não gerado; o .mcaddon está pronto)")
