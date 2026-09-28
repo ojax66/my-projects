@@ -4,6 +4,7 @@ import { Capsules, Players } from "./store.js";
 import { createCorpse, lootCorpse } from "./corpse.js";
 import { handleRespawn, onCapsuleDestroyed, registerCapsule, resolvePanelCapsule, tick } from "./fenix.js";
 import { openPanel } from "./ui.js";
+import { applyDisguise } from "./skin.js";
 
 const FACE_OFFSET = {
   Up: { x: 0, y: 1, z: 0 },
@@ -124,7 +125,10 @@ world.afterEvents.entityDie.subscribe(
 world.afterEvents.playerSpawn.subscribe(({ player }) => {
   // Também cobre quem morreu e saiu do jogo antes de renascer.
   system.runTimeout(() => {
-    if (player.isValid) handleRespawn(player);
+    if (!player.isValid) return;
+    handleRespawn(player);
+    // Skin do clone em que o jogador está (também ao entrar no mundo).
+    applyDisguise(player, Players.of(player));
   }, 2);
 });
 

@@ -1,7 +1,7 @@
 import { EquipmentSlot, world } from "@minecraft/server";
 import { IDS } from "./config.js";
 import { Players } from "./store.js";
-import { applySkin } from "./skin.js";
+import { applySkin, bodyName } from "./skin.js";
 
 // Slots 0..35 do corpo espelham o inventário; 36..40 guardam o equipamento.
 const EQUIPMENT = [EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Legs, EquipmentSlot.Feet, EquipmentSlot.Offhand];
@@ -37,7 +37,8 @@ export function createCorpse(player, dimension, deathLocation) {
   corpse.nameTag = `§7Corpo de ${player.name}`;
   corpse.setDynamicProperty("fenix:owner", player.id);
   corpse.setDynamicProperty("fenix:ownerName", player.name);
-  applySkin(corpse, player.name);
+  // No clone de outro jogador, o corpo que cai é o do dono do clone.
+  applySkin(corpse, bodyName(Players.of(player)));
 
   const store = corpse.getComponent("minecraft:inventory")?.container;
   if (!store) return;

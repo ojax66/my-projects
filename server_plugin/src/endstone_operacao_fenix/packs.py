@@ -117,7 +117,69 @@ def _json(data) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode()
 
 
-def _render_files(entries: list[SkinEntry]) -> dict[Path, bytes]:
+# Cópias dos controllers vanilla do jogador (bedrock-samples 1.26.50.4) usadas quando ele
+# está no clone de outro jogador: mesma lógica, mas com a skin e o modelo do dono do clone.
+_ARMOR_VISIBILITY = [
+    {"*": True},
+    {"helmet": "variable.helmet_layer_visible"},
+    {"leftLegging": "variable.leg_layer_visible"},
+    {"rightLegging": "variable.leg_layer_visible"},
+    {"leftBoot": "variable.boot_layer_visible"},
+    {"rightBoot": "variable.boot_layer_visible"},
+    {"leftSock": "variable.boot_layer_visible && variable.leg_layer_visible"},
+    {"rightSock": "variable.boot_layer_visible && variable.leg_layer_visible"},
+    {"bodyArmor": "variable.chest_layer_visible"},
+    {"leftArmArmor": "variable.chest_layer_visible"},
+    {"rightArmArmor": "variable.chest_layer_visible"},
+    {"belt": "variable.chest_layer_visible && variable.leg_layer_visible"},
+]
+_EMPTY_HAND = "query.get_equipped_item_name(0, 1) == '' || query.get_equipped_item_name(0, 1) == 'filled_map'"
+_LEFT_ARM = (
+    "(query.get_equipped_item_name(0, 1) == 'filled_map' && query.get_equipped_item_name('off_hand') != 'shield') || "
+    "(query.get_equipped_item_name('off_hand') == 'filled_map' && !query.item_is_charged) || "
+    "(!query.item_is_charged && (variable.item_use_normalized > 0 && variable.item_use_normalized < 1.0))"
+)
+_FIRST_PERSON_VISIBILITY = [
+    {"*": False},
+    {"rightArm": _EMPTY_HAND},
+    {"rightSleeve": _EMPTY_HAND},
+    {"leftArm": _LEFT_ARM},
+    {"leftSleeve": _LEFT_ARM},
+]
+_MAP_VISIBILITY = [{"*": False}, {"head": True}, {"hat": True}, {"helmet": True}]
+
+
+def _disguise_controllers(skin_array: list[str], top: int) -> dict:
+    arrays = {
+        "geometries": {"Array.fenix_bodies": ["Geometry.fenix_wide", "Geometry.fenix_slim"]},
+        "textures": {"Array.skins": skin_array},
+    }
+    base = {
+        "arrays": arrays,
+        "geometry": "Array.fenix_bodies[q.property('fenix:disguise_slim') ? 1 : 0]",
+        "materials": [{"*": "Material.default"}],
+        "textures": [f"Array.skins[math.clamp(q.property('fenix:disguise') - 1, 0, {top})]"],
+    }
+    return {
+        "controller.render.fenix.disguise.first_person": {**base, "part_visibility": _FIRST_PERSON_VISIBILITY},
+        "controller.render.fenix.disguise.third_person": {**base, "part_visibility": _ARMOR_VISIBILITY},
+        "controller.render.fenix.disguise.map": {**base, "part_visibility": _MAP_VISIBILITY},
+    }
+
+
+def _player_entity(rp: Path, textures: dict[str, str]) -> bytes | None:
+    """player.entity.json do pack com a lista de skins atualizada (as skins do disfarce)."""
+    path = rp / "entity" / "player.entity.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    desc = data["minecraft:client_entity"]["description"]
+    keep = {k: v for k, v in desc["textures"].items() if not k.startswith("skin_")}
+    desc["textures"] = {**keep, **textures}
+    return _json(data)
+
+
+def _render_files(entries: list[SkinEntry], rp: Path | None = None) -> dict[Path, bytes]:
     """Arquivos gerados, relativos à raiz do resource pack (RP/) ou do behavior pack (BP/)."""
     top = max([len(VANILLA) - 1] + [e.index for e in entries])
     textures: dict[str, str] = {}
@@ -158,6 +220,7 @@ def _render_files(entries: list[SkinEntry]) -> dict[Path, bytes]:
                 "textures": [skin_texture],
                 "materials": [{"*": "Material.default"}],
             },
+            **_disguise_controllers(skin_array, top),
         },
     }
 
@@ -219,6 +282,9 @@ def _render_files(entries: list[SkinEntry]) -> dict[Path, bytes]:
         Path("RP/entity/fenix_panel.entity.json"): _json(panel),
         Path("BP/scripts/skins.js"): skins_js,
     }
+    player = _player_entity(rp, textures) if rp is not None else None
+    if player is not None:
+        files[Path("RP/entity/player.entity.json")] = player
     for e in entries:
         files[Path("RP") / SKIN_DIR / f"skin_{e.index}.png"] = e.png
     return files
@@ -229,7 +295,7 @@ def write_packs(bp: Path, rp: Path, entries: list[SkinEntry]) -> bool:
     if len(VANILLA) + len(entries) > MAX_SKINS:
         raise ValueError(f"Máximo de {MAX_SKINS - len(VANILLA)} skins de jogadores.")
     roots = {"BP": bp, "RP": rp}
-    wanted = {roots[rel.parts[0]] / Path(*rel.parts[1:]): data for rel, data in _render_files(entries).items()}
+    wanted = {roots[rel.parts[0]] / Path(*rel.parts[1:]): data for rel, data in _render_files(entries, rp).items()}
 
     changed = False
     skin_dir = rp / SKIN_DIR

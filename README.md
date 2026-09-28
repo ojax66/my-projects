@@ -27,6 +27,7 @@ Use o item num bloco para montar a peça. O painel se conecta à cápsula mais p
 - **Vincular meu clone**: a cápsula passa a gerar um clone seu (5 min). Com o clone vinculado, quando você morre acorda na cápsula. Se o clone ainda não estava pronto, você acorda nele mesmo assim, mas com fraqueza, lentidão e fome por 60 s.
 - **Corpo**: ao morrer, seu corpo fica deitado no chão com **todos os seus itens** (inventário + armadura + mão secundária). Só o dono consegue pegar os itens de volta interagindo com o corpo. O corpo não recebe dano nem some.
 - **Cápsula quebrada ou desativada**: se sua Operação Fênix for destruída, desvinculada por você ou **desativada por outro jogador** pelo painel dela, na próxima morte você acorda no **clone pronto mais próximo de outro jogador** (esse clone é consumido e o dono é avisado).
+  - Nesse clone alheio você **fica com a skin do dono do clone** (e se morrer, o corpo que cai também tem a skin dele).
   - Nesse clone alheio você **não pode pegar os itens** dos seus corpos.
   - Para voltar: monte uma nova Operação Fênix → **Vincular meu clone** → **Reviver corpo original** (3 min) → **Entrar no corpo original**. Aí os seus corpos podem ser saqueados de novo.
   - Se não houver nenhum clone pronto na rede, você nasce no spawn do mundo, ainda sem o corpo original.
@@ -67,6 +68,12 @@ De onde vem cada skin:
 - **Manual** → `skins/<Gamertag>.png` (ou `.slim.png` para braços finos) sempre tem prioridade. Serve para quem não foi encontrado. Depois rode `python3 tools/sync_skins.py` e `python3 tools/build.py`.
 
 Cada jogador mantém sempre o mesmo número de skin (`skins/index.json`), então adicionar gente nova não troca a skin dos corpos e cápsulas que já existem no mundo.
+
+### Compatibilidade
+
+Para trocar a skin de quem está no clone de outro jogador, o add-on sobrescreve os arquivos do jogador (`entities/player.json` e `entity/player.entity.json`), copiados do vanilla **1.26.50.4** ([bedrock-samples](https://github.com/Mojang/bedrock-samples)). Por isso:
+- outro add-on que também mexa no jogador pode entrar em conflito (o que estiver por cima na lista de packs vence);
+- quando o Minecraft atualizar o jogador, esses dois arquivos precisam ser copiados de novo da versão nova.
 
 ### Estrutura
 

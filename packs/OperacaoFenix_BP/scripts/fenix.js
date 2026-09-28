@@ -1,7 +1,7 @@
 import { EffectTypes, world } from "@minecraft/server";
 import { CONFIG, IDS } from "./config.js";
 import { Capsules, Players } from "./store.js";
-import { applySkin } from "./skin.js";
+import { applyDisguise, applySkin } from "./skin.js";
 
 /** @typedef {import("./store.js").CapsuleRecord} CapsuleRecord */
 /** @typedef {import("./store.js").PlayerRecord} PlayerRecord */
@@ -162,6 +162,7 @@ export function enterOriginal(player, c) {
   p.mode = "original";
   p.host = null;
   Players.save(p);
+  applyDisguise(player, p);
   startGrowing(c, "clone");
   Capsules.save(c);
   refreshCapsuleEntity(c);
