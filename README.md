@@ -38,6 +38,11 @@ As duas criam as mesmas dimensões e comandos: ative só uma delas no mundo.
   **compartilhados** entre as 55 (o pack não cresce). Um espelho no overworld por jogador e um
   spawner só, que passa pelas dimensões onde tem alguém.
 
+- **O centro (X 0 / Z 0) das 55 dimensões é gerado quando o mundo abre**, uma de cada vez em segundo
+  plano (dentro do mesmo orçamento por tick). As que já estão prontas ficam salvas no mundo. Assim a
+  Portal Gun (`0 100 0 rick:NN` na tela "Definir Local") acha chão em qualquer dimensão, mesmo sem
+  ninguém ter entrado nela antes.
+
 ### Comandos
 
 `/rick:rick01` … `/rick:rick55` — leva você para o meio da construção na dimensão com o mesmo número.
