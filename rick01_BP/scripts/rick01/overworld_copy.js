@@ -143,6 +143,9 @@ function requestOverworldChunk(cx, cz) {
 
 const inBuild = (cx, cz) => BUILD_CHUNKS[key(cx, cz)] !== undefined;
 
+/** false na versão "só overworld" (sem a cidade do Rick). */
+export const HAS_BUILD = Object.keys(BUILD_CHUNKS).length > 0;
+
 // ------------------------------------------------ espelho no overworld
 
 const mirrors = new Map(); // player.id -> { id, x, z }

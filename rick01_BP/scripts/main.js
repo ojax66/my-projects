@@ -1,6 +1,6 @@
 import { CommandPermissionLevel, CustomCommandStatus, system, world } from "@minecraft/server";
 import { createTerrainGenerator } from "./world_generator_API.js";
-import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, isBudgetError, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
+import { canGenerateChunk, ensureBaseY, generateColumn, GEN_RADIUS_CHUNKS, HAS_BUILD, isBudgetError, preloadChunks, spawnPoint } from "./rick01/overworld_copy.js";
 import { startSpawner } from "./rick01/spawner.js";
 import { DIMENSIONS, isRickDimension } from "./rick01/dimensions.js";
 
@@ -69,6 +69,7 @@ function ensureStarted(dimId) {
 startSpawner((dimId, x, z) => generators.get(dimId)?.isChunkReady(x, z) ?? false);
 
 // Gera na hora o chunk onde o jogador vai chegar, para ele não cair no vazio.
+// Devolve o Y do chão em X 0 / Z 0 (usado quando não tem a cidade).
 async function generateSpawnChunk(dim, n) {
   const hr = dim.heightRange;
   const marker = { x: 0, y: hr.min, z: 0 };
@@ -79,7 +80,7 @@ async function generateSpawnChunk(dim, n) {
     to: { x: 15, y: hr.max - 1, z: 15 },
   });
   try {
-    if (dim.getBlock(marker)?.typeId === MARKER_BLOCK) return;
+    if (dim.getBlock(marker)?.typeId === MARKER_BLOCK) return dim.getTopmostBlock({ x: 0, z: 0 })?.y;
     // a cópia é em fatias: vai continuando a cada tick até terminar
     for (;;) {
       try {
@@ -91,6 +92,7 @@ async function generateSpawnChunk(dim, n) {
       }
     }
     dim.getBlock(marker)?.setType(MARKER_BLOCK);
+    return dim.getTopmostBlock({ x: 0, z: 0 })?.y;
   } finally {
     if (world.tickingAreaManager.hasTickingArea(id)) world.tickingAreaManager.removeTickingArea(id);
   }
@@ -100,10 +102,17 @@ async function goTo(player, d) {
   const dim = world.getDimension(d.id);
   player.onScreenDisplay.setActionBar("§aAbrindo portal para " + d.id + "...");
   ensureStarted(d.id);
-  await retry(() => ensureBaseY());
+  if (HAS_BUILD) await retry(() => ensureBaseY());
   await preloadChunks([[0, 0]]);
-  await retry(() => generateSpawnChunk(dim, d.n));
-  player.teleport(spawnPoint(), { dimension: dim });
+  const ground = await retry(() => generateSpawnChunk(dim, d.n));
+  if (HAS_BUILD) {
+    // no meio da cidade do Rick
+    player.teleport(spawnPoint(), { dimension: dim });
+  } else {
+    // versão só overworld: em cima do chão copiado em X 0 / Z 0
+    player.teleport({ x: 0.5, y: (ground ?? 100) + 1, z: 0.5 }, { dimension: dim });
+    if (ground === undefined) player.addEffect("slow_falling", 20 * 10, { showParticles: false });
+  }
 }
 
 // Quem chega numa rick:NN por outro caminho (/tp, entrou no mundo já lá dentro)
