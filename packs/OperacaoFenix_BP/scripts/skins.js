@@ -20,5 +20,9 @@ export const SKINS = {
   "ghzzinkkj3070": {
     "skin": 6,
     "slim": false
+  },
+  "a080a1543": {
+    "skin": 7,
+    "slim": false
   }
 };
