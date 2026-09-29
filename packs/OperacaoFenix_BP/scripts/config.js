@@ -9,6 +9,10 @@ export const CONFIG = {
   immatureEffectSeconds: 60,
   // Quantos registros de uso do clone ficam guardados por jogador.
   maxLogEntries: 20,
+  // Tempo para uma cápsula refazer, a partir do DNA, o corpo de quem está em Valhalla.
+  dnaReviveSeconds: 240,
+  // Corpo sem itens some depois deste tempo (e sai da bússola).
+  emptyBodyDespawnSeconds: 300,
 };
 
 export const IDS = {
@@ -17,7 +21,13 @@ export const IDS = {
   corpse: "fenix:corpse",
   capsuleKit: "fenix:capsule_kit",
   panelKit: "fenix:panel_kit",
+  syringe: "fenix:syringe",
+  dna: "fenix:dna_sample",
+  compass: "fenix:body_compass",
 };
+
+// Dimensão para onde vai quem já teve uma Operação Fênix e ficou sem nenhuma.
+export const VALHALLA = "fenix:valhalla";
 
 // Marcador invisível no título que faz o resource pack desenhar a UI da Operação Fênix.
 export const FORM_MARKER = "§f§e§n§x";

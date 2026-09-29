@@ -43,7 +43,7 @@
     "type": "panel",
     "size": [
       270,
-      180
+      198
     ],
     "layer": 2,
     "bindings": [
@@ -178,7 +178,7 @@
         "notify@server_form.fenix_notify": {
           "offset": [
             9,
-            -15
+            -33
           ],
           "anchor_from": "bottom_left",
           "anchor_to": "bottom_left",
@@ -189,10 +189,21 @@
         "uses@server_form.fenix_uses": {
           "offset": [
             -14,
-            -16
+            -34
           ],
           "anchor_from": "bottom_right",
           "anchor_to": "bottom_right",
+          "layer": 1
+        }
+      },
+      {
+        "priority@server_form.fenix_priority": {
+          "offset": [
+            9,
+            -15
+          ],
+          "anchor_from": "bottom_left",
+          "anchor_to": "bottom_left",
           "layer": 1
         }
       }
@@ -709,6 +720,25 @@
             "100%"
           ],
           "layer": 1
+        }
+      }
+    ]
+  },
+  "fenix_priority": {
+    "type": "panel",
+    "size": [
+      190,
+      16
+    ],
+    "collection_name": "form_buttons",
+    "controls": [
+      {
+        "toggle@server_form.fenix_icon_button": {
+          "collection_index": 10,
+          "size": [
+            "100%",
+            "100%"
+          ]
         }
       }
     ]

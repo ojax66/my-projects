@@ -22,6 +22,9 @@ const coords = (c) => `${Math.floor(c.x)} ${Math.floor(c.y)} ${Math.floor(c.z)}`
 function status(c) {
   if (!isLinked(c)) return { text: "§7DESATIVADA", icon: ICONS.skull };
   const value = progress(c);
+  if (c.body === "dna") {
+    return value < 1 ? { text: `§dDNA ${pct(value)}`, icon: ICONS.energy } : { text: "§dDNA PRONTO", icon: ICONS.clone };
+  }
   if (c.body === "original") {
     if (c.start === null) return { text: "§cCORPO PERDIDO", icon: ICONS.skull };
     return value < 1 ? { text: `§6REVIVENDO ${pct(value)}`, icon: ICONS.energy } : { text: "§bCORPO PRONTO", icon: ICONS.clone };
@@ -55,7 +58,8 @@ export async function openPanel(player, capsuleId) {
   const st = status(c);
 
   // Botões 0..3 carregam dados que o resource pack desenha no quadro da esquerda;
-  // 4..7 são as ações da direita; 8 é a caixa de aviso e 9 o contador de usos.
+  // 4..7 são as ações da direita; 8 é a caixa de aviso, 9 o contador de usos e
+  // 10 a caixa "Priorizar clones crescidos".
   let action = "Vincular meu clone";
   if (linked && p.mode === "foreign") {
     if (c.body !== "original" || c.start === null) action = "Reviver corpo original";
@@ -73,7 +77,8 @@ export async function openPanel(player, capsuleId) {
     .button("Desvincular")
     .button("Fechar")
     .button("Avisar quando usarem meu clone", p.notify ? ICONS.checkboxOn : ICONS.checkboxOff)
-    .button(p.unseen > 0 ? String(p.unseen) : "", p.unseen > 0 ? ICONS.warning : undefined);
+    .button(p.unseen > 0 ? String(p.unseen) : "", p.unseen > 0 ? ICONS.warning : undefined)
+    .button("Priorizar clones crescidos", p.preferGrown ? ICONS.checkboxOn : ICONS.checkboxOff);
 
   const res = await show(player, form);
   if (res.canceled || res.selection === undefined) return;
@@ -110,6 +115,15 @@ export async function openPanel(player, capsuleId) {
     case 8:
       p.notify = !p.notify;
       Players.save(p);
+      return again();
+    case 10:
+      p.preferGrown = !p.preferGrown;
+      Players.save(p);
+      player.sendMessage(
+        p.preferGrown
+          ? "§bPriorizar clones crescidos: §aligado. §7Se o seu clone não estiver crescido quando você morrer, você acorda no clone crescido mais próximo de outro jogador."
+          : "§bPriorizar clones crescidos: §cdesligado.",
+      );
       return again();
     case 9:
       if (p.log.length === 0 && p.unseen === 0) return again();

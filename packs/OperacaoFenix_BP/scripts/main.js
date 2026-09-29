@@ -1,10 +1,12 @@
 import { GameMode, ItemStack, system, world } from "@minecraft/server";
-import { IDS } from "./config.js";
+import { IDS, VALHALLA } from "./config.js";
 import { Capsules, Players } from "./store.js";
 import { createCorpse, lootCorpse } from "./corpse.js";
 import { handleRespawn, onCapsuleDestroyed, registerCapsule, resolvePanelCapsule, tick } from "./fenix.js";
 import { openPanel } from "./ui.js";
 import { applyDisguise } from "./skin.js";
+import { bodiesTick, compassTick, giveCompass } from "./compass.js";
+import { heldDNA, sampleDNA, useDNA } from "./dna.js";
 
 const FACE_OFFSET = {
   Up: { x: 0, y: 1, z: 0 },
@@ -20,6 +22,9 @@ world.afterEvents.worldLoad.subscribe(() => {
   // Os itens não caem no chão: vão para o corpo (ver corpse.js).
   world.gameRules.keepInventory = true;
   system.runInterval(tick, 20);
+  system.runInterval(bodiesTick, 20);
+  let frame = 0;
+  system.runInterval(() => compassTick(frame++), 4);
 });
 
 // ---- Colocar cápsula e painel -------------------------------------------------
@@ -40,6 +45,10 @@ world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
 });
 
 function placeKit(player, clicked, face, kit) {
+  if (player.dimension.id === VALHALLA) {
+    player.onScreenDisplay.setActionBar("§6A Operação Fênix não funciona em Valhalla.");
+    return;
+  }
   const target = clicked.offset(FACE_OFFSET[face]);
   if (!target) return;
   for (let h = 0; h < KIT_HEIGHT[kit]; h++) {
@@ -98,11 +107,13 @@ world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
   const { player, target } = ev;
   if (target.typeId !== IDS.capsule && target.typeId !== IDS.panel && target.typeId !== IDS.corpse) return;
   ev.cancel = true;
+  const held = ev.itemStack?.typeId;
   system.run(() => {
     if (!target.isValid) return;
-    if (target.typeId === IDS.corpse) return lootCorpse(player, target);
+    if (target.typeId === IDS.corpse) return held === IDS.syringe ? sampleDNA(player, target) : lootCorpse(player, target);
     const id = target.typeId === IDS.capsule ? target.id : resolvePanelCapsule(target, player.id)?.id;
     if (!id) return player.sendMessage("§cNenhuma Operação Fênix perto deste painel.");
+    if (held === IDS.dna && heldDNA(player)) return useDNA(player, id);
     openPanel(player, id);
   });
 });
@@ -126,9 +137,11 @@ world.afterEvents.playerSpawn.subscribe(({ player }) => {
   // Também cobre quem morreu e saiu do jogo antes de renascer.
   system.runTimeout(() => {
     if (!player.isValid) return;
+    const died = !!Players.of(player).pendingRespawn;
     handleRespawn(player);
     // Skin do clone em que o jogador está (também ao entrar no mundo).
     applyDisguise(player, Players.of(player));
+    if (died) giveCompass(player);
   }, 2);
 });
 

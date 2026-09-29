@@ -2,7 +2,7 @@
 
 ## Operação Fênix (Fenix Capsule)
 
-Add-on para **Minecraft Bedrock** (1.21.90+, Script API `@minecraft/server` 2.0.0) em que a cápsula de clonagem substitui a cama como ponto de renascimento.
+Add-on para **Minecraft Bedrock** (1.26+, Script API `@minecraft/server` 2.8.0) em que a cápsula de clonagem substitui a cama como ponto de renascimento.
 
 ### Instalação
 
@@ -30,10 +30,22 @@ Use o item num bloco para montar a peça. O painel se conecta à cápsula mais p
   - Nesse clone alheio você **fica com a skin do dono do clone** (e se morrer, o corpo que cai também tem a skin dele).
   - Nesse clone alheio você **não pode pegar os itens** dos seus corpos.
   - Para voltar: monte uma nova Operação Fênix → **Vincular meu clone** → **Reviver corpo original** (3 min) → **Entrar no corpo original**. Aí os seus corpos podem ser saqueados de novo.
-  - Se não houver nenhum clone pronto na rede, você nasce no spawn do mundo, ainda sem o corpo original.
+  - Se não houver nenhum clone pronto na rede, você vai para **Valhalla** (veja abaixo).
 - **Rede de clones**: lista todas as cápsulas ativas, com status e distância.
+- **Priorizar clones crescidos** (desligado por padrão): se você morrer e o seu clone ainda não tiver crescido, você acorda no clone crescido mais próximo de outro jogador em vez do seu. Serve contra armadilhas que matam o jogador sem parar em cima da cápsula. O seu clone continua crescendo.
 - **Avisar quando usarem meu clone**: liga/desliga o aviso. O ⚠ mostra quantas vezes usaram seu clone. Clicar nele abre o histórico.
 - **Integridade**: vida da cápsula (60). Só ataques e explosões causam dano. Se você mesmo quebrar sua cápsula ou painel, o item volta para você. O dono é avisado quando alguém ataca a cápsula.
+
+- **Bússola de Corpos**: você ganha uma sempre que morre (se já não tiver). Segurando, a barra de ação mostra uma seta e a distância até o seu **corpo mais antigo**; quando ele acaba, passa para o próximo. Se o corpo está em outra dimensão, a seta fica girando e mostra o nome da dimensão. Corpo **sem itens some depois de 5 minutos** e sai da bússola.
+
+### Valhalla
+
+Quem já teve uma Operação Fênix, não tem mais nenhuma e não achou clone pronto na rede vai para **Valhalla**: uma dimensão de ilhas de campo e neve flutuando num céu dourado, gerada pela API de terreno do Galactic Horizons. Morrer em Valhalla leva de volta para Valhalla, e lá não dá para montar Operação Fênix.
+
+Para sair, outro jogador precisa:
+1. Fazer uma **Seringa** (garrafa de vidro, pepita de ferro e barra de ferro, na diagonal) e usá-la num **corpo** do jogador. Ele recebe a **Amostra de DNA** dessa pessoa.
+2. Usar o DNA na **própria** Operação Fênix (clicando na cápsula ou no painel com o DNA na mão). A cápsula para de gerar o clone do dono e refaz o corpo original de quem está em Valhalla (4 min).
+3. Quando fica pronto, a pessoa sai de Valhalla nessa cápsula, no corpo original, e a cápsula volta a gerar o clone do dono.
 
 Tempos e raios ficam em `packs/OperacaoFenix_BP/scripts/config.js`.
 
@@ -83,6 +95,9 @@ packs/OperacaoFenix_BP/   comportamento: entidades, itens, receitas e scripts
   scripts/fenix.js          cápsulas, vínculo, rede de clones, renascimento
   scripts/corpse.js         corpo com os itens
   scripts/ui.js             formulários
+  scripts/valhalla.js       dimensão Valhalla (terreno pelo world_generator_API.js)
+  scripts/compass.js        bússola de corpos e limpeza de corpos vazios
+  scripts/dna.js            seringa e DNA
 packs/OperacaoFenix_RP/   recursos: modelos, texturas, UI (ui/server_form.json)
 server_plugin/            plugin Endstone que captura as skins reais
 tools/                    build (.mcaddon + plugin) e registro manual de skins

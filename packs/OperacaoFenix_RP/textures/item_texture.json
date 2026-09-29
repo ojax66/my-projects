@@ -7,6 +7,15 @@
     },
     "fenix_panel": {
       "textures": "textures/items/fenix_panel"
+    },
+    "fenix_syringe": {
+      "textures": "textures/items/fenix_syringe"
+    },
+    "fenix_dna": {
+      "textures": "textures/items/fenix_dna"
+    },
+    "fenix_body_compass": {
+      "textures": "textures/items/recovery_compass_item"
     }
   }
 }

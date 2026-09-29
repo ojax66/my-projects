@@ -1,11 +1,17 @@
 import { EquipmentSlot, world } from "@minecraft/server";
 import { IDS } from "./config.js";
-import { Players } from "./store.js";
+import { Bodies, Players } from "./store.js";
 import { applySkin, bodyName } from "./skin.js";
 
 // Slots 0..35 do corpo espelham o inventário; 36..40 guardam o equipamento.
 const EQUIPMENT = [EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Legs, EquipmentSlot.Feet, EquipmentSlot.Offhand];
 const EQUIPMENT_BASE = 36;
+
+/** O corpo não guarda mais nenhum item? */
+export function isEmpty(corpse) {
+  const store = corpse.getComponent("minecraft:inventory")?.container;
+  return !store || store.emptySlotsCount === store.size;
+}
 
 /** Onde o corpo fica: no local da morte, ou em cima do chão se o jogador caiu no void. */
 function restingPlace(dimension, loc) {
@@ -45,7 +51,8 @@ export function createCorpse(player, dimension, deathLocation) {
   if (inventory) {
     for (let i = 0; i < inventory.size && i < EQUIPMENT_BASE; i++) {
       const item = inventory.getItem(i);
-      if (!item) continue;
+      // A bússola de corpos fica com o jogador (keepInventory).
+      if (!item || item.typeId === IDS.compass) continue;
       store.setItem(i, item);
       inventory.setItem(i);
     }
@@ -58,6 +65,16 @@ export function createCorpse(player, dimension, deathLocation) {
       equippable.setEquipment(slot);
     });
   }
+  Bodies.save({
+    id: corpse.id,
+    owner: player.id,
+    dim: dimension.id,
+    x: spot.x,
+    y: spot.y,
+    z: spot.z,
+    at: Date.now(),
+    emptySince: isEmpty(corpse) ? Date.now() : null,
+  });
 }
 
 /**
@@ -73,6 +90,10 @@ export function lootCorpse(player, corpse) {
     return;
   }
   const p = Players.of(player);
+  if (p.mode === "valhalla") {
+    player.sendMessage("§cVocê está em Valhalla. §7Só quando alguém reviver seu corpo com DNA você volta a pegar seus itens.");
+    return;
+  }
   if (p.mode === "foreign") {
     const where = p.host ? `no clone de §f${p.host}§7` : "num corpo provisório";
     player.sendMessage(`§cVocê está ${where}. §7Reviva seu corpo original numa Operação Fênix para recuperar seus itens.`);
@@ -110,6 +131,7 @@ export function lootCorpse(player, corpse) {
     return;
   }
   corpse.dimension.spawnParticle("minecraft:basic_smoke_particle", corpse.location);
+  Bodies.remove(corpse.id);
   corpse.remove();
   player.sendMessage("§7Você recuperou tudo do seu corpo.");
 }

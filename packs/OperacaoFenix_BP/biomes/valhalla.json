@@ -1,0 +1,24 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:biome": {
+    "description": {
+      "identifier": "fenix:valhalla"
+    },
+    "components": {
+      "minecraft:climate": {
+        "temperature": 0.6,
+        "downfall": 0.2,
+        "snow_accumulation": [
+          0.0,
+          0.0
+        ]
+      },
+      "minecraft:tags": {
+        "tags": [
+          "valhalla",
+          "no_legacy_worldgen"
+        ]
+      }
+    }
+  }
+}

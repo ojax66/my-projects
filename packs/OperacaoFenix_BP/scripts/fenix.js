@@ -2,6 +2,7 @@ import { EffectTypes, world } from "@minecraft/server";
 import { CONFIG, IDS } from "./config.js";
 import { Capsules, Players } from "./store.js";
 import { applyDisguise, applySkin } from "./skin.js";
+import { sendToValhalla } from "./valhalla.js";
 
 /** @typedef {import("./store.js").CapsuleRecord} CapsuleRecord */
 /** @typedef {import("./store.js").PlayerRecord} PlayerRecord */
@@ -43,7 +44,8 @@ function capsuleExit(c) {
 function startGrowing(c, body) {
   c.body = body;
   c.start = Date.now();
-  c.duration = (body === "clone" ? CONFIG.cloneGrowSeconds : CONFIG.reviveSeconds) * 1000;
+  const seconds = { clone: CONFIG.cloneGrowSeconds, original: CONFIG.reviveSeconds, dna: CONFIG.dnaReviveSeconds }[body];
+  c.duration = seconds * 1000;
   c.announced = false;
 }
 
@@ -56,6 +58,12 @@ export function refreshCapsuleEntity(c) {
   if (entity.getProperty("fenix:active") !== c.active) entity.setProperty("fenix:active", c.active);
   const health = entity.getComponent("minecraft:health");
   if (health) c.integrity = health.currentValue / health.effectiveMax;
+  // O corpo que cresce no vidro é de quem vai acordar nele.
+  const grows = c.body === "dna" && c.dnaName ? c.dnaName : c.ownerName;
+  if (entity.getDynamicProperty("fenix:skinName") !== grows) {
+    applySkin(entity, grows);
+    entity.setDynamicProperty("fenix:skinName", grows);
+  }
 }
 
 export function registerCapsule(entity, player) {
@@ -191,51 +199,14 @@ export function networkClones(forPlayerId, from) {
     .sort((a, b) => distance(a, from) - distance(b, from));
 }
 
-/** Chamado quando o jogador renasce: decide em qual corpo ele acorda. */
-export function handleRespawn(player) {
-  const p = Players.of(player);
-  const death = p.pendingRespawn;
-  if (!death) return;
-  p.pendingRespawn = null;
+function immatureWakeUp(player) {
+  const ticks = CONFIG.immatureEffectSeconds * 20;
+  for (const e of ["weakness", "slowness", "hunger"]) player.addEffect(EffectTypes.get(e), ticks, { amplifier: 1 });
+}
 
-  const own = p.capsule ? Capsules.get(p.capsule) : undefined;
-  if (own && isLinked(own)) {
-    if (p.mode === "original" && own.body === "clone") {
-      const immature = !isReady(own);
-      startGrowing(own, "clone");
-      Capsules.save(own);
-      Players.save(p);
-      refreshCapsuleEntity(own);
-      wakeUpIn(player, own);
-      if (immature) {
-        const ticks = CONFIG.immatureEffectSeconds * 20;
-        for (const e of ["weakness", "slowness", "hunger"]) player.addEffect(EffectTypes.get(e), ticks, { amplifier: 1 });
-        player.sendMessage("§eVocê acordou num clone que ainda não estava pronto.");
-      } else {
-        player.sendMessage("§bOperação Fênix: §7você acordou no seu clone.");
-      }
-      return;
-    }
-    if (p.mode === "foreign" && own.body === "original" && isReady(own)) {
-      Players.save(p);
-      enterOriginal(player, own);
-      return;
-    }
-  }
-
-  // Sem Operação Fênix própria: quem já teve uma acorda no clone pronto mais próximo.
-  if (!p.everLinked) {
-    Players.save(p);
-    return;
-  }
-  const host = networkClones(p.id, death)[0];
+/** Acorda o jogador no clone pronto de outro jogador (e avisa o dono). */
+function wakeInForeignClone(player, p, host, reason) {
   p.mode = "foreign";
-  if (!host) {
-    p.host = null;
-    Players.save(p);
-    player.sendMessage("§cNenhum clone disponível na rede. §7Seu corpo original ficou para trás: construa uma Operação Fênix e reviva-o.");
-    return;
-  }
   p.host = host.ownerName;
   Players.save(p);
   startGrowing(host, "clone");
@@ -243,9 +214,9 @@ export function handleRespawn(player) {
   refreshCapsuleEntity(host);
   wakeUpIn(player, host);
   player.sendMessage(
-    `§eVocê acordou no clone de §f${host.ownerName}§e. §7Seus itens ficaram presos no corpo original: construa uma nova Operação Fênix e reviva-o para recuperá-los.`,
+    (reason ?? "") +
+      `§eVocê acordou no clone de §f${host.ownerName}§e. §7Seus itens ficaram presos no corpo original: construa uma nova Operação Fênix e reviva-o para recuperá-los.`,
   );
-
   const hostRecord = Players.get(host.owner);
   if (hostRecord) {
     hostRecord.unseen += 1;
@@ -256,12 +227,124 @@ export function handleRespawn(player) {
   }
 }
 
+/** Chamado quando o jogador renasce: decide em qual corpo (ou em que lugar) ele acorda. */
+export function handleRespawn(player) {
+  const p = Players.of(player);
+  const death = p.pendingRespawn;
+  if (!death) return;
+  p.pendingRespawn = null;
+
+  // Em Valhalla, cada morte volta para Valhalla.
+  if (p.mode === "valhalla") {
+    Players.save(p);
+    sendToValhalla(player);
+    return;
+  }
+
+  const own = p.capsule ? Capsules.get(p.capsule) : undefined;
+  if (own && isLinked(own)) {
+    if (p.mode === "original" && own.body === "clone") {
+      const immature = !isReady(own);
+      // "Priorizar clones crescidos": com o próprio clone imaturo (ex.: uma armadilha
+      // matando o jogador em cima da cápsula), um clone crescido da rede vence.
+      const grown = immature && p.preferGrown ? networkClones(p.id, death)[0] : undefined;
+      if (grown) {
+        wakeInForeignClone(player, p, grown, "§7Seu clone ainda não tinha crescido e você prioriza clones crescidos. ");
+        return;
+      }
+      startGrowing(own, "clone");
+      Capsules.save(own);
+      Players.save(p);
+      refreshCapsuleEntity(own);
+      wakeUpIn(player, own);
+      if (immature) {
+        immatureWakeUp(player);
+        player.sendMessage("§eVocê acordou num clone que ainda não estava pronto.");
+      } else {
+        player.sendMessage("§bOperação Fênix: §7você acordou no seu clone.");
+      }
+      return;
+    }
+    if (p.mode === "original" && own.body === "dna") {
+      // A cápsula está trazendo alguém de Valhalla: o dono acorda nela sem atrapalhar.
+      Players.save(p);
+      wakeUpIn(player, own);
+      immatureWakeUp(player);
+      player.sendMessage("§eSua cápsula está ocupada com um DNA; você acordou sem um clone pronto.");
+      return;
+    }
+    if (p.mode === "foreign" && own.body === "original" && isReady(own)) {
+      Players.save(p);
+      enterOriginal(player, own);
+      return;
+    }
+  }
+
+  // Sem Operação Fênix: quem já teve uma acorda no clone pronto mais próximo...
+  if (!p.everLinked) {
+    Players.save(p);
+    return;
+  }
+  const host = networkClones(p.id, death)[0];
+  if (host) {
+    wakeInForeignClone(player, p, host);
+    return;
+  }
+  // ...e sem nenhum clone pronto na rede, vai para Valhalla.
+  p.mode = "valhalla";
+  p.host = null;
+  Players.save(p);
+  sendToValhalla(player);
+  player.sendMessage(
+    "§6Nenhum clone disponível: você foi para Valhalla. §7Para voltar, outro jogador precisa tirar o DNA de um corpo seu com uma seringa e usá-lo numa Operação Fênix.",
+  );
+}
+
+/** "Usar DNA": a cápsula do jogador passa a refazer o corpo de quem está em Valhalla. */
+export function startDna(player, c, targetId, targetName) {
+  if (c.owner !== player.id) return "§cUse o DNA na sua própria Operação Fênix.";
+  if (!isLinked(c)) return "§cVincule esta cápsula primeiro.";
+  const target = Players.get(targetId);
+  if (!target || target.mode !== "valhalla") return `§e${targetName} não está em Valhalla.`;
+  if (c.body === "dna") return "§cEsta cápsula já está revivendo alguém.";
+  c.dnaOwner = targetId;
+  c.dnaName = targetName;
+  startGrowing(c, "dna");
+  Capsules.save(c);
+  refreshCapsuleEntity(c);
+  notifyPlayer(targetId, `§6${player.name} está refazendo seu corpo numa Operação Fênix. §7Aguarde em Valhalla.`);
+  return undefined;
+}
+
+/** O corpo feito pelo DNA ficou pronto: tira o jogador de Valhalla (quando ele estiver online). */
+function finishDna(c) {
+  const target = Players.get(c.dnaOwner);
+  if (!target || target.mode !== "valhalla") {
+    // Já saiu de Valhalla por outro caminho: a cápsula volta ao clone do dono.
+    startGrowing(c, "clone");
+    return;
+  }
+  const player = findPlayer(c.dnaOwner);
+  if (!player) return; // tenta de novo quando ele entrar
+  target.mode = "original";
+  target.host = null;
+  Players.save(target);
+  wakeUpIn(player, c);
+  applyDisguise(player, target);
+  player.sendMessage(`§bVocê voltou de Valhalla no seu corpo original, graças a §f${c.ownerName}§b.`);
+  notifyPlayer(c.owner, `§b${player.name} voltou de Valhalla pela sua Operação Fênix.`);
+  c.dnaOwner = undefined;
+  c.dnaName = undefined;
+  startGrowing(c, "clone");
+}
+
 /** Executado a cada segundo: atualiza visuais e avisa quando algo fica pronto. */
 export function tick() {
   for (const c of Capsules.all()) {
     const before = JSON.stringify(c);
     refreshCapsuleEntity(c);
-    if (c.active && c.start !== null && !c.announced && isReady(c)) {
+    if (c.active && c.body === "dna" && isReady(c)) finishDna(c);
+    else if (c.active && c.start !== null && !c.announced && isReady(c)) {
       c.announced = true;
       notifyPlayer(c.owner, c.body === "clone" ? "§aSeu clone está pronto." : "§bSeu corpo original foi revivido! §7Entre nele pelo painel.");
     }

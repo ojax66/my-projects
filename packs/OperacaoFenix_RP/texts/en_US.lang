@@ -6,3 +6,6 @@ entity.fenix:capsule.name=Phoenix Capsule
 entity.fenix:panel.name=Phoenix Panel
 entity.fenix:corpse.name=Body
 action.interact.fenix=Use
+item.fenix:syringe.name=Syringe
+item.fenix:dna_sample.name=DNA Sample
+item.fenix:body_compass.name=Body Compass
