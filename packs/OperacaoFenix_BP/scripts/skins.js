@@ -16,5 +16,9 @@ export const SKINS = {
   "gamertag65459": {
     "skin": 5,
     "slim": false
+  },
+  "ghzzinkkj3070": {
+    "skin": 6,
+    "slim": false
   }
 };
