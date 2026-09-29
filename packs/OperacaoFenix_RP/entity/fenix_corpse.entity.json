@@ -14,7 +14,8 @@
         "skin_4": "textures/entity/fenix/skins/skin_4",
         "skin_5": "textures/entity/fenix/skins/skin_5",
         "skin_6": "textures/entity/fenix/skins/skin_6",
-        "skin_7": "textures/entity/fenix/skins/skin_7"
+        "skin_7": "textures/entity/fenix/skins/skin_7",
+        "skin_8": "textures/entity/fenix/skins/skin_8"
       },
       "geometry": {
         "body": "geometry.fenix_body",
