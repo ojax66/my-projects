@@ -28,5 +28,9 @@ export const SKINS = {
   "gabis61215": {
     "skin": 8,
     "slim": false
+  },
+  "paraleleppd0": {
+    "skin": 9,
+    "slim": false
   }
 };

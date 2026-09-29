@@ -20,7 +20,8 @@
         "skin_5": "textures/entity/fenix/skins/skin_5",
         "skin_6": "textures/entity/fenix/skins/skin_6",
         "skin_7": "textures/entity/fenix/skins/skin_7",
-        "skin_8": "textures/entity/fenix/skins/skin_8"
+        "skin_8": "textures/entity/fenix/skins/skin_8",
+        "skin_9": "textures/entity/fenix/skins/skin_9"
       },
       "geometry": {
         "default": "geometry.humanoid.custom",
