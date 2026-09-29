@@ -1,0 +1,155 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:overgrown_willow_vines",
+      "menu_category": {
+        "category": "nature"
+      },
+      "states": {
+        "the_sift:tip": [
+          false,
+          true
+        ],
+        "the_sift:facing": [
+          "north",
+          "east",
+          "south",
+          "west"
+        ]
+      },
+      "traits": {
+        "minecraft:placement_position": {
+          "enabled_states": [
+            "minecraft:block_face"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.overgrown_willow_vines"
+      },
+      "minecraft:geometry": "geometry.the_sift.vine_plane",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_overgrown_willow_vines",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          16,
+          2
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0
+      },
+      "minecraft:replaceable": {},
+      "minecraft:movable": {
+        "movement_type": "popped"
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#4c8a64",
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": false,
+            "on_liquid_touches": "popped"
+          }
+        ]
+      },
+      "minecraft:flammable": {
+        "catch_chance_modifier": 60,
+        "destroy_chance_modifier": 100
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "side",
+              "down"
+            ]
+          }
+        ]
+      },
+      "minecraft:loot": "loot_tables/the_sift/blocks/overgrown_willow_vines.json",
+      "the_sift:vines": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('the_sift:tip')",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "the_sift_overgrown_willow_vines_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:facing') == 'north'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:facing') == 'west'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:facing') == 'south'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:facing') == 'east'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

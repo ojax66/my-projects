@@ -1,0 +1,40 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:dry_healthy_sculk_growth",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.dry_healthy_sculk_growth"
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_dry_healthy_sculk_growth_side",
+          "render_method": "opaque"
+        },
+        "up": {
+          "texture": "the_sift_siftslate_growth_top",
+          "render_method": "opaque"
+        },
+        "down": {
+          "texture": "the_sift_dry_healthy_sculk",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.2
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.2
+      },
+      "tag:minecraft:is_hoe_item_destructible": {},
+      "minecraft:map_color": "#5c7d74",
+      "minecraft:loot": "loot_tables/the_sift/blocks/dry_healthy_sculk_growth.json"
+    }
+  }
+}

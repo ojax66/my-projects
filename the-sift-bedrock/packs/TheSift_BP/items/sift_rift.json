@@ -1,0 +1,23 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:sift_rift",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_sift_rift"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.sift_rift"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:rarity": "epic"
+    }
+  }
+}

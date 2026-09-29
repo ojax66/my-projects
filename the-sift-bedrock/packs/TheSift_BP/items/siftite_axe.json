@@ -1,0 +1,68 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:siftite_axe",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_siftite_axe"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.siftite_axe"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": {
+        "value": true
+      },
+      "minecraft:damage": {
+        "value": 9
+      },
+      "minecraft:durability": {
+        "max_durability": 2501
+      },
+      "minecraft:enchantable": {
+        "slot": "axe",
+        "value": 15
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "the_sift:siftite_ingot"
+            ],
+            "repair_amount": "query.max_durability * 0.25"
+          }
+        ]
+      },
+      "minecraft:fire_resistant": {
+        "value": true
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:is_axe",
+          "minecraft:is_tool",
+          "minecraft:digger",
+          "minecraft:netherite_tier",
+          "the_sift:siftite_item"
+        ]
+      },
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": {
+              "tags": "q.any_tag('wood', 'log', 'pumpkin', 'minecraft:is_axe_item_destructible')"
+            },
+            "speed": 11
+          }
+        ]
+      }
+    }
+  }
+}

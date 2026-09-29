@@ -1,0 +1,22 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:fog_settings": {
+    "description": {
+      "identifier": "the_sift:fog_sift_overgrown"
+    },
+    "distance": {
+      "air": {
+        "fog_start": 30,
+        "fog_end": 160,
+        "fog_color": "#A9DCCB",
+        "render_distance_type": "fixed"
+      },
+      "water": {
+        "fog_start": 0,
+        "fog_end": 40,
+        "fog_color": "#2E8E99",
+        "render_distance_type": "fixed"
+      }
+    }
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "format_version": [
+    1,
+    1,
+    0
+  ],
+  "the_sift:dry_healthy_sculk": {
+    "sound": "sculk"
+  },
+  "the_sift:dry_healthy_sculk_growth": {
+    "sound": "sculk"
+  },
+  "the_sift:dry_healthy_sculk_sprouts": {
+    "sound": "grass"
+  },
+  "the_sift:healthy_sculk": {
+    "sound": "sculk"
+  },
+  "the_sift:healthy_sculk_sprouts": {
+    "sound": "grass"
+  },
+  "the_sift:ichor": {
+    "sound": "slime"
+  },
+  "the_sift:ichor_snow": {
+    "sound": "snow"
+  },
+  "the_sift:ichor_snow_block": {
+    "sound": "snow"
+  },
+  "the_sift:overgrown_chard": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_fronds": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_hanging_roots": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_lotus": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_stalks": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_willow_button": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_door": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_fence": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_fence_gate": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_foliage": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_willow_log": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_planks": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_pressure_plate": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_sapling": {
+    "sound": "grass"
+  },
+  "the_sift:overgrown_willow_slab": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_stairs": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_trapdoor": {
+    "sound": "wood"
+  },
+  "the_sift:overgrown_willow_vines": {
+    "sound": "vine"
+  },
+  "the_sift:overgrown_willow_wood": {
+    "sound": "wood"
+  },
+  "the_sift:reinforced_siftslate": {
+    "sound": "deepslate"
+  },
+  "the_sift:sculkflower": {
+    "sound": "grass"
+  },
+  "the_sift:sculkflower_crop": {
+    "sound": "grass"
+  },
+  "the_sift:sift_portal": {
+    "sound": "glass"
+  },
+  "the_sift:siftslate": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_charoite_ore": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_coal_ore": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_diamond_ore": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_emerald_ore": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_growth": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_hanging_roots": {
+    "sound": "grass"
+  },
+  "the_sift:siftslate_siftite_ore": {
+    "sound": "deepslate"
+  },
+  "the_sift:siftslate_stalks": {
+    "sound": "grass"
+  },
+  "the_sift:sonorous_deepslate": {
+    "sound": "deepslate"
+  },
+  "the_sift:sonorous_deepslate_note": {
+    "sound": "deepslate"
+  },
+  "the_sift:soul_block": {
+    "sound": "soul_soil"
+  },
+  "the_sift:stripped_overgrown_willow_log": {
+    "sound": "wood"
+  },
+  "the_sift:stripped_overgrown_willow_wood": {
+    "sound": "wood"
+  },
+  "the_sift:sunburst_plant": {
+    "sound": "grass"
+  },
+  "the_sift:whisperbloom": {
+    "sound": "grass"
+  }
+}

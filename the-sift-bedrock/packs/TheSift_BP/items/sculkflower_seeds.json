@@ -1,0 +1,32 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:sculkflower_seeds",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_sculkflower_seeds"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.sculkflower_seeds"
+      },
+      "minecraft:block_placer": {
+        "block": "the_sift:sculkflower_crop",
+        "use_on": [
+          "minecraft:farmland",
+          "minecraft:sculk",
+          "the_sift:healthy_sculk"
+        ]
+      },
+      "minecraft:compostable": {
+        "composting_chance": 30
+      }
+    }
+  }
+}

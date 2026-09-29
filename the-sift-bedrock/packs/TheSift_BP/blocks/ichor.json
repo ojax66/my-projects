@@ -1,0 +1,44 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:ichor",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.ichor"
+      },
+      "minecraft:geometry": "geometry.the_sift.liquid",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_ichor_still",
+          "render_method": "blend",
+          "ambient_occlusion": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          14,
+          16
+        ]
+      },
+      "minecraft:destructible_by_mining": false,
+      "minecraft:destructible_by_explosion": false,
+      "minecraft:replaceable": {},
+      "minecraft:light_emission": 6,
+      "minecraft:light_dampening": 1,
+      "minecraft:map_color": "#4adce8",
+      "minecraft:loot": "loot_tables/the_sift/blocks/empty.json"
+    }
+  }
+}

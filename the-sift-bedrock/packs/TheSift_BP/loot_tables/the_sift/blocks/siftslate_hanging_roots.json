@@ -1,0 +1,19 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "the_sift:siftslate_hanging_roots"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "match_tool",
+          "item": "minecraft:shears"
+        }
+      ]
+    }
+  ]
+}

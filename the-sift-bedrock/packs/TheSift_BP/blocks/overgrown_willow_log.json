@@ -1,0 +1,79 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:overgrown_willow_log",
+      "menu_category": {
+        "category": "nature"
+      },
+      "traits": {
+        "minecraft:placement_position": {
+          "enabled_states": [
+            "minecraft:block_face"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.overgrown_willow_log"
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_overgrown_willow_log",
+          "render_method": "opaque"
+        },
+        "up": {
+          "texture": "the_sift_overgrown_willow_log_top",
+          "render_method": "opaque"
+        },
+        "down": {
+          "texture": "the_sift_overgrown_willow_log_top",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 2.0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 2.0
+      },
+      "tag:minecraft:is_axe_item_destructible": {},
+      "tag:wood": {},
+      "tag:log": {},
+      "minecraft:map_color": "#6b5a45",
+      "minecraft:loot": "loot_tables/the_sift/blocks/overgrown_willow_log.json",
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 5
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'north' || q.block_state('minecraft:block_face') == 'south'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              90,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'east' || q.block_state('minecraft:block_face') == 'west'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              90
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

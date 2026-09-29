@@ -1,0 +1,25 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:ichor_snow",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_ichor_snow_item"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "block.the_sift.ichor_snow"
+      },
+      "minecraft:block_placer": {
+        "block": "the_sift:ichor_snow",
+        "replace_block_item": true
+      }
+    }
+  }
+}

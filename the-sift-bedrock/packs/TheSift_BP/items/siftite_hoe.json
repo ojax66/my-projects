@@ -1,0 +1,68 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:siftite_hoe",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_siftite_hoe"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.siftite_hoe"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": {
+        "value": true
+      },
+      "minecraft:damage": {
+        "value": 6
+      },
+      "minecraft:durability": {
+        "max_durability": 2501
+      },
+      "minecraft:enchantable": {
+        "slot": "hoe",
+        "value": 15
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "the_sift:siftite_ingot"
+            ],
+            "repair_amount": "query.max_durability * 0.25"
+          }
+        ]
+      },
+      "minecraft:fire_resistant": {
+        "value": true
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:is_hoe",
+          "minecraft:is_tool",
+          "minecraft:digger",
+          "minecraft:netherite_tier",
+          "the_sift:siftite_item"
+        ]
+      },
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": {
+              "tags": "q.any_tag('leaves', 'minecraft:is_hoe_item_destructible')"
+            },
+            "speed": 11
+          }
+        ]
+      }
+    }
+  }
+}

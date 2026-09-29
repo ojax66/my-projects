@@ -1,0 +1,391 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.the_sift.overgrown_lotus",
+        "texture_width": 16,
+        "texture_height": 16,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 2.5,
+        "visible_bounds_offset": [
+          0,
+          0.75,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -8
+              ],
+              "size": [
+                16,
+                0,
+                8
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "south": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "west": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "up": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    -8
+                  ],
+                  "material_instance": "t3"
+                },
+                "down": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    8
+                  ],
+                  "material_instance": "t3"
+                }
+              },
+              "pivot": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                -20,
+                0,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                0,
+                -8
+              ],
+              "size": [
+                16,
+                0,
+                8
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t1"
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t1"
+                },
+                "south": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t1"
+                },
+                "west": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t1"
+                },
+                "up": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    -8
+                  ],
+                  "material_instance": "t1"
+                },
+                "down": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    8
+                  ],
+                  "material_instance": "t1"
+                }
+              },
+              "pivot": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                90,
+                20
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                0,
+                -8
+              ],
+              "size": [
+                16,
+                0,
+                8
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "south": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "west": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "up": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    -8
+                  ],
+                  "material_instance": "t3"
+                },
+                "down": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    8
+                  ],
+                  "material_instance": "t3"
+                }
+              },
+              "pivot": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                160,
+                0,
+                180
+              ]
+            },
+            {
+              "origin": [
+                -8,
+                0,
+                -8
+              ],
+              "size": [
+                16,
+                0,
+                8
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "south": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    16,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "west": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    8,
+                    0
+                  ],
+                  "material_instance": "t3"
+                },
+                "up": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    -8
+                  ],
+                  "material_instance": "t3"
+                },
+                "down": {
+                  "uv": [
+                    16,
+                    8
+                  ],
+                  "uv_size": [
+                    -16,
+                    8
+                  ],
+                  "material_instance": "t3"
+                }
+              },
+              "pivot": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                -90,
+                -20
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

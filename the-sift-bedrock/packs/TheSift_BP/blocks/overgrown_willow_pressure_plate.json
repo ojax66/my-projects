@@ -1,0 +1,94 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:overgrown_willow_pressure_plate",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {
+        "the_sift:pressed": [
+          false,
+          true
+        ]
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.overgrown_willow_pressure_plate"
+      },
+      "minecraft:geometry": {
+        "identifier": "geometry.the_sift.pressure_plate",
+        "bone_visibility": {
+          "up": "!q.block_state('the_sift:pressed')",
+          "down": "q.block_state('the_sift:pressed')"
+        }
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_overgrown_willow_planks",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.5
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.5
+      },
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 20
+      },
+      "minecraft:map_color": "#8a7458",
+      "tag:wood": {},
+      "tag:minecraft:is_axe_item_destructible": {},
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          1,
+          14
+        ]
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:movable": {
+        "movement_type": "popped"
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ]
+          }
+        ]
+      },
+      "minecraft:tick": {
+        "interval_range": [
+          10,
+          10
+        ],
+        "looping": true
+      },
+      "the_sift:pressure_plate": {},
+      "minecraft:loot": "loot_tables/the_sift/blocks/overgrown_willow_pressure_plate.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('the_sift:pressed')",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15,
+            "strongly_powered_face": "down"
+          }
+        }
+      }
+    ]
+  }
+}

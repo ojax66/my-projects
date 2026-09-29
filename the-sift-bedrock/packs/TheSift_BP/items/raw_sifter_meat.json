@@ -1,0 +1,30 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:raw_sifter_meat",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_raw_sifter_meat"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.raw_sifter_meat"
+      },
+      "minecraft:food": {
+        "nutrition": 3,
+        "saturation_modifier": 0.3
+      },
+      "minecraft:use_modifiers": {
+        "use_duration": 1.6,
+        "movement_modifier": 0.35
+      },
+      "minecraft:use_animation": "eat"
+    }
+  }
+}

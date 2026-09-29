@@ -1,0 +1,32 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:healthy_sculk",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.healthy_sculk"
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_healthy_sculk",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.2
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.2
+      },
+      "tag:minecraft:is_hoe_item_destructible": {},
+      "minecraft:map_color": "#2d6f73",
+      "minecraft:loot": "loot_tables/the_sift/blocks/healthy_sculk.json"
+    }
+  }
+}

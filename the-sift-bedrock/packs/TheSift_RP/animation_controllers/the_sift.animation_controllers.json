@@ -1,0 +1,234 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.the_sift.sifter.move": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "transitions": [
+            {
+              "running": "q.modified_move_speed > 0.05"
+            }
+          ],
+          "blend_transition": 0.2
+        },
+        "running": {
+          "animations": [
+            "running"
+          ],
+          "transitions": [
+            {
+              "default": "q.modified_move_speed <= 0.05"
+            }
+          ],
+          "blend_transition": 0.2
+        }
+      }
+    },
+    "controller.animation.the_sift.sifter.attack": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "transitions": [
+            {
+              "attacking": "v.attack_time > 0"
+            }
+          ]
+        },
+        "attacking": {
+          "animations": [
+            "attack"
+          ],
+          "transitions": [
+            {
+              "default": "q.any_animation_finished"
+            }
+          ]
+        }
+      }
+    },
+    "controller.animation.the_sift.blub.move": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "transitions": [
+            {
+              "sitting": "q.is_sitting"
+            },
+            {
+              "flapping": "q.is_in_water"
+            },
+            {
+              "hopping": "q.modified_move_speed > 0.05"
+            }
+          ],
+          "blend_transition": 0.15
+        },
+        "hopping": {
+          "animations": [
+            "hopping"
+          ],
+          "transitions": [
+            {
+              "default": "q.modified_move_speed <= 0.05 || q.is_in_water || q.is_sitting"
+            }
+          ],
+          "blend_transition": 0.15
+        },
+        "flapping": {
+          "animations": [
+            "flapping"
+          ],
+          "transitions": [
+            {
+              "default": "!q.is_in_water"
+            }
+          ],
+          "blend_transition": 0.15
+        },
+        "sitting": {
+          "animations": [
+            "sitting"
+          ],
+          "transitions": [
+            {
+              "default": "!q.is_sitting"
+            }
+          ],
+          "blend_transition": 0.15
+        }
+      }
+    },
+    "controller.animation.the_sift.echo_golem.move": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "transitions": [
+            {
+              "walk": "q.modified_move_speed > 0.03 && !q.property('the_sift:carrying')"
+            },
+            {
+              "carry_idle": "q.property('the_sift:carrying')"
+            }
+          ],
+          "animations": [
+            "idle"
+          ],
+          "blend_transition": 0.2
+        },
+        "walk": {
+          "animations": [
+            "walk"
+          ],
+          "transitions": [
+            {
+              "default": "q.modified_move_speed <= 0.03 || q.property('the_sift:carrying')"
+            }
+          ],
+          "blend_transition": 0.2
+        },
+        "carry_idle": {
+          "animations": [
+            "carry_idle"
+          ],
+          "transitions": [
+            {
+              "default": "!q.property('the_sift:carrying')"
+            },
+            {
+              "carry_walk": "q.modified_move_speed > 0.03"
+            }
+          ],
+          "blend_transition": 0.2
+        },
+        "carry_walk": {
+          "animations": [
+            "carry_walk"
+          ],
+          "transitions": [
+            {
+              "default": "!q.property('the_sift:carrying')"
+            },
+            {
+              "carry_idle": "q.modified_move_speed <= 0.03"
+            }
+          ],
+          "blend_transition": 0.2
+        }
+      }
+    },
+    "controller.animation.the_sift.singer.phase": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "appear": "q.property('the_sift:phase') == 1"
+            },
+            {
+              "sing": "q.property('the_sift:phase') == 2"
+            },
+            {
+              "disappear": "q.property('the_sift:phase') == 3"
+            },
+            {
+              "walk": "q.modified_move_speed > 0.03"
+            }
+          ]
+        },
+        "walk": {
+          "animations": [
+            "walk"
+          ],
+          "transitions": [
+            {
+              "default": "q.modified_move_speed <= 0.03"
+            },
+            {
+              "appear": "q.property('the_sift:phase') == 1"
+            }
+          ]
+        },
+        "appear": {
+          "animations": [
+            "appear"
+          ],
+          "transitions": [
+            {
+              "sing": "q.property('the_sift:phase') == 2"
+            },
+            {
+              "default": "q.property('the_sift:phase') == 0"
+            }
+          ]
+        },
+        "sing": {
+          "animations": [
+            "sing"
+          ],
+          "transitions": [
+            {
+              "disappear": "q.property('the_sift:phase') == 3"
+            },
+            {
+              "default": "q.property('the_sift:phase') == 0"
+            }
+          ]
+        },
+        "disappear": {
+          "animations": [
+            "disappear"
+          ],
+          "transitions": [
+            {
+              "default": "q.property('the_sift:phase') == 0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

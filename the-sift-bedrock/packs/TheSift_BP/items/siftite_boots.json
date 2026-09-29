@@ -1,0 +1,53 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:siftite_boots",
+      "menu_category": {
+        "category": "equipment",
+        "group": "minecraft:itemGroup.name.boots"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_siftite_boots"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.siftite_boots"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:wearable": {
+        "slot": "slot.armor.feet",
+        "protection": 3
+      },
+      "minecraft:durability": {
+        "max_durability": 533
+      },
+      "minecraft:enchantable": {
+        "slot": "armor_feet",
+        "value": 15
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "the_sift:siftite_ingot"
+            ],
+            "repair_amount": "query.max_durability * 0.25"
+          }
+        ]
+      },
+      "minecraft:fire_resistant": {
+        "value": true
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:trimmable_armors",
+          "the_sift:siftite_item"
+        ]
+      }
+    }
+  }
+}

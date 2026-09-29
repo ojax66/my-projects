@@ -1,0 +1,69 @@
+{
+  "entity_sounds": {
+    "entities": {
+      "the_sift:sifter": {
+        "events": {
+          "ambient": "mob.parrot.idle",
+          "hurt": "mob.parrot.hurt",
+          "death": "mob.parrot.death",
+          "step": "mob.parrot.step",
+          "attack.strong": "mob.evocation_fangs.attack"
+        },
+        "pitch": [
+          0.6,
+          0.8
+        ],
+        "volume": 1.0
+      },
+      "the_sift:blub": {
+        "events": {
+          "ambient": "mob.axolotl.idle",
+          "ambient.in.water": "mob.axolotl.idle_water",
+          "attack": "mob.axolotl.attack",
+          "death": "mob.axolotl.death",
+          "hurt": "mob.axolotl.hurt",
+          "splash": "mob.axolotl.splash",
+          "swim": "mob.axolotl.swim"
+        },
+        "pitch": [
+          0.8,
+          1.2
+        ],
+        "volume": 1.0
+      },
+      "the_sift:echo_golem": {
+        "events": {
+          "death": "mob.copper_golem.death",
+          "hurt": "mob.copper_golem.hurt",
+          "spawn": "mob.copper_golem.spawn",
+          "step": "mob.copper_golem.step"
+        },
+        "pitch": 0.8,
+        "volume": 1.0
+      },
+      "the_sift:singer": {
+        "events": {
+          "ambient": "the_sift.entity.singer.idle",
+          "hurt": "the_sift.entity.singer.hurt",
+          "death": "the_sift.entity.singer.death"
+        },
+        "pitch": 1.0,
+        "volume": 1.0
+      },
+      "the_sift:dark_sniffer": {
+        "events": {
+          "ambient": "mob.sniffer.idle",
+          "death": "mob.sniffer.death",
+          "hurt": "mob.sniffer.hurt",
+          "plop": "mob.sniffer.plop",
+          "step": "mob.sniffer.step"
+        },
+        "pitch": [
+          0.6,
+          0.8
+        ],
+        "volume": 1.0
+      }
+    }
+  }
+}

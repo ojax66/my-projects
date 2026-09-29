@@ -1,0 +1,106 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:sunburst_plant",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.sunburst_plant"
+      },
+      "minecraft:geometry": "geometry.the_sift.sunburst_plant",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_sunburst_plant_1",
+          "render_method": "alpha_test_single_sided",
+          "ambient_occlusion": false
+        },
+        "t0": {
+          "texture": "the_sift_sunburst_plant_1",
+          "render_method": "alpha_test_single_sided",
+          "ambient_occlusion": false
+        },
+        "t1": {
+          "texture": "the_sift_sunburst_plant_2",
+          "render_method": "alpha_test_single_sided",
+          "ambient_occlusion": false
+        },
+        "t2": {
+          "texture": "the_sift_sunburst_plant_3",
+          "render_method": "alpha_test_single_sided",
+          "ambient_occlusion": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          13,
+          12
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0
+      },
+      "minecraft:replaceable": {},
+      "minecraft:movable": {
+        "movement_type": "popped"
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#e0b43c",
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": false,
+            "on_liquid_touches": "popped"
+          }
+        ]
+      },
+      "minecraft:flammable": {
+        "catch_chance_modifier": 60,
+        "destroy_chance_modifier": 100
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ],
+            "block_filter": [
+              "the_sift:siftslate",
+              "the_sift:siftslate_growth",
+              "the_sift:healthy_sculk",
+              "the_sift:dry_healthy_sculk",
+              "the_sift:dry_healthy_sculk_growth",
+              "the_sift:overgrown_willow_foliage",
+              "minecraft:grass_block",
+              "minecraft:dirt",
+              "minecraft:coarse_dirt",
+              "minecraft:podzol",
+              "minecraft:rooted_dirt",
+              "minecraft:moss_block",
+              "minecraft:farmland",
+              "minecraft:mud",
+              "minecraft:muddy_mangrove_roots",
+              "minecraft:pale_moss_block",
+              "minecraft:mycelium"
+            ]
+          }
+        ]
+      },
+      "minecraft:loot": "loot_tables/the_sift/blocks/sunburst_plant.json"
+    }
+  }
+}

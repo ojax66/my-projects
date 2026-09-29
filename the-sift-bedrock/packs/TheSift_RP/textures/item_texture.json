@@ -1,0 +1,135 @@
+{
+  "resource_pack_name": "the_sift",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "the_sift_blub_spawn_egg": {
+      "textures": "textures/the_sift/items/blub_spawn_egg"
+    },
+    "the_sift_charoite": {
+      "textures": "textures/the_sift/items/charoite"
+    },
+    "the_sift_cooked_sifter_meat": {
+      "textures": "textures/the_sift/items/cooked_sifter_meat"
+    },
+    "the_sift_dark_sniffer_spawn_egg": {
+      "textures": "textures/the_sift/items/dark_sniffer_spawn_egg"
+    },
+    "the_sift_dry_healthy_sculk_sprouts": {
+      "textures": "textures/the_sift/blocks/dry_healthy_sculk_sprouts"
+    },
+    "the_sift_echo_golem_spawn_egg": {
+      "textures": "textures/the_sift/items/echo_golem_spawn_egg"
+    },
+    "the_sift_healthy_sculk_sprouts": {
+      "textures": "textures/the_sift/blocks/healthy_sculk_sprouts"
+    },
+    "the_sift_ichor_bottle": {
+      "textures": "textures/the_sift/items/ichor_bottle"
+    },
+    "the_sift_ichor_bucket": {
+      "textures": "textures/the_sift/items/ichor_bucket"
+    },
+    "the_sift_ichor_snow_item": {
+      "textures": "textures/the_sift/blocks/ichor_snow"
+    },
+    "the_sift_ichor_snowball": {
+      "textures": "textures/the_sift/items/ichor_snowball"
+    },
+    "the_sift_music_disc_rift": {
+      "textures": "textures/the_sift/items/music_disc_rift"
+    },
+    "the_sift_overgrown_chard": {
+      "textures": "textures/the_sift/blocks/overgrown_chard"
+    },
+    "the_sift_overgrown_fronds": {
+      "textures": "textures/the_sift/blocks/overgrown_fronds"
+    },
+    "the_sift_overgrown_hanging_roots": {
+      "textures": "textures/the_sift/blocks/overgrown_hanging_roots"
+    },
+    "the_sift_overgrown_lotus": {
+      "textures": "textures/the_sift/blocks/overgrown_lotus_2"
+    },
+    "the_sift_overgrown_stalks": {
+      "textures": "textures/the_sift/blocks/overgrown_stalks"
+    },
+    "the_sift_overgrown_willow_door": {
+      "textures": "textures/the_sift/items/overgrown_willow_door"
+    },
+    "the_sift_overgrown_willow_sapling": {
+      "textures": "textures/the_sift/blocks/overgrown_willow_sapling"
+    },
+    "the_sift_overgrown_willow_vines": {
+      "textures": "textures/the_sift/blocks/overgrown_willow_vines"
+    },
+    "the_sift_raw_sifter_meat": {
+      "textures": "textures/the_sift/items/raw_sifter_meat"
+    },
+    "the_sift_sculkflower": {
+      "textures": "textures/the_sift/blocks/sculkflower"
+    },
+    "the_sift_sculkflower_seeds": {
+      "textures": "textures/the_sift/items/sculkflower_seeds"
+    },
+    "the_sift_sift_rift": {
+      "textures": "textures/the_sift/items/sift_rift"
+    },
+    "the_sift_sifter_spawn_egg": {
+      "textures": "textures/the_sift/items/sifter_spawn_egg"
+    },
+    "the_sift_siftite_axe": {
+      "textures": "textures/the_sift/items/siftite_axe"
+    },
+    "the_sift_siftite_boots": {
+      "textures": "textures/the_sift/items/siftite_boots"
+    },
+    "the_sift_siftite_chestplate": {
+      "textures": "textures/the_sift/items/siftite_chestplate"
+    },
+    "the_sift_siftite_helmet": {
+      "textures": "textures/the_sift/items/siftite_helmet"
+    },
+    "the_sift_siftite_hoe": {
+      "textures": "textures/the_sift/items/siftite_hoe"
+    },
+    "the_sift_siftite_ingot": {
+      "textures": "textures/the_sift/items/siftite_ingot"
+    },
+    "the_sift_siftite_leggings": {
+      "textures": "textures/the_sift/items/siftite_leggings"
+    },
+    "the_sift_siftite_nugget": {
+      "textures": "textures/the_sift/items/siftite_nugget"
+    },
+    "the_sift_siftite_pickaxe": {
+      "textures": "textures/the_sift/items/siftite_pickaxe"
+    },
+    "the_sift_siftite_shovel": {
+      "textures": "textures/the_sift/items/siftite_shovel"
+    },
+    "the_sift_siftite_spear": {
+      "textures": "textures/the_sift/items/siftite_spear"
+    },
+    "the_sift_siftite_sword": {
+      "textures": "textures/the_sift/items/siftite_sword"
+    },
+    "the_sift_siftite_upgrade_smithing_template": {
+      "textures": "textures/the_sift/items/siftite_upgrade_smithing_template"
+    },
+    "the_sift_siftslate_hanging_roots": {
+      "textures": "textures/the_sift/blocks/siftslate_hanging_roots"
+    },
+    "the_sift_siftslate_stalks": {
+      "textures": "textures/the_sift/blocks/siftslate_stalks"
+    },
+    "the_sift_singer_spawn_egg": {
+      "textures": "textures/the_sift/items/singer_spawn_egg"
+    },
+    "the_sift_sunburst_plant": {
+      "textures": "textures/the_sift/blocks/sunburst_plant_1"
+    },
+    "the_sift_whisperbloom": {
+      "textures": "textures/the_sift/blocks/whisperbloom"
+    }
+  }
+}

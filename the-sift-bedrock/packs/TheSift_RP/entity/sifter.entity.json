@@ -1,0 +1,37 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "the_sift:sifter",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/the_sift/entity/sifter"
+      },
+      "geometry": {
+        "default": "geometry.the_sift.sifter"
+      },
+      "render_controllers": [
+        "controller.render.the_sift.sifter"
+      ],
+      "animations": {
+        "running": "animation.the_sift.sifter.running",
+        "attack": "animation.the_sift.sifter.attack",
+        "look_at_target": "animation.common.look_at_target"
+      },
+      "animation_controllers": [
+        {
+          "move": "controller.animation.the_sift.sifter.move"
+        },
+        {
+          "attack": "controller.animation.the_sift.sifter.attack"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "the_sift_sifter_spawn_egg",
+        "texture_index": 0
+      }
+    }
+  }
+}

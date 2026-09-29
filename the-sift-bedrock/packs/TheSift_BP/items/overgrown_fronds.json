@@ -1,0 +1,28 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:overgrown_fronds",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_overgrown_fronds"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "block.the_sift.overgrown_fronds"
+      },
+      "minecraft:block_placer": {
+        "block": "the_sift:overgrown_fronds",
+        "replace_block_item": true
+      },
+      "minecraft:compostable": {
+        "composting_chance": 30
+      }
+    }
+  }
+}

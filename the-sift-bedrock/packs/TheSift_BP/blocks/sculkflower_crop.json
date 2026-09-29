@@ -1,0 +1,115 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:sculkflower_crop",
+      "menu_category": {
+        "category": "none"
+      },
+      "states": {
+        "the_sift:age": [
+          0,
+          1,
+          2
+        ]
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.sculkflower_crop"
+      },
+      "minecraft:geometry": "minecraft:geometry.cross",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_sculkflower_crop_stage0",
+          "render_method": "alpha_test_single_sided",
+          "ambient_occlusion": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          13,
+          12
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0
+      },
+      "minecraft:replaceable": {},
+      "minecraft:movable": {
+        "movement_type": "popped"
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#2e7c85",
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": false,
+            "on_liquid_touches": "popped"
+          }
+        ]
+      },
+      "minecraft:flammable": {
+        "catch_chance_modifier": 60,
+        "destroy_chance_modifier": 100
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ],
+            "block_filter": [
+              "minecraft:farmland",
+              "minecraft:sculk",
+              "the_sift:healthy_sculk"
+            ]
+          }
+        ]
+      },
+      "the_sift:crop": {
+        "max_age": 2,
+        "chance": 0.2
+      },
+      "minecraft:loot": "loot_tables/the_sift/blocks/sculkflower_crop_young.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('the_sift:age') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "the_sift_sculkflower_crop_stage1",
+              "render_method": "alpha_test_single_sided",
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:age') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "the_sift_sculkflower",
+              "render_method": "alpha_test_single_sided",
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/sculkflower_crop_mature.json"
+        }
+      }
+    ]
+  }
+}

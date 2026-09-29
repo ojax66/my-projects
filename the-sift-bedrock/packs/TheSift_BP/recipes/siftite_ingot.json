@@ -1,0 +1,25 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "the_sift:siftite_ingot"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "###",
+      "###",
+      "###"
+    ],
+    "key": {
+      "#": {
+        "item": "the_sift:siftite_nugget"
+      }
+    },
+    "result": {
+      "item": "the_sift:siftite_ingot",
+      "count": 1
+    }
+  }
+}

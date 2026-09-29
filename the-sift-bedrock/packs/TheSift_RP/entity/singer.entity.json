@@ -1,0 +1,37 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "the_sift:singer",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/the_sift/entity/singer"
+      },
+      "geometry": {
+        "default": "geometry.the_sift.singer"
+      },
+      "render_controllers": [
+        "controller.render.the_sift.singer"
+      ],
+      "animations": {
+        "idle": "animation.the_sift.singer.idle",
+        "walk": "animation.the_sift.singer.walk",
+        "appear": "animation.the_sift.singer.appear",
+        "sing": "animation.the_sift.singer.sing",
+        "disappear": "animation.the_sift.singer.disappear",
+        "receive_soul": "animation.the_sift.singer.receive_soul"
+      },
+      "animation_controllers": [
+        {
+          "phase": "controller.animation.the_sift.singer.phase"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "the_sift_singer_spawn_egg",
+        "texture_index": 0
+      }
+    }
+  }
+}

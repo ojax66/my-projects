@@ -1,0 +1,328 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.the_sift.echo_golem.idle": {
+      "loop": true,
+      "animation_length": 2.0,
+      "bones": {}
+    },
+    "animation.the_sift.echo_golem.walk": {
+      "loop": true,
+      "animation_length": 1.0,
+      "bones": {
+        "left_leg": {
+          "rotation": {
+            "0.0": [
+              -25,
+              0,
+              0
+            ],
+            "0.5": [
+              25,
+              0,
+              0
+            ],
+            "1.0": [
+              -25,
+              0,
+              0
+            ]
+          }
+        },
+        "right_leg": {
+          "rotation": {
+            "0.0": [
+              25,
+              0,
+              0
+            ],
+            "0.5": [
+              -25,
+              0,
+              0
+            ],
+            "1.0": [
+              25,
+              0,
+              0
+            ]
+          }
+        },
+        "left_arm": {
+          "rotation": {
+            "0.0": [
+              18,
+              0,
+              0
+            ],
+            "0.5": [
+              -18,
+              0,
+              0
+            ],
+            "1.0": [
+              18,
+              0,
+              0
+            ]
+          }
+        },
+        "right_arm": {
+          "rotation": {
+            "0.0": [
+              -18,
+              0,
+              0
+            ],
+            "0.5": [
+              18,
+              0,
+              0
+            ],
+            "1.0": [
+              -18,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.pickup": {
+      "animation_length": 1.7,
+      "bones": {
+        "body": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.65": [
+              -38,
+              0,
+              0
+            ],
+            "1.15": [
+              -38,
+              0,
+              0
+            ],
+            "1.7": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.carry_idle": {
+      "loop": true,
+      "animation_length": 2.0,
+      "bones": {}
+    },
+    "animation.the_sift.echo_golem.carry_walk": {
+      "loop": true,
+      "animation_length": 0.9,
+      "bones": {
+        "left_leg": {
+          "rotation": {
+            "0.0": [
+              -22,
+              0,
+              0
+            ],
+            "0.45": [
+              22,
+              0,
+              0
+            ],
+            "0.9": [
+              -22,
+              0,
+              0
+            ]
+          }
+        },
+        "right_leg": {
+          "rotation": {
+            "0.0": [
+              22,
+              0,
+              0
+            ],
+            "0.45": [
+              -22,
+              0,
+              0
+            ],
+            "0.9": [
+              22,
+              0,
+              0
+            ]
+          }
+        },
+        "left_arm": {
+          "rotation": {
+            "0.0": [
+              12,
+              0,
+              0
+            ],
+            "0.45": [
+              -12,
+              0,
+              0
+            ],
+            "0.9": [
+              12,
+              0,
+              0
+            ]
+          }
+        },
+        "right_arm": {
+          "rotation": {
+            "0.0": [
+              -12,
+              0,
+              0
+            ],
+            "0.45": [
+              12,
+              0,
+              0
+            ],
+            "0.9": [
+              -12,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.bow": {
+      "animation_length": 2.4,
+      "bones": {
+        "body": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.7": [
+              -32,
+              0,
+              0
+            ],
+            "1.6": [
+              -32,
+              0,
+              0
+            ],
+            "2.4": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.sit": {
+      "loop": true,
+      "animation_length": 2.0,
+      "bones": {
+        "body": {
+          "position": [
+            0,
+            -4.7,
+            0
+          ]
+        },
+        "left_leg": {
+          "position": [
+            0,
+            2.0,
+            2.2
+          ]
+        },
+        "right_leg": {
+          "position": [
+            0,
+            2.0,
+            2.2
+          ]
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.look_left": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            0,
+            -14,
+            0
+          ]
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.look_left_far": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            0,
+            -32,
+            0
+          ]
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.look_right": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            0,
+            14,
+            0
+          ]
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.look_right_far": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            0,
+            32,
+            0
+          ]
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.soul_visible": {
+      "loop": true,
+      "bones": {
+        "soul_block": {
+          "scale": 1
+        }
+      }
+    },
+    "animation.the_sift.echo_golem.soul_hidden": {
+      "loop": true,
+      "bones": {
+        "soul_block": {
+          "scale": 0
+        }
+      }
+    }
+  }
+}

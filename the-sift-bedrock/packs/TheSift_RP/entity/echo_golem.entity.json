@@ -1,0 +1,36 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "the_sift:echo_golem",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/the_sift/entity/echo_golem"
+      },
+      "geometry": {
+        "default": "geometry.the_sift.echo_golem"
+      },
+      "render_controllers": [
+        "controller.render.the_sift.echo_golem"
+      ],
+      "animations": {
+        "idle": "animation.the_sift.echo_golem.idle",
+        "walk": "animation.the_sift.echo_golem.walk",
+        "carry_idle": "animation.the_sift.echo_golem.carry_idle",
+        "carry_walk": "animation.the_sift.echo_golem.carry_walk",
+        "bow": "animation.the_sift.echo_golem.bow"
+      },
+      "animation_controllers": [
+        {
+          "move": "controller.animation.the_sift.echo_golem.move"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "the_sift_echo_golem_spawn_egg",
+        "texture_index": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "the_sift:rift",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "overworld": "textures/the_sift/entity/rift/overworld",
+        "sift": "textures/the_sift/entity/rift/sift"
+      },
+      "geometry": {
+        "default": "geometry.the_sift.rift"
+      },
+      "render_controllers": [
+        "controller.render.the_sift.rift"
+      ],
+      "animations": {
+        "appear": "animation.the_sift.rift.appear"
+      },
+      "scripts": {
+        "animate": [
+          "appear"
+        ]
+      }
+    }
+  }
+}

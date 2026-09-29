@@ -1,0 +1,297 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:ichor_snow",
+      "menu_category": {
+        "category": "nature"
+      },
+      "states": {
+        "the_sift:layers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.ichor_snow"
+      },
+      "minecraft:geometry": {
+        "identifier": "geometry.the_sift.snow_layers",
+        "bone_visibility": {
+          "l1": "q.block_state('the_sift:layers') == 1",
+          "l2": "q.block_state('the_sift:layers') == 2",
+          "l3": "q.block_state('the_sift:layers') == 3",
+          "l4": "q.block_state('the_sift:layers') == 4",
+          "l5": "q.block_state('the_sift:layers') == 5",
+          "l6": "q.block_state('the_sift:layers') == 6",
+          "l7": "q.block_state('the_sift:layers') == 7",
+          "l8": "q.block_state('the_sift:layers') == 8"
+        }
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_ichor_snow",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.1
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.1
+      },
+      "tag:minecraft:is_shovel_item_destructible": {},
+      "minecraft:map_color": "#bfeef2",
+      "minecraft:light_dampening": 0,
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ]
+          }
+        ]
+      },
+      "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_1.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('the_sift:layers') == 1",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              2,
+              16
+            ]
+          },
+          "minecraft:collision_box": false,
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_1.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 2",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              4,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              2,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_2.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 3",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              6,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              4,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_3.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 4",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              6,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_4.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 5",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              10,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_5.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 6",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              12,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              10,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_6.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 7",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              14,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              12,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_7.json"
+        }
+      },
+      {
+        "condition": "q.block_state('the_sift:layers') == 8",
+        "components": {
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              14,
+              16
+            ]
+          },
+          "minecraft:loot": "loot_tables/the_sift/blocks/ichor_snow_8.json"
+        }
+      }
+    ]
+  }
+}

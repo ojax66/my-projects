@@ -1,0 +1,95 @@
+{
+  "format_version": "1.8.0",
+  "render_controllers": {
+    "controller.render.the_sift.sifter": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ]
+    },
+    "controller.render.the_sift.blub": {
+      "arrays": {
+        "textures": {
+          "Array.skins": [
+            "Texture.default",
+            "Texture.tamed",
+            "Texture.mielon",
+            "Texture.mielon_tamed"
+          ]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Array.skins[(q.is_tamed ? 1 : 0) + (q.get_name == 'Mielon' ? 2 : 0)]"
+      ]
+    },
+    "controller.render.the_sift.echo_golem": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ],
+      "part_visibility": [
+        {
+          "soul_block": "q.property('the_sift:carrying')"
+        }
+      ]
+    },
+    "controller.render.the_sift.singer": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ]
+    },
+    "controller.render.the_sift.dark_sniffer": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ]
+    },
+    "controller.render.the_sift.rift": {
+      "arrays": {
+        "textures": {
+          "Array.skins": [
+            "Texture.overworld",
+            "Texture.sift"
+          ]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Array.skins[q.property('the_sift:to_sift') ? 1 : 0]"
+      ],
+      "light_color_multiplier": 1.0
+    }
+  }
+}

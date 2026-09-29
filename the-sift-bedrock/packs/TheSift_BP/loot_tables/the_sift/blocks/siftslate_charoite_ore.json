@@ -1,0 +1,37 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "the_sift:charoite",
+          "functions": [
+            {
+              "function": "set_count",
+              "count": {
+                "min": 4,
+                "max": 9
+              }
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "match_tool",
+          "minecraft:match_tool_filter_any": [
+            "minecraft:stone_tier",
+            "minecraft:copper_tier",
+            "minecraft:iron_tier",
+            "minecraft:diamond_tier",
+            "minecraft:netherite_tier"
+          ],
+          "minecraft:match_tool_filter_all": [
+            "minecraft:is_pickaxe"
+          ]
+        }
+      ]
+    }
+  ]
+}

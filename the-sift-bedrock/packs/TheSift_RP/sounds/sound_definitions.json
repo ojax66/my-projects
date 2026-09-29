@@ -1,0 +1,168 @@
+{
+  "format_version": "1.20.20",
+  "sound_definitions": {
+    "the_sift.block.sonorous_deepslate.sound_1": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_1"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_2": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_2"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_3": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_3"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_4": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_4"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_5": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_5"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_6": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_6"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_7": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_7"
+        }
+      ]
+    },
+    "the_sift.block.sonorous_deepslate.sound_8": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/sonorous_deepslate_sound_8"
+        }
+      ]
+    },
+    "the_sift.sonorous_autoplay_glitch": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sonorous/autoplay_glitch"
+        }
+      ]
+    },
+    "the_sift.the_sift_portal_open": {
+      "category": "block",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sift_portal/open"
+        }
+      ]
+    },
+    "the_sift.the_sift_portal_close": {
+      "category": "block",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/block/sift_portal/close"
+        }
+      ]
+    },
+    "the_sift.entity.rift.appear": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/rift/appear"
+        }
+      ]
+    },
+    "the_sift.entity.singer.sing": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/singer/sing"
+        }
+      ]
+    },
+    "the_sift.entity.singer.idle": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/singer/idle_0"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/idle_1"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/idle_2"
+        }
+      ]
+    },
+    "the_sift.entity.singer.hurt": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/singer/hurt_0"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/hurt_1"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/hurt_2"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/hurt_3"
+        }
+      ]
+    },
+    "the_sift.entity.singer.death": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/singer/death_0"
+        },
+        {
+          "name": "sounds/the_sift/entity/singer/death_1"
+        }
+      ]
+    },
+    "the_sift.entity.singer.happy": {
+      "category": "neutral",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/entity/singer/happy_0"
+        }
+      ]
+    },
+    "the_sift.music_disc.rift": {
+      "category": "record",
+      "sounds": [
+        {
+          "name": "sounds/the_sift/music/fuzja_jadrowa_rift",
+          "stream": true
+        }
+      ]
+    }
+  }
+}

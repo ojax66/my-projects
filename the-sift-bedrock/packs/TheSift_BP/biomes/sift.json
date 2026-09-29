@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:biome": {
+    "description": {
+      "identifier": "the_sift:sift"
+    },
+    "components": {
+      "minecraft:climate": {
+        "temperature": 0.7,
+        "downfall": 0.6,
+        "snow_accumulation": [
+          0.0,
+          0.0
+        ]
+      },
+      "minecraft:tags": {
+        "tags": [
+          "the_sift",
+          "sift",
+          "no_legacy_worldgen"
+        ]
+      }
+    }
+  }
+}

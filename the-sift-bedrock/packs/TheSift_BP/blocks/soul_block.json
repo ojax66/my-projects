@@ -1,0 +1,33 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:soul_block",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.soul_block"
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_soul_block",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.35
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.35
+      },
+      "tag:minecraft:is_hoe_item_destructible": {},
+      "minecraft:map_color": "#6ad7df",
+      "minecraft:light_emission": 14,
+      "minecraft:loot": "loot_tables/the_sift/blocks/soul_block.json"
+    }
+  }
+}

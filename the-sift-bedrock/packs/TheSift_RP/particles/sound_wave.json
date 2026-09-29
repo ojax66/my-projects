@@ -1,0 +1,56 @@
+{
+  "format_version": "1.10.0",
+  "particle_effect": {
+    "description": {
+      "identifier": "the_sift:sound_wave",
+      "basic_render_parameters": {
+        "material": "particles_blend",
+        "texture": "textures/the_sift/particle/sound_wave"
+      }
+    },
+    "components": {
+      "minecraft:emitter_rate_instant": {
+        "num_particles": 1
+      },
+      "minecraft:emitter_lifetime_once": {
+        "active_time": 0.1
+      },
+      "minecraft:emitter_shape_point": {
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          "variable.dir.x",
+          "variable.dir.y",
+          "variable.dir.z"
+        ]
+      },
+      "minecraft:particle_lifetime_expression": {
+        "max_lifetime": "variable.life"
+      },
+      "minecraft:particle_initial_speed": 12,
+      "minecraft:particle_motion_dynamic": {},
+      "minecraft:particle_appearance_billboard": {
+        "size": [
+          "0.4 + variable.particle_age",
+          "0.4 + variable.particle_age"
+        ],
+        "facing_camera_mode": "rotate_xyz",
+        "uv": {
+          "texture_width": 10,
+          "texture_height": 10,
+          "uv": [
+            0,
+            0
+          ],
+          "uv_size": [
+            10,
+            10
+          ]
+        }
+      }
+    }
+  }
+}

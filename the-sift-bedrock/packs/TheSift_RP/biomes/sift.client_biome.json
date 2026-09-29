@@ -1,0 +1,19 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "the_sift:sift"
+    },
+    "components": {
+      "minecraft:fog_appearance": {
+        "fog_identifier": "the_sift:fog_sift"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#CFEFF2"
+      },
+      "minecraft:water_appearance": {
+        "surface_color": "#4ADCE8"
+      }
+    }
+  }
+}

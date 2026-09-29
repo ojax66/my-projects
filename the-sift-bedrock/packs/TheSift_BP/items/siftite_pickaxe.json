@@ -1,0 +1,68 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:siftite_pickaxe",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_siftite_pickaxe"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.siftite_pickaxe"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": {
+        "value": true
+      },
+      "minecraft:damage": {
+        "value": 7
+      },
+      "minecraft:durability": {
+        "max_durability": 2501
+      },
+      "minecraft:enchantable": {
+        "slot": "pickaxe",
+        "value": 15
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "the_sift:siftite_ingot"
+            ],
+            "repair_amount": "query.max_durability * 0.25"
+          }
+        ]
+      },
+      "minecraft:fire_resistant": {
+        "value": true
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:is_pickaxe",
+          "minecraft:is_tool",
+          "minecraft:digger",
+          "minecraft:netherite_tier",
+          "the_sift:siftite_item"
+        ]
+      },
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": {
+              "tags": "q.any_tag('stone', 'metal', 'minecraft:is_pickaxe_item_destructible')"
+            },
+            "speed": 11
+          }
+        ]
+      }
+    }
+  }
+}

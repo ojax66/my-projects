@@ -1,0 +1,16 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_furnace": {
+    "description": {
+      "identifier": "the_sift:sifter_meat_cooking"
+    },
+    "tags": [
+      "furnace",
+      "smoker",
+      "campfire",
+      "soul_campfire"
+    ],
+    "input": "the_sift:raw_sifter_meat",
+    "output": "the_sift:cooked_sifter_meat"
+  }
+}

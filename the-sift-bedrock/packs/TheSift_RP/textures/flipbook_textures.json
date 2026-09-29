@@ -1,0 +1,20 @@
+[
+  {
+    "flipbook_texture": "textures/the_sift/blocks/sift_portal",
+    "atlas_tile": "the_sift_sift_portal",
+    "ticks_per_frame": 3,
+    "blend_frames": true
+  },
+  {
+    "flipbook_texture": "textures/the_sift/blocks/ichor_still",
+    "atlas_tile": "the_sift_ichor_still",
+    "ticks_per_frame": 5,
+    "blend_frames": true
+  },
+  {
+    "flipbook_texture": "textures/the_sift/blocks/ichor_flow",
+    "atlas_tile": "the_sift_ichor_flow",
+    "ticks_per_frame": 5,
+    "blend_frames": true
+  }
+]

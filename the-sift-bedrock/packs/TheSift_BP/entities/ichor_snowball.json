@@ -1,0 +1,52 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "the_sift:ichor_snowball",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "projectile",
+          "snowball"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 0.25,
+        "height": 0.25
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:projectile": {
+        "anchor": "eye_height",
+        "angle_offset": 0.0,
+        "offset": [
+          0,
+          -0.1,
+          0
+        ],
+        "gravity": 0.03,
+        "power": 1.5,
+        "on_hit": {
+          "impact_damage": {
+            "damage": 0,
+            "knockback": true
+          },
+          "particle_on_hit": {
+            "num_particles": 6,
+            "on_other_hit": true,
+            "on_entity_hit": true,
+            "particle_type": "snowballpoof"
+          },
+          "remove_on_hit": {}
+        }
+      }
+    }
+  }
+}

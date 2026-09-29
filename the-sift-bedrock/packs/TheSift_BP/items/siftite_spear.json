@@ -1,0 +1,113 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:siftite_spear",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_siftite_spear"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.siftite_spear"
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:netherite_tier",
+          "minecraft:is_spear",
+          "the_sift:siftite_item"
+        ]
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:durability": {
+        "max_durability": 2501,
+        "damage_chance": {
+          "min": 0,
+          "max": 100
+        }
+      },
+      "minecraft:repairable": {
+        "repair_items": [
+          {
+            "items": [
+              "the_sift:siftite_ingot"
+            ],
+            "repair_amount": "query.max_durability * 0.25"
+          }
+        ]
+      },
+      "minecraft:enchantable": {
+        "slot": "melee_spear",
+        "value": 15
+      },
+      "minecraft:hand_equipped": {
+        "value": true
+      },
+      "minecraft:use_modifiers": {
+        "use_duration": 72000,
+        "emit_vibrations": false,
+        "start_sound": "item.netherite_spear.use",
+        "movement_modifier": 1.0
+      },
+      "minecraft:cooldown": {
+        "category": "spear",
+        "duration": 1.1,
+        "type": "attack"
+      },
+      "minecraft:swing_duration": {
+        "value": 1.1
+      },
+      "minecraft:swing_sounds": {
+        "attack_miss": "item.netherite_spear.attack_miss",
+        "attack_hit": "item.netherite_spear.attack_hit"
+      },
+      "minecraft:damage": {
+        "value": 6
+      },
+      "minecraft:piercing_weapon": {
+        "reach": {
+          "min": 2.0,
+          "max": 4.6
+        },
+        "creative_reach": {
+          "min": 2.0,
+          "max": 7.5
+        },
+        "hitbox_margin": 0.25
+      },
+      "minecraft:kinetic_weapon": {
+        "delay": 8,
+        "reach": {
+          "min": 2.0,
+          "max": 4.6
+        },
+        "creative_reach": {
+          "min": 2.0,
+          "max": 7.5
+        },
+        "hitbox_margin": 0.25,
+        "damage_multiplier": 1.25,
+        "damage_conditions": {
+          "max_duration": 175,
+          "min_relative_speed": 4.6
+        },
+        "knockback_conditions": {
+          "max_duration": 110,
+          "min_speed": 5.1
+        },
+        "dismount_conditions": {
+          "max_duration": 50,
+          "min_speed": 9.0
+        }
+      },
+      "minecraft:fire_resistant": {
+        "value": true
+      }
+    }
+  }
+}

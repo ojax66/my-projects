@@ -1,0 +1,46 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "the_sift:overgrown_willow_foliage",
+      "menu_category": {
+        "category": "nature"
+      },
+      "states": {
+        "the_sift:persistent": [
+          false,
+          true
+        ]
+      }
+    },
+    "components": {
+      "minecraft:display_name": {
+        "value": "block.the_sift.overgrown_willow_foliage"
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "the_sift_overgrown_willow_foliage",
+          "render_method": "alpha_test",
+          "ambient_occlusion": true
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.2
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.2
+      },
+      "tag:minecraft:is_hoe_item_destructible": {},
+      "tag:leaves": {},
+      "minecraft:map_color": "#3f7f6a",
+      "minecraft:loot": "loot_tables/the_sift/blocks/overgrown_willow_foliage.json",
+      "minecraft:light_dampening": 1,
+      "minecraft:flammable": {
+        "catch_chance_modifier": 30,
+        "destroy_chance_modifier": 60
+      },
+      "the_sift:leaves": {}
+    }
+  }
+}

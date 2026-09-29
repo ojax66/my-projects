@@ -1,0 +1,31 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "the_sift:ichor_snowball",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "the_sift_ichor_snowball"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.the_sift.ichor_snowball"
+      },
+      "minecraft:max_stack_size": 16,
+      "minecraft:throwable": {
+        "do_swing_animation": true,
+        "launch_power_scale": 1.0,
+        "max_launch_power": 1.0
+      },
+      "minecraft:projectile": {
+        "projectile_entity": "the_sift:ichor_snowball",
+        "minimum_critical_power": 1.25
+      }
+    }
+  }
+}

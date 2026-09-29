@@ -1,0 +1,47 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "pack.name",
+    "description": "pack.description",
+    "uuid": "a16ce5a0-b0f0-4ed6-809b-3dc41d0d0d95",
+    "version": [
+      1,
+      0,
+      2
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      40
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "2777fd9a-2c58-40ec-b579-3d844a5fe739",
+      "version": [
+        1,
+        0,
+        2
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "0caf9b80-37b0-4cc3-ad66-11ba4d1ad1e1",
+      "version": [
+        1,
+        0,
+        2
+      ]
+    }
+  ],
+  "metadata": {
+    "authors": [
+      "Mielon (original)",
+      "Bedrock port"
+    ],
+    "license": "MIT",
+    "product_type": "addon"
+  }
+}
