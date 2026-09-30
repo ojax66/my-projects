@@ -46,12 +46,16 @@ dimensões (e abre outra de volta do lado de lá).
 
 | Parte | Situação |
 |---|---|
-| Dimensão do Sift (altura 0–256) | ✅ dimensão custom, gerada por script com a geração do próprio mod (veja abaixo) |
-| Relevo | ✅ as *density functions* do mod (platôs, cânions, escarpas, penhascos, montanhas), com o ruído do Minecraft portado 1:1 e interpolação por célula como no Java |
-| Biomas (ermos, clareira, floresta, encostas, picos, picos nevados de ichor, escuro profundo) | ✅ multi-noise com os parâmetros do mod; o nome aparece na tela ao mudar de bioma |
-| Superfície | ✅ as regras de superfície do mod: caminhos de sculk saudável, manchas de sculk seco, crescimento nos biomas tomados, fundo de bedrock |
-| Cavernas e cânions | ✅ os carvers do Java (caverna, caverna funda e cânion) |
-| Features | ✅ todas as do mod, portadas do código Java: minérios, bolhas de sculk, plantas, raízes, lagos de ichor (com cascata e ilha de salgueiro), salgueiros (moldes originais girados/espelhados), monólitos, espinhos de sculk seco, arcos, cânion das almas, cavernas do farejador (com ninho e família), regiões de sculk (com Farejador Sombrio), neve de ichor, nascentes, lava no fundo, portais abandonados (com baú e loot) |
+| Dimensão do Sift (altura 0–256) | ✅ dimensão custom, gerada pela world_generator_API (veja "Como foi feito") |
+| Relevo | ✅ o mesmo formato do mod: altura base em torno de y 93 com os platôs em 5 degraus, cânions, penhascos gigantes, prateleiras, vales dos caminhos e cordilheiras, nas mesmas escalas e limiares; encostas de 4 blocos entre degraus e aspereza nas escarpas |
+| Biomas (ermos, clareira, floresta, encostas, picos, picos nevados de ichor, escuro profundo) | ✅ mesmas faixas de clima do mod (proporção e alturas conferidas contra o gerador do Java); o nome aparece na tela ao mudar de bioma |
+| Superfície | ✅ caminhos finos de sculk saudável serpenteando, bordas de sculk seco, manchas de sculk, crescimento nos biomas tomados, fundo de bedrock |
+| Cavernas | ✅ túneis, na mesma quantidade por altura que as do mod, lava no fundo, raízes penduradas, sculk no escuro profundo |
+| Minérios e bolhas de sculk | ✅ quantidades e faixas de altura do mod (conferidas contra o Java) |
+| Plantas | ✅ densidades medidas no mod para cada tipo de chão e bioma; canteiros de flores e plantas do farejador |
+| Lagos de ichor, monólitos, espinhos de sculk seco, arcos, cânion das almas, regiões de sculk (com Farejador Sombrio), neve de ichor | ✅ |
+| Salgueiros Tomados e Portais Abandonados (com baú e loot) | ✅ moldes originais do mod, girados |
+| Cavernas do farejador | ❌ ainda não |
 | Portal principal do Sift | ✅ estrutura original, terreno aplainado em volta |
 | 47 blocos: siftslate, minérios, sculk saudável/seco, neve de ichor (camadas), bloco de alma, ardósia sonora, plantas, conjunto de madeira de salgueiro | ✅ |
 | Madeira: tronco, madeira, descascados, tábuas, laje (dupla), escada, cerca, portão, porta, alçapão, botão, placa de pressão | ✅ |
@@ -65,7 +69,7 @@ dimensões (e abre outra de volta do lado de lá).
 | Disco "Rift" (Fuzja Jądrowa) | ✅ toca numa jukebox via script |
 | Conquistas | ⚠️ viram aviso no chat + som (o Bedrock não tem conquistas custom). `/scriptevent the_sift:advancements` lista as suas |
 | Charoíta como combustível da mesa de encantamento | ❌ não dá pra alterar a mesa de encantamento |
-| Céu procedural | ✅ as faixas de aurora do mod (mesmas fórmulas e paletas de dia e de noite) numa cúpula que acompanha o jogador; céu e névoa com as cores do mod, escurecendo à noite |
+| Céu | ⚠️ céu normal do Overworld (sem o céu procedural do mod) |
 | Shaders do portal/fenda, chuva de ichor | ⚠️ trocados por textura animada e partículas |
 
 ## Como foi feito
@@ -77,16 +81,18 @@ dimensões (e abre outra de volta do lado de lá).
   geometria do Bedrock; o script só renomeia e converte os keyframes.
 - `packs/TheSift_BP/scripts/` são os scripts, escritos à mão:
   - `lib/world_generator_API.js` e `lib/budget.js` — a API de geração
-    procedural do **Galactic Horizons**, usada sem alterações;
-  - `sift/gen/` — a geração do mod em JavaScript: `noise.js` (ruído do
-    Minecraft), `density.js` (interpretador das density functions),
-    `surface.js` (regras de superfície), `carvers.js`, `chunkgen.js`,
-    `features.js` (placed features e features vanilla), `sift_features.js`
-    (as features do mod portadas do Java), `service.js` (cálculo em segundo
-    plano com `system.runJob`) e `data.js` (os JSON do mod, gerado);
-  - `sift/worldgen.js` — registro da dimensão, escrita dos chunks prontos pela
-    API, criaturas, névoa e bioma;
-  - `sift/sky.js` — o céu; `sift/ancient_city.js` — as Ardósias Sonoras;
+    procedural do **Galactic Horizons**. A API ganhou ruído de gradiente e
+    ruído em oitavas no esquema do Java (`gradientNoise`, `octaveNoise`,
+    `octaveNoise3D`, `noiseSeed`, `hashSalt`), com a mesma dispersão do
+    ruído do Minecraft; o resto dela ficou igual;
+  - `sift/terrain.js` — o terreno do Sift como função pura de (x, z), no
+    mesmo esquema do `planetTerrain.js` dos planetas: altura, bioma,
+    superfície, cavernas, minérios, lagos, monólitos, arcos, plantas e a
+    lista de estruturas de cada chunk;
+  - `sift/worldgen.js` — registro da dimensão, o gerador (escreve as colunas
+    com o orçamento de blocos, põe árvores e portais abandonados), criaturas,
+    névoa do subsolo e bioma;
+  - `sift/ancient_city.js` — as Ardósias Sonoras da Cidade Ancestral;
   - `sift/portal.js`, `sift/teleport.js`, `sift/singer.js` — console sonoro,
     portal e viagem, Cantora;
   - `sift/blocks.js`, `sift/items.js`, `sift/mobs.js`, `sift/advancements.js`.
@@ -96,7 +102,7 @@ dimensões (e abre outra de volta do lado de lá).
 ### Diagnóstico
 
 `/scriptevent the_sift:debug` mostra o estado do gerador (semente, chunks
-calculados e escritos, fila) e os últimos erros. Se algo der errado no Sift,
+escritos, fila, estruturas pendentes) e os últimos erros. Se algo der errado no Sift,
 mande a saída desse comando e o log de conteúdo.
 
 Para regenerar a partir do jar:

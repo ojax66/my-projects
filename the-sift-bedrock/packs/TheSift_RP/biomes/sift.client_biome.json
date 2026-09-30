@@ -6,10 +6,10 @@
     },
     "components": {
       "minecraft:fog_appearance": {
-        "fog_identifier": "the_sift:fog_sift"
+        "fog_identifier": "minecraft:fog_default"
       },
       "minecraft:sky_color": {
-        "sky_color": "#6EDEF0"
+        "sky_color": "#78A7FF"
       },
       "minecraft:water_appearance": {
         "surface_color": "#4ADCE8"

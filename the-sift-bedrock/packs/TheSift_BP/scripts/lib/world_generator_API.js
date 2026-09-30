@@ -61,6 +61,111 @@ export function fbm(x, z, octaves, persistence, scale) {
   return total / maxAmp;
 }
 
+// ---------------------------------------------------------------------------
+// Ruído "no jeito do Java"
+//
+// O fbm acima devolve 0..1 com oitavas de persistência fixa. Os geradores do
+// Minecraft Java descrevem cada ruído por uma oitava inicial (2^firstOctave é a
+// frequência mais baixa) e uma lista de amplitudes, e somam DOIS empilhamentos
+// levemente defasados. Estas funções fazem o mesmo, com o ruído de gradiente
+// abaixo, com o resultado com sinal (em torno de -1..1) e a mesma dispersão do
+// Java (NOISE_SCALE foi medido comparando os dois em 20 mil pontos). Assim os
+// limiares dos arquivos do Java (ex.: "caminho onde |ruído| < 0,009") valem
+// direto aqui.
+//
+// `seed` desloca o ruído inteiro: ruídos com seeds diferentes são
+// independentes. Use noiseSeed(semente do mundo, "nome") pra gerar um.
+// ---------------------------------------------------------------------------
+const NOISE_SCALE = 1.06;
+const SECOND_STACK = 1.0181268882175227;
+
+// Ruído de GRADIENTE (o "Perlin melhorado", o mesmo tipo do Java): em cada
+// canto da grade sai um vetor de uma lista de 16 direções, e o valor é a
+// soma dos produtos escalares, suavizada com a curva de 5º grau. Diferente do
+// valueNoise, ele não "estaciona" nos cantos — a inclinação é mais uniforme,
+// e é isso que faz uma faixa "|ruído| < 0,01" virar uma linha fina e contínua
+// (os caminhos de sculk do Sift) em vez de manchas largas.
+const GX = [1, -1, 1, -1, 1, -1, 1, -1, 0, 0, 0, 0, 1, 0, -1, 0];
+const GY = [1, 1, -1, -1, 0, 0, 0, 0, 1, -1, 1, -1, 1, -1, 1, -1];
+const GZ = [0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, -1, 0, 1, 0, -1];
+function gradIndex(ix, iy, iz) {
+  let n = Math.imul(ix | 0, 374761393) ^ Math.imul(iy | 0, 668265263) ^ Math.imul(iz | 0, 1440662683);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n ^= n >>> 16;
+  return n & 15;
+}
+const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+
+/** Ruído de gradiente 3D, aproximadamente em -1..1. */
+export function gradientNoise(x, y, z) {
+  const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z);
+  const fx = x - x0, fy = y - y0, fz = z - z0;
+  const u = fade(fx), v = fade(fy), w = fade(fz);
+  const g = (ix, iy, iz, dx, dy, dz) => {
+    const i = gradIndex(ix, iy, iz);
+    return GX[i] * dx + GY[i] * dy + GZ[i] * dz;
+  };
+  const x00 = g(x0, y0, z0, fx, fy, fz) + u * (g(x0 + 1, y0, z0, fx - 1, fy, fz) - g(x0, y0, z0, fx, fy, fz));
+  const x10 = g(x0, y0 + 1, z0, fx, fy - 1, fz) + u * (g(x0 + 1, y0 + 1, z0, fx - 1, fy - 1, fz) - g(x0, y0 + 1, z0, fx, fy - 1, fz));
+  const x01 = g(x0, y0, z0 + 1, fx, fy, fz - 1) + u * (g(x0 + 1, y0, z0 + 1, fx - 1, fy, fz - 1) - g(x0, y0, z0 + 1, fx, fy, fz - 1));
+  const x11 = g(x0, y0 + 1, z0 + 1, fx, fy - 1, fz - 1) + u * (g(x0 + 1, y0 + 1, z0 + 1, fx - 1, fy - 1, fz - 1) - g(x0, y0 + 1, z0 + 1, fx, fy - 1, fz - 1));
+  const y0v = x00 + v * (x10 - x00);
+  const y1v = x01 + v * (x11 - x01);
+  return y0v + w * (y1v - y0v);
+}
+
+/** Deslocamento pseudoaleatório (x, y, z) de um ruído, a partir de semente + nome. */
+export function noiseSeed(worldSeed, name) {
+  let h = (worldSeed | 0) ^ 0x9e3779b9;
+  for (let i = 0; i < name.length; i++) {
+    h = Math.imul(h ^ name.charCodeAt(i), 0x01000193);
+    h ^= h >>> 15;
+  }
+  const a = ((h >>> 0) % 200003) - 100001;
+  const b = ((Math.imul(h, 0x85ebca6b) >>> 0) % 200003) - 100001;
+  return { x: a + 0.37, z: b + 0.61, y: ((h >>> 7) % 997) + 0.29 };
+}
+
+function stack(x, y, z, f, amps, ox, oy, oz) {
+  let s = 0;
+  let vf = Math.pow(2, amps.length - 1) / (Math.pow(2, amps.length) - 1);
+  for (let i = 0; i < amps.length; i++) {
+    if (amps[i] !== 0) s += amps[i] * gradientNoise(x * f + ox + i * 97.3, y * f + oy + i * 13.1, z * f + oz - i * 61.7) * vf;
+    f *= 2;
+    vf /= 2;
+  }
+  return s;
+}
+
+function javaValueFactor(amps) {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < amps.length; i++) if (amps[i] !== 0) { lo = Math.min(lo, i); hi = Math.max(hi, i); }
+  return (1 / 6) / (0.1 * (1 + 1 / (hi - lo + 1)));
+}
+
+/** Ruído 2D com sinal: firstOctave e amplitudes como nos arquivos de ruído do Java. */
+export function octaveNoise(x, z, firstOctave, amplitudes, seed) {
+  const f = Math.pow(2, firstOctave);
+  return NOISE_SCALE * javaValueFactor(amplitudes) * (stack(x, 0, z, f, amplitudes, seed.x, seed.y, seed.z) +
+    stack(x * SECOND_STACK, 0, z * SECOND_STACK, f, amplitudes, seed.z + 3001.3, seed.y + 77.7, seed.x - 1999.7));
+}
+
+/** Ruído 3D com sinal, no mesmo esquema. */
+export function octaveNoise3D(x, y, z, firstOctave, amplitudes, seed) {
+  const f = Math.pow(2, firstOctave);
+  return NOISE_SCALE * javaValueFactor(amplitudes) * (stack(x, y, z, f, amplitudes, seed.x, seed.y, seed.z) +
+    stack(x * SECOND_STACK, y * SECOND_STACK, z * SECOND_STACK, f, amplitudes, seed.z + 3001.3, seed.y + 77.7, seed.x - 1999.7));
+}
+
+/** hash3 com sal: 0..1 determinístico por bloco (sorteios de decoração). */
+export function hashSalt(x, y, z, salt) {
+  let n = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 2147483647) ^ Math.imul(salt | 0, 1274126177);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n ^= n >>> 16;
+  return (n >>> 0) / 4294967296;
+}
+
 export function createTerrainGenerator(config) {
   if (!config || !config.dimensionId) throw new Error("createTerrainGenerator precisa de dimensionId");
   if (typeof config.generateColumn !== "function") throw new Error("createTerrainGenerator precisa de generateColumn");

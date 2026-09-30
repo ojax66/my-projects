@@ -254,7 +254,6 @@ advancement.the_sift.spicewood.description=Set wood on fire in the Sift
 pack.name=Mielon's The Sift
 pack.description=Bedrock port of Mielon's The Sift: siftslate, Ichor, ancient life and resonant souls.
 block.the_sift.sonorous_deepslate_note=Sonorous Deepslate (Note)
-entity.the_sift:sky.name=Sift Sky
 message.the_sift.sift_generating=The Sift is taking shape around you...
 message.the_sift.no_frame=There is no reinforced deepslate frame nearby.
 message.the_sift.singer_arrives=Something answers the horn...

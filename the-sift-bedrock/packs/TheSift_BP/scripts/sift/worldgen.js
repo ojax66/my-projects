@@ -7,14 +7,13 @@
  * vem pronta de terrain.js; aqui só se escreve.
  * ========================================================================= */
 
-import { world, system, BlockPermutation, BlockVolume } from "@minecraft/server";
+import { world, system, BlockPermutation } from "@minecraft/server";
 import { createTerrainGenerator } from "../lib/world_generator_API.js";
-import { BudgetExhausted, isBudgetError, makeChunkCursor, takeBudget } from "../lib/budget.js";
+import { BudgetExhausted, isBudgetError, makeChunkCursor, takeBudget, writeRun } from "../lib/budget.js";
 import {
   CHUNKS_PER_TICK, GEN_RADIUS_CHUNKS, SIFT_DIM, SIFT_MAX_Y, SIFT_MIN_Y, SPAWN_CAP_PER_PLAYER, SPAWN_INTERVAL,
 } from "../config.js";
-import { biomeForPlayer, getService, heightAt, onGenError, ALL_SURFACE_BIOMES } from "./terrain.js";
-import { blockOf } from "./gen/palette.js";
+import { biomeForPlayer, chunkExtras, columnAt, heightAt, setSeed, ALL_SURFACE_BIOMES } from "./terrain.js";
 import { award } from "./advancements.js";
 
 // ---------------------------------------------------------------------------
@@ -34,171 +33,142 @@ export function warn(context, err) {
   if (recentErrors.length > 12) recentErrors.shift();
   console.warn("[the_sift] " + context + ": " + text);
 }
-onGenError(warn);
 
 // ---------------------------------------------------------------------------
-// Blocos: índice da paleta do gerador -> BlockPermutation
+// Semente
 // ---------------------------------------------------------------------------
-const perms = [];
-function permOf(i) {
-  let p = perms[i];
-  if (p) return p;
-  const b = blockOf(i);
-  try {
-    p = BlockPermutation.resolve(b.id, b.states);
-  } catch (e) {
-    // estado que o Bedrock não conhece: fica o bloco com os estados padrão
-    try {
-      p = BlockPermutation.resolve(b.id);
-    } catch (e2) {
-      warn("bloco " + b.id, e2);
-      p = BlockPermutation.resolve("minecraft:stone");
-    }
+const SEED_KEY = "the_sift:seed";
+world.afterEvents.worldLoad.subscribe(() => {
+  let seed = world.getDynamicProperty(SEED_KEY);
+  if (typeof seed !== "number") {
+    seed = Math.floor(Math.random() * 1e9);
+    world.setDynamicProperty(SEED_KEY, seed);
   }
-  perms[i] = p;
+  setSeed(seed);
+});
+
+// ---------------------------------------------------------------------------
+// Blocos com estado (plantas altas, neve em camadas, veias de sculk)
+// ---------------------------------------------------------------------------
+const permCache = new Map();
+function perm(id, states) {
+  const k = id + JSON.stringify(states);
+  let p = permCache.get(k);
+  if (!p) {
+    try {
+      p = BlockPermutation.resolve(id, states);
+    } catch {
+      p = BlockPermutation.resolve(id); // estado desconhecido: fica o padrão
+    }
+    permCache.set(k, p);
+  }
   return p;
 }
 
-function writeRun(dim, x, z, y0, y1, block) {
-  const p = permOf(block);
-  if (y0 === y1) dim.setBlockPermutation({ x, y: y0, z }, p);
-  else dim.fillBlocks(new BlockVolume({ x, y: y0, z }, { x, y: y1, z }), p);
+// ---------------------------------------------------------------------------
+// Fila de estruturas (salgueiros e portais abandonados) e criaturas da geração
+// ---------------------------------------------------------------------------
+const structureQueue = [];
+const queued = new Set();
+
+function queueStructure(s) {
+  const key = s.name + "@" + s.x + "," + s.y + "," + s.z;
+  if (queued.has(key)) return;
+  queued.add(key);
+  structureQueue.push({ ...s, key, tries: 0 });
 }
 
-// ---------------------------------------------------------------------------
-// Depois de escrito: criaturas da geração (farejadores) e baús com loot
-// ---------------------------------------------------------------------------
-function finishChunk(dim, f) {
-  for (const e of f.entities) {
+function placeQueued() {
+  if (!structureQueue.length) return;
+  const dim = world.getDimension(SIFT_DIM);
+  // no máximo duas por tick: uma árvore são algumas centenas de blocos
+  for (let n = 0; n < 2 && structureQueue.length; n++) {
+    const job = structureQueue.shift();
     try {
-      if (e.baby) dim.runCommand(`summon ${e.id} ${e.x} ${e.y} ${e.z} 0 0 minecraft:entity_born`);
-      else dim.spawnEntity(e.id, { x: e.x, y: e.y, z: e.z });
+      world.structureManager.place(job.name, dim, { x: job.x, y: job.y, z: job.z },
+        { includeEntities: false, rotation: job.rotation });
+      queued.delete(job.key);
+    } catch (e) {
+      if (++job.tries < 80) structureQueue.push(job);
+      else {
+        queued.delete(job.key);
+        warn("estrutura " + job.name, e);
+      }
+    }
+  }
+}
+
+function finishChunk(dim, cx, cz) {
+  const extras = chunkExtras(cx, cz);
+  for (const s of extras.structures) queueStructure(s);
+  for (const e of extras.entities) {
+    try {
+      dim.spawnEntity(e.id, { x: e.x, y: e.y, z: e.z });
     } catch (err) {
       warn("criatura " + e.id, err);
     }
   }
-  for (const c of f.chests) {
-    try {
-      dim.runCommand(`loot replace block ${c[0]} ${c[1]} ${c[2]} slot.container 0 loot "the_sift/chests/abandoned_portal"`);
-    } catch (err) {
-      warn("baú", err);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
-// O gerador: a API escreve, o serviço calcula em segundo plano
+// O gerador que o world_generator_API consome (como o makePlanetGenerator)
 // ---------------------------------------------------------------------------
 const cursor = makeChunkCursor();
 
 function generateColumn(dim, x, z) {
-  const s = getService();
-  const cx = Math.floor(x / 16);
-  const cz = Math.floor(z / 16);
-  const f = s.peek(cx, cz);
-  if (!f) {
-    s.request(cx, cz, -1);
-    throw BudgetExhausted;
-  }
-  const col = ((x - cx * 16) << 4) | (z - cz * 16);
   const state = cursor.stateOf(x, z);
-  if (state === "done") return f.top[col];
+  if (state === "done") return heightAt(x, z);
+  // alguma coluna ANTES desta falhou nesta passada: o cursor só anda em ordem
   if (state === "ahead") throw BudgetExhausted;
 
-  const runs = f.runs[col];
+  const col = columnAt(x, z);
   let blocks = 0;
-  for (let i = 0; i < runs.length; i += 3) blocks += runs[i + 1] - runs[i] + 1;
-  if (!takeBudget(Math.max(1, blocks), SIFT_DIM)) throw BudgetExhausted;
-  for (let i = 0; i < runs.length; i += 3) writeRun(dim, x, z, runs[i], runs[i + 1], runs[i + 2]);
-  cursor.advance(x, z);
-  if (col === 255) {
-    finishChunk(dim, f);
-    s.release(cx, cz);
+  for (const r of col.runs) blocks += r.y1 - r.y0 + 1;
+  if (!takeBudget(blocks, SIFT_DIM)) throw BudgetExhausted;
+
+  for (const r of col.runs) {
+    if (r.states) dim.setBlockPermutation({ x, y: r.y0, z }, perm(r.id, r.states));
+    else writeRun(dim, x, z, r.y0, r.y1, r.id);
   }
-  return f.top[col];
+  cursor.advance(x, z);
+
+  // última coluna do chunk: árvores, portais e criaturas
+  const lx = ((x % 16) + 16) % 16;
+  const lz = ((z % 16) + 16) % 16;
+  if (lx === 15 && lz === 15) finishChunk(dim, Math.floor(x / 16), Math.floor(z / 16));
+  return col.top;
 }
 
 export const siftGen = createTerrainGenerator({
   dimensionId: SIFT_DIM,
   generateColumn,
-  getHeight: (x, z) => heightAt(x, z),
+  getHeight: heightAt,
   genRadiusChunks: GEN_RADIUS_CHUNKS,
   chunksPerTick: CHUNKS_PER_TICK,
   registerDimension: true,
   heightRangeFallback: { min: SIFT_MIN_Y, max: SIFT_MAX_Y },
-  // o chunk só é escrito quando o cálculo em segundo plano termina: esperar
-  // não é falha, então não há limite de tentativas
-  maxChunkAttempts: Number.MAX_SAFE_INTEGER,
+  // chunk grande pode levar vários ticks de orçamento: sem desistir no meio
+  maxChunkAttempts: 100000,
   onError: (ctx, err) => warn(ctx, err),
 });
 siftGen.start();
 
-// cálculo em segundo plano
-let workerStarted = false;
-world.afterEvents.worldLoad.subscribe(() => {
-  if (workerStarted) return;
-  workerStarted = true;
-  system.runJob(getService().worker(() => Date.now()));
-});
-
-// chunks já escritos em sessões anteriores (marcador da API no fundo)
-const markerDone = new Set();
-function chunkDone(dim, cx, cz) {
-  const k = cx + "," + cz;
-  if (markerDone.has(k) || siftGen.isChunkReady(cx * 16, cz * 16)) return true;
-  try {
-    if (dim.getBlock({ x: cx * 16, y: SIFT_MIN_Y, z: cz * 16 })?.typeId === "minecraft:barrier") {
-      markerDone.add(k);
-      return true;
-    }
-  } catch { }
-  return false;
-}
-
-// Pede com antecedência os chunks em volta de quem está no Sift (os mais
-// perto e os da frente primeiro), e esquece os que ficaram longe.
 system.runInterval(() => {
-  if (!workerStarted) return;
-  let dim;
-  try { dim = world.getDimension(SIFT_DIM); } catch { return; }
-  const players = dim.getPlayers();
-  if (!players.length) return;
-  const s = getService();
-  const centers = [];
-  const R = GEN_RADIUS_CHUNKS + 1;
-  for (const p of players) {
-    const pcx = Math.floor(p.location.x / 16);
-    const pcz = Math.floor(p.location.z / 16);
-    centers.push([pcx, pcz]);
-    let v = { x: 0, z: 0 };
-    try { v = p.getViewDirection(); } catch { }
-    const len = Math.hypot(v.x, v.z) || 1;
-    for (let dx = -R; dx <= R; dx++) {
-      for (let dz = -R; dz <= R; dz++) {
-        if (chunkDone(dim, pcx + dx, pcz + dz)) continue;
-        const d2 = dx * dx + dz * dz;
-        const cos = d2 ? (dx * v.x + dz * v.z) / (len * Math.sqrt(d2)) : 1;
-        s.request(pcx + dx, pcz + dz, d2 * (1 + (1 - cos)));
-      }
-    }
+  try {
+    placeQueued();
+  } catch (e) {
+    warn("fila de estruturas", e);
   }
-  s.prune((k) => {
-    const [cx, cz] = k.split(",").map(Number);
-    return centers.some((c) => Math.abs(c[0] - cx) <= R + 1 && Math.abs(c[1] - cz) <= R + 1);
-  });
-}, 10);
+}, 1);
 
 // /scriptevent the_sift:debug — estado do gerador e últimos erros
 system.afterEvents.scriptEventReceive.subscribe((e) => {
   if (e.id !== "the_sift:debug") return;
-  const s = getService();
   const api = siftGen.estatisticas();
   const lines = [
     "§b[The Sift] gerador",
-    `semente ${s.seed} · pedidos ${s.want.size} · prontos ${s.finals.size}`,
-    `calculados: base ${s.stats.bases}, decoração ${s.stats.decors}, final ${s.stats.finals} · erros ${s.stats.erros}`,
+    `semente ${world.getDynamicProperty(SEED_KEY)} · estruturas na fila ${structureQueue.length}`,
     `escritos: ${api.chunks} chunks (${api.refeitas} refeitos) · fila ${api.fila} · marcadores ok ${api.marcadorOk}/falhou ${api.marcadorFalhou}`,
-    s.missing.length ? "§cfeatures faltando: " + s.missing.join(", ") : "features: todas ok",
     ...recentErrors.map((r) => "§7" + r),
   ];
   const target = e.sourceEntity;
@@ -250,9 +220,9 @@ system.runInterval(() => {
     try {
       const l = player.location;
       const biome = biomeForPlayer(Math.floor(l.x), Math.floor(l.y), Math.floor(l.z));
-      // de noite a névoa escurece, como o fog_color do timeline do Java
-      const deep = biome.fog === "the_sift:fog_sift_deep";
-      pushFog(player, !deep && isNight() ? biome.fog + "_night" : biome.fog);
+      // céu e névoa normais; só o subsolo fundo tem névoa própria
+      if (biome.fog) pushFog(player, biome.fog);
+      else popFog(player);
       if (biomeOf.get(player.id) !== biome.id) {
         biomeOf.set(player.id, biome.id);
         player.onScreenDisplay.setActionBar({ rawtext: [{ text: "§b" }, { translate: "dimension.the_sift.the_sift" }, { text: " §8· §r" }, { translate: "biome.the_sift." + biome.id }] });
@@ -319,7 +289,7 @@ function airAt(dim, loc) {
 
 function trySpawnNear(dim, player) {
   const around = dim.getEntities({ location: player.location, maxDistance: 64 })
-    .filter((e) => (e.typeId.startsWith("the_sift:") && e.typeId !== "the_sift:sky") || e.typeId === "minecraft:sniffer");
+    .filter((e) => e.typeId.startsWith("the_sift:") || e.typeId === "minecraft:sniffer");
   if (around.length >= SPAWN_CAP_PER_PLAYER) return;
 
   const ang = Math.random() * Math.PI * 2;

@@ -254,7 +254,6 @@ advancement.the_sift.spicewood.description=Ponha fogo em madeira no Sift
 pack.name=Mielon's The Sift
 pack.description=Port para Bedrock de Mielon's The Sift: siftslate, Ichor, vida ancestral e almas ressonantes.
 block.the_sift.sonorous_deepslate_note=Ardósia Sonora (Nota)
-entity.the_sift:sky.name=Céu do Sift
 message.the_sift.sift_generating=O Sift está tomando forma ao seu redor...
 message.the_sift.no_frame=Não há moldura de ardósia reforçada por perto.
 message.the_sift.singer_arrives=Algo responde à buzina...
