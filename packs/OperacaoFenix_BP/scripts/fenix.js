@@ -2,7 +2,7 @@ import { EffectTypes, world } from "@minecraft/server";
 import { CONFIG, IDS } from "./config.js";
 import { Capsules, Players } from "./store.js";
 import { applyDisguise, applySkin } from "./skin.js";
-import { sendToValhalla } from "./valhalla.js";
+import { enforceValhalla, sendToValhalla } from "./valhalla.js";
 
 /** @typedef {import("./store.js").CapsuleRecord} CapsuleRecord */
 /** @typedef {import("./store.js").PlayerRecord} PlayerRecord */
@@ -280,11 +280,7 @@ export function handleRespawn(player) {
     }
   }
 
-  // Sem Operação Fênix: quem já teve uma acorda no clone pronto mais próximo...
-  if (!p.everLinked) {
-    Players.save(p);
-    return;
-  }
+  // Sem Operação Fênix própria pronta: acorda no clone pronto mais próximo...
   const host = networkClones(p.id, death)[0];
   if (host) {
     wakeInForeignClone(player, p, host);
@@ -340,6 +336,7 @@ function finishDna(c) {
 
 /** Executado a cada segundo: atualiza visuais e avisa quando algo fica pronto. */
 export function tick() {
+  enforceValhalla((id) => Players.get(id)?.mode === "valhalla");
   for (const c of Capsules.all()) {
     const before = JSON.stringify(c);
     refreshCapsuleEntity(c);

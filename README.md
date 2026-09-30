@@ -26,7 +26,7 @@ Use o item num bloco para montar a peça. O painel se conecta à cápsula mais p
 - **Cama**: continua passando a noite, mas **não define mais o renascimento**. O spawn anterior é restaurado logo depois que você deita.
 - **Vincular meu clone**: a cápsula passa a gerar um clone seu (5 min). Com o clone vinculado, quando você morre acorda na cápsula. Se o clone ainda não estava pronto, você acorda nele mesmo assim, mas com fraqueza, lentidão e fome por 60 s.
 - **Corpo**: ao morrer, seu corpo fica deitado no chão com **todos os seus itens** (inventário + armadura + mão secundária). Só o dono consegue pegar os itens de volta interagindo com o corpo. O corpo não recebe dano nem some.
-- **Cápsula quebrada ou desativada**: se sua Operação Fênix for destruída, desvinculada por você ou **desativada por outro jogador** pelo painel dela, na próxima morte você acorda no **clone pronto mais próximo de outro jogador** (esse clone é consumido e o dono é avisado).
+- **Sem Operação Fênix**: se você não tem uma vinculada (nunca montou, ou ela foi destruída, desvinculada por você ou **desativada por outro jogador** pelo painel dela), na próxima morte você acorda no **clone pronto mais próximo de outro jogador** (esse clone é consumido e o dono é avisado).
   - Nesse clone alheio você **fica com a skin do dono do clone** (e se morrer, o corpo que cai também tem a skin dele).
   - Nesse clone alheio você **não pode pegar os itens** dos seus corpos.
   - Para voltar: monte uma nova Operação Fênix → **Vincular meu clone** → **Reviver corpo original** (3 min) → **Entrar no corpo original**. Aí os seus corpos podem ser saqueados de novo.
@@ -40,7 +40,7 @@ Use o item num bloco para montar a peça. O painel se conecta à cápsula mais p
 
 ### Valhalla
 
-Quem já teve uma Operação Fênix, não tem mais nenhuma e não achou clone pronto na rede vai para **Valhalla**: uma dimensão de ilhas de campo e neve flutuando num céu dourado, gerada pela API de terreno do Galactic Horizons. Morrer em Valhalla leva de volta para Valhalla, e lá não dá para montar Operação Fênix.
+**Toda morte que terminaria no spawn do mundo ou na cama vai para Valhalla**: quem não tem Operação Fênix vinculada (nunca teve, quebrou ou desativaram) e não achou clone pronto de outro jogador na rede. Valhalla é uma dimensão de ilhas de campo e neve flutuando num céu dourado, gerada pela API de terreno do Galactic Horizons. Morrer em Valhalla leva de volta para Valhalla (e quem sair dela por outro jeito, como `/tp`, é levado de volta), e lá não dá para montar Operação Fênix.
 
 Para sair, outro jogador precisa:
 1. Fazer uma **Seringa** vazia (garrafa de vidro, pepita de ferro e barra de ferro, na diagonal) e usá-la num **corpo** do jogador. Ela vira uma **Amostra de Sangue** dessa pessoa.

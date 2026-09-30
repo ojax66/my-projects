@@ -126,11 +126,15 @@ async function valhallaSpawn() {
   if (spawnCache) return spawnCache;
   const saved = world.getDynamicProperty("fenix:valhalla_spawn");
   if (typeof saved === "string") return (spawnCache = JSON.parse(saved));
-  const spot = (await generator.findValidSpot(0, 0, (_x, _z, h) => h > BOUNDS.min, { searchRadiusChunks: 2 })) ?? {
-    x: 0,
-    y: (heightAt(0, 0) ?? 80) + 1,
-    z: 0,
-  };
+  let spot;
+  try {
+    spot = await generator.findValidSpot(0, 0, (_x, _z, h) => h > BOUNDS.min, { searchRadiusChunks: 2 });
+  } catch (e) {
+    // Ex.: limite de áreas de ticking do servidor. A altura do (0,0) é conhecida
+    // sem gerar nada, e o chão é garantido na chegada (ensureFloor).
+    console.warn("[Fênix/Valhalla] findValidSpot falhou, usando o ponto calculado: " + e);
+  }
+  spot ??= { x: 0, y: (heightAt(0, 0) ?? 80) + 1, z: 0 };
   spawnCache = spot;
   world.setDynamicProperty("fenix:valhalla_spawn", JSON.stringify(spot));
   return spot;
@@ -138,20 +142,72 @@ async function valhallaSpawn() {
 
 export const inValhalla = (player) => player.dimension.id === VALHALLA;
 
-/** Leva o jogador para o ponto de chegada de Valhalla. */
-export async function sendToValhalla(player) {
-  const spot = await valhallaSpawn();
-  if (!player.isValid) return;
-  const angle = Math.random() * Math.PI * 2;
-  player.teleport(
-    { x: spot.x + 0.5 + Math.cos(angle) * 3, y: spot.y + 2, z: spot.z + 0.5 + Math.sin(angle) * 3 },
-    { dimension: world.getDimension(VALHALLA) },
-  );
-  player.addEffect(EffectTypes.get("slow_falling"), 200, { showParticles: false });
-  player.onScreenDisplay.setTitle("§6Valhalla", {
-    subtitle: "§7Só o DNA do seu corpo pode te trazer de volta",
-    fadeInDuration: 10,
-    stayDuration: 60,
-    fadeOutDuration: 20,
-  });
+/** Se o terreno da chegada ainda não foi gerado, põe um piso para ninguém cair no vazio. */
+function ensureFloor(dim, x, y, z) {
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      try {
+        const block = dim.getBlock({ x: x + dx, y: y - 1, z: z + dz });
+        if (block?.isAir) block.setType("minecraft:calcite");
+      } catch {
+        // chunk ainda não carregada: o gerador de terreno cobre depois
+      }
+    }
+  }
+}
+
+const sending = new Set();
+
+/** Leva o jogador para o ponto de chegada de Valhalla (tenta de novo se falhar). */
+export async function sendToValhalla(player, attempt = 0) {
+  // Um envio pedido pela morte nunca é barrado; `sending` só evita que a
+  // garantia periódica (enforceValhalla) dispare outro envio em paralelo.
+  sending.add(player.id);
+  try {
+    const spot = await valhallaSpawn();
+    if (!player.isValid) return;
+    const dim = world.getDimension(VALHALLA);
+    const angle = Math.random() * Math.PI * 2;
+    const x = Math.floor(spot.x + Math.cos(angle) * 3);
+    const z = Math.floor(spot.z + Math.sin(angle) * 3);
+    const y = Math.max(spot.y, (heightAt(x, z) ?? spot.y - 1) + 1);
+    player.teleport({ x: x + 0.5, y: y + 1, z: z + 0.5 }, { dimension: dim });
+    player.addEffect(EffectTypes.get("slow_falling"), 200, { showParticles: false });
+    player.onScreenDisplay.setTitle("§6Valhalla", {
+      subtitle: "§7Só o DNA do seu corpo pode te trazer de volta",
+      fadeInDuration: 10,
+      stayDuration: 60,
+      fadeOutDuration: 20,
+    });
+    system.runTimeout(() => ensureFloor(dim, x, y, z), 10);
+    // A troca de dimensão leva alguns ticks; só depois a garantia volta a olhar este jogador.
+    system.runTimeout(() => sending.delete(player.id), 40);
+  } catch (e) {
+    console.warn(`[Fênix/Valhalla] não consegui levar ${player.name} (tentativa ${attempt + 1}): ${e}`);
+    if (attempt < 10) system.runTimeout(() => sendToValhalla(player, attempt + 1), 20);
+    else sending.delete(player.id);
+  }
+}
+
+function inValhallaSafe(player) {
+  try {
+    return player.isValid && inValhalla(player);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Garantia: quem está marcado como "em Valhalla" e está fora dela (teleporte que
+ * falhou, /tp, entrou no mundo em outro lugar) volta para Valhalla.
+ * @param {(id: string) => boolean} isInValhallaMode
+ */
+export function enforceValhalla(isInValhallaMode) {
+  for (const player of world.getAllPlayers()) {
+    if (!inValhallaSafe(player) && isInValhallaMode(player.id) && !sending.has(player.id)) {
+      const health = player.getComponent("minecraft:health");
+      if (health && health.currentValue <= 0) continue; // morto: o renascimento cuida
+      sendToValhalla(player);
+    }
+  }
 }
