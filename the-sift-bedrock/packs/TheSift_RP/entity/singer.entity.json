@@ -21,13 +21,14 @@
         "appear": "animation.the_sift.singer.appear",
         "sing": "animation.the_sift.singer.sing",
         "disappear": "animation.the_sift.singer.disappear",
-        "receive_soul": "animation.the_sift.singer.receive_soul"
+        "receive_soul": "animation.the_sift.singer.receive_soul",
+        "phase": "controller.animation.the_sift.singer.phase"
       },
-      "animation_controllers": [
-        {
-          "phase": "controller.animation.the_sift.singer.phase"
-        }
-      ],
+      "scripts": {
+        "animate": [
+          "phase"
+        ]
+      },
       "spawn_egg": {
         "texture": "the_sift_singer_spawn_egg",
         "texture_index": 0

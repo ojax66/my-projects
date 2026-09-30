@@ -1,5 +1,5 @@
 {
-  "format_version": "1.26.40",
+  "format_version": "1.26.0",
   "minecraft:block": {
     "description": {
       "identifier": "the_sift:overgrown_willow_door",
@@ -10,16 +10,13 @@
         "the_sift:open": [
           false,
           true
+        ],
+        "the_sift:upper": [
+          false,
+          true
         ]
       },
       "traits": {
-        "minecraft:multi_block": {
-          "enabled_states": [
-            "minecraft:multi_block_part"
-          ],
-          "parts": 2,
-          "direction": "up"
-        },
         "minecraft:placement_direction": {
           "enabled_states": [
             "minecraft:cardinal_direction"
@@ -28,9 +25,7 @@
       }
     },
     "components": {
-      "minecraft:display_name": {
-        "value": "block.the_sift.overgrown_willow_door"
-      },
+      "minecraft:display_name": "block.the_sift.overgrown_willow_door",
       "minecraft:geometry": "geometry.the_sift.door",
       "minecraft:material_instances": {
         "*": {
@@ -84,7 +79,7 @@
     },
     "permutations": [
       {
-        "condition": "q.block_state('minecraft:multi_block_part') == 1",
+        "condition": "q.block_state('the_sift:upper')",
         "components": {
           "minecraft:material_instances": {
             "*": {

@@ -16,26 +16,21 @@
         "controller.render.the_sift.dark_sniffer"
       ],
       "animations": {
-        "walk": "animation.sniffer.walk",
+        "walk": "controller.animation.sniffer.walk",
         "look_at_target": "animation.common.look_at_target",
-        "sniffsniff": "animation.sniffer.sniffsniff"
+        "sniffsniff": "controller.animation.sniffer.sniffsniff",
+        "general": "controller.animation.sniffer.general"
       },
       "scripts": {
         "pre_animation": [
           "variable.moving = math.min(1.0, query.modified_move_speed * 10);"
+        ],
+        "animate": [
+          "general",
+          "walk",
+          "sniffsniff"
         ]
       },
-      "animation_controllers": [
-        {
-          "general": "controller.animation.sniffer.general"
-        },
-        {
-          "walk": "controller.animation.sniffer.walk"
-        },
-        {
-          "sniffsniff": "controller.animation.sniffer.sniffsniff"
-        }
-      ],
       "spawn_egg": {
         "texture": "the_sift_dark_sniffer_spawn_egg",
         "texture_index": 0

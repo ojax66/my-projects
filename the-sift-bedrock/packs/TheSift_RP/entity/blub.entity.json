@@ -22,13 +22,14 @@
         "hopping": "animation.the_sift.blub.hopping",
         "flapping": "animation.the_sift.blub.flapping",
         "sitting": "animation.the_sift.blub.sitting",
-        "happy": "animation.the_sift.blub.happy"
+        "happy": "animation.the_sift.blub.happy",
+        "move": "controller.animation.the_sift.blub.move"
       },
-      "animation_controllers": [
-        {
-          "move": "controller.animation.the_sift.blub.move"
-        }
-      ],
+      "scripts": {
+        "animate": [
+          "move"
+        ]
+      },
       "spawn_egg": {
         "texture": "the_sift_blub_spawn_egg",
         "texture_index": 0

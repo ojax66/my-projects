@@ -90,6 +90,30 @@
         "Array.skins[q.property('the_sift:to_sift') ? 1 : 0]"
       ],
       "light_color_multiplier": 1.0
+    },
+    "controller.render.the_sift.sky": {
+      "arrays": {
+        "textures": {
+          "Array.sky": [
+            "Texture.s0",
+            "Texture.s1",
+            "Texture.s2",
+            "Texture.s3",
+            "Texture.s4"
+          ]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Array.sky[math.clamp(q.property('the_sift:night'), 0, 4)]"
+      ],
+      "ignore_lighting": true,
+      "light_color_multiplier": 1.0
     }
   }
 }

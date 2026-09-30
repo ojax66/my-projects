@@ -112,14 +112,15 @@ for p, j in walk_json(os.path.join(BP, "blocks")):
         if lt and not os.path.exists(os.path.join(BP, lt)):
             err("%s: loot %s não existe" % (bid, lt))
         dn = c.get("minecraft:display_name")
-        if dn and dn["value"] not in lang:
-            err("%s: tradução %s faltando" % (bid, dn["value"]))
+        dn = dn["value"] if isinstance(dn, dict) else dn
+        if dn and dn not in lang:
+            err("%s: tradução %s faltando" % (bid, dn))
 
 # componentes custom registrados nos scripts
 scripts = ""
 for root, _, files in os.walk(os.path.join(BP, "scripts")):
     for f in files:
-        if f.endswith(".js"):
+        if f.endswith(".js") and f != "data.js":  # data.js: dados do worldgen do Java
             scripts += open(os.path.join(root, f), encoding="utf-8").read()
 registered = set(re.findall(r'registerCustomComponent\("([^"]+)"', scripts))
 for c in custom_components - registered:
@@ -231,7 +232,7 @@ for s in set(re.findall(r'spawnParticle\("(the_sift:[a-z_]+)"', scripts)):
     if s not in parts:
         err("script usa partícula inexistente: " + s)
 structs = set("the_sift:" + f[:-12] for f in os.listdir(os.path.join(BP, "structures", "the_sift")))
-for s in set(re.findall(r'"(the_sift:(?:main_portal|overgrown_willow_[a-z0-9_]+|abandoned_portal_[a-z0-9_]+))"', scripts)):
+for s in set(re.findall(r'"(the_sift:(?:main_portal|overgrown_willow_(?:small|big)[a-z0-9_]*|abandoned_portal_[a-z0-9_]+))"', scripts)):
     if s not in structs:
         err("script usa estrutura inexistente: " + s)
 for s in set(re.findall(r'translate: "([a-z_.]+)"', scripts)):
@@ -241,12 +242,12 @@ for s in set(re.findall(r'translate: "([a-z_.]+)"', scripts)):
         err("script usa tradução inexistente: " + s)
 for s in set(re.findall(r'"(the_sift:[a-z_0-9]+)"', scripts)):
     if s.startswith("the_sift:fog") or s in ("the_sift:the_sift", "the_sift:seed", "the_sift:return", "the_sift:main_portal",
-                                             "the_sift:advancements", "the_sift:biomes", "the_sift:infection",
+                                             "the_sift:advancements", "the_sift:debug", "the_sift:ancient_cities", "the_sift:biomes", "the_sift:infection",
                                              "the_sift:siftite_item", "the_sift:siftite_") or s in registered:
         continue
     if s not in known and s not in bp_ents and s not in parts and s not in structs:
         # estados e propriedades também começam com the_sift:
-        if not re.search(r"(age|tip|facing|open|pressed|double|layers|persistent|axis|phase|carrying|to_sift|[nesw])$", s):
+        if not re.search(r"(age|tip|facing|open|upper|pressed|double|layers|persistent|axis|phase|carrying|to_sift|[nesw])$", s):
             err("script cita id desconhecido: " + s)
 
 if errors:

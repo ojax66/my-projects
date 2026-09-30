@@ -20,13 +20,14 @@
         "walk": "animation.the_sift.echo_golem.walk",
         "carry_idle": "animation.the_sift.echo_golem.carry_idle",
         "carry_walk": "animation.the_sift.echo_golem.carry_walk",
-        "bow": "animation.the_sift.echo_golem.bow"
+        "bow": "animation.the_sift.echo_golem.bow",
+        "move": "controller.animation.the_sift.echo_golem.move"
       },
-      "animation_controllers": [
-        {
-          "move": "controller.animation.the_sift.echo_golem.move"
-        }
-      ],
+      "scripts": {
+        "animate": [
+          "move"
+        ]
+      },
       "spawn_egg": {
         "texture": "the_sift_echo_golem_spawn_egg",
         "texture_index": 0

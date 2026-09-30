@@ -17,17 +17,16 @@
       ],
       "animations": {
         "running": "animation.the_sift.sifter.running",
-        "attack": "animation.the_sift.sifter.attack",
-        "look_at_target": "animation.common.look_at_target"
+        "attack": "controller.animation.the_sift.sifter.attack",
+        "look_at_target": "animation.common.look_at_target",
+        "move": "controller.animation.the_sift.sifter.move"
       },
-      "animation_controllers": [
-        {
-          "move": "controller.animation.the_sift.sifter.move"
-        },
-        {
-          "attack": "controller.animation.the_sift.sifter.attack"
-        }
-      ],
+      "scripts": {
+        "animate": [
+          "move",
+          "attack"
+        ]
+      },
       "spawn_egg": {
         "texture": "the_sift_sifter_spawn_egg",
         "texture_index": 0

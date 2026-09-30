@@ -12,6 +12,8 @@ import "./sift/advancements.js";
 import "./sift/portal.js";
 import "./sift/teleport.js";
 import "./sift/singer.js";
+import "./sift/ancient_city.js";
+import "./sift/sky.js";
 import "./sift/blocks.js";
 import "./sift/items.js";
 import "./sift/mobs.js";

@@ -1,5 +1,5 @@
 {
-  "format_version": "1.26.40",
+  "format_version": "1.26.0",
   "minecraft:block": {
     "description": {
       "identifier": "the_sift:overgrown_willow_wood",
@@ -15,9 +15,7 @@
       }
     },
     "components": {
-      "minecraft:display_name": {
-        "value": "block.the_sift.overgrown_willow_wood"
-      },
+      "minecraft:display_name": "block.the_sift.overgrown_willow_wood",
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {

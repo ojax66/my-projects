@@ -26,10 +26,8 @@
         "height": 0.9
       },
       "minecraft:physics": {},
-      "minecraft:pushable": {
-        "is_pushable": true,
-        "is_pushable_by_piston": true
-      },
+      "minecraft:pushable_by_entity": {},
+      "minecraft:pushable_by_block": {},
       "minecraft:nameable": {},
       "minecraft:jump.static": {},
       "minecraft:can_climb": {},
@@ -121,8 +119,7 @@
         "track_target": true
       },
       "minecraft:behavior.hurt_by_target": {
-        "priority": 3,
-        "alert_same_type": true
+        "priority": 3
       },
       "minecraft:behavior.random_stroll": {
         "priority": 7,

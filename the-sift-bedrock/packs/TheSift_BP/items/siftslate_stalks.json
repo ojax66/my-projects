@@ -1,5 +1,5 @@
 {
-  "format_version": "1.26.40",
+  "format_version": "1.26.0",
   "minecraft:item": {
     "description": {
       "identifier": "the_sift:siftslate_stalks",

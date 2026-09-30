@@ -29,9 +29,9 @@ BP_DATA_UUID = "1e2c2fdb-9459-490a-88f3-18ed08a4cab7"
 BP_SCRIPT_UUID = "902ee37b-fbf3-4eab-ba19-c8a9c72dbedc"
 RP_UUID = "a16ce5a0-b0f0-4ed6-809b-3dc41d0d0d95"
 RP_RES_UUID = "2777fd9a-2c58-40ec-b579-3d844a5fe739"
-MIN_ENGINE = [1, 26, 40]
-BLOCK_FMT = "1.26.40"
-ITEM_FMT = "1.26.40"
+MIN_ENGINE = [1, 26, 0]
+BLOCK_FMT = "1.26.0"
+ITEM_FMT = "1.26.0"
 
 BP = os.path.join(ROOT, "packs", "TheSift_BP")
 RP = os.path.join(ROOT, "packs", "TheSift_RP")
@@ -290,7 +290,7 @@ def base_block(name, category="nature", states=None, traits=None, group=None):
         desc["traits"] = traits
     key = "block.the_sift." + name
     LANG_BLOCK[name] = key
-    comps = {"minecraft:display_name": {"value": key}}
+    comps = {"minecraft:display_name": key}
     b = {"format_version": BLOCK_FMT, "minecraft:block": {"description": desc, "components": comps}}
     BLOCKS[name] = b
     return b
@@ -832,9 +832,10 @@ def fence_gate_block(name, tex):
 
 
 def door_block(name):
-    b = base_block(name, "construction", states={"the_sift:open": [False, True]},
-                   traits={"minecraft:multi_block": {"enabled_states": ["minecraft:multi_block_part"], "parts": 2, "direction": "up"},
-                           "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}})
+    """Porta de dois blocos. O multi_block do jogo só funciona sem experimento a
+    partir do 26.40, então a metade de cima é colocada/removida pelo script."""
+    b = base_block(name, "construction", states={"the_sift:open": [False, True], "the_sift:upper": [False, True]},
+                   traits={"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}})
     c = comps(b)
     bottom = block_tex("overgrown_willow_door_bottom")
     top = block_tex("overgrown_willow_door_top")
@@ -852,9 +853,8 @@ def door_block(name):
     c["minecraft:collision_box"] = {"origin": [-8, 0, -8], "size": [16, 16, 3]}
     c["minecraft:selection_box"] = {"origin": [-8, 0, -8], "size": [16, 16, 3]}
     c["the_sift:door"] = {}
-    loot = add_loot("blocks", name, [{"rolls": 1, "entries": [entry(sid(name))]}])
-    c["minecraft:loot"] = loot
-    perms(b).append({"condition": "q.block_state('minecraft:multi_block_part') == 1",
+    c["minecraft:loot"] = add_loot("blocks", name, [{"rolls": 1, "entries": [entry(sid(name))]}])
+    perms(b).append({"condition": "q.block_state('the_sift:upper')",
                      "components": {"minecraft:material_instances": {"*": mat(top, "alpha_test")},
                                     "minecraft:loot": add_loot("blocks", "empty", [])}})
     # Java: porta virada pro sul fica na borda norte. Aberta = mais 90 graus.
@@ -932,8 +932,7 @@ def button_block(name, tex):
         perms(b).append({"condition": "q.block_state('minecraft:block_face') == '%s'" % face,
                          "components": {"minecraft:transformation": {"rotation": r}}})
     perms(b).append({"condition": "q.block_state('the_sift:pressed')",
-                     "components": {"minecraft:redstone_producer": {"power": 15, "strongly_powered_face": "down",
-                                                                    "transform_relative": True}}})
+                     "components": {"minecraft:redstone_producer": {"power": 15}}})
     BLOCK_SOUNDS[name] = "wood"
 
 
@@ -957,7 +956,7 @@ def pressure_plate_block(name, tex):
     c["the_sift:pressure_plate"] = {}
     c["minecraft:loot"] = add_loot("blocks", name, [{"rolls": 1, "entries": [entry(sid(name))]}])
     perms(b).append({"condition": "q.block_state('the_sift:pressed')",
-                     "components": {"minecraft:redstone_producer": {"power": 15, "strongly_powered_face": "down"}}})
+                     "components": {"minecraft:redstone_producer": {"power": 15}}})
     BLOCK_SOUNDS[name] = "wood"
 
 
@@ -1313,12 +1312,23 @@ def client_entity(name, geometry, textures, animations, controllers, scripts, re
         "geometry": geometry,
         "render_controllers": render_controllers,
     }
+    animations = dict(animations or {})
+    scripts = dict(scripts or {})
+    animate = list(scripts.get("animate", []))
+    # No formato 1.10.0 os controllers entram em "animations" e rodam por
+    # scripts.animate; "animation_controllers" é do formato antigo e faz o
+    # jogo recusar o arquivo inteiro (a criatura some).
+    for c in controllers or []:
+        for k, v in c.items():
+            animations[k] = v
+            if k not in animate:
+                animate.append(k)
+    if animate:
+        scripts["animate"] = animate
     if animations:
         desc["animations"] = animations
     if scripts:
         desc["scripts"] = scripts
-    if controllers:
-        desc["animation_controllers"] = controllers
     if egg:
         desc["spawn_egg"] = {"texture": item_tex(name + "_spawn_egg"), "texture_index": 0}
     if extra:
@@ -1368,7 +1378,8 @@ def common_mob(health, speed, width, height, family, extra=None):
         "minecraft:movement": {"value": speed},
         "minecraft:collision_box": {"width": width, "height": height},
         "minecraft:physics": {},
-        "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
+        "minecraft:pushable_by_entity": {},
+        "minecraft:pushable_by_block": {},
         "minecraft:nameable": {},
         "minecraft:jump.static": {},
         "minecraft:can_climb": {},
@@ -1456,7 +1467,7 @@ def build_entities():
                                          {"item": sid("raw_sifter_meat"), "heal_amount": 2}]},
         "minecraft:behavior.tempt": {"priority": 4, "speed_multiplier": 1.1, "items": [sid("soul_block")]},
         "minecraft:behavior.melee_attack": {"priority": 3, "speed_multiplier": 1.2, "track_target": True},
-        "minecraft:behavior.hurt_by_target": {"priority": 3, "alert_same_type": True},
+        "minecraft:behavior.hurt_by_target": {"priority": 3},
         "minecraft:behavior.random_stroll": {"priority": 7, "speed_multiplier": 1.0},
         "minecraft:ambient_sound_interval": {"value": 10, "range": 16, "event_name": "ambient",
                                              "event_names": [{"event_name": "ambient.in.water", "condition": "q.is_in_water"}]},
@@ -1543,7 +1554,6 @@ def build_entities():
         "minecraft:health": {"value": 40, "max": 40},
         "minecraft:collision_box": {"width": 0.8, "height": 4.0},
         "minecraft:physics": {"has_gravity": True},
-        "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
         "minecraft:knockback_resistance": {"value": 1.0},
         "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
         "minecraft:movement": {"value": 0.0},
@@ -1586,7 +1596,7 @@ def build_entities():
         "minecraft:type_family": {"family": ["projectile", "snowball"]},
         "minecraft:collision_box": {"width": 0.25, "height": 0.25},
         "minecraft:physics": {},
-        "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": True},
+        "minecraft:pushable_by_block": {},
         "minecraft:projectile": {
             "anchor": "eye_height", "angle_offset": 0.0, "offset": [0, -0.1, 0], "gravity": 0.03, "power": 1.5,
             "on_hit": {"impact_damage": {"damage": 0, "knockback": True},
@@ -1612,12 +1622,144 @@ def build_entities():
         "minecraft:health": {"value": 1, "max": 1},
         "minecraft:collision_box": {"width": 1.0, "height": 4.25},
         "minecraft:physics": {"has_gravity": False, "has_collision": False},
-        "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
         "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
         "minecraft:knockback_resistance": {"value": 1.0},
         "minecraft:persistent": {},
         "minecraft:fire_immune": {},
     }, spawnable=False, properties={"the_sift:to_sift": {"type": "bool", "default": True, "client_sync": True}})
+
+
+# ---------------------------------------------------------------------------
+# Céu: as faixas de aurora do SiftProceduralSkyRenderer do Java
+# ---------------------------------------------------------------------------
+# O Java desenha uma cúpula com o degradê do céu e, por cima, faixas coloridas
+# que giram devagar. O degradê vira a cor do céu + névoa do bioma (o Bedrock
+# funde o céu com a névoa no horizonte). As faixas viram uma cúpula de painéis
+# em volta do jogador (entidade the_sift:sky), com as MESMAS fórmulas e paletas
+# do Java pintadas na textura: 5 texturas do dia para a noite.
+SKY_DAY = [(1.0, 0.61, 0.76), (0.3, 0.94, 0.97), (0.52, 1.0, 0.8), (0.91, 0.73, 1.0), (1.0, 0.82, 0.64)]
+SKY_NIGHT = [(0.22, 0.76, 1.0), (0.13, 0.96, 1.0), (0.36, 0.47, 1.0), (0.72, 0.35, 1.0), (0.92, 0.38, 0.88)]
+SKY_PANELS = 48
+SKY_COLS = 24        # pixels por painel
+SKY_ROWS = 192       # pixels na vertical, por camada
+SKY_R = 40.0         # raio da cúpula, em blocos
+SKY_BOTTOM = -0.26   # altura/raio na base (≈ -14,6°)
+SKY_TOP = 2.6        # altura/raio no topo (≈ 69°)
+
+
+def _clamp(v):
+    return max(0.0, min(1.0, v))
+
+
+def _smooth(v):
+    c = _clamp(v)
+    return c * c * (3 - 2 * c)
+
+
+def sky_ribbon(u, elev_deg, night, variant):
+    import math
+    v = _clamp((elev_deg + 14.0) / 104.0)
+    fade = 1.0 - _smooth(_clamp((-14.0 - elev_deg) / 16.0))
+    pal = SKY_NIGHT if night else SKY_DAY
+    r = g = b = total = combined = 0.0
+    for i, col in enumerate(pal):
+        freq = 1.0 + i % 3
+        phase = i * 0.173 + variant * 0.271
+        center = (0.13 + i * 0.17 + (0.115 - variant * 0.018) * math.sin(2 * math.pi * (u * freq + phase))
+                  + 0.038 * math.sin(2 * math.pi * (u * (freq + 2.0) - phase)))
+        width = (0.135 if variant == 0 else 0.085) + (i % 2) * 0.018
+        band = _smooth(_clamp(1.0 - abs(v - center) / width))
+        pulse = math.sin(2 * math.pi * (u * 2.0 + phase))
+        band *= 0.78 + 0.22 * pulse * pulse
+        band *= 1.0 - _smooth((v - 0.7) / 0.22)
+        r += col[0] * band
+        g += col[1] * band
+        b += col[2] * band
+        total += band
+        combined = 1.0 - (1.0 - combined) * (1.0 - band * 0.58)
+    if total <= 1e-4:
+        return (1.0, 1.0, 1.0, 0.0)
+    glow = (0.48 if night else 0.42) if variant == 0 else (0.37 if night else 0.3)
+    return (r / total, g / total, b / total, _clamp(combined * glow * fade))
+
+
+def build_sky():
+    import math
+    w = SKY_PANELS * SKY_COLS
+    layers = {}
+    for night in (False, True):
+        im = Image.new("RGBA", (w, SKY_ROWS * 2))
+        px = im.load()
+        for variant in (0, 1):
+            for row in range(SKY_ROWS):
+                h = SKY_TOP - (row + 0.5) / SKY_ROWS * (SKY_TOP - SKY_BOTTOM)
+                elev = math.degrees(math.atan(h))
+                for col in range(w):
+                    u = (col + 0.5) / w
+                    c = sky_ribbon(u, elev, night, variant)
+                    px[col, variant * SKY_ROWS + row] = tuple(int(round(_clamp(x) * 255)) for x in c)
+        layers[night] = im
+    tex_dir = os.path.join(RP, "textures", "entity", "sky")
+    os.makedirs(tex_dir, exist_ok=True)
+    textures = {}
+    for k in range(5):
+        t = k / 4.0
+        im = Image.blend(layers[False], layers[True], t)
+        im.save(os.path.join(tex_dir, "aurora_%d.png" % k))
+        textures["s%d" % k] = "textures/entity/sky/aurora_%d" % k
+
+    # painéis em anel, virados para dentro (duas camadas: longe e perto)
+    bones = []
+    for li, (bone, radius) in enumerate((("far", SKY_R), ("near", SKY_R * 0.9))):
+        R = radius * 16
+        half = R * math.tan(math.pi / SKY_PANELS) * 1.03
+        y0 = SKY_BOTTOM * R
+        hgt = (SKY_TOP - SKY_BOTTOM) * R
+        cubes = []
+        for i in range(SKY_PANELS):
+            ang = -360.0 * i / SKY_PANELS
+            cubes.append({
+                "origin": [-half, y0, -R], "size": [2 * half, hgt, 0],
+                "pivot": [0, 0, 0], "rotation": [0, ang, 0],
+                "uv": {"north": {"uv": [i * SKY_COLS, li * SKY_ROWS], "uv_size": [SKY_COLS, SKY_ROWS]}},
+            })
+        bones.append({"name": bone, "pivot": [0, 0, 0], "cubes": cubes})
+    write_json(os.path.join(RP, "models", "entity", "sky.geo.json"), {
+        "format_version": "1.16.0",
+        "minecraft:geometry": [{
+            "description": {"identifier": "geometry.the_sift.sky", "texture_width": w, "texture_height": SKY_ROWS * 2,
+                            "visible_bounds_width": 256, "visible_bounds_height": 256, "visible_bounds_offset": [0, 0, 0]},
+            "bones": bones}]})
+    # giro lento como no Java: longe +0,00135 rad/s, perto -0,00205 rad/s
+    write_json(os.path.join(RP, "animations", "sky.animation.json"), {
+        "format_version": "1.8.0",
+        "animations": {"animation.the_sift.sky.drift": {"loop": True, "bones": {
+            "far": {"rotation": [0, "q.life_time * 0.0773", 0]},
+            "near": {"rotation": [0, "-q.life_time * 0.1175", 0]}}}}})
+    write_json(os.path.join(RP, "materials", "entity.material"), {"materials": {
+        "version": "1.0.0",
+        "the_sift_sky:entity_alphablend": {"+states": ["DisableCulling", "DisableDepthWrite"]}}})
+    RP_RCS["controller.render.the_sift.sky"] = {
+        "arrays": {"textures": {"Array.sky": ["Texture.s%d" % k for k in range(5)]}},
+        "geometry": "Geometry.default", "materials": [{"*": "Material.default"}],
+        "textures": ["Array.sky[math.clamp(q.property('the_sift:night'), 0, 4)]"],
+        "ignore_lighting": True, "light_color_multiplier": 1.0}
+    client_entity("sky", {"default": "geometry.the_sift.sky"}, textures,
+                  {"drift": "animation.the_sift.sky.drift"}, None,
+                  {"animate": ["drift"], "should_update_bones_and_effects_offscreen": True},
+                  ["controller.render.the_sift.sky"], materials={"default": "the_sift_sky"}, egg=False)
+    bp_entity("sky", {
+        "minecraft:type_family": {"family": ["the_sift_sky", "inanimate"]},
+        "minecraft:health": {"value": 1, "max": 1},
+        "minecraft:collision_box": {"width": 0, "height": 0},
+        "minecraft:custom_hit_test": {"hitboxes": [{"width": 0, "height": 0, "pivot": [0, 999, 0]}]},
+        "minecraft:physics": {"has_gravity": False, "has_collision": False},
+        "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+        "minecraft:knockback_resistance": {"value": 1.0},
+        "minecraft:fire_immune": {},
+        "minecraft:tick_world": {"never_despawn": True, "radius": 2},
+        "minecraft:conditional_bandwidth_optimization": {},
+    }, spawnable=False, properties={"the_sift:night": {"type": "int", "range": [0, 4], "default": 0, "client_sync": True}})
 
 
 def build_entity_sounds():
@@ -1921,6 +2063,92 @@ def build_structures():
 
 
 # ---------------------------------------------------------------------------
+# Dados de worldgen do Java para o gerador em script
+# ---------------------------------------------------------------------------
+# O gerador do Bedrock (scripts/sift/gen) interpreta os MESMOS arquivos do mod:
+# density functions, ruídos, regras de superfície, parâmetros de bioma,
+# carvers, features e tags. Assim o relevo e a distribuição dos biomas são os
+# do Java, não uma imitação.
+
+# ruídos vanilla usados pelas regras de superfície (valores do Minecraft)
+VANILLA_NOISES = {
+    "surface": {"base_octave": -6, "amplitude_modifiers": [1.0, 1.0, 1.0]},
+    "surface_secondary": {"base_octave": -6, "amplitude_modifiers": [1.0, 1.0, 0.0, 1.0]},
+}
+
+
+def build_worldgen_data():
+    wg = lambda *p: data("worldgen", *p)
+
+    def folder(name):
+        out = {}
+        for f in sorted(os.listdir(wg(name))):
+            if f.endswith(".json"):
+                out[f[:-5]] = load_json(wg(name, f))
+        return out
+
+    density = folder("density_function")
+    noises = dict(VANILLA_NOISES)
+    for k, v in folder("noise").items():
+        amps = v.get("amplitude_modifiers", v.get("amplitudes"))
+        noises[k] = {"base_octave": v.get("base_octave", v.get("firstOctave")), "amplitude_modifiers": amps}
+    settings = load_json(wg("noise_settings", "the_sift.json"))
+    router = {k: v for k, v in settings["noise_router"].items() if k != "temperature"}
+    dim = load_json(data("dimension", "the_sift.json"))
+    params = {b["biome"].split(":")[1]: b["parameters"] for b in dim["generator"]["biome_source"]["biomes"]}
+    biomes = {}
+    for name, b in folder("biome").items():
+        biomes[name] = {
+            "params": params[name],
+            "features": [[f.split(":")[1] if f.startswith(NS) else f for f in step] for step in b.get("features", [])],
+            "carvers": [c.split(":")[1] for c in b.get("carvers", [])],
+        }
+    configured = folder("feature")
+    placed = {}
+    for name, pf in folder("placed_feature").items():
+        feat = pf["feature"]
+        conf = configured[feat.split(":")[1]] if isinstance(feat, str) and feat.startswith(NS) else feat
+        placed[name] = {"placement": pf.get("placement", []), "feature": conf}
+    tags = {}
+    for ns in (NS, "minecraft"):
+        tdir = src("data", ns, "tags", "block")
+        for f in sorted(os.listdir(tdir)):
+            if f.endswith(".json"):
+                tags[ns + ":" + f[:-5]] = sorted(read_tag(os.path.join(tdir, f)))
+    # moldes (.nbt) que as features giram/espelham: blocos com os estados do Java
+    templates = {}
+    sdir = data("structure")
+    for root, _, files in os.walk(sdir):
+        for f in sorted(files):
+            rel = os.path.relpath(os.path.join(root, f), sdir)[:-4].replace(os.sep, "/")
+            if not f.endswith(".nbt") or rel == "main_portal":
+                continue
+            d = load_java(os.path.join(root, f))
+            pal = []
+            for st in d["palette"]:
+                pal.append([st["Name"], {k: str(v) for k, v in st.get("Properties", {}).items()}])
+            flat = []
+            for b in d["blocks"]:
+                name = pal[b["state"]][0]
+                if name in ("minecraft:air", "minecraft:cave_air", "minecraft:structure_void", "minecraft:jigsaw"):
+                    continue
+                flat += list(b["pos"]) + [b["state"]]
+            templates[rel] = {"size": list(d["size"]), "palette": pal, "blocks": flat}
+    out = {
+        "TEMPLATES": templates,
+        "DENSITY": density, "NOISES": noises, "ROUTER": router,
+        "MATERIAL_RULE": settings["material_rule"], "BIOMES": biomes,
+        "CARVERS": folder("carver"), "PLACED": placed, "TAGS": tags,
+    }
+    path = os.path.join(BP, "scripts", "sift", "gen", "data.js")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("// Gerado por tools/port.py a partir do jar do mod. Não editar à mão.\n")
+        for k, v in out.items():
+            f.write("export const %s = %s;\n" % (k, json.dumps(v, separators=(",", ":"), sort_keys=True)))
+
+
+# ---------------------------------------------------------------------------
 # Dimensão, bioma, névoa
 # ---------------------------------------------------------------------------
 def build_world_defs():
@@ -1947,25 +2175,39 @@ def build_world_defs():
             "description": {"identifier": sid("sift")},
             "components": {
                 "minecraft:fog_appearance": {"fog_identifier": sid("fog_sift")},
-                "minecraft:sky_color": {"sky_color": "#CFEFF2"},
+                "minecraft:sky_color": {"sky_color": "#6EDEF0"},
                 "minecraft:water_appearance": {"surface_color": "#4ADCE8"},
             }}})
-    # névoas: a padrão do Sift e as que o script empilha por "bioma" e subsolo
+    # Névoas: cores do "timeline" do Java (dia #C9EFF1, noite #0D3D78), com
+    # tons por bioma. A distância é relativa à distância de renderização (a
+    # névoa fixa de antes fechava o céu num paredão branco). O script empilha
+    # a do bioma e a da hora do dia.
     fogs = {
-        "fog_sift": ("#D7F1F3", 40, 190),
-        "fog_sift_overgrown": ("#A9DCCB", 30, 160),
-        "fog_sift_snowy": ("#EEF8FA", 24, 150),
-        "fog_sift_deep": ("#0B1417", 8, 60),
+        "fog_sift": ("#C9EFF1", 0.62),
+        "fog_sift_overgrown": ("#B4E8D8", 0.56),
+        "fog_sift_snowy": ("#E4F6FA", 0.5),
+        "fog_sift_night": ("#0D3D78", 0.6),
+        "fog_sift_overgrown_night": ("#0E4A6A", 0.56),
+        "fog_sift_snowy_night": ("#1A4D86", 0.5),
     }
-    for name, (color, start, end) in fogs.items():
+    for name, (color, start) in fogs.items():
         write_json(os.path.join(RP, "fogs", name + ".fog.json"), {
             "format_version": "1.16.100",
             "minecraft:fog_settings": {
                 "description": {"identifier": sid(name)},
                 "distance": {
-                    "air": {"fog_start": start, "fog_end": end, "fog_color": color, "render_distance_type": "fixed"},
+                    "air": {"fog_start": start, "fog_end": 1.0, "fog_color": color, "render_distance_type": "render"},
                     "water": {"fog_start": 0, "fog_end": 40, "fog_color": "#2E8E99", "render_distance_type": "fixed"},
                 }}})
+    # subsolo fundo (escuro profundo): névoa curta e escura
+    write_json(os.path.join(RP, "fogs", "fog_sift_deep.fog.json"), {
+        "format_version": "1.16.100",
+        "minecraft:fog_settings": {
+            "description": {"identifier": sid("fog_sift_deep")},
+            "distance": {
+                "air": {"fog_start": 10, "fog_end": 72, "fog_color": "#0B1417", "render_distance_type": "fixed"},
+                "water": {"fog_start": 0, "fog_end": 30, "fog_color": "#1A5A60", "render_distance_type": "fixed"},
+            }}})
 
 
 # ---------------------------------------------------------------------------
@@ -1997,6 +2239,7 @@ EXTRA_EN = {
     "block.the_sift.sonorous_deepslate_note": "Sonorous Deepslate (Note)",
     "block.the_sift.sculkflower_crop": "Sculkflower Crop",
     "item.the_sift.ichor_snow": "Ichor Snow",
+    "entity.the_sift:sky.name": "Sift Sky",
     "message.the_sift.sift_generating": "The Sift is taking shape around you...",
     "message.the_sift.no_frame": "There is no reinforced deepslate frame nearby.",
     "message.the_sift.singer_arrives": "Something answers the horn...",
@@ -2095,8 +2338,10 @@ def main():
     convert_recipes()
     build_entities()
     build_particles()
+    build_sky()
     structures = build_structures()
     build_world_defs()
+    build_worldgen_data()
 
     for name, b in BLOCKS.items():
         write_json(os.path.join(BP, "blocks", name + ".json"), b)

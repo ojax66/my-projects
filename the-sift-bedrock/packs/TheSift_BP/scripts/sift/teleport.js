@@ -47,8 +47,11 @@ world.afterEvents.worldLoad.subscribe(() => {
   if (m) setPortalZone({ x: m.x, z: m.z }, m.y);
 });
 
-/** Escolhe o lugar mais plano perto da origem para a estrutura de 9 x 40. */
-function chooseMainSpot() {
+/**
+ * Escolhe o lugar mais plano perto da origem para a estrutura de 9 x 40.
+ * É um gerador (roda em system.runJob): cada amostra calcula o relevo do mod.
+ */
+function* chooseMainSpot() {
   let best = null;
   for (let r = 0; r <= MAIN_PORTAL_SEARCH; r += 16) {
     for (let ox = -r; ox <= r; ox += 16) {
@@ -57,25 +60,34 @@ function chooseMainSpot() {
         // não pisar em chão já gerado
         if (siftGen.isChunkReady(ox, oz) || siftGen.isChunkReady(ox + 8, oz + 39)) continue;
         const hs = [];
-        let lake = false;
-        for (let dx = 0; dx <= 8; dx += 4) {
-          for (let dz = 0; dz <= 39; dz += 3) {
-            const n = naturalHeightAt(ox + dx, oz + dz);
-            if (n.lake) lake = true;
-            hs.push(n.h);
+        for (let dx = 0; dx <= 8; dx += 8) {
+          for (let dz = 0; dz <= 39; dz += 13) {
+            hs.push(naturalHeightAt(ox + dx, oz + dz).h);
+            yield;
           }
         }
-        if (lake) continue;
         hs.sort((a, b) => a - b);
         const relief = hs[hs.length - 1] - hs[0];
         const median = hs[hs.length >> 1];
         const score = relief + Math.hypot(ox, oz) / 40 + (median > 140 ? 30 : 0);
-        if (!best || score < best.score) best = { x: ox - 4, z: oz - 19, y: median, score };
+        if (!best || score < best.score) best = { x: ox - 4, z: oz - 19, y: median + 1, score };
       }
     }
     if (best && best.score < 8) break;
   }
-  return best ?? { x: -4, z: -19, y: heightAt(0, 0) };
+  return best ?? { x: -4, z: -19, y: heightAt(0, 0) + 1 };
+}
+
+function runJobAsync(gen) {
+  return new Promise((resolve, reject) => {
+    system.runJob((function* () {
+      try {
+        resolve(yield* gen);
+      } catch (e) {
+        reject(e);
+      }
+    })());
+  });
 }
 
 let ensuring = null;
@@ -86,7 +98,7 @@ function ensureMainPortal() {
   ensuring = (async () => {
     let m = loadMain();
     if (!m) {
-      const spot = chooseMainSpot();
+      const spot = await runJobAsync(chooseMainSpot());
       m = { x: spot.x, y: spot.y, z: spot.z, placed: false };
       setPortalZone({ x: m.x, z: m.z }, m.y);
       saveMain(m);

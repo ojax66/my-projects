@@ -1,7 +1,7 @@
 # Mielon's The Sift — port para Minecraft Bedrock
 
 Port do mod Fabric **Mielon's The Sift 1.0.2** (Minecraft Java 26.3) para
-add-on do Bedrock. **Mínimo: Bedrock 26.40.** Usa a API de script estável
+add-on do Bedrock. **Mínimo: Bedrock 26.0 (1.26.0).** Usa a API de script estável
 (`@minecraft/server` 2.8.0). Não precisa de nenhum experimento.
 
 **Download:** [`dist/The_Sift_Bedrock.mcaddon`](dist/The_Sift_Bedrock.mcaddon).
@@ -22,9 +22,12 @@ Igual ao mod:
 2. Toque uma **Buzina de Cabra** perto dela. A **Cantora** aparece, canta e
    cada onda sonora transforma um bloco de **Ardósia Sonora** (modo buzina) em
    modo nota.
-   *Diferença do Bedrock:* o add-on não consegue alterar a estrutura da
-   Cidade Ancestral, então, se não houver ardósias sonoras perto da moldura,
-   a própria Cantora ergue as oito na frente dela, na mesma disposição do mod.
+   *Diferença do Bedrock:* o add-on não consegue trocar a estrutura da
+   Cidade Ancestral como o mod faz. Então, quando você anda no subsolo perto
+   de uma, o script acha a moldura grande de ardósia reforçada do centro e
+   põe as oito Ardósias Sonoras (modo buzina) exatamente onde o molde do mod
+   as põe: 5 blocos à frente da moldura, 3 abaixo da base, de dois em dois.
+   Se mesmo assim faltarem, a Cantora ergue as oito ao chegar.
 3. Ponha um **Bloco de Notas** em cima de cada Ardósia Sonora (modo nota).
    Cada um toca um de 8 sons próprios:
    - **agachar + usar** troca o som do bloco;
@@ -43,10 +46,12 @@ dimensões (e abre outra de volta do lado de lá).
 
 | Parte | Situação |
 |---|---|
-| Dimensão do Sift (altura 0–256) | ✅ dimensão custom, terreno gerado por script |
-| Biomas (ermos, clareira, floresta, encostas, picos, picos nevados de ichor, escuro profundo) | ✅ recriados no gerador; o nome aparece na tela ao mudar de bioma, com névoa própria |
-| Lagos de Ichor, cavernas, minérios nas faixas do mod | ✅ |
-| Salgueiros Tomados e Portais Abandonados (com baú e loot) | ✅ estruturas originais convertidas pra `.mcstructure` |
+| Dimensão do Sift (altura 0–256) | ✅ dimensão custom, gerada por script com a geração do próprio mod (veja abaixo) |
+| Relevo | ✅ as *density functions* do mod (platôs, cânions, escarpas, penhascos, montanhas), com o ruído do Minecraft portado 1:1 e interpolação por célula como no Java |
+| Biomas (ermos, clareira, floresta, encostas, picos, picos nevados de ichor, escuro profundo) | ✅ multi-noise com os parâmetros do mod; o nome aparece na tela ao mudar de bioma |
+| Superfície | ✅ as regras de superfície do mod: caminhos de sculk saudável, manchas de sculk seco, crescimento nos biomas tomados, fundo de bedrock |
+| Cavernas e cânions | ✅ os carvers do Java (caverna, caverna funda e cânion) |
+| Features | ✅ todas as do mod, portadas do código Java: minérios, bolhas de sculk, plantas, raízes, lagos de ichor (com cascata e ilha de salgueiro), salgueiros (moldes originais girados/espelhados), monólitos, espinhos de sculk seco, arcos, cânion das almas, cavernas do farejador (com ninho e família), regiões de sculk (com Farejador Sombrio), neve de ichor, nascentes, lava no fundo, portais abandonados (com baú e loot) |
 | Portal principal do Sift | ✅ estrutura original, terreno aplainado em volta |
 | 47 blocos: siftslate, minérios, sculk saudável/seco, neve de ichor (camadas), bloco de alma, ardósia sonora, plantas, conjunto de madeira de salgueiro | ✅ |
 | Madeira: tronco, madeira, descascados, tábuas, laje (dupla), escada, cerca, portão, porta, alçapão, botão, placa de pressão | ✅ |
@@ -60,7 +65,8 @@ dimensões (e abre outra de volta do lado de lá).
 | Disco "Rift" (Fuzja Jądrowa) | ✅ toca numa jukebox via script |
 | Conquistas | ⚠️ viram aviso no chat + som (o Bedrock não tem conquistas custom). `/scriptevent the_sift:advancements` lista as suas |
 | Charoíta como combustível da mesa de encantamento | ❌ não dá pra alterar a mesa de encantamento |
-| Céu procedural, shaders do portal/fenda, chuva de ichor | ⚠️ trocados por cor de céu, névoa, textura animada e partículas |
+| Céu procedural | ✅ as faixas de aurora do mod (mesmas fórmulas e paletas de dia e de noite) numa cúpula que acompanha o jogador; céu e névoa com as cores do mod, escurecendo à noite |
+| Shaders do portal/fenda, chuva de ichor | ⚠️ trocados por textura animada e partículas |
 
 ## Como foi feito
 
@@ -72,14 +78,26 @@ dimensões (e abre outra de volta do lado de lá).
 - `packs/TheSift_BP/scripts/` são os scripts, escritos à mão:
   - `lib/world_generator_API.js` e `lib/budget.js` — a API de geração
     procedural do **Galactic Horizons**, usada sem alterações;
-  - `sift/terrain.js` — o relevo do Sift como função pura de (x, z);
-  - `sift/worldgen.js` — registro da dimensão, gerador, árvores/estruturas,
-    criaturas, névoa e bioma;
+  - `sift/gen/` — a geração do mod em JavaScript: `noise.js` (ruído do
+    Minecraft), `density.js` (interpretador das density functions),
+    `surface.js` (regras de superfície), `carvers.js`, `chunkgen.js`,
+    `features.js` (placed features e features vanilla), `sift_features.js`
+    (as features do mod portadas do Java), `service.js` (cálculo em segundo
+    plano com `system.runJob`) e `data.js` (os JSON do mod, gerado);
+  - `sift/worldgen.js` — registro da dimensão, escrita dos chunks prontos pela
+    API, criaturas, névoa e bioma;
+  - `sift/sky.js` — o céu; `sift/ancient_city.js` — as Ardósias Sonoras;
   - `sift/portal.js`, `sift/teleport.js`, `sift/singer.js` — console sonoro,
     portal e viagem, Cantora;
   - `sift/blocks.js`, `sift/items.js`, `sift/mobs.js`, `sift/advancements.js`.
 - `tools/validate.py` confere as referências cruzadas; `tools/build.py` gera
   o `.mcaddon`.
+
+### Diagnóstico
+
+`/scriptevent the_sift:debug` mostra o estado do gerador (semente, chunks
+calculados e escritos, fila) e os últimos erros. Se algo der errado no Sift,
+mande a saída desse comando e o log de conteúdo.
 
 Para regenerar a partir do jar:
 

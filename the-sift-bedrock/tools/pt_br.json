@@ -116,6 +116,7 @@
   "item.the_sift.smithing_template.siftite_upgrade.ingredients": "Lingote de Siftita",
   "item.the_sift.smithing_template.siftite_upgrade.base_slot_description": "Adicione armadura, arma ou ferramenta de netherita",
   "item.the_sift.smithing_template.siftite_upgrade.additions_slot_description": "Adicione Lingote de Siftita",
+  "entity.the_sift:sky.name": "Céu do Sift",
   "message.the_sift.sift_generating": "O Sift está tomando forma ao seu redor...",
   "message.the_sift.no_frame": "Não há moldura de ardósia reforçada por perto.",
   "message.the_sift.singer_arrives": "Algo responde à buzina...",

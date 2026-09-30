@@ -271,7 +271,7 @@ function scanAxis(dim, start, axis, closing) {
   };
 }
 
-function framesNear(dim, points, radius, closing) {
+export function framesNear(dim, points, radius, closing) {
   let min = { x: Infinity, y: Infinity, z: Infinity };
   let max = { x: -Infinity, y: -Infinity, z: -Infinity };
   for (const p of points) {

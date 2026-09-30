@@ -1,5 +1,5 @@
 {
-  "format_version": "1.26.40",
+  "format_version": "1.26.0",
   "minecraft:block": {
     "description": {
       "identifier": "the_sift:sift_portal",
@@ -14,9 +14,7 @@
       }
     },
     "components": {
-      "minecraft:display_name": {
-        "value": "block.the_sift.sift_portal"
-      },
+      "minecraft:display_name": "block.the_sift.sift_portal",
       "minecraft:geometry": "geometry.the_sift.portal_plane",
       "minecraft:material_instances": {
         "*": {

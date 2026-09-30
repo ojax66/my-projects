@@ -225,11 +225,33 @@ system.beforeEvents.startup.subscribe((ev) => {
     },
   });
 
+  // Porta: a metade de baixo é a colocada pelo item; a de cima é posta aqui.
   reg.registerCustomComponent("the_sift:door", {
+    beforeOnPlayerPlace(e) {
+      const above = e.block.above();
+      if (!above || !(above.isAir || above.isLiquid)) e.cancel = true;
+    },
+    onPlace(e) {
+      const b = e.block;
+      if (b.permutation.getState("the_sift:upper")) return;
+      const above = b.above();
+      if (above && (above.isAir || above.isLiquid)) {
+        above.setPermutation(b.permutation.withState("the_sift:upper", true));
+      }
+    },
+    onPlayerBreak(e) {
+      const upper = !!e.brokenBlockPermutation.getState("the_sift:upper");
+      const other = upper ? e.block.below() : e.block.above();
+      if (other?.typeId === e.brokenBlockPermutation.type.id) {
+        // a metade de baixo é a que dá o item; quebrar a de cima derruba a de baixo
+        if (upper) e.dimension.runCommand(`setblock ${other.x} ${other.y} ${other.z} air destroy`);
+        else other.setType("minecraft:air");
+      }
+    },
     onPlayerInteract(e) {
       const b = e.block;
-      const part = b.permutation.getState("minecraft:multi_block_part");
-      const other = part === 0 ? b.above() : b.below();
+      const upper = b.permutation.getState("the_sift:upper");
+      const other = upper ? b.below() : b.above();
       const open = !b.permutation.getState("the_sift:open");
       b.setPermutation(b.permutation.withState("the_sift:open", open));
       if (other?.typeId === b.typeId) other.setPermutation(other.permutation.withState("the_sift:open", open));

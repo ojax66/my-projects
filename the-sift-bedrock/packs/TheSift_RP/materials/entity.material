@@ -1,0 +1,11 @@
+{
+  "materials": {
+    "version": "1.0.0",
+    "the_sift_sky:entity_alphablend": {
+      "+states": [
+        "DisableCulling",
+        "DisableDepthWrite"
+      ]
+    }
+  }
+}
