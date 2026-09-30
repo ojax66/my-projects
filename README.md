@@ -43,9 +43,10 @@ Use o item num bloco para montar a peça. O painel se conecta à cápsula mais p
 Quem já teve uma Operação Fênix, não tem mais nenhuma e não achou clone pronto na rede vai para **Valhalla**: uma dimensão de ilhas de campo e neve flutuando num céu dourado, gerada pela API de terreno do Galactic Horizons. Morrer em Valhalla leva de volta para Valhalla, e lá não dá para montar Operação Fênix.
 
 Para sair, outro jogador precisa:
-1. Fazer uma **Seringa** (garrafa de vidro, pepita de ferro e barra de ferro, na diagonal) e usá-la num **corpo** do jogador. Ele recebe a **Amostra de DNA** dessa pessoa.
-2. Usar o DNA na **própria** Operação Fênix (clicando na cápsula ou no painel com o DNA na mão). A cápsula para de gerar o clone do dono e refaz o corpo original de quem está em Valhalla (4 min).
-3. Quando fica pronto, a pessoa sai de Valhalla nessa cápsula, no corpo original, e a cápsula volta a gerar o clone do dono.
+1. Fazer uma **Seringa** vazia (garrafa de vidro, pepita de ferro e barra de ferro, na diagonal) e usá-la num **corpo** do jogador. Ela vira uma **Amostra de Sangue** dessa pessoa.
+2. Levar a amostra a **qualquer** painel ou cápsula da Operação Fênix e clicar com ela na mão. O DNA é isolado numa **Cápsula de DNA** e a seringa volta vazia.
+3. Usar a Cápsula de DNA na **própria** Operação Fênix (clicando na cápsula ou no painel com ela na mão). A cápsula para de gerar o clone do dono e refaz o corpo original de quem está em Valhalla (4 min).
+4. Quando fica pronto, a pessoa sai de Valhalla nessa cápsula, no corpo original, e a cápsula volta a gerar o clone do dono.
 
 Tempos e raios ficam em `packs/OperacaoFenix_BP/scripts/config.js`.
 
@@ -97,7 +98,7 @@ packs/OperacaoFenix_BP/   comportamento: entidades, itens, receitas e scripts
   scripts/ui.js             formulários
   scripts/valhalla.js       dimensão Valhalla (terreno pelo world_generator_API.js)
   scripts/compass.js        bússola de corpos e limpeza de corpos vazios
-  scripts/dna.js            seringa e DNA
+  scripts/dna.js            seringa, amostra de sangue e cápsula de DNA
 packs/OperacaoFenix_RP/   recursos: modelos, texturas, UI (ui/server_form.json)
 server_plugin/            plugin Endstone que captura as skins reais
 tools/                    build (.mcaddon + plugin) e registro manual de skins

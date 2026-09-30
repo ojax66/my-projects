@@ -22,6 +22,7 @@ export const IDS = {
   capsuleKit: "fenix:capsule_kit",
   panelKit: "fenix:panel_kit",
   syringe: "fenix:syringe",
+  blood: "fenix:blood_sample",
   dna: "fenix:dna_sample",
   compass: "fenix:body_compass",
 };

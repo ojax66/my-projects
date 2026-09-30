@@ -1,8 +1,10 @@
 /* =========================================================================
  * Seringa e DNA: a saída de Valhalla.
  *
- * Outro jogador usa uma seringa num corpo e recebe o DNA do dono dele. Usando
- * esse DNA na própria Operação Fênix, a cápsula para de gerar o clone do dono e
+ * Outro jogador usa uma seringa vazia num corpo e fica com uma amostra de sangue.
+ * Levando a amostra a qualquer painel ou cápsula da Operação Fênix, o DNA é
+ * isolado numa cápsula de DNA (e a seringa volta vazia). Usando a cápsula de DNA
+ * na própria Operação Fênix, a cápsula para de gerar o clone do dono e
  * refaz o corpo original de quem está em Valhalla; quando fica pronto, essa
  * pessoa sai de Valhalla ali, no corpo original.
  * ========================================================================= */
@@ -21,8 +23,36 @@ function heldSlot(player) {
   return { inventory, slot, item: inventory?.getItem(slot) };
 }
 
+function tagged(typeId, ownerId, ownerName, name, lore) {
+  const item = new ItemStack(typeId);
+  item.nameTag = name;
+  item.setLore(lore);
+  item.setDynamicProperty("fenix:owner", ownerId);
+  item.setDynamicProperty("fenix:ownerName", ownerName);
+  return item;
+}
+
+/** Troca o item segurado por `result` (se era uma pilha, o resto fica e `result` vai para o inventário). */
+function replaceHeld(player, result) {
+  const { inventory, slot, item } = heldSlot(player);
+  if (!inventory || !item) return;
+  if (item.amount > 1) {
+    item.amount -= 1;
+    inventory.setItem(slot, item);
+    const left = inventory.addItem(result);
+    if (left) player.dimension.spawnItem(left, player.location);
+  } else {
+    inventory.setItem(slot, result);
+  }
+}
+
+function giveOrDrop(player, item) {
+  const left = player.getComponent("minecraft:inventory")?.container?.addItem(item);
+  if (left) player.dimension.spawnItem(left, player.location);
+}
+
 /**
- * Seringa num corpo: troca uma seringa pelo DNA do dono do corpo.
+ * Seringa vazia num corpo: vira uma amostra de sangue do dono do corpo.
  * @param {Player} player
  * @param {import("@minecraft/server").Entity} corpse
  */
@@ -30,34 +60,54 @@ export function sampleDNA(player, corpse) {
   const ownerId = corpse.getDynamicProperty("fenix:owner");
   const ownerName = corpse.getDynamicProperty("fenix:ownerName");
   if (typeof ownerId !== "string" || typeof ownerName !== "string") return;
-  const { inventory, slot, item } = heldSlot(player);
-  if (!inventory || item?.typeId !== IDS.syringe) return;
-
-  const dna = new ItemStack(IDS.dna);
-  dna.nameTag = `§dDNA de ${ownerName}`;
-  dna.setLore([`§7Amostra do corpo de §f${ownerName}`, "§7Use na sua Operação Fênix para", "§7trazer essa pessoa de Valhalla."]);
-  dna.setDynamicProperty("fenix:owner", ownerId);
-  dna.setDynamicProperty("fenix:ownerName", ownerName);
-
-  if (item.amount > 1) {
-    item.amount -= 1;
-    inventory.setItem(slot, item);
-    const left = inventory.addItem(dna);
-    if (left) player.dimension.spawnItem(left, player.location);
-  } else {
-    inventory.setItem(slot, dna);
-  }
+  if (heldSlot(player).item?.typeId !== IDS.syringe) return;
+  replaceHeld(
+    player,
+    tagged(IDS.blood, ownerId, ownerName, `§cSangue de ${ownerName}`, [
+      `§7Amostra do corpo de §f${ownerName}`,
+      "§7Leve a um painel ou cápsula da",
+      "§7Operação Fênix para isolar o DNA.",
+    ]),
+  );
   player.playSound("bottle.fill");
-  player.sendMessage(`§dVocê coletou o DNA de ${ownerName}.`);
+  player.sendMessage(`§cVocê coletou uma amostra de sangue de ${ownerName}. §7Leve a uma Operação Fênix para isolar o DNA.`);
 }
 
-/** DNA que o jogador está segurando: de quem é. */
-export function heldDNA(player) {
+/** Amostra de sangue ou cápsula de DNA segurada: de quem é. */
+function heldSample(player, typeId) {
   const { item } = heldSlot(player);
-  if (item?.typeId !== IDS.dna) return undefined;
+  if (item?.typeId !== typeId) return undefined;
   const id = item.getDynamicProperty("fenix:owner");
   const name = item.getDynamicProperty("fenix:ownerName");
   return typeof id === "string" && typeof name === "string" ? { id, name } : undefined;
+}
+
+export const heldBlood = (player) => heldSample(player, IDS.blood);
+
+/**
+ * Amostra de sangue num painel ou cápsula da Operação Fênix: o DNA é isolado
+ * numa cápsula de DNA e a seringa volta vazia.
+ * @param {Player} player
+ */
+export function extractDNA(player) {
+  const blood = heldBlood(player);
+  if (!blood) return;
+  replaceHeld(
+    player,
+    tagged(IDS.dna, blood.id, blood.name, `§bDNA de ${blood.name}`, [
+      `§7DNA isolado de §f${blood.name}`,
+      "§7Use na sua Operação Fênix para",
+      "§7trazer essa pessoa de Valhalla.",
+    ]),
+  );
+  giveOrDrop(player, new ItemStack(IDS.syringe));
+  player.playSound("beacon.activate");
+  player.sendMessage(`§bA Operação Fênix isolou o DNA de ${blood.name}. §7A seringa voltou vazia.`);
+}
+
+/** Cápsula de DNA que o jogador está segurando: de quem é. */
+export function heldDNA(player) {
+  return heldSample(player, IDS.dna);
 }
 
 /**

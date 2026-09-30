@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.60",
+  "minecraft:item": {
+    "description": {
+      "identifier": "fenix:blood_sample",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": "fenix_blood_sample",
+      "minecraft:max_stack_size": 1,
+      "minecraft:display_name": {
+        "value": "item.fenix:blood_sample.name"
+      }
+    }
+  }
+}

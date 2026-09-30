@@ -6,7 +6,7 @@ import { handleRespawn, onCapsuleDestroyed, registerCapsule, resolvePanelCapsule
 import { openPanel } from "./ui.js";
 import { applyDisguise } from "./skin.js";
 import { bodiesTick, compassTick, giveCompass } from "./compass.js";
-import { heldDNA, sampleDNA, useDNA } from "./dna.js";
+import { extractDNA, heldBlood, heldDNA, sampleDNA, useDNA } from "./dna.js";
 
 const FACE_OFFSET = {
   Up: { x: 0, y: 1, z: 0 },
@@ -113,6 +113,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
     if (target.typeId === IDS.corpse) return held === IDS.syringe ? sampleDNA(player, target) : lootCorpse(player, target);
     const id = target.typeId === IDS.capsule ? target.id : resolvePanelCapsule(target, player.id)?.id;
     if (!id) return player.sendMessage("§cNenhuma Operação Fênix perto deste painel.");
+    if (held === IDS.blood && heldBlood(player)) return extractDNA(player);
     if (held === IDS.dna && heldDNA(player)) return useDNA(player, id);
     openPanel(player, id);
   });

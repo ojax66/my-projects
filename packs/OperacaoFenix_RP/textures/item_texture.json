@@ -16,6 +16,9 @@
     },
     "fenix_body_compass": {
       "textures": "textures/items/recovery_compass_item"
+    },
+    "fenix_blood_sample": {
+      "textures": "textures/items/fenix_blood_sample"
     }
   }
 }
